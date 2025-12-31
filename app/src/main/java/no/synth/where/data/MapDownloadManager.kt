@@ -98,7 +98,7 @@ class MapDownloadManager(private val context: Context) {
                 onComplete(false)
             }
 
-            override fun mapLibreTileCountLimitExceeded(limit: Long) {
+            override fun mapboxTileCountLimitExceeded(limit: Long) {
                 onComplete(false)
             }
         })
