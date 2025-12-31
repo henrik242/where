@@ -1,6 +1,7 @@
 package no.synth.where.ui
 
 import android.Manifest
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -13,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -21,9 +21,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import no.synth.where.data.MapStyle
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.location.LocationComponentActivationOptions
-import org.maplibre.android.location.modes.CameraMode
-import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 
@@ -31,10 +28,9 @@ import org.maplibre.android.maps.Style
 fun MapScreen(
     onDownloadClick: () -> Unit
 ) {
-    val context = LocalContext.current
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
+    ) { _ ->
         // Handle permission results if needed
     }
 
@@ -63,57 +59,74 @@ fun MapScreen(
 
 @Composable
 fun MapLibreMapView() {
-    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    var mapView by remember { mutableStateOf<MapView?>(null) }
 
-    val mapView = remember {
-        MapView(context).apply {
-            onCreate(null) // Initialize the map
-            // Initial camera position
-            getMapAsync { map ->
-                map.cameraPosition = CameraPosition.Builder()
-                    .target(LatLng(65.0, 10.0))
-                    .zoom(5.0)
-                    .build()
+    AndroidView(
+        factory = { ctx ->
+            Log.d("MapScreen", "Creating MapView in factory")
+            MapView(ctx).also { mv ->
+                mapView = mv
+                Log.d("MapScreen", "MapView created, calling onCreate")
+                mv.onCreate(null)
+                Log.d("MapScreen", "onCreate called, setting up map")
 
-                map.setStyle(Style.Builder().fromJson(MapStyle.KARTVERKET_STYLE_JSON)) { style ->
-                    // Enable location component
-                    if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        val locationComponent = map.locationComponent
-                        locationComponent.activateLocationComponent(
-                            LocationComponentActivationOptions.builder(context, style).build()
-                        )
-                        locationComponent.isLocationComponentEnabled = true
-                        locationComponent.cameraMode = CameraMode.TRACKING
-                        locationComponent.renderMode = RenderMode.COMPASS
+                mv.getMapAsync { map ->
+                    Log.d("MapScreen", "Map is ready - getMapAsync callback triggered")
+
+                    map.cameraPosition = CameraPosition.Builder()
+                        .target(LatLng(65.0, 10.0))
+                        .zoom(5.0)
+                        .build()
+
+                    Log.d("MapScreen", "Camera position set")
+
+                    try {
+                        val styleJson = MapStyle.getStyle()
+                        Log.d("MapScreen", "Generated style JSON (length: ${styleJson.length})")
+                        Log.d("MapScreen", "Style preview: ${styleJson.take(300)}...")
+
+
+                        map.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
+                            override fun onStyleLoaded(style: Style) {
+                                Log.d("MapScreen", "Custom Kartverket style loaded successfully!")
+                                Log.d("MapScreen", "Map sources: ${style.sources?.joinToString { it.id }}")
+                                Log.d("MapScreen", "Map layers: ${style.layers?.joinToString { it.id }}")
+
+                                // Force a re-render
+                                map.triggerRepaint()
+                                Log.d("MapScreen", "Triggered map repaint")
+                            }
+                        })
+                    } catch (e: Exception) {
+                        Log.e("MapScreen", "Failed to set map style", e)
+                        e.printStackTrace()
                     }
                 }
             }
-        }
-    }
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 
     // Manage Lifecycle
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START -> mapView.onStart()
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_STOP -> mapView.onStop()
-                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
-                else -> {}
+            mapView?.let { mv ->
+                when (event) {
+                    Lifecycle.Event.ON_START -> mv.onStart()
+                    Lifecycle.Event.ON_RESUME -> mv.onResume()
+                    Lifecycle.Event.ON_PAUSE -> mv.onPause()
+                    Lifecycle.Event.ON_STOP -> mv.onStop()
+                    Lifecycle.Event.ON_DESTROY -> mv.onDestroy()
+                    else -> {}
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            // MapView.onDestroy() is called via the observer
+            mapView?.onDestroy()
         }
     }
-
-    AndroidView(
-        factory = { mapView },
-        modifier = Modifier.fillMaxSize()
-    )
 }
 
