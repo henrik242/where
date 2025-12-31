@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.maplibre.android.sdk)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
