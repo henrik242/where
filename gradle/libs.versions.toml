@@ -10,9 +10,11 @@ material = "1.13.0"
 activityCompose = "1.12.2"
 composeBom = "2025.12.01"
 navigationCompose = "2.9.6"
+lifecycleRuntimeCompose = "2.8.7"
 maplibre = "12.3.1"
 
 [libraries]
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
