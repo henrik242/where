@@ -1,9 +1,9 @@
 package no.synth.where.data
 
-import org.osmdroid.util.BoundingBox
+import org.maplibre.android.geometry.LatLngBounds
 
 data class Region(
     val name: String,
-    val boundingBox: BoundingBox
+    val boundingBox: LatLngBounds
 )
 

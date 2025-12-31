@@ -3,11 +3,19 @@ package no.synth.where.data
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.osmdroid.tileprovider.cachemanager.CacheManager
-import org.osmdroid.tileprovider.tilesource.XYTileSource
-import org.osmdroid.views.MapView
+import org.maplibre.android.offline.OfflineManager
+import org.maplibre.android.offline.OfflineRegion
+import org.maplibre.android.offline.OfflineRegionError
+import org.maplibre.android.offline.OfflineRegionStatus
+import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
+import java.io.File
+import java.nio.charset.Charset
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class MapDownloadManager(private val context: Context) {
+
+    private val offlineManager = OfflineManager.getInstance(context)
 
     suspend fun downloadRegion(
         region: Region,
@@ -16,69 +24,86 @@ class MapDownloadManager(private val context: Context) {
         onProgress: (Int) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        withContext(Dispatchers.Main) {
-            val mapView = MapView(context).apply {
-                setTileSource(KartverketTileSource)
+        withContext(Dispatchers.IO) {
+            // 1. Create style file
+            val styleFile = File(context.cacheDir, "kartverket_style.json")
+            styleFile.writeText(MapStyle.KARTVERKET_STYLE_JSON, Charset.forName("UTF-8"))
+            val styleUrl = "file://${styleFile.absolutePath}"
+
+            // 2. Define region
+            val pixelRatio = context.resources.displayMetrics.density
+            val definition = OfflineTilePyramidRegionDefinition(
+                styleUrl,
+                region.boundingBox,
+                minZoom.toDouble(),
+                maxZoom.toDouble(),
+                pixelRatio
+            )
+
+            // 3. Metadata
+            val metadata = region.name.toByteArray(Charset.forName("UTF-8"))
+
+            // 4. Create offline region
+            createOfflineRegion(definition, metadata, onProgress, onComplete)
+        }
+    }
+
+    private suspend fun createOfflineRegion(
+        definition: OfflineTilePyramidRegionDefinition,
+        metadata: ByteArray,
+        onProgress: (Int) -> Unit,
+        onComplete: (Boolean) -> Unit
+    ) = suspendCoroutine<Unit> { continuation ->
+        offlineManager.createOfflineRegion(
+            definition,
+            metadata,
+            object : OfflineManager.CreateOfflineRegionCallback {
+                override fun onCreate(offlineRegion: OfflineRegion) {
+                    startDownload(offlineRegion, onProgress, onComplete)
+                    continuation.resume(Unit)
+                }
+
+                override fun onError(error: String) {
+                    onComplete(false)
+                    continuation.resume(Unit)
+                }
             }
+        )
+    }
 
-            val cacheManager = object : CacheManager(mapView) {
-                override fun getDownloadingDialog(
-                    ctx: Context?,
-                    pTask: CacheManager.CacheManagerTask?
-                ): CacheManager.CacheManagerDialog {
-                    // Return a dummy dialog that suppresses the default UI
-                    return object : CacheManager.CacheManagerDialog(ctx, pTask) {
-                        override fun getUITitle(): String {
-                            return "Downloading"
-                        }
+    private fun startDownload(
+        offlineRegion: OfflineRegion,
+        onProgress: (Int) -> Unit,
+        onComplete: (Boolean) -> Unit
+    ) {
+        offlineRegion.setObserver(object : OfflineRegion.OfflineRegionObserver {
+            override fun onStatusChanged(status: OfflineRegionStatus) {
+                val progress = if (status.requiredResourceCount >= 0) {
+                    (100.0 * status.completedResourceCount / status.requiredResourceCount).toInt()
+                } else {
+                    0
+                }
 
-                        /*
-                        override fun show() {
-                            // Do nothing to suppress the dialog
-                        }
-                        */
-                    }
+                if (status.isComplete) {
+                    onProgress(100)
+                    onComplete(true)
+                    offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                    offlineRegion.setObserver(null)
+                } else {
+                    onProgress(progress)
                 }
             }
 
-            try {
-                cacheManager.downloadAreaAsync(
-                    context, // Pass context to satisfy CacheManager, but dialog won't show
-                    region.boundingBox,
-                    minZoom,
-                    maxZoom,
-                    object : CacheManager.CacheManagerCallback {
-                        override fun onTaskComplete() {
-                            onComplete(true)
-                            mapView.onDetach()
-                        }
-
-                        override fun onTaskFailed(errors: Int) {
-                            onComplete(false)
-                            mapView.onDetach()
-                        }
-
-                        override fun updateProgress(progress: Int, currentZoomLevel: Int, zoomLevelMax: Int, totalTiles: Int) {
-                            // This might also be called by CacheManager, so we can use it too
-                            val percentage = if (totalTiles > 0) (progress * 100) / totalTiles else 0
-                            onProgress(percentage)
-                        }
-
-                        override fun downloadStarted() {
-                            // Started
-                        }
-
-                        override fun setPossibleTilesInArea(total: Int) {
-                            // Total tiles
-                        }
-                    }
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
+            override fun onError(error: OfflineRegionError) {
                 onComplete(false)
-                mapView.onDetach()
             }
-        }
+
+            override fun mapLibreTileCountLimitExceeded(limit: Long) {
+                onComplete(false)
+            }
+        })
+
+        offlineRegion.setDownloadState(OfflineRegion.STATE_ACTIVE)
     }
 }
 
