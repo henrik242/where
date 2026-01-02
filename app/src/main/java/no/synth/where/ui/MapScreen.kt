@@ -163,7 +163,10 @@ fun MapScreen(
 
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
 
-                FloatingActionButton(onClick = onDownloadClick) {
+                SmallFloatingActionButton(
+                    onClick = onDownloadClick,
+                    modifier = Modifier.size(48.dp)
+                ) {
                     Icon(Icons.Filled.Download, contentDescription = "Download Maps")
                 }
             }
