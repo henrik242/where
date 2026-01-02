@@ -51,6 +51,10 @@ fun DownloadScreen(
         }
     }
 
+    fun cleanRegionName(name: String): String {
+        return name.substringBefore(" - ")
+    }
+
     // Calculate per-layer statistics
     fun getLayerStats(layerName: String): Pair<Long, Int> {
         val layerDir = File(context.getExternalFilesDir(null), "tiles/$layerName")
@@ -230,7 +234,7 @@ fun DownloadScreen(
                                 modifier = Modifier.padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("Downloading ${downloadingRegion?.name}...")
+                                Text("Downloading ${cleanRegionName(downloadingRegion?.name ?: "")}...")
                                 Spacer(modifier = Modifier.height(8.dp))
                                 LinearProgressIndicator(
                                     progress = { downloadProgress / 100f },
@@ -264,7 +268,7 @@ fun DownloadScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         ListItem(
-                            headlineContent = { Text(region.name) },
+                            headlineContent = { Text(cleanRegionName(region.name)) },
                             supportingContent = {
                                 if (isDownloaded) {
                                     Text("✓ ${tileInfo.downloadedTiles} tiles • ${formatBytes(tileInfo.downloadedSize)}")
@@ -332,8 +336,8 @@ fun DownloadScreen(
 
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Delete ${region.name}?") },
-            text = { Text("This will delete all $layerName tiles for ${region.name}. You can re-download them later.") },
+            title = { Text("Delete ${cleanRegionName(region.name)}?") },
+            text = { Text("This will delete all $layerName tiles for ${cleanRegionName(region.name)}. You can re-download them later.") },
             confirmButton = {
                 TextButton(
                     onClick = {
