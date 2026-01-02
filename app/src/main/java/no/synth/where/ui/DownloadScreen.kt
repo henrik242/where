@@ -32,23 +32,7 @@ fun DownloadScreen(
     var downloadingRegion by remember { mutableStateOf<Region?>(null) }
     var downloadProgress by remember { mutableStateOf(0) }
     var refreshTrigger by remember { mutableStateOf(0) }
-
-    // Calculate download statistics for the entire kartverket tiles directory
-    fun getTotalDownloadInfo(): Pair<Boolean, Long> {
-        val baseDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
-        if (!baseDir.exists()) return Pair(false, 0L)
-
-        var totalSize = 0L
-        var tileCount = 0
-        baseDir.walkTopDown().forEach { file ->
-            if (file.isFile && file.extension == "png") {
-                totalSize += file.length()
-                tileCount++
-            }
-        }
-        return Pair(tileCount > 0, totalSize)
-    }
-
+    var showDeleteDialog by remember { mutableStateOf<Region?>(null) }
 
     fun formatBytes(bytes: Long): String {
         return when {
@@ -62,9 +46,9 @@ fun DownloadScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    val (hasDownloads, totalSize) = getTotalDownloadInfo()
-                    if (hasDownloads) {
-                        Text("Offline Maps • ${formatBytes(totalSize)}")
+                    val (totalSize, tileCount) = downloadManager.getTotalCacheInfo()
+                    if (tileCount > 0) {
+                        Text("Offline Maps • ${formatBytes(totalSize)} • $tileCount tiles")
                     } else {
                         Text("Download Offline Maps")
                     }
@@ -75,19 +59,46 @@ fun DownloadScreen(
                     }
                 },
                 actions = {
-                    val (hasDownloads, _) = getTotalDownloadInfo()
-                    if (hasDownloads) {
+                    val (totalSize, tileCount) = downloadManager.getTotalCacheInfo()
+                    if (tileCount > 0) {
                         IconButton(onClick = {
                             val baseDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
+                            val metadataFile = File(context.getExternalFilesDir(null), "tiles/metadata.json")
                             baseDir.deleteRecursively()
+                            metadataFile.delete()
                             refreshTrigger++
                         }) {
                             Icon(Icons.Filled.Delete, contentDescription = "Delete All")
-                        }
-                    }
                 }
-            )
+            }
         }
+    )
+
+    // Delete confirmation dialog
+    showDeleteDialog?.let { region ->
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text("Delete ${region.name}?") },
+            text = { Text("This will delete all offline tiles for ${region.name}. You can re-download them later.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        downloadManager.deleteRegionTiles(region)
+                        showDeleteDialog = null
+                        refreshTrigger++
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             if (downloadingRegion != null) {
@@ -124,31 +135,45 @@ fun DownloadScreen(
                                 }
                             },
                             trailingContent = {
-                                Button(onClick = {
-                                    downloadingRegion = region
-                                    scope.launch {
-                                        downloadManager.downloadRegion(
-                                            region = region,
-                                            minZoom = 5,
-                                            maxZoom = 12,
-                                            onProgress = { progress ->
-                                                downloadProgress = progress
-                                            },
-                                            onComplete = { success ->
-                                                downloadingRegion = null
-                                                downloadProgress = 0
-                                                refreshTrigger++
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (hasPartialDownload || isDownloaded) {
+                                        IconButton(
+                                            onClick = { showDeleteDialog = region }
+                                        ) {
+                                            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                                        }
+                                    }
+                                    Button(
+                                        onClick = {
+                                            downloadingRegion = region
+                                            scope.launch {
+                                                downloadManager.downloadRegion(
+                                                    region = region,
+                                                    minZoom = 5,
+                                                    maxZoom = 12,
+                                                    onProgress = { progress ->
+                                                        downloadProgress = progress
+                                                    },
+                                                    onComplete = { success ->
+                                                        downloadingRegion = null
+                                                        downloadProgress = 0
+                                                        refreshTrigger++
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        Text(
+                                            when {
+                                                isDownloaded -> "✓ Done"
+                                                hasPartialDownload -> "Continue"
+                                                else -> "Download"
                                             }
                                         )
                                     }
-                                }) {
-                                    Text(
-                                        when {
-                                            isDownloaded -> "✓ Done"
-                                            hasPartialDownload -> "Continue"
-                                            else -> "Download"
-                                        }
-                                    )
                                 }
                             }
                         )
