@@ -4,19 +4,32 @@ import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.maplibre.android.offline.OfflineManager
-import org.maplibre.android.offline.OfflineRegion
-import org.maplibre.android.offline.OfflineRegionError
-import org.maplibre.android.offline.OfflineRegionStatus
-import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
-import java.nio.charset.Charset
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.math.PI
+import kotlin.math.atan
+import kotlin.math.exp
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.pow
 
+/**
+ * Manual tile downloader for Kartverket maps.
+ *
+ * MapLibre's built-in offline manager has issues with custom tile sources,
+ * so we download tiles manually and store them in a directory structure
+ * that MapLibre can use offline.
+ */
 class MapDownloadManager(private val context: Context) {
 
-    private val offlineManager = OfflineManager.getInstance(context)
+    private val tileBaseUrl = "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator"
+    private val tilesDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
 
+    /**
+     * Download map tiles for a region
+     */
     suspend fun downloadRegion(
         region: Region,
         minZoom: Int = 5,
@@ -25,98 +38,117 @@ class MapDownloadManager(private val context: Context) {
         onComplete: (Boolean) -> Unit
     ) {
         withContext(Dispatchers.IO) {
-            Log.d("MapDownloadManager", "Starting download for region: ${region.name}")
+            try {
+                Log.d("MapDownloadManager", "Starting manual tile download for: ${region.name}")
+                Log.d("MapDownloadManager", "Zoom levels: $minZoom - $maxZoom")
 
-            // Get the style JSON directly - no need to save to file
-            val styleJson = MapStyle.getStyle()
-            Log.d("MapDownloadManager", "Generated style JSON (length: ${styleJson.length})")
+                // Create tiles directory
+                tilesDir.mkdirs()
 
-            // 2. Define region
-            val pixelRatio = context.resources.displayMetrics.density
-            val definition = OfflineTilePyramidRegionDefinition(
-                styleJson,  // Use JSON directly instead of file URL
-                region.boundingBox,
-                minZoom.toDouble(),
-                maxZoom.toDouble(),
-                pixelRatio
-            )
+                // Calculate tile ranges for each zoom level
+                val tilesToDownload = mutableListOf<TileCoordinate>()
+                for (zoom in minZoom..maxZoom) {
+                    val tiles = getTilesForBounds(region.boundingBox, zoom)
+                    tilesToDownload.addAll(tiles)
+                }
 
-            Log.d("MapDownloadManager", "Region definition created: zoom ${minZoom}-${maxZoom}, pixel ratio: $pixelRatio")
+                Log.d("MapDownloadManager", "Total tiles to download: ${tilesToDownload.size}")
 
-            // 3. Metadata
-            val metadata = region.name.toByteArray(Charset.forName("UTF-8"))
+                var downloaded = 0
+                var failed = 0
 
-            // 4. Create offline region
-            createOfflineRegion(definition, metadata, onProgress, onComplete)
+                for ((index, tile) in tilesToDownload.withIndex()) {
+                    val success = downloadTile(tile)
+                    if (success) {
+                        downloaded++
+                    } else {
+                        failed++
+                    }
+
+                    val progress = ((index + 1) * 100) / tilesToDownload.size
+                    onProgress(progress)
+
+                    if (index % 10 == 0) {
+                        Log.d("MapDownloadManager", "Progress: $progress% ($downloaded downloaded, $failed failed)")
+                    }
+                }
+
+                Log.d("MapDownloadManager", "Download complete: $downloaded succeeded, $failed failed")
+                onComplete(failed == 0)
+
+            } catch (e: Exception) {
+                Log.e("MapDownloadManager", "Download error", e)
+                onComplete(false)
+            }
         }
     }
 
-    private suspend fun createOfflineRegion(
-        definition: OfflineTilePyramidRegionDefinition,
-        metadata: ByteArray,
-        onProgress: (Int) -> Unit,
-        onComplete: (Boolean) -> Unit
-    ) = suspendCoroutine<Unit> { continuation ->
-        Log.d("MapDownloadManager", "Creating offline region...")
-        offlineManager.createOfflineRegion(
-            definition,
-            metadata,
-            object : OfflineManager.CreateOfflineRegionCallback {
-                override fun onCreate(offlineRegion: OfflineRegion) {
-                    Log.d("MapDownloadManager", "Offline region created successfully")
-                    startDownload(offlineRegion, onProgress, onComplete)
-                    continuation.resume(Unit)
-                }
+    private fun getTilesForBounds(bounds: org.maplibre.android.geometry.LatLngBounds, zoom: Int): List<TileCoordinate> {
+        val tiles = mutableListOf<TileCoordinate>()
 
-                override fun onError(error: String) {
-                    Log.e("MapDownloadManager", "Failed to create offline region: $error")
-                    onComplete(false)
-                    continuation.resume(Unit)
-                }
+        val northWest = latLngToTile(bounds.northEast.latitude, bounds.southWest.longitude, zoom)
+        val southEast = latLngToTile(bounds.southWest.latitude, bounds.northEast.longitude, zoom)
+
+        val minX = minOf(northWest.x, southEast.x)
+        val maxX = maxOf(northWest.x, southEast.x)
+        val minY = minOf(northWest.y, southEast.y)
+        val maxY = maxOf(northWest.y, southEast.y)
+
+        for (x in minX..maxX) {
+            for (y in minY..maxY) {
+                tiles.add(TileCoordinate(zoom, x, y))
             }
-        )
+        }
+
+        return tiles
     }
 
-    private fun startDownload(
-        offlineRegion: OfflineRegion,
-        onProgress: (Int) -> Unit,
-        onComplete: (Boolean) -> Unit
-    ) {
-        Log.d("MapDownloadManager", "Starting download...")
-        offlineRegion.setObserver(object : OfflineRegion.OfflineRegionObserver {
-            override fun onStatusChanged(status: OfflineRegionStatus) {
-                val progress = if (status.requiredResourceCount >= 0) {
-                    (100.0 * status.completedResourceCount / status.requiredResourceCount).toInt()
-                } else {
-                    0
-                }
-
-                Log.d("MapDownloadManager", "Download progress: $progress% (${status.completedResourceCount}/${status.requiredResourceCount})")
-
-                if (status.isComplete) {
-                    Log.d("MapDownloadManager", "Download complete!")
-                    onProgress(100)
-                    onComplete(true)
-                    offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
-                    offlineRegion.setObserver(null)
-                } else {
-                    onProgress(progress)
-                }
-            }
-
-            override fun onError(error: OfflineRegionError) {
-                Log.e("MapDownloadManager", "Download error: ${error.message}, reason: ${error.reason}")
-                onComplete(false)
-            }
-
-            override fun mapboxTileCountLimitExceeded(limit: Long) {
-                Log.e("MapDownloadManager", "Tile count limit exceeded: $limit")
-                onComplete(false)
-            }
-        })
-
-        offlineRegion.setDownloadState(OfflineRegion.STATE_ACTIVE)
-        Log.d("MapDownloadManager", "Download state set to ACTIVE")
+    private fun latLngToTile(lat: Double, lng: Double, zoom: Int): TileCoordinate {
+        val n = 2.0.pow(zoom)
+        val x = floor((lng + 180.0) / 360.0 * n).toInt()
+        val latRad = lat * PI / 180.0
+        val y = floor((1.0 - ln(kotlin.math.tan(latRad) + 1.0 / kotlin.math.cos(latRad)) / PI) / 2.0 * n).toInt()
+        return TileCoordinate(zoom, x, y)
     }
+
+    private suspend fun downloadTile(tile: TileCoordinate): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = "$tileBaseUrl/${tile.z}/${tile.x}/${tile.y}.png"
+                val tileFile = File(tilesDir, "${tile.z}/${tile.x}/${tile.y}.png")
+
+                // Skip if already downloaded
+                if (tileFile.exists()) {
+                    return@withContext true
+                }
+
+                // Create directory
+                tileFile.parentFile?.mkdirs()
+
+                // Download tile
+                val connection = URL(url).openConnection() as HttpURLConnection
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+                connection.setRequestProperty("User-Agent", "Hvor/1.0")
+
+                if (connection.responseCode == 200) {
+                    connection.inputStream.use { input ->
+                        FileOutputStream(tileFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    true
+                } else {
+                    Log.w("MapDownloadManager", "Failed to download tile: ${connection.responseCode} for $url")
+                    false
+                }
+            } catch (e: Exception) {
+                Log.w("MapDownloadManager", "Error downloading tile ${tile.z}/${tile.x}/${tile.y}", e)
+                false
+            }
+        }
+    }
+
+    data class TileCoordinate(val z: Int, val x: Int, val y: Int)
 }
 

@@ -1,13 +1,68 @@
 package no.synth.where
 
+import android.content.ContextWrapper
+import java.io.File
 import no.synth.where.data.MapStyle
+import no.synth.where.data.Region
+import no.synth.where.data.RegionsRepository
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.junit.Assert.*
 
 class MapStyleTest {
+    private val context = object : ContextWrapper(null) {
+        private val baseDir = File("build/test-ext")
+
+        override fun getExternalFilesDir(type: String?): File? {
+            val target = if (type == null) baseDir else File(baseDir, type)
+            if (!target.exists()) {
+                target.mkdirs()
+            }
+            return target
+        }
+    }
+
+    @Before
+    fun setUp() {
+        val regions = listOf(
+            sampleRegion("Oslo", 60.0, 59.8, 11.0, 10.4),
+            sampleRegion("Vestland", 61.0, 60.6, 5.5, 4.7),
+            sampleRegion("Trøndelag", 64.3, 63.5, 11.0, 8.4)
+        )
+        RegionsRepository.setRegionsForTest(regions)
+    }
+
+    @After
+    fun tearDown() {
+        RegionsRepository.setRegionsForTest(null)
+    }
+
+    private fun sampleRegion(
+        name: String,
+        north: Double,
+        south: Double,
+        east: Double,
+        west: Double
+    ): Region {
+        val bounds = LatLngBounds.from(north, east, south, west)
+        val polygon = listOf(
+            listOf(
+                LatLng(north, west),
+                LatLng(south, west),
+                LatLng(south, east),
+                LatLng(north, east),
+                LatLng(north, west)
+            )
+        )
+        return Region(name, bounds, polygon)
+    }
+
     @Test
     fun testStyleJsonIsValid() {
-        val styleJson = MapStyle.getStyle()
+        val styleJson = MapStyle.getStyle(context)
 
         println("Generated Style JSON:")
         println(styleJson)
@@ -25,15 +80,14 @@ class MapStyleTest {
 
     @Test
     fun testRegionsGeoJson() {
-        val styleJson = MapStyle.getStyle()
+        val styleJson = MapStyle.getStyle(context)
 
         // Check for region names
         assertTrue("Should contain Oslo", styleJson.contains("\"Oslo\""))
         assertTrue("Should contain Vestland", styleJson.contains("\"Vestland\""))
-        assertTrue("Should contain Trøndelag", styleJson.contains("\"Trøndelag"))
+        assertTrue("Should contain Trøndelag", styleJson.contains("\"Trøndelag\""))
 
         // Check for coordinates
         assertTrue("Should contain coordinates array", styleJson.contains("\"coordinates\""))
     }
 }
-

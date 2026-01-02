@@ -1,29 +1,49 @@
 package no.synth.where.data
 
+import android.content.Context
+import java.io.File
+
 object MapStyle {
-    fun getStyle(): String {
-        val regionsGeoJson = RegionsRepository.regions.joinToString(",") { region ->
-            val b = region.boundingBox
-            val north = b.northEast.latitude
-            val south = b.southWest.latitude
-            val east = b.northEast.longitude
-            val west = b.southWest.longitude
+    fun getStyle(context: Context): String {
+        val regions = RegionsRepository.getRegions(context)
+        val regionsGeoJson = regions.joinToString(",") { region ->
+            // Use actual polygon if available, otherwise fall back to bounding box
+            val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
+                // Use actual fylke polygon boundaries
+                region.polygon.first().joinToString(",") { latLng ->
+                    "[${latLng.longitude}, ${latLng.latitude}]"
+                }
+            } else {
+                // Fallback to bounding box rectangle
+                val b = region.boundingBox
+                val north = b.northEast.latitude
+                val south = b.southWest.latitude
+                val east = b.northEast.longitude
+                val west = b.southWest.longitude
+                "[$west, $north],[$west, $south],[$east, $south],[$east, $north],[$west, $north]"
+            }
+
             """
             {
               "type": "Feature",
               "properties": { "name": "${region.name}" },
               "geometry": {
                 "type": "Polygon",
-                "coordinates": [[
-                  [$west, $north],
-                  [$west, $south],
-                  [$east, $south],
-                  [$east, $north],
-                  [$west, $north]
-                ]]
+                "coordinates": [[$coordinates]]
               }
             }
             """
+        }
+
+        // Check if we have local tiles downloaded
+        val tilesDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
+        val hasLocalTiles = tilesDir.exists() && tilesDir.listFiles()?.isNotEmpty() == true
+
+        // Prefer local tiles, fall back to online
+        val kartverketTilesUrl = if (hasLocalTiles) {
+            "file://${tilesDir.absolutePath}/{z}/{x}/{y}.png"
+        } else {
+            "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{x}/{y}.png"
         }
 
         return """
@@ -44,7 +64,7 @@ object MapStyle {
       "type": "raster",
       "scheme": "xyz",
       "tiles": [
-        "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{x}/{y}.png"
+        "$kartverketTilesUrl"
       ],
       "tileSize": 256,
       "attribution": "Kartverket"
@@ -72,7 +92,7 @@ object MapStyle {
       "type": "raster",
       "source": "osm",
       "paint": {
-        "raster-opacity": 0.3
+        "raster-opacity": 0.8
       }
     },
     {
@@ -80,6 +100,15 @@ object MapStyle {
       "type": "raster",
       "source": "kartverket",
       "paint": {}
+    },
+    {
+      "id": "regions-fill",
+      "type": "fill",
+      "source": "regions",
+      "paint": {
+        "fill-color": "#FF8800",
+        "fill-opacity": 0.0
+      }
     },
     {
       "id": "regions-outline",

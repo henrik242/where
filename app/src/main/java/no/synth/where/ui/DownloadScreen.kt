@@ -25,6 +25,7 @@ fun DownloadScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val downloadManager = remember { MapDownloadManager(context) }
+    val regions = remember { RegionsRepository.getRegions(context) }
 
     var downloadingRegion by remember { mutableStateOf<Region?>(null) }
     var downloadProgress by remember { mutableStateOf(0) }
@@ -56,7 +57,7 @@ fun DownloadScreen(
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(RegionsRepository.regions) { region ->
+                    items(regions) { region ->
                         ListItem(
                             headlineContent = { Text(region.name) },
                             supportingContent = { Text("Download map for offline use") },
