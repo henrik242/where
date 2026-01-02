@@ -52,10 +52,14 @@ object MapStyle {
         // Add toporaster (hiking map) layer
         val toporasterTilesUrl = "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
 
+        // Add OpenTopoMap (OSM-based hiking map)
+        val openTopoMapTilesUrl = "https://tile.opentopomap.org/{z}/{x}/{y}.png"
+
         // Set layer visibility based on selection
         val osmOpacity = if (selectedLayer == MapLayer.OSM) 1.0 else 0.01
         val kartverketOpacity = if (selectedLayer == MapLayer.KARTVERKET) 1.0 else 0.01
         val toporasterOpacity = if (selectedLayer == MapLayer.TOPORASTER) 1.0 else 0.01
+        val openTopoMapOpacity = if (selectedLayer == MapLayer.OPENTOPOMAP) 1.0 else 0.01
 
 
 
@@ -90,6 +94,15 @@ object MapStyle {
       ],
       "tileSize": 256,
       "attribution": "Kartverket Toporaster"
+    },
+    "opentopomap": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": [
+        "$openTopoMapTilesUrl"
+      ],
+      "tileSize": 256,
+      "attribution": "© OpenTopoMap (CC-BY-SA)"
     },
     "regions": {
       "type": "geojson",
@@ -131,6 +144,14 @@ object MapStyle {
       "source": "toporaster",
       "paint": {
         "raster-opacity": $toporasterOpacity
+      }
+    },
+    {
+      "id": "opentopomap-layer",
+      "type": "raster",
+      "source": "opentopomap",
+      "paint": {
+        "raster-opacity": $openTopoMapOpacity
       }
     },
     {

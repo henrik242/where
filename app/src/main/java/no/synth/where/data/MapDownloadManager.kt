@@ -24,21 +24,37 @@ import kotlin.math.pow
  */
 class MapDownloadManager(private val context: Context) {
 
-    private val tileBaseUrl = "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator"
-    private val tilesDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
-    private val metadataFile = File(context.getExternalFilesDir(null), "tiles/metadata.json")
-
     companion object {
         private const val TILE_REFRESH_DAYS = 90 // Refresh tiles older than 90 days
         const val DEFAULT_MAX_CACHE_SIZE_MB = 500L // 500 MB default max cache
+
+        // Tile URLs for each layer
+        private val LAYER_URLS = mapOf(
+            "kartverket" to "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator",
+            "toporaster" to "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator",
+            "osm" to "https://tile.openstreetmap.org",
+            "opentopomap" to "https://tile.opentopomap.org"
+        )
+
+        // Coordinate format for each layer (some use {z}/{y}/{x}, others use {z}/{x}/{y})
+        private val LAYER_COORD_FORMAT = mapOf(
+            "kartverket" to "{z}/{y}/{x}",  // Kartverket uses y/x
+            "toporaster" to "{z}/{y}/{x}",  // Toporaster uses y/x
+            "osm" to "{z}/{x}/{y}",         // OSM uses x/y
+            "opentopomap" to "{z}/{x}/{y}"  // OpenTopoMap uses x/y
+        )
     }
+
+    private fun getTilesDir(layerName: String) = File(context.getExternalFilesDir(null), "tiles/$layerName")
+    private fun getMetadataFile(layerName: String) = File(context.getExternalFilesDir(null), "tiles/${layerName}_metadata.json")
 
     data class TileMetadata(
         val regions: MutableSet<String> = mutableSetOf(),
         var downloadedAt: Long = System.currentTimeMillis()
     )
 
-    private fun loadMetadata(): MutableMap<String, TileMetadata> {
+    private fun loadMetadata(layerName: String): MutableMap<String, TileMetadata> {
+        val metadataFile = getMetadataFile(layerName)
         if (!metadataFile.exists()) return mutableMapOf()
         return try {
             val json = metadataFile.readText()
@@ -46,18 +62,19 @@ class MapDownloadManager(private val context: Context) {
                 object : com.google.gson.reflect.TypeToken<MutableMap<String, TileMetadata>>() {}.type)
                 ?: mutableMapOf()
         } catch (e: Exception) {
-            Log.w("MapDownloadManager", "Failed to load metadata", e)
+            Log.w("MapDownloadManager", "Failed to load metadata for $layerName", e)
             mutableMapOf()
         }
     }
 
-    private fun saveMetadata(metadata: Map<String, TileMetadata>) {
+    private fun saveMetadata(layerName: String, metadata: Map<String, TileMetadata>) {
         try {
+            val metadataFile = getMetadataFile(layerName)
             metadataFile.parentFile?.mkdirs()
             val json = com.google.gson.Gson().toJson(metadata)
             metadataFile.writeText(json)
         } catch (e: Exception) {
-            Log.e("MapDownloadManager", "Failed to save metadata", e)
+            Log.e("MapDownloadManager", "Failed to save metadata for $layerName", e)
         }
     }
 
@@ -66,6 +83,7 @@ class MapDownloadManager(private val context: Context) {
      */
     suspend fun downloadRegion(
         region: Region,
+        layerName: String = "kartverket",
         minZoom: Int = 5,
         maxZoom: Int = 15,
         onProgress: (Int) -> Unit,
@@ -73,14 +91,15 @@ class MapDownloadManager(private val context: Context) {
     ) {
         withContext(Dispatchers.IO) {
             try {
-                Log.d("MapDownloadManager", "Starting manual tile download for: ${region.name}")
+                Log.d("MapDownloadManager", "Starting tile download for: ${region.name} on layer $layerName")
                 Log.d("MapDownloadManager", "Zoom levels: $minZoom - $maxZoom")
 
-                // Create tiles directory
+                // Create tiles directory for this layer
+                val tilesDir = getTilesDir(layerName)
                 tilesDir.mkdirs()
 
-                // Load metadata
-                val metadata = loadMetadata()
+                // Load metadata for this layer
+                val metadata = loadMetadata(layerName)
 
                 // Calculate tile ranges for each zoom level
                 val tilesToDownload = mutableListOf<TileCoordinate>()
@@ -97,7 +116,12 @@ class MapDownloadManager(private val context: Context) {
                 val currentTime = System.currentTimeMillis()
 
                 for ((index, tile) in tilesToDownload.withIndex()) {
-                    val tileKey = "${tile.z}/${tile.y}/${tile.x}"
+                    val coordFormat = LAYER_COORD_FORMAT[layerName] ?: "{z}/{x}/{y}"
+                    val tileKey = if (coordFormat == "{z}/{y}/{x}") {
+                        "${tile.z}/${tile.y}/${tile.x}"
+                    } else {
+                        "${tile.z}/${tile.x}/${tile.y}"
+                    }
                     val tileFile = File(tilesDir, "$tileKey.png")
                     val tileMeta = metadata[tileKey]
 
@@ -112,7 +136,7 @@ class MapDownloadManager(private val context: Context) {
                         skipped++
                     } else {
                         // Download tile (updates existing or creates new)
-                        val success = downloadTile(tile)
+                        val success = downloadTile(tile, layerName, tilesDir)
                         if (success) {
                             // Update or create metadata
                             val meta = metadata.getOrPut(tileKey) { TileMetadata() }
@@ -132,8 +156,8 @@ class MapDownloadManager(private val context: Context) {
                     }
                 }
 
-                // Save metadata
-                saveMetadata(metadata)
+                // Save metadata for this layer
+                saveMetadata(layerName, metadata)
 
                 Log.d("MapDownloadManager", "Download complete: $downloaded new, $skipped existing, $failed failed")
                 onComplete(failed == 0)
@@ -173,12 +197,26 @@ class MapDownloadManager(private val context: Context) {
         return TileCoordinate(zoom, x, y)
     }
 
-    private suspend fun downloadTile(tile: TileCoordinate): Boolean {
+    private suspend fun downloadTile(tile: TileCoordinate, layerName: String, tilesDir: File): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                // Kartverket uses {z}/{y}/{x} format!
-                val url = "$tileBaseUrl/${tile.z}/${tile.y}/${tile.x}.png"
-                val tileFile = File(tilesDir, "${tile.z}/${tile.y}/${tile.x}.png")
+                val baseUrl = LAYER_URLS[layerName] ?: return@withContext false
+                val coordFormat = LAYER_COORD_FORMAT[layerName] ?: "{z}/{x}/{y}"
+
+                // Build URL based on coordinate format
+                val url = if (coordFormat == "{z}/{y}/{x}") {
+                    "$baseUrl/${tile.z}/${tile.y}/${tile.x}.png"
+                } else {
+                    "$baseUrl/${tile.z}/${tile.x}/${tile.y}.png"
+                }
+
+                // Build file path (same as URL path)
+                val tilePath = if (coordFormat == "{z}/{y}/{x}") {
+                    "${tile.z}/${tile.y}/${tile.x}.png"
+                } else {
+                    "${tile.z}/${tile.x}/${tile.y}.png"
+                }
+                val tileFile = File(tilesDir, tilePath)
 
                 // Create directory
                 tileFile.parentFile?.mkdirs()
@@ -200,7 +238,7 @@ class MapDownloadManager(private val context: Context) {
 
                     // Log a sample of downloads for debugging
                     if (tile.z <= 7 || (tile.x + tile.y) % 50 == 0) {
-                        Log.d("MapDownloadManager", "Downloaded tile ${tile.z}/${tile.y}/${tile.x}: " +
+                        Log.d("MapDownloadManager", "Downloaded $layerName tile $tilePath: " +
                             "expected=$contentLength bytes, actual=$actualSize bytes")
                     }
 
@@ -210,7 +248,7 @@ class MapDownloadManager(private val context: Context) {
                     false
                 }
             } catch (e: Exception) {
-                Log.w("MapDownloadManager", "Error downloading tile ${tile.z}/${tile.y}/${tile.x}", e)
+                Log.w("MapDownloadManager", "Error downloading tile for $layerName", e)
                 false
             }
         }
@@ -221,10 +259,12 @@ class MapDownloadManager(private val context: Context) {
      */
     fun getRegionTileInfo(
         region: Region,
+        layerName: String = "kartverket",
         minZoom: Int = 5,
         maxZoom: Int = 12
     ): RegionTileInfo {
-        val metadata = loadMetadata()
+        val metadata = loadMetadata(layerName)
+        val tilesDir = getTilesDir(layerName)
         val tilesToCheck = mutableListOf<TileCoordinate>()
 
         for (zoom in minZoom..maxZoom) {
@@ -235,8 +275,14 @@ class MapDownloadManager(private val context: Context) {
         var existingTiles = 0
         var existingSize = 0L
 
+        val coordFormat = LAYER_COORD_FORMAT[layerName] ?: "{z}/{x}/{y}"
+
         for (tile in tilesToCheck) {
-            val tileKey = "${tile.z}/${tile.y}/${tile.x}"
+            val tileKey = if (coordFormat == "{z}/{y}/{x}") {
+                "${tile.z}/${tile.y}/${tile.x}"
+            } else {
+                "${tile.z}/${tile.x}/${tile.y}"
+            }
             val tileFile = File(tilesDir, "$tileKey.png")
             val tileMeta = metadata[tileKey]
 
@@ -258,8 +304,9 @@ class MapDownloadManager(private val context: Context) {
     /**
      * Delete all tiles for a specific region
      */
-    fun deleteRegionTiles(region: Region) {
-        val metadata = loadMetadata()
+    fun deleteRegionTiles(region: Region, layerName: String = "kartverket") {
+        val metadata = loadMetadata(layerName)
+        val tilesDir = getTilesDir(layerName)
         var deletedCount = 0
         var freedSize = 0L
 
@@ -285,8 +332,8 @@ class MapDownloadManager(private val context: Context) {
         // Remove orphaned metadata entries
         keysToRemove.forEach { metadata.remove(it) }
 
-        saveMetadata(metadata)
-        Log.d("MapDownloadManager", "Deleted $deletedCount tiles for ${region.name}, freed ${freedSize / 1024}KB")
+        saveMetadata(layerName, metadata)
+        Log.d("MapDownloadManager", "Deleted $deletedCount $layerName tiles for ${region.name}, freed ${freedSize / 1024}KB")
     }
 
     /**
@@ -296,7 +343,9 @@ class MapDownloadManager(private val context: Context) {
         var totalSize = 0L
         var tileCount = 0
 
-        tilesDir.walkTopDown().forEach { file ->
+        // Sum all layer directories
+        val baseDir = File(context.getExternalFilesDir(null), "tiles")
+        baseDir.walkTopDown().forEach { file ->
             if (file.isFile && file.extension == "png") {
                 totalSize += file.length()
                 tileCount++
