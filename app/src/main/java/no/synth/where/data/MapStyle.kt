@@ -24,10 +24,13 @@ object MapStyle {
                 "[$west, $north],[$west, $south],[$east, $south],[$east, $north],[$west, $north]"
             }
 
+            // Clean region name - remove Sami language variants (text after " - ")
+            val cleanName = region.name.substringBefore(" - ")
+
             """
             {
               "type": "Feature",
-              "properties": { "name": "${region.name}" },
+              "properties": { "name": "$cleanName" },
               "geometry": {
                 "type": "Polygon",
                 "coordinates": [[$coordinates]]
