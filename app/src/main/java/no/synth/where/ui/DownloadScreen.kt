@@ -1,11 +1,11 @@
 package no.synth.where.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +16,8 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
+import java.io.File
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,15 +31,59 @@ fun DownloadScreen(
 
     var downloadingRegion by remember { mutableStateOf<Region?>(null) }
     var downloadProgress by remember { mutableStateOf(0) }
-    var downloadStatus by remember { mutableStateOf("") }
+    var refreshTrigger by remember { mutableStateOf(0) }
+
+    // Calculate download statistics for the entire kartverket tiles directory
+    fun getTotalDownloadInfo(): Pair<Boolean, Long> {
+        val baseDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
+        if (!baseDir.exists()) return Pair(false, 0L)
+
+        var totalSize = 0L
+        var tileCount = 0
+        baseDir.walkTopDown().forEach { file ->
+            if (file.isFile && file.extension == "png") {
+                totalSize += file.length()
+                tileCount++
+            }
+        }
+        return Pair(tileCount > 0, totalSize)
+    }
+
+
+    fun formatBytes(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            else -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Download Offline Maps") },
+                title = {
+                    val (hasDownloads, totalSize) = getTotalDownloadInfo()
+                    if (hasDownloads) {
+                        Text("Offline Maps • ${formatBytes(totalSize)}")
+                    } else {
+                        Text("Download Offline Maps")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    val (hasDownloads, _) = getTotalDownloadInfo()
+                    if (hasDownloads) {
+                        IconButton(onClick = {
+                            val baseDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
+                            baseDir.deleteRecursively()
+                            refreshTrigger++
+                        }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete All")
+                        }
                     }
                 }
             )
@@ -58,30 +104,51 @@ fun DownloadScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(regions) { region ->
+                        // Force recomposition when refreshTrigger changes
+                        @Suppress("UNUSED_VARIABLE")
+                        val trigger = refreshTrigger
+
+                        val tileInfo = downloadManager.getRegionTileInfo(region)
+                        val isDownloaded = tileInfo.isFullyDownloaded
+                        val hasPartialDownload = tileInfo.downloadedTiles > 0
+
                         ListItem(
                             headlineContent = { Text(region.name) },
-                            supportingContent = { Text("Download map for offline use") },
+                            supportingContent = {
+                                if (isDownloaded) {
+                                    Text("✓ Downloaded • ${tileInfo.downloadedTiles} tiles • ${formatBytes(tileInfo.downloadedSize)}")
+                                } else if (hasPartialDownload) {
+                                    Text("${tileInfo.downloadedTiles}/${tileInfo.totalTiles} tiles • ${formatBytes(tileInfo.downloadedSize)}")
+                                } else {
+                                    Text("${tileInfo.totalTiles} tiles needed for offline use")
+                                }
+                            },
                             trailingContent = {
                                 Button(onClick = {
                                     downloadingRegion = region
-                                    downloadStatus = "Starting..."
                                     scope.launch {
                                         downloadManager.downloadRegion(
                                             region = region,
                                             minZoom = 5,
-                                            maxZoom = 12, // Limit zoom to save space/time for demo
+                                            maxZoom = 12,
                                             onProgress = { progress ->
                                                 downloadProgress = progress
                                             },
                                             onComplete = { success ->
                                                 downloadingRegion = null
                                                 downloadProgress = 0
-                                                downloadStatus = if (success) "Done" else "Failed"
+                                                refreshTrigger++
                                             }
                                         )
                                     }
                                 }) {
-                                    Text("Download")
+                                    Text(
+                                        when {
+                                            isDownloaded -> "✓ Done"
+                                            hasPartialDownload -> "Continue"
+                                            else -> "Download"
+                                        }
+                                    )
                                 }
                             }
                         )

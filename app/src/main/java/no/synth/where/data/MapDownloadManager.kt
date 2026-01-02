@@ -114,8 +114,9 @@ class MapDownloadManager(private val context: Context) {
     private suspend fun downloadTile(tile: TileCoordinate): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                val url = "$tileBaseUrl/${tile.z}/${tile.x}/${tile.y}.png"
-                val tileFile = File(tilesDir, "${tile.z}/${tile.x}/${tile.y}.png")
+                // Kartverket uses {z}/{y}/{x} format!
+                val url = "$tileBaseUrl/${tile.z}/${tile.y}/${tile.x}.png"
+                val tileFile = File(tilesDir, "${tile.z}/${tile.y}/${tile.x}.png")
 
                 // Skip if already downloaded
                 if (tileFile.exists()) {
@@ -132,22 +133,71 @@ class MapDownloadManager(private val context: Context) {
                 connection.setRequestProperty("User-Agent", "Hvor/1.0")
 
                 if (connection.responseCode == 200) {
+                    val contentLength = connection.contentLength
                     connection.inputStream.use { input ->
                         FileOutputStream(tileFile).use { output ->
                             input.copyTo(output)
                         }
                     }
+                    val actualSize = tileFile.length()
+
+                    // Log a sample of downloads for debugging
+                    if (tile.z <= 7 || (tile.x + tile.y) % 50 == 0) {
+                        Log.d("MapDownloadManager", "Downloaded tile ${tile.z}/${tile.y}/${tile.x}: " +
+                            "expected=$contentLength bytes, actual=$actualSize bytes, path=${tileFile.absolutePath}")
+                    }
+
                     true
                 } else {
                     Log.w("MapDownloadManager", "Failed to download tile: ${connection.responseCode} for $url")
                     false
                 }
             } catch (e: Exception) {
-                Log.w("MapDownloadManager", "Error downloading tile ${tile.z}/${tile.x}/${tile.y}", e)
+                Log.w("MapDownloadManager", "Error downloading tile ${tile.z}/${tile.y}/${tile.x}", e)
                 false
             }
         }
     }
+
+    /**
+     * Get the tiles required for a region and their total size
+     */
+    fun getRegionTileInfo(
+        region: Region,
+        minZoom: Int = 5,
+        maxZoom: Int = 12
+    ): RegionTileInfo {
+        val tilesToDownload = mutableListOf<TileCoordinate>()
+        for (zoom in minZoom..maxZoom) {
+            val tiles = getTilesForBounds(region.boundingBox, zoom)
+            tilesToDownload.addAll(tiles)
+        }
+
+        var existingTiles = 0
+        var existingSize = 0L
+
+        for (tile in tilesToDownload) {
+            val tileFile = File(tilesDir, "${tile.z}/${tile.x}/${tile.y}.png")
+            if (tileFile.exists()) {
+                existingTiles++
+                existingSize += tileFile.length()
+            }
+        }
+
+        return RegionTileInfo(
+            totalTiles = tilesToDownload.size,
+            downloadedTiles = existingTiles,
+            downloadedSize = existingSize,
+            isFullyDownloaded = existingTiles == tilesToDownload.size
+        )
+    }
+
+    data class RegionTileInfo(
+        val totalTiles: Int,
+        val downloadedTiles: Int,
+        val downloadedSize: Long,
+        val isFullyDownloaded: Boolean
+    )
 
     data class TileCoordinate(val z: Int, val x: Int, val y: Int)
 }

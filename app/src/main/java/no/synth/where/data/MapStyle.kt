@@ -4,7 +4,7 @@ import android.content.Context
 import java.io.File
 
 object MapStyle {
-    fun getStyle(context: Context): String {
+    fun getStyle(context: Context, useKartverket: Boolean = true): String {
         val regions = RegionsRepository.getRegions(context)
         val regionsGeoJson = regions.joinToString(",") { region ->
             // Use actual polygon if available, otherwise fall back to bounding box
@@ -39,12 +39,20 @@ object MapStyle {
         val tilesDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
         val hasLocalTiles = tilesDir.exists() && tilesDir.listFiles()?.isNotEmpty() == true
 
-        // Prefer local tiles, fall back to online
-        val kartverketTilesUrl = if (hasLocalTiles) {
-            "file://${tilesDir.absolutePath}/{z}/{x}/{y}.png"
+        // Use online Kartverket tiles (corrected URL format with {z}/{y}/{x})
+        val kartverketTilesUrl = if (false && hasLocalTiles) {
+            // MapLibre on Android needs file:// protocol
+            "file://${tilesDir.absolutePath}/{z}/{y}/{x}.png"
         } else {
-            "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{x}/{y}.png"
+            // Kartverket uses {z}/{y}/{x} format, not {z}/{x}/{y}!
+            "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
         }
+
+        // Restore proper layer switching
+        val kartverketOpacity = if (useKartverket) 1.0 else 0.01
+        val osmOpacity = if (useKartverket) 0.01 else 1.0
+
+
 
         return """
 {
@@ -92,14 +100,16 @@ object MapStyle {
       "type": "raster",
       "source": "osm",
       "paint": {
-        "raster-opacity": 0.8
+        "raster-opacity": $osmOpacity
       }
     },
     {
       "id": "kartverket-layer",
       "type": "raster",
       "source": "kartverket",
-      "paint": {}
+      "paint": {
+        "raster-opacity": $kartverketOpacity
+      }
     },
     {
       "id": "regions-fill",
