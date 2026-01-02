@@ -37,12 +37,18 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
 
+enum class MapLayer {
+    OSM,
+    KARTVERKET,
+    TOPORASTER
+}
+
 @Composable
 fun MapScreen(
     onDownloadClick: () -> Unit
 ) {
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
-    var useKartverket by remember { mutableStateOf(true) }
+    var selectedLayer by remember { mutableStateOf(MapLayer.KARTVERKET) }
     var showLayerMenu by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -62,12 +68,8 @@ fun MapScreen(
     }
 
     // Update map style when layer selection changes
-    LaunchedEffect(useKartverket) {
-        mapInstance?.let { map ->
-            val context = map.style?.let { (it as? Any)?.let { null } } ?: return@let
-            // Map style will be regenerated on next load
-            Log.d("MapScreen", "Layer changed to: ${if (useKartverket) "Kartverket" else "OSM"}")
-        }
+    LaunchedEffect(selectedLayer) {
+        // Style will be updated via MapLibreMapView's LaunchedEffect
     }
 
     Scaffold(
@@ -88,19 +90,28 @@ fun MapScreen(
                     ) {
                         DropdownMenuItem(
                             text = {
-                                Text(if (useKartverket) "✓ Kartverket" else "Kartverket")
+                                Text(if (selectedLayer == MapLayer.KARTVERKET) "✓ Kartverket" else "Kartverket")
                             },
                             onClick = {
-                                useKartverket = true
+                                selectedLayer = MapLayer.KARTVERKET
                                 showLayerMenu = false
                             }
                         )
                         DropdownMenuItem(
                             text = {
-                                Text(if (!useKartverket) "✓ OpenStreetMap" else "OpenStreetMap")
+                                Text(if (selectedLayer == MapLayer.TOPORASTER) "✓ Toporaster (Hiking)" else "Toporaster (Hiking)")
                             },
                             onClick = {
-                                useKartverket = false
+                                selectedLayer = MapLayer.TOPORASTER
+                                showLayerMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (selectedLayer == MapLayer.OSM) "✓ OpenStreetMap" else "OpenStreetMap")
+                            },
+                            onClick = {
+                                selectedLayer = MapLayer.OSM
                                 showLayerMenu = false
                             }
                         )
@@ -151,7 +162,7 @@ fun MapScreen(
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
-                useKartverket = useKartverket
+                selectedLayer = selectedLayer
             )
         }
     }
@@ -160,7 +171,7 @@ fun MapScreen(
 @Composable
 fun MapLibreMapView(
     onMapReady: (MapLibreMap) -> Unit = {},
-    useKartverket: Boolean = true
+    selectedLayer: MapLayer = MapLayer.KARTVERKET
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
@@ -168,11 +179,11 @@ fun MapLibreMapView(
     val context = LocalContext.current
 
     // Update style when layer selection changes
-    LaunchedEffect(useKartverket, map) {
+    LaunchedEffect(selectedLayer, map) {
         map?.let { mapInstance ->
             try {
-                val styleJson = MapStyle.getStyle(context, useKartverket)
-                Log.d("MapScreen", "Switching to ${if (useKartverket) "Kartverket" else "OSM"}")
+                val styleJson = MapStyle.getStyle(context, selectedLayer)
+                Log.d("MapScreen", "Switching to $selectedLayer")
 
                 mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                     override fun onStyleLoaded(style: Style) {
@@ -208,7 +219,7 @@ fun MapLibreMapView(
                     Log.d("MapScreen", "Camera position set")
 
                     try {
-                        val styleJson = MapStyle.getStyle(ctx, useKartverket)
+                        val styleJson = MapStyle.getStyle(ctx, selectedLayer)
                         Log.d("MapScreen", "Generated style JSON (length: ${styleJson.length})")
                         Log.d("MapScreen", "Style preview: ${styleJson.take(300)}...")
 

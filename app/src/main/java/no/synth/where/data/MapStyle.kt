@@ -1,10 +1,11 @@
 package no.synth.where.data
 
 import android.content.Context
+import no.synth.where.ui.MapLayer
 import java.io.File
 
 object MapStyle {
-    fun getStyle(context: Context, useKartverket: Boolean = true): String {
+    fun getStyle(context: Context, selectedLayer: MapLayer = MapLayer.KARTVERKET): String {
         val regions = RegionsRepository.getRegions(context)
         val regionsGeoJson = regions.joinToString(",") { region ->
             // Use actual polygon if available, otherwise fall back to bounding box
@@ -48,9 +49,13 @@ object MapStyle {
             "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
         }
 
-        // Restore proper layer switching
-        val kartverketOpacity = if (useKartverket) 1.0 else 0.01
-        val osmOpacity = if (useKartverket) 0.01 else 1.0
+        // Add toporaster (hiking map) layer
+        val toporasterTilesUrl = "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
+
+        // Set layer visibility based on selection
+        val osmOpacity = if (selectedLayer == MapLayer.OSM) 1.0 else 0.01
+        val kartverketOpacity = if (selectedLayer == MapLayer.KARTVERKET) 1.0 else 0.01
+        val toporasterOpacity = if (selectedLayer == MapLayer.TOPORASTER) 1.0 else 0.01
 
 
 
@@ -76,6 +81,15 @@ object MapStyle {
       ],
       "tileSize": 256,
       "attribution": "Kartverket"
+    },
+    "toporaster": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": [
+        "$toporasterTilesUrl"
+      ],
+      "tileSize": 256,
+      "attribution": "Kartverket Toporaster"
     },
     "regions": {
       "type": "geojson",
@@ -109,6 +123,14 @@ object MapStyle {
       "source": "kartverket",
       "paint": {
         "raster-opacity": $kartverketOpacity
+      }
+    },
+    {
+      "id": "toporaster-layer",
+      "type": "raster",
+      "source": "toporaster",
+      "paint": {
+        "raster-opacity": $toporasterOpacity
       }
     },
     {
