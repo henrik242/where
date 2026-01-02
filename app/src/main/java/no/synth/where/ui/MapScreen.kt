@@ -5,16 +5,24 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -22,12 +30,15 @@ import no.synth.where.data.MapStyle
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
 
 @Composable
 fun MapScreen(
     onDownloadClick: () -> Unit
 ) {
+    var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
@@ -46,19 +57,54 @@ fun MapScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = onDownloadClick) {
-                Icon(Icons.Filled.Download, contentDescription = "Download Maps")
+            Column(horizontalAlignment = Alignment.End) {
+                // Zoom controls
+                SmallFloatingActionButton(
+                    onClick = {
+                        mapInstance?.let { map ->
+                            val currentZoom = map.cameraPosition.zoom
+                            map.animateCamera(
+                                org.maplibre.android.camera.CameraUpdateFactory.zoomTo(currentZoom + 1)
+                            )
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Zoom In")
+                }
+
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+
+                SmallFloatingActionButton(
+                    onClick = {
+                        mapInstance?.let { map ->
+                            val currentZoom = map.cameraPosition.zoom
+                            map.animateCamera(
+                                org.maplibre.android.camera.CameraUpdateFactory.zoomTo(currentZoom - 1)
+                            )
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
+                }
+
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+
+                FloatingActionButton(onClick = onDownloadClick) {
+                    Icon(Icons.Filled.Download, contentDescription = "Download Maps")
+                }
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            MapLibreMapView()
+            MapLibreMapView(onMapReady = { mapInstance = it })
         }
     }
 }
 
 @Composable
-fun MapLibreMapView() {
+fun MapLibreMapView(onMapReady: (MapLibreMap) -> Unit = {}) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
 
@@ -74,6 +120,9 @@ fun MapLibreMapView() {
                 mv.getMapAsync { map ->
                     Log.d("MapScreen", "Map is ready - getMapAsync callback triggered")
 
+                    // Pass map instance to parent
+                    onMapReady(map)
+
                     map.cameraPosition = CameraPosition.Builder()
                         .target(LatLng(65.0, 10.0))
                         .zoom(5.0)
@@ -82,7 +131,7 @@ fun MapLibreMapView() {
                     Log.d("MapScreen", "Camera position set")
 
                     try {
-                        val styleJson = MapStyle.getStyle()
+                        val styleJson = MapStyle.getStyle(ctx)
                         Log.d("MapScreen", "Generated style JSON (length: ${styleJson.length})")
                         Log.d("MapScreen", "Style preview: ${styleJson.take(300)}...")
 
@@ -90,8 +139,8 @@ fun MapLibreMapView() {
                         map.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                             override fun onStyleLoaded(style: Style) {
                                 Log.d("MapScreen", "Custom Kartverket style loaded successfully!")
-                                Log.d("MapScreen", "Map sources: ${style.sources?.joinToString { it.id }}")
-                                Log.d("MapScreen", "Map layers: ${style.layers?.joinToString { it.id }}")
+                                Log.d("MapScreen", "Map sources: ${style.sources.joinToString { it.id }}")
+                                Log.d("MapScreen", "Map layers: ${style.layers.joinToString { it.id }}")
 
                                 // Force a re-render
                                 map.triggerRepaint()
@@ -129,4 +178,3 @@ fun MapLibreMapView() {
         }
     }
 }
-
