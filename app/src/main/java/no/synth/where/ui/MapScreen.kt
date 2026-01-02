@@ -39,6 +39,7 @@ import org.maplibre.android.maps.Style
 
 enum class MapLayer {
     OSM,
+    OPENTOPOMAP,
     KARTVERKET,
     TOPORASTER
 }
@@ -112,6 +113,15 @@ fun MapScreen(
                             },
                             onClick = {
                                 selectedLayer = MapLayer.OSM
+                                showLayerMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (selectedLayer == MapLayer.OPENTOPOMAP) "✓ OpenTopoMap (Hiking)" else "OpenTopoMap (Hiking)")
+                            },
+                            onClick = {
+                                selectedLayer = MapLayer.OPENTOPOMAP
                                 showLayerMenu = false
                             }
                         )
