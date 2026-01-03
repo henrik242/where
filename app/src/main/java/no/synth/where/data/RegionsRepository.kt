@@ -1,8 +1,6 @@
 package no.synth.where.data
 
 import android.content.Context
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
 
 object RegionsRepository {
     private var _regions: List<Region>? = null
