@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Where - Live Tracking</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 300px;
+            z-index: 1;
+        }
+
+        .info-panel h2 {
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #333;
+        }
+
+        .track-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f8f8f8;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .track-item:hover {
+            background: #e8e8e8;
+        }
+
+        .track-item.active {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+        }
+
+        .track-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .track-info {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .track-distance {
+            font-size: 14px;
+            color: #2196F3;
+            margin-top: 4px;
+        }
+
+        .no-tracks {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2196F3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="info-panel">
+        <h2>Live Tracks</h2>
+        <div id="tracks-list">
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script>
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    osm: {
+                        type: 'raster',
+                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '© OpenStreetMap contributors'
+                    }
+                },
+                layers: [{
+                    id: 'osm',
+                    type: 'raster',
+                    source: 'osm',
+                    minzoom: 0,
+                    maxzoom: 19
+                }]
+            },
+            center: [10.7522, 59.9139], // Oslo
+            zoom: 10
+        });
+
+        let tracks = {};
+        let selectedTrackId = null;
+
+        function formatDistance(meters) {
+            if (meters < 1000) return `${meters.toFixed(0)} m`;
+            if (meters < 10000) return `${(meters / 1000).toFixed(2)} km`;
+            return `${(meters / 1000).toFixed(1)} km`;
+        }
+
+        function calculateDistance(points) {
+            if (points.length < 2) return 0;
+
+            let distance = 0;
+            for (let i = 1; i < points.length; i++) {
+                const R = 6371000; // Earth radius in meters
+                const lat1 = points[i - 1].lat * Math.PI / 180;
+                const lat2 = points[i].lat * Math.PI / 180;
+                const dLat = (points[i].lat - points[i - 1].lat) * Math.PI / 180;
+                const dLon = (points[i].lon - points[i - 1].lon) * Math.PI / 180;
+
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                         Math.cos(lat1) * Math.cos(lat2) *
+                         Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                distance += R * c;
+            }
+            return distance;
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString();
+        }
+
+        function updateTracksList() {
+            const tracksList = document.getElementById('tracks-list');
+            const activeTracks = Object.values(tracks).filter(t => t.isActive);
+
+            if (activeTracks.length === 0) {
+                tracksList.innerHTML = '<div class="no-tracks">No active tracks</div>';
+                return;
+            }
+
+            tracksList.innerHTML = activeTracks.map(track => {
+                const distance = calculateDistance(track.points);
+                const pointCount = track.points.length;
+                const isSelected = track.id === selectedTrackId;
+
+                return `
+                    <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${track.id}')">
+                        <div class="track-name">
+                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${track.color || '#FF5722'}; margin-right: 8px;"></span>
+                            ${track.userId} - ${track.name}
+                        </div>
+                        <div class="track-info">${pointCount} points · Started ${formatTime(track.startTime)}</div>
+                        <div class="track-distance">${formatDistance(distance)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectTrack(trackId) {
+            selectedTrackId = trackId;
+            updateTracksList();
+            updateMap();
+
+            const track = tracks[trackId];
+            if (track && track.points.length > 0) {
+                const bounds = new maplibregl.LngLatBounds();
+                track.points.forEach(p => bounds.extend([p.lon, p.lat]));
+                map.fitBounds(bounds, { padding: 50 });
+            }
+        }
+
+        function updateMap() {
+            Object.keys(tracks).forEach(trackId => {
+                const track = tracks[trackId];
+                const sourceId = `track-${trackId}`;
+                const layerId = `track-layer-${trackId}`;
+
+                if (track.points.length < 2) {
+                    if (map.getLayer(layerId)) map.removeLayer(layerId);
+                    if (map.getSource(sourceId)) map.removeSource(sourceId);
+                    return;
+                }
+
+                const geojson = {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: track.points.map(p => [p.lon, p.lat])
+                    }
+                };
+
+                if (map.getSource(sourceId)) {
+                    map.getSource(sourceId).setData(geojson);
+                } else {
+                    map.addSource(sourceId, {
+                        type: 'geojson',
+                        data: geojson
+                    });
+
+                    map.addLayer({
+                        id: layerId,
+                        type: 'line',
+                        source: sourceId,
+                        paint: {
+                            'line-color': track.color || '#FF5722',
+                            'line-width': trackId === selectedTrackId ? 4 : 3,
+                            'line-opacity': 0.8
+                        }
+                    });
+                }
+            });
+        }
+
+        async function fetchTracks() {
+            try {
+                const response = await fetch('/api/tracks');
+                const data = await response.json();
+                tracks = data.reduce((acc, track) => {
+                    acc[track.id] = track;
+                    return acc;
+                }, {});
+                updateTracksList();
+                updateMap();
+            } catch (error) {
+                console.error('Error fetching tracks:', error);
+            }
+        }
+
+        // Setup WebSocket for live updates
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'track_update') {
+                if (!tracks[data.trackId]) {
+                    tracks[data.trackId] = {
+                        id: data.trackId,
+                        userId: data.userId,
+                        name: data.name || 'Unnamed Track',
+                        points: [],
+                        startTime: data.point.timestamp,
+                        isActive: true,
+                        color: data.color
+                    };
+                }
+                tracks[data.trackId].points.push(data.point);
+                updateTracksList();
+                updateMap();
+            } else if (data.type === 'track_stopped') {
+                if (tracks[data.trackId]) {
+                    tracks[data.trackId].isActive = false;
+                    updateTracksList();
+                }
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket connection closed, attempting to reconnect...');
+            setTimeout(() => location.reload(), 5000);
+        };
+
+        // Initial fetch
+        fetchTracks();
+
+        // Refresh every 30 seconds as backup
+        setInterval(fetchTracks, 30000);
+    </script>
+</body>
+</html>
+

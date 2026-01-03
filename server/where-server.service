@@ -1,0 +1,16 @@
+[Unit]
+Description=Where Tracking Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/where-server
+Environment="PORT=3000"
+ExecStart=/usr/local/bin/bun run index.ts
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
