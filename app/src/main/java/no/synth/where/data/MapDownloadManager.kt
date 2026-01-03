@@ -9,26 +9,16 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.PI
-import kotlin.math.atan
-import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.pow
 
-/**
- * Manual tile downloader for Kartverket maps.
- *
- * MapLibre's built-in offline manager has issues with custom tile sources,
- * so we download tiles manually and store them in a directory structure
- * that MapLibre can use offline.
- */
 class MapDownloadManager(private val context: Context) {
 
     companion object {
-        private const val TILE_REFRESH_DAYS = 90 // Refresh tiles older than 90 days
-        const val DEFAULT_MAX_CACHE_SIZE_MB = 500L // 500 MB default max cache
+        private const val TILE_REFRESH_DAYS = 90
+        const val DEFAULT_MAX_CACHE_SIZE_MB = 500L
 
-        // Tile URLs for each layer
         private val LAYER_URLS = mapOf(
             "kartverket" to "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator",
             "toporaster" to "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator",
@@ -36,12 +26,11 @@ class MapDownloadManager(private val context: Context) {
             "opentopomap" to "https://tile.opentopomap.org"
         )
 
-        // Coordinate format for each layer (some use {z}/{y}/{x}, others use {z}/{x}/{y})
         private val LAYER_COORD_FORMAT = mapOf(
-            "kartverket" to "{z}/{y}/{x}",  // Kartverket uses y/x
-            "toporaster" to "{z}/{y}/{x}",  // Toporaster uses y/x
-            "osm" to "{z}/{x}/{y}",         // OSM uses x/y
-            "opentopomap" to "{z}/{x}/{y}"  // OpenTopoMap uses x/y
+            "kartverket" to "{z}/{y}/{x}",
+            "toporaster" to "{z}/{y}/{x}",
+            "osm" to "{z}/{x}/{y}",
+            "opentopomap" to "{z}/{x}/{y}"
         )
     }
 

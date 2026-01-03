@@ -68,11 +68,8 @@ fun DownloadScreen(
         }
     }
 
-    fun cleanRegionName(name: String): String {
-        return name.substringBefore(" - ")
-    }
+    fun cleanRegionName(name: String): String = name.substringBefore(" - ")
 
-    // Calculate per-layer statistics
     fun getLayerStats(layerName: String): Pair<Long, Int> {
         val layerDir = File(context.getExternalFilesDir(null), "tiles/$layerName")
         if (!layerDir.exists()) return Pair(0L, 0)
@@ -88,17 +85,6 @@ fun DownloadScreen(
         return Pair(totalSize, tileCount)
     }
 
-    // Get MapLibre's automatic tile cache size
-    fun getMapLibreCacheSize(): Long {
-        var totalSize = 0L
-        val cacheDir = context.cacheDir
-        cacheDir.walkTopDown().forEach { file ->
-            if (file.isFile) {
-                totalSize += file.length()
-            }
-        }
-        return totalSize
-    }
 
     Scaffold(
         topBar = {
