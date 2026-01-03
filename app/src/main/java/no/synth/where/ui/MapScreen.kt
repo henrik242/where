@@ -113,6 +113,41 @@ fun MapScreen(
         }
     }
 
+    // Zoom to location when permission is granted
+    LaunchedEffect(hasLocationPermission, mapInstance) {
+        val map = mapInstance
+        android.util.Log.d("MapScreen", "Permission effect triggered - hasPermission: $hasLocationPermission, mapInstance: ${map != null}")
+        if (hasLocationPermission && map != null && viewingTrack == null && currentTrack == null) {
+            android.util.Log.d("MapScreen", "Attempting to zoom to user location")
+            try {
+                val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                val lastKnownLocation = try {
+                    val gps = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+                    val network = locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
+                    val fused = locationManager.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER)
+                    android.util.Log.d("MapScreen", "Locations - GPS: $gps, Network: $network, Fused: $fused")
+                    gps ?: network ?: fused
+                } catch (e: SecurityException) {
+                    android.util.Log.e("MapScreen", "SecurityException", e)
+                    null
+                }
+
+                lastKnownLocation?.let { location ->
+                    android.util.Log.d("MapScreen", "Found location, zooming to: ${location.latitude}, ${location.longitude}")
+                    // Give time for location component to initialize
+                    kotlinx.coroutines.delay(500)
+                    map.animateCamera(
+                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                            LatLng(location.latitude, location.longitude),
+                            12.0
+                        )
+                    )
+                } ?: android.util.Log.d("MapScreen", "No last known location available")
+            } catch (e: Exception) {
+                android.util.Log.e("MapScreen", "Error in permission effect", e)
+            }
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -514,10 +549,39 @@ fun MapLibreMapView(
                 val current = currentTrack
                 mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                     override fun onStyleLoaded(style: Style) {
+                        android.util.Log.d("MapScreen", "LaunchedEffect style loaded")
                         enableLocationComponent(mapInstance, style, context, hasLocationPermission)
                         // Draw the track after style loads
                         val trackToShow = current ?: viewing
                         updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
+
+                        // Only zoom to location on first load when there's no track
+                        if (hasLocationPermission && viewing == null && current == null) {
+                            try {
+                                val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                                val lastKnownLocation = try {
+                                    locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+                                        ?: locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
+                                        ?: locationManager.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER)
+                                } catch (e: SecurityException) {
+                                    null
+                                }
+
+                                lastKnownLocation?.let { location ->
+                                    android.util.Log.d("MapScreen", "LaunchedEffect zooming to: ${location.latitude}, ${location.longitude}")
+                                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                        mapInstance.animateCamera(
+                                            org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                                                LatLng(location.latitude, location.longitude),
+                                                12.0
+                                            )
+                                        )
+                                    }, 300)
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("MapScreen", "LaunchedEffect location error", e)
+                            }
+                        }
                     }
                 })
             } catch (e: Exception) {
@@ -545,6 +609,7 @@ fun MapLibreMapView(
                     map = mapInstance
                     onMapReady(mapInstance)
 
+                    // Set initial camera position to Norway
                     mapInstance.cameraPosition = CameraPosition.Builder()
                         .target(LatLng(65.0, 10.0))
                         .zoom(5.0)
@@ -556,10 +621,49 @@ fun MapLibreMapView(
                         val current = currentTrack
                         mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                             override fun onStyleLoaded(style: Style) {
+                                android.util.Log.d("MapScreen", "Style loaded - hasLocationPermission: $hasLocationPermission, viewing: ${viewing?.name}, current: ${current?.name}")
                                 enableLocationComponent(mapInstance, style, ctx, hasLocationPermission)
                                 // Draw the track after initial style loads
                                 val trackToShow = current ?: viewing
                                 updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
+
+                                // Zoom to current location if available and no viewing track
+                                android.util.Log.d("MapScreen", "Checking zoom conditions - permission: $hasLocationPermission, viewing null: ${viewing == null}, current null: ${current == null}")
+                                if (hasLocationPermission && viewing == null && current == null) {
+                                    android.util.Log.d("MapScreen", "Attempting to get last known location")
+                                    // Try to get location from system LocationManager
+                                    try {
+                                        val locationManager = ctx.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                                        val lastKnownLocation = try {
+                                            val gps = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+                                            val network = locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
+                                            val fused = locationManager.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER)
+                                            android.util.Log.d("MapScreen", "GPS: $gps, Network: $network, Fused: $fused")
+                                            gps ?: network ?: fused
+                                        } catch (e: SecurityException) {
+                                            android.util.Log.e("MapScreen", "SecurityException getting location", e)
+                                            null
+                                        }
+
+                                        lastKnownLocation?.let { location ->
+                                            android.util.Log.d("MapScreen", "Zooming to location: ${location.latitude}, ${location.longitude}")
+                                            // Use a small delay to ensure map is ready
+                                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                                mapInstance.animateCamera(
+                                                    org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                                                        LatLng(location.latitude, location.longitude),
+                                                        12.0
+                                                    )
+                                                )
+                                            }, 300)
+                                        } ?: android.util.Log.d("MapScreen", "No last known location available")
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("MapScreen", "Error getting location", e)
+                                    }
+                                } else {
+                                    android.util.Log.d("MapScreen", "Skipping zoom to location - conditions not met")
+                                }
+
                                 mapInstance.triggerRepaint()
                             }
                         })
