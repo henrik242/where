@@ -62,5 +62,61 @@ $trackPointsXml
     fun getDurationMillis(): Long {
         return (endTime ?: System.currentTimeMillis()) - startTime
     }
+
+    companion object {
+        fun fromGPX(gpxContent: String): Track? {
+            try {
+                val trackName = gpxContent
+                    .substringAfter("<name>", "")
+                    .substringBefore("</name>", "Imported Track")
+                    .trim()
+
+                val trackPoints = mutableListOf<TrackPoint>()
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+
+                val trkptPattern = Regex("""<trkpt lat="([^"]+)" lon="([^"]+)">(.*?)</trkpt>""", RegexOption.DOT_MATCHES_ALL)
+                trkptPattern.findAll(gpxContent).forEach { match ->
+                    val lat = match.groupValues[1].toDoubleOrNull() ?: return@forEach
+                    val lon = match.groupValues[2].toDoubleOrNull() ?: return@forEach
+                    val content = match.groupValues[3]
+
+                    val ele = content.substringAfter("<ele>", "").substringBefore("</ele>", "").toDoubleOrNull()
+                    val timeStr = content.substringAfter("<time>", "").substringBefore("</time>", "")
+                    val timestamp = try {
+                        dateFormat.parse(timeStr)?.time ?: System.currentTimeMillis()
+                    } catch (e: Exception) {
+                        System.currentTimeMillis()
+                    }
+
+                    trackPoints.add(
+                        TrackPoint(
+                            latLng = LatLng(lat, lon),
+                            timestamp = timestamp,
+                            altitude = ele,
+                            accuracy = null
+                        )
+                    )
+                }
+
+                if (trackPoints.isEmpty()) return null
+
+                val startTime = trackPoints.minOfOrNull { it.timestamp } ?: System.currentTimeMillis()
+                val endTime = trackPoints.maxOfOrNull { it.timestamp } ?: System.currentTimeMillis()
+
+                return Track(
+                    name = trackName,
+                    points = trackPoints,
+                    startTime = startTime,
+                    endTime = endTime,
+                    isRecording = false
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return null
+            }
+        }
+    }
 }
 

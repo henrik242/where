@@ -1,6 +1,9 @@
 package no.synth.where.ui
 
 import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,6 +39,34 @@ fun TracksScreen(
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var trackToRename by remember { mutableStateOf<Track?>(null) }
     var newTrackName by remember { mutableStateOf("") }
+    var showImportError by remember { mutableStateOf(false) }
+    var importErrorMessage by remember { mutableStateOf("") }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val gpxContent = inputStream?.bufferedReader()?.use { reader -> reader.readText() }
+                inputStream?.close()
+
+                if (gpxContent != null) {
+                    val success = trackRepository.importTrack(gpxContent)
+                    if (!success) {
+                        importErrorMessage = "Failed to import GPX file. The file may be corrupted or in an unsupported format."
+                        showImportError = true
+                    }
+                } else {
+                    importErrorMessage = "Failed to read GPX file."
+                    showImportError = true
+                }
+            } catch (e: Exception) {
+                importErrorMessage = "Error importing GPX file: ${e.message}"
+                showImportError = true
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -44,6 +75,11 @@ fun TracksScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
+                        Icon(Icons.Filled.FileUpload, contentDescription = "Import GPX")
                     }
                 }
             )
@@ -112,7 +148,19 @@ fun TracksScreen(
         )
     }
 
-    // Rename dialog
+    if (showImportError) {
+        AlertDialog(
+            onDismissRequest = { showImportError = false },
+            title = { Text("Import Failed") },
+            text = { Text(importErrorMessage) },
+            confirmButton = {
+                TextButton(onClick = { showImportError = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
     trackToRename?.let { track ->
         AlertDialog(
             onDismissRequest = { trackToRename = null },

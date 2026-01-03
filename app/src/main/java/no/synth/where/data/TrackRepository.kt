@@ -126,6 +126,13 @@ class TrackRepository private constructor(private val context: Context) {
         _viewingTrack.value = null
     }
 
+    fun importTrack(gpxContent: String): Boolean {
+        val track = Track.fromGPX(gpxContent) ?: return false
+        _tracks.add(0, track)
+        saveTracks()
+        return true
+    }
+
     companion object {
         @Volatile
         private var instance: TrackRepository? = null
