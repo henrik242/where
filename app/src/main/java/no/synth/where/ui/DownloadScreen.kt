@@ -23,6 +23,7 @@ import java.util.Locale
 enum class DownloadTab {
     KARTVERKET,
     TOPORASTER,
+    SJOKARTRASTER,
     OSM,
     OPENTOPOMAP
 }
@@ -182,6 +183,22 @@ fun DownloadScreen(
                     )
                 }
 
+                // Sjøkartraster layer card
+                item {
+                    @Suppress("UNUSED_VARIABLE")
+                    val trigger = refreshTrigger
+                    val (size, count) = getLayerStats("sjokartraster")
+                    LayerOverviewCard(
+                        layerName = "Sjøkartraster",
+                        description = "Norwegian nautical charts",
+                        tileCount = count,
+                        totalSize = size,
+                        formatBytes = ::formatBytes,
+                        isSelected = selectedTab == DownloadTab.SJOKARTRASTER,
+                        onClick = { selectedTab = DownloadTab.SJOKARTRASTER }
+                    )
+                }
+
                 // OSM layer card
                 item {
                     @Suppress("UNUSED_VARIABLE")
@@ -224,6 +241,7 @@ fun DownloadScreen(
                         when (selectedTab) {
                             DownloadTab.KARTVERKET -> "Kartverket Regions"
                             DownloadTab.TOPORASTER -> "Toporaster Regions"
+                            DownloadTab.SJOKARTRASTER -> "Sjøkartraster Regions"
                             DownloadTab.OSM -> "OSM Regions"
                             DownloadTab.OPENTOPOMAP -> "OpenTopoMap Regions"
                         },
@@ -266,6 +284,7 @@ fun DownloadScreen(
                     val layerName = when (selectedTab) {
                         DownloadTab.KARTVERKET -> "kartverket"
                         DownloadTab.TOPORASTER -> "toporaster"
+                        DownloadTab.SJOKARTRASTER -> "sjokartraster"
                         DownloadTab.OSM -> "osm"
                         DownloadTab.OPENTOPOMAP -> "opentopomap"
                     }
@@ -340,6 +359,7 @@ fun DownloadScreen(
         val layerName = when (selectedTab) {
             DownloadTab.KARTVERKET -> "kartverket"
             DownloadTab.TOPORASTER -> "toporaster"
+            DownloadTab.SJOKARTRASTER -> "sjokartraster"
             DownloadTab.OSM -> "osm"
             DownloadTab.OPENTOPOMAP -> "opentopomap"
         }
