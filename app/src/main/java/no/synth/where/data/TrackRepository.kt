@@ -21,6 +21,9 @@ class TrackRepository private constructor(private val context: Context) {
     private val _currentTrack = MutableStateFlow<Track?>(null)
     val currentTrack: StateFlow<Track?> = _currentTrack.asStateFlow()
 
+    private val _viewingTrack = MutableStateFlow<Track?>(null)
+    val viewingTrack: StateFlow<Track?> = _viewingTrack.asStateFlow()
+
     val isRecording = mutableStateOf(false)
 
     init {
@@ -91,17 +94,36 @@ class TrackRepository private constructor(private val context: Context) {
         saveTracks()
     }
 
+    fun discardRecording() {
+        _currentTrack.value = null
+        isRecording.value = false
+    }
+
     fun deleteTrack(track: Track) {
         _tracks.remove(track)
         saveTracks()
     }
 
     fun renameTrack(track: Track, newName: String) {
-        val index = _tracks.indexOf(track)
-        if (index >= 0) {
-            _tracks[index] = track.copy(name = newName)
-            saveTracks()
+        // Check if it's the current recording track
+        if (_currentTrack.value?.id == track.id) {
+            _currentTrack.value = track.copy(name = newName)
+        } else {
+            // It's a saved track
+            val index = _tracks.indexOf(track)
+            if (index >= 0) {
+                _tracks[index] = track.copy(name = newName)
+                saveTracks()
+            }
         }
+    }
+
+    fun setViewingTrack(track: Track) {
+        _viewingTrack.value = track
+    }
+
+    fun clearViewingTrack() {
+        _viewingTrack.value = null
     }
 
     companion object {

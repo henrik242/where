@@ -20,6 +20,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.launch
 import no.synth.where.data.MapStyle
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
@@ -38,6 +39,8 @@ import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
+import java.text.SimpleDateFormat
+import java.util.*
 
 enum class MapLayer {
     OSM,
@@ -56,13 +59,17 @@ fun MapScreen(
     val trackRepository = remember { TrackRepository.getInstance(context) }
     val isRecording by trackRepository.isRecording
     val currentTrack by trackRepository.currentTrack.collectAsState()
+    val viewingTrack by trackRepository.viewingTrack.collectAsState()
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
     var selectedLayer by remember { mutableStateOf(MapLayer.KARTVERKET) }
     var showLayerMenu by remember { mutableStateOf(false) }
     var hasLocationPermission by remember { mutableStateOf(false) }
-    var showNewTrackDialog by remember { mutableStateOf(false) }
-    var newTrackName by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    var showStopTrackDialog by remember { mutableStateOf(false) }
+    var trackNameInput by remember { mutableStateOf("") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -81,15 +88,34 @@ fun MapScreen(
         )
     }
 
-    // Update track line on map when current track changes
-    LaunchedEffect(currentTrack) {
-        mapInstance?.style?.let { style ->
-            updateTrackOnMap(style, currentTrack)
+    // Update track line on map when current track, viewing track, or map instance changes
+    LaunchedEffect(currentTrack, viewingTrack, mapInstance) {
+        val viewing = viewingTrack
+        val trackToShow = currentTrack ?: viewing
+        val map = mapInstance
+
+        map?.style?.let { style ->
+            // Show current recording track or viewing track
+            updateTrackOnMap(style, trackToShow, isCurrentTrack = currentTrack != null)
+
+            // If viewing a track, center the map on it
+            if (viewing != null && viewing.points.isNotEmpty()) {
+                val points = viewing.points.map { it.latLng }
+                if (points.isNotEmpty()) {
+                    val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
+                        .includes(points)
+                        .build()
+                    map.animateCamera(
+                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngBounds(bounds, 100)
+                    )
+                }
+            }
         }
     }
 
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 // Layer selector dropdown
@@ -201,10 +227,17 @@ fun MapScreen(
                 SmallFloatingActionButton(
                     onClick = {
                         if (isRecording) {
-                            trackRepository.stopRecording()
-                            LocationTrackingService.stop(context)
+                            // Set default name to current track name and show dialog
+                            trackNameInput = currentTrack?.name ?: ""
+                            showStopTrackDialog = true
                         } else {
-                            showNewTrackDialog = true
+                            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                            val trackName = dateFormat.format(Date())
+                            trackRepository.startNewTrack(trackName)
+                            LocationTrackingService.start(context)
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Recording...")
+                            }
                         }
                     },
                     modifier = Modifier.size(48.dp),
@@ -213,7 +246,7 @@ fun MapScreen(
                     Icon(
                         if (isRecording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord,
                         contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
-                        tint = if (isRecording) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = if (isRecording) Color.White else Color.Red
                     )
                 }
 
@@ -248,43 +281,117 @@ fun MapScreen(
                 onMapReady = { mapInstance = it },
                 selectedLayer = selectedLayer,
                 hasLocationPermission = hasLocationPermission,
-                showCountyBorders = showCountyBorders
+                showCountyBorders = showCountyBorders,
+                currentTrack = currentTrack,
+                viewingTrack = viewingTrack
             )
+
+            // Show track info and close button when viewing a track
+            val viewing = viewingTrack
+            if (viewing != null) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Map,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = viewing.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { trackRepository.clearViewingTrack() }
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Close Track View"
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
-    // New track dialog
-    if (showNewTrackDialog) {
+    // Stop track dialog with rename option
+    if (showStopTrackDialog) {
         AlertDialog(
-            onDismissRequest = { showNewTrackDialog = false },
-            title = { Text("New Track") },
+            onDismissRequest = { showStopTrackDialog = false },
+            title = { Text("Save Track") },
             text = {
-                OutlinedTextField(
-                    value = newTrackName,
-                    onValueChange = { newTrackName = it },
-                    label = { Text("Track Name (optional)") },
-                    singleLine = true,
-                    placeholder = { Text("Track ${System.currentTimeMillis()}") }
-                )
+                Column {
+                    Text(
+                        text = "Enter a name for your track:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = trackNameInput,
+                        onValueChange = { trackNameInput = it },
+                        label = { Text("Track Name") },
+                        singleLine = true
+                    )
+                }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        val name = newTrackName.ifBlank { "Track ${System.currentTimeMillis()}" }
-                        trackRepository.startNewTrack(name)
-                        LocationTrackingService.start(context)
-                        newTrackName = ""
-                        showNewTrackDialog = false
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            // Discard the track without saving
+                            trackRepository.discardRecording()
+                            LocationTrackingService.stop(context)
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Track discarded")
+                            }
+                            showStopTrackDialog = false
+                            trackNameInput = ""
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Discard")
                     }
-                ) {
-                    Text("Start")
+                    TextButton(
+                        onClick = {
+                            val currentTrackValue = currentTrack
+                            if (currentTrackValue != null && trackNameInput.isNotBlank()) {
+                                trackRepository.renameTrack(currentTrackValue, trackNameInput)
+                            }
+                            trackRepository.stopRecording()
+                            LocationTrackingService.stop(context)
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Recording stopped")
+                            }
+                            showStopTrackDialog = false
+                            trackNameInput = ""
+                        }
+                    ) {
+                        Text("Save")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    newTrackName = ""
-                    showNewTrackDialog = false
-                }) {
+                TextButton(
+                    onClick = {
+                        showStopTrackDialog = false
+                        trackNameInput = ""
+                    }
+                ) {
                     Text("Cancel")
                 }
             }
@@ -353,7 +460,7 @@ private fun forceLocationOnEmulator(locationComponent: LocationComponent) {
     }
 }
 
-private fun updateTrackOnMap(style: Style, track: Track?) {
+private fun updateTrackOnMap(style: Style, track: Track?, isCurrentTrack: Boolean = true) {
     try {
         val sourceId = "track-source"
         val layerId = "track-layer"
@@ -370,8 +477,11 @@ private fun updateTrackOnMap(style: Style, track: Track?) {
             val source = GeoJsonSource(sourceId, feature)
             style.addSource(source)
 
+            // Use red for current recording track, blue for viewing track
+            val lineColor = if (isCurrentTrack) "#FF0000" else "#0000FF"
+
             val lineLayer = LineLayer(layerId, sourceId).withProperties(
-                PropertyFactory.lineColor("#FF0000"),
+                PropertyFactory.lineColor(lineColor),
                 PropertyFactory.lineWidth(4f),
                 PropertyFactory.lineOpacity(0.8f)
             )
@@ -387,7 +497,9 @@ fun MapLibreMapView(
     onMapReady: (MapLibreMap) -> Unit = {},
     selectedLayer: MapLayer = MapLayer.KARTVERKET,
     hasLocationPermission: Boolean = false,
-    showCountyBorders: Boolean = true
+    showCountyBorders: Boolean = true,
+    currentTrack: Track? = null,
+    viewingTrack: Track? = null
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
@@ -398,9 +510,14 @@ fun MapLibreMapView(
         map?.let { mapInstance ->
             try {
                 val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders)
+                val viewing = viewingTrack
+                val current = currentTrack
                 mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                     override fun onStyleLoaded(style: Style) {
                         enableLocationComponent(mapInstance, style, context, hasLocationPermission)
+                        // Draw the track after style loads
+                        val trackToShow = current ?: viewing
+                        updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
                     }
                 })
             } catch (e: Exception) {
@@ -435,9 +552,14 @@ fun MapLibreMapView(
 
                     try {
                         val styleJson = MapStyle.getStyle(ctx, selectedLayer)
+                        val viewing = viewingTrack
+                        val current = currentTrack
                         mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                             override fun onStyleLoaded(style: Style) {
                                 enableLocationComponent(mapInstance, style, ctx, hasLocationPermission)
+                                // Draw the track after initial style loads
+                                val trackToShow = current ?: viewing
+                                updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
                                 mapInstance.triggerRepaint()
                             }
                         })

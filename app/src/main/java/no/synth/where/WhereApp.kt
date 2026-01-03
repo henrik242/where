@@ -44,6 +44,10 @@ fun WhereApp() {
                     trackRepository.continueTrack(track)
                     LocationTrackingService.start(context)
                     navController.popBackStack("map", false)
+                },
+                onShowTrackOnMap = { track ->
+                    trackRepository.setViewingTrack(track)
+                    navController.popBackStack("map", false)
                 }
             )
         }
