@@ -19,24 +19,35 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import no.synth.where.MainActivity
 import no.synth.where.R
+import no.synth.where.data.ClientIdManager
+import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
+import no.synth.where.data.UserPreferences
 import org.maplibre.android.geometry.LatLng
 
 class LocationTrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var trackRepository: TrackRepository
+    private var onlineTrackingClient: OnlineTrackingClient? = null
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.lastLocation?.let { location ->
+                val latLng = LatLng(location.latitude, location.longitude)
+                val altitude = if (location.hasAltitude()) location.altitude else null
+                val accuracy = if (location.hasAccuracy()) location.accuracy else null
+
                 trackRepository.addTrackPoint(
-                    latLng = LatLng(location.latitude, location.longitude),
-                    altitude = if (location.hasAltitude()) location.altitude else null,
-                    accuracy = if (location.hasAccuracy()) location.accuracy else null
+                    latLng = latLng,
+                    altitude = altitude,
+                    accuracy = accuracy
                 )
+
+                onlineTrackingClient?.sendPoint(latLng, altitude, accuracy)
             }
         }
     }
@@ -45,6 +56,21 @@ class LocationTrackingService : Service() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         trackRepository = TrackRepository.getInstance(this)
+
+        serviceScope.launch {
+            val userPreferences = UserPreferences.getInstance(this@LocationTrackingService)
+            if (userPreferences.onlineTrackingEnabled) {
+                val clientIdManager = ClientIdManager.getInstance(this@LocationTrackingService)
+                val clientId = clientIdManager.getClientId()
+                onlineTrackingClient = OnlineTrackingClient(
+                    serverUrl = userPreferences.trackingServerUrl,
+                    clientId = clientId
+                )
+                val trackName = trackRepository.currentTrack.value?.name ?: "Track"
+                onlineTrackingClient?.startTrack(trackName)
+            }
+        }
+
         createNotificationChannel()
     }
 
@@ -130,6 +156,7 @@ class LocationTrackingService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        onlineTrackingClient?.stopTrack()
         serviceScope.cancel()
     }
 

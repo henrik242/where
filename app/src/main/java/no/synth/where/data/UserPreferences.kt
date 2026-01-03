@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,20 @@ class UserPreferences private constructor(context: Context) {
     )
         private set
 
+    var onlineTrackingEnabled by mutableStateOf(
+        runBlocking {
+            dataStore.data.map { it[ONLINE_TRACKING_ENABLED] ?: false }.first()
+        }
+    )
+        private set
+
+    var trackingServerUrl by mutableStateOf(
+        runBlocking {
+            dataStore.data.map { it[TRACKING_SERVER_URL] ?: "https://where.synth.no" }.first()
+        }
+    )
+        private set
+
     fun updateShowCountyBorders(value: Boolean) {
         showCountyBorders = value
         scope.launch {
@@ -37,8 +52,24 @@ class UserPreferences private constructor(context: Context) {
         }
     }
 
+    fun updateOnlineTrackingEnabled(value: Boolean) {
+        onlineTrackingEnabled = value
+        scope.launch {
+            dataStore.edit { it[ONLINE_TRACKING_ENABLED] = value }
+        }
+    }
+
+    fun updateTrackingServerUrl(value: String) {
+        trackingServerUrl = value
+        scope.launch {
+            dataStore.edit { it[TRACKING_SERVER_URL] = value }
+        }
+    }
+
     companion object {
         private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
+        private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
+        private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")
 
         @Volatile
         private var instance: UserPreferences? = null

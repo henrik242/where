@@ -9,7 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import no.synth.where.data.ClientIdManager
+import no.synth.where.data.UserPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,6 +24,16 @@ fun SettingsScreen(
     showCountyBorders: Boolean,
     onShowCountyBordersChange: (Boolean) -> Unit
 ) {
+    val context = LocalContext.current
+    val userPreferences = remember { UserPreferences.getInstance(context) }
+    val scope = rememberCoroutineScope()
+    var clientId by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        val clientIdManager = ClientIdManager.getInstance(context)
+        clientId = clientIdManager.getClientId()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -57,7 +71,32 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
-            // Tracks option
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Online Tracking",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "Share your location: $clientId",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = userPreferences.onlineTrackingEnabled,
+                    onCheckedChange = { userPreferences.updateOnlineTrackingEnabled(it) }
+                )
+            }
+
+            HorizontalDivider()
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

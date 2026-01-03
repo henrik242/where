@@ -1,0 +1,99 @@
+name: Deploy Server
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add server to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Install Bun on server
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          if ! command -v bun &> /dev/null; then
+            curl -fsSL https://bun.sh/install | bash
+            export BUN_INSTALL="$HOME/.bun"
+            export PATH="$BUN_INSTALL/bin:$PATH"
+            echo 'export BUN_INSTALL="$HOME/.bun"' >> ~/.bashrc
+            echo 'export PATH="$BUN_INSTALL/bin:$PATH"' >> ~/.bashrc
+          fi
+        ENDSSH
+
+    - name: Create deployment directory
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          mkdir -p /opt/where-server
+        ENDSSH
+
+    - name: Copy server files
+      run: |
+        rsync -avz --delete \
+          --exclude 'node_modules' \
+          --exclude 'bun.lockb' \
+          --exclude '.env' \
+          --exclude '*.log' \
+          server/ ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:/opt/where-server/
+
+    - name: Install dependencies
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          cd /opt/where-server
+          bun install
+        ENDSSH
+
+    - name: Set up systemd service
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          sudo cp /opt/where-server/where-server.service /etc/systemd/system/
+          sudo sed -i "s|/usr/local/bin/bun|$HOME/.bun/bin/bun|g" /etc/systemd/system/where-server.service
+          sudo sed -i "s|User=www-data|User=$USER|g" /etc/systemd/system/where-server.service
+          sudo systemctl daemon-reload
+          sudo systemctl enable where-server
+        ENDSSH
+
+    - name: Restart service
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          sudo systemctl restart where-server
+          sleep 5
+          sudo systemctl status where-server --no-pager
+        ENDSSH
+
+    - name: Verify deployment
+      run: |
+        ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'ENDSSH'
+          curl -f http://localhost:3000/api/tracks || exit 1
+        ENDSSH
+
+    - name: Deployment status
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Deployment successful!"
+          echo "Server is running at https://where.synth.no"
+        else
+          echo "❌ Deployment failed!"
+          exit 1
+        fi
+

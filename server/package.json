@@ -1,0 +1,23 @@
+{
+  "name": "where-server",
+  "version": "1.0.0",
+  "description": "Backend server for Where Android app - live tracking visualization",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run index.ts",
+    "start": "bun run index.ts"
+  },
+  "keywords": [
+    "gps",
+    "tracking",
+    "norway",
+    "maplibre",
+    "websocket"
+  ],
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}
+
