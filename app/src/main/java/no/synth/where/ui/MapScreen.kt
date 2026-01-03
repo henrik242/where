@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -36,6 +37,13 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
+import org.maplibre.android.location.LocationComponent
+import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.modes.CameraMode
+import org.maplibre.android.location.modes.RenderMode
+import android.content.Context
+import android.location.LocationManager
+import androidx.core.content.ContextCompat
 
 enum class MapLayer {
     OSM,
@@ -51,11 +59,14 @@ fun MapScreen(
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
     var selectedLayer by remember { mutableStateOf(MapLayer.KARTVERKET) }
     var showLayerMenu by remember { mutableStateOf(false) }
+    var hasLocationPermission by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        // Handle permission results if needed
+    ) { permissions ->
+        hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        Log.d("MapScreen", "Location permission granted: $hasLocationPermission")
     }
 
     LaunchedEffect(Unit) {
@@ -169,22 +180,95 @@ fun MapScreen(
                 ) {
                     Icon(Icons.Filled.Download, contentDescription = "Download Maps")
                 }
+
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+
+                // Go to my location button
+                SmallFloatingActionButton(
+                    onClick = {
+                        mapInstance?.let { map ->
+                            val locationComponent = map.locationComponent
+                            if (locationComponent.isLocationComponentEnabled) {
+                                locationComponent.lastKnownLocation?.let { location ->
+                                    map.animateCamera(
+                                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                                            LatLng(location.latitude, location.longitude),
+                                            15.0
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Filled.MyLocation, contentDescription = "My Location")
+                }
             }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
-                selectedLayer = selectedLayer
+                selectedLayer = selectedLayer,
+                hasLocationPermission = hasLocationPermission
             )
         }
+    }
+}
+
+@SuppressWarnings("MissingPermission")
+private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Context, hasPermission: Boolean) {
+    if (!hasPermission) {
+        Log.w("MapScreen", "Cannot enable location component - permission not granted")
+        return
+    }
+
+    try {
+        val locationComponent = map.locationComponent
+
+        // Check if already activated
+        if (locationComponent.isLocationComponentActivated) {
+            Log.d("MapScreen", "Location component already activated, just ensuring it's enabled")
+            locationComponent.isLocationComponentEnabled = true
+            locationComponent.renderMode = RenderMode.COMPASS
+            return
+        }
+
+        Log.d("MapScreen", "Activating location component...")
+
+        // Activate with options - use default location engine
+        locationComponent.activateLocationComponent(
+            LocationComponentActivationOptions.builder(context, style)
+                .useDefaultLocationEngine(true)
+                .build()
+        )
+
+        // Enable location component
+        locationComponent.isLocationComponentEnabled = true
+
+        Log.d("MapScreen", "Location component enabled: ${locationComponent.isLocationComponentEnabled}")
+
+        // Set render mode to show compass (includes heading/bearing)
+        locationComponent.renderMode = RenderMode.COMPASS
+
+        Log.d("MapScreen", "Render mode set to: ${locationComponent.renderMode}")
+
+
+        Log.d("MapScreen", "Location component fully configured with heading support")
+    } catch (e: SecurityException) {
+        Log.e("MapScreen", "Location permission not granted", e)
+    } catch (e: Exception) {
+        Log.e("MapScreen", "Failed to enable location component", e)
+        e.printStackTrace()
     }
 }
 
 @Composable
 fun MapLibreMapView(
     onMapReady: (MapLibreMap) -> Unit = {},
-    selectedLayer: MapLayer = MapLayer.KARTVERKET
+    selectedLayer: MapLayer = MapLayer.KARTVERKET,
+    hasLocationPermission: Boolean = false
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
@@ -201,10 +285,24 @@ fun MapLibreMapView(
                 mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                     override fun onStyleLoaded(style: Style) {
                         Log.d("MapScreen", "Layer switched successfully")
+
+                        // Enable location component after style is loaded
+                        enableLocationComponent(mapInstance, style, context, hasLocationPermission)
                     }
                 })
             } catch (e: Exception) {
                 Log.e("MapScreen", "Failed to switch map layer", e)
+            }
+        }
+    }
+
+    // Re-enable location when permission is granted
+    LaunchedEffect(hasLocationPermission, map) {
+        val mapInstance = map
+        if (hasLocationPermission && mapInstance != null) {
+            Log.d("MapScreen", "Permission granted, enabling location on existing map")
+            mapInstance.style?.let { style ->
+                enableLocationComponent(mapInstance, style, context, hasLocationPermission)
             }
         }
     }
@@ -241,6 +339,9 @@ fun MapLibreMapView(
                                 Log.d("MapScreen", "Custom map style loaded successfully!")
                                 Log.d("MapScreen", "Map sources: ${style.sources.joinToString { it.id }}")
                                 Log.d("MapScreen", "Map layers: ${style.layers.joinToString { it.id }}")
+
+                                // Enable location component
+                                enableLocationComponent(mapInstance, style, ctx, hasLocationPermission)
 
                                 // Force a re-render
                                 mapInstance.triggerRepaint()
