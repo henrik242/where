@@ -23,6 +23,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import no.synth.where.data.MapStyle
+import no.synth.where.data.RulerState
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.service.LocationTrackingService
@@ -77,6 +78,8 @@ fun MapScreen(
     var savedCameraLat by rememberSaveable { mutableStateOf(65.0) }
     var savedCameraLon by rememberSaveable { mutableStateOf(10.0) }
     var savedCameraZoom by rememberSaveable { mutableStateOf(5.0) }
+
+    var rulerState by remember { mutableStateOf(RulerState()) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -298,6 +301,26 @@ fun MapScreen(
                 Spacer(modifier = Modifier.size(8.dp))
 
                 SmallFloatingActionButton(
+                    onClick = {
+                        rulerState = if (rulerState.isActive) {
+                            rulerState.clear()
+                        } else {
+                            rulerState.copy(isActive = true)
+                        }
+                    },
+                    modifier = Modifier.size(48.dp),
+                    containerColor = if (rulerState.isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Icon(
+                        Icons.Filled.Straighten,
+                        contentDescription = "Ruler",
+                        tint = if (rulerState.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                SmallFloatingActionButton(
                     onClick = onSettingsClick,
                     modifier = Modifier.size(48.dp)
                 ) {
@@ -316,8 +339,71 @@ fun MapScreen(
                 viewingTrack = viewingTrack,
                 savedCameraLat = savedCameraLat,
                 savedCameraLon = savedCameraLon,
-                savedCameraZoom = savedCameraZoom
+                savedCameraZoom = savedCameraZoom,
+                rulerState = rulerState,
+                onRulerPointAdded = { latLng ->
+                    rulerState = rulerState.addPoint(latLng)
+                }
             )
+
+            if (rulerState.isActive) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(bottom = 80.dp)
+                        .padding(start = 16.dp, end = 72.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            val totalDistance = rulerState.getTotalDistanceMeters()
+                            Text(
+                                text = if (rulerState.points.isEmpty()) "Tap to measure" else formatDistance(totalDistance),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (rulerState.points.size > 1) {
+                                Text(
+                                    text = "${rulerState.points.size} points",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (rulerState.points.size > 1) {
+                                SmallFloatingActionButton(
+                                    onClick = { rulerState = rulerState.removeLastPoint() },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Undo,
+                                        contentDescription = "Remove Last Point",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            SmallFloatingActionButton(
+                                onClick = { rulerState = rulerState.clear() },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Clear,
+                                    contentDescription = "Clear All",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             val viewing = viewingTrack
             if (viewing != null) {
@@ -520,6 +606,72 @@ private fun updateTrackOnMap(style: Style, track: Track?, isCurrentTrack: Boolea
     }
 }
 
+private fun updateRulerOnMap(style: Style, rulerState: RulerState) {
+    try {
+        val lineSourceId = "ruler-line-source"
+        val lineLayerId = "ruler-line-layer"
+        val pointSourceId = "ruler-point-source"
+        val pointLayerId = "ruler-point-layer"
+
+        style.getLayer(lineLayerId)?.let { style.removeLayer(it) }
+        style.getSource(lineSourceId)?.let { style.removeSource(it) }
+        style.getLayer(pointLayerId)?.let { style.removeLayer(it) }
+        style.getSource(pointSourceId)?.let { style.removeSource(it) }
+
+        if (rulerState.points.isNotEmpty()) {
+            if (rulerState.points.size >= 2) {
+                val points = rulerState.points.map {
+                    Point.fromLngLat(it.latLng.longitude, it.latLng.latitude)
+                }
+                val lineString = LineString.fromLngLats(points)
+                val lineFeature = Feature.fromGeometry(lineString)
+
+                val lineSource = GeoJsonSource(lineSourceId, lineFeature)
+                style.addSource(lineSource)
+
+                val lineLayer = LineLayer(lineLayerId, lineSourceId).withProperties(
+                    PropertyFactory.lineColor("#FFA500"),
+                    PropertyFactory.lineWidth(3f),
+                    PropertyFactory.lineOpacity(0.9f),
+                    PropertyFactory.lineDasharray(arrayOf(2f, 2f))
+                )
+                style.addLayer(lineLayer)
+            }
+
+            val pointFeatures = rulerState.points.map { rulerPoint ->
+                Feature.fromGeometry(Point.fromLngLat(
+                    rulerPoint.latLng.longitude,
+                    rulerPoint.latLng.latitude
+                ))
+            }
+            val pointSource = GeoJsonSource(pointSourceId,
+                com.google.gson.Gson().toJson(
+                    mapOf("type" to "FeatureCollection", "features" to pointFeatures)
+                )
+            )
+            style.addSource(pointSource)
+
+            val pointLayer = org.maplibre.android.style.layers.CircleLayer(pointLayerId, pointSourceId).withProperties(
+                org.maplibre.android.style.layers.PropertyFactory.circleRadius(6f),
+                org.maplibre.android.style.layers.PropertyFactory.circleColor("#FFA500"),
+                org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth(2f),
+                org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor("#FFFFFF")
+            )
+            style.addLayer(pointLayer)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+private fun formatDistance(meters: Double): String {
+    return when {
+        meters < 1000 -> "%.0f m".format(meters)
+        meters < 10000 -> "%.2f km".format(meters / 1000)
+        else -> "%.1f km".format(meters / 1000)
+    }
+}
+
 @Composable
 fun MapLibreMapView(
     onMapReady: (MapLibreMap) -> Unit = {},
@@ -530,7 +682,9 @@ fun MapLibreMapView(
     viewingTrack: Track? = null,
     savedCameraLat: Double = 65.0,
     savedCameraLon: Double = 10.0,
-    savedCameraZoom: Double = 5.0
+    savedCameraZoom: Double = 5.0,
+    rulerState: RulerState = RulerState(),
+    onRulerPointAdded: (LatLng) -> Unit = {}
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
@@ -548,6 +702,7 @@ fun MapLibreMapView(
                         enableLocationComponent(mapInstance, style, context, hasLocationPermission)
                         val trackToShow = current ?: viewing
                         updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
+                        updateRulerOnMap(style, rulerState)
 
                         if (viewing == null && current == null) {
                             mapInstance.cameraPosition = CameraPosition.Builder()
@@ -572,6 +727,25 @@ fun MapLibreMapView(
         }
     }
 
+    LaunchedEffect(rulerState, map) {
+        map?.style?.let { style ->
+            updateRulerOnMap(style, rulerState)
+        }
+    }
+
+    LaunchedEffect(rulerState.isActive, map) {
+        map?.let { mapInstance ->
+            mapInstance.addOnMapClickListener { point ->
+                if (rulerState.isActive) {
+                    onRulerPointAdded(point)
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
     AndroidView(
         factory = { ctx ->
             MapView(ctx).also { mapView = it }.apply {
@@ -585,6 +759,15 @@ fun MapLibreMapView(
                         .zoom(savedCameraZoom)
                         .build()
 
+                    mapInstance.addOnMapClickListener { point ->
+                        if (rulerState.isActive) {
+                            onRulerPointAdded(point)
+                            true
+                        } else {
+                            false
+                        }
+                    }
+
                     try {
                         val styleJson = MapStyle.getStyle(ctx, selectedLayer)
                         val viewing = viewingTrack
@@ -594,7 +777,7 @@ fun MapLibreMapView(
                                 enableLocationComponent(mapInstance, style, ctx, hasLocationPermission)
                                 val trackToShow = current ?: viewing
                                 updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
-
+                                updateRulerOnMap(style, rulerState)
                                 mapInstance.triggerRepaint()
                             }
                         })
