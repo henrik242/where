@@ -1,10 +1,13 @@
 package no.synth.where.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,9 +31,10 @@ fun SettingsScreen(
     val userPreferences = remember { UserPreferences.getInstance(context) }
     val scope = rememberCoroutineScope()
     var clientId by remember { mutableStateOf("") }
+    var showRegenerateDialog by remember { mutableStateOf(false) }
+    val clientIdManager = remember { ClientIdManager.getInstance(context) }
 
     LaunchedEffect(Unit) {
-        val clientIdManager = ClientIdManager.getInstance(context)
         clientId = clientIdManager.getClientId()
     }
 
@@ -71,28 +75,62 @@ fun SettingsScreen(
 
             HorizontalDivider()
 
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(16.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Online Tracking",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = "Share your location: $clientId",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Online Tracking",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Client ID: $clientId",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = userPreferences.onlineTrackingEnabled,
+                        onCheckedChange = { userPreferences.updateOnlineTrackingEnabled(it) }
                     )
                 }
-                Switch(
-                    checked = userPreferences.onlineTrackingEnabled,
-                    onCheckedChange = { userPreferences.updateOnlineTrackingEnabled(it) }
-                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val url = "${userPreferences.trackingServerUrl}?clients=$clientId"
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("View on Map")
+                    }
+
+                    OutlinedButton(
+                        onClick = { showRegenerateDialog = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Filled.Refresh,
+                            contentDescription = "Regenerate ID",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("New ID")
+                    }
+                }
             }
 
             HorizontalDivider()
@@ -138,6 +176,33 @@ fun SettingsScreen(
 
             HorizontalDivider()
         }
+    }
+
+    if (showRegenerateDialog) {
+        AlertDialog(
+            onDismissRequest = { showRegenerateDialog = false },
+            title = { Text("Regenerate Client ID?") },
+            text = {
+                Text("This will create a new client ID. Your old ID ($clientId) will no longer be associated with your tracks on the server.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            clientId = clientIdManager.regenerateClientId()
+                            showRegenerateDialog = false
+                        }
+                    }
+                ) {
+                    Text("Regenerate")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRegenerateDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

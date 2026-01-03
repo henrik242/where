@@ -42,6 +42,74 @@
             color: #333;
         }
 
+        .client-filter {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #f8f8f8;
+            border-radius: 6px;
+        }
+
+        .client-filter h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        .client-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .client-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: #2196F3;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .client-tag:hover {
+            background: #1976D2;
+        }
+
+        .client-tag .remove {
+            font-weight: bold;
+            margin-left: 4px;
+        }
+
+        .add-client-form {
+            display: flex;
+            gap: 6px;
+        }
+
+        .add-client-form input {
+            flex: 1;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .add-client-form button {
+            padding: 6px 12px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .add-client-form button:hover {
+            background: #1976D2;
+        }
+
         .track-item {
             padding: 12px;
             margin-bottom: 8px;
@@ -108,6 +176,14 @@
     <div id="map"></div>
     <div class="info-panel">
         <h2>Live Tracks</h2>
+        <div class="client-filter">
+            <h3>Filter by Client ID</h3>
+            <div class="client-tags" id="client-tags"></div>
+            <div class="add-client-form">
+                <input type="text" id="client-input" placeholder="Enter client ID (e.g., abc123)" maxlength="6">
+                <button onclick="addClientFilter()">Add</button>
+            </div>
+        </div>
         <div id="tracks-list">
             <div class="loading">
                 <div class="spinner"></div>
@@ -143,6 +219,63 @@
 
         let tracks = {};
         let selectedTrackId = null;
+        let clientFilters = [];
+
+        // Parse URL parameters for client filters
+        const urlParams = new URLSearchParams(window.location.search);
+        const clientsParam = urlParams.get('clients');
+        if (clientsParam) {
+            clientFilters = clientsParam.split(',').filter(Boolean);
+        }
+
+        function updateClientTags() {
+            const tagsContainer = document.getElementById('client-tags');
+            if (clientFilters.length === 0) {
+                tagsContainer.innerHTML = '<span style="color: #999; font-size: 12px;">Showing all clients</span>';
+            } else {
+                tagsContainer.innerHTML = clientFilters.map(clientId => `
+                    <div class="client-tag" onclick="removeClientFilter('${clientId}')">
+                        ${clientId}
+                        <span class="remove">×</span>
+                    </div>
+                `).join('');
+            }
+            updateURL();
+        }
+
+        function addClientFilter() {
+            const input = document.getElementById('client-input');
+            const clientId = input.value.trim().toLowerCase();
+            if (clientId && clientId.length === 6 && !clientFilters.includes(clientId)) {
+                clientFilters.push(clientId);
+                updateClientTags();
+                fetchTracks();
+                input.value = '';
+            }
+        }
+
+        function removeClientFilter(clientId) {
+            clientFilters = clientFilters.filter(id => id !== clientId);
+            updateClientTags();
+            fetchTracks();
+        }
+
+        function updateURL() {
+            const params = new URLSearchParams();
+            if (clientFilters.length > 0) {
+                params.set('clients', clientFilters.join(','));
+            }
+            const newURL = params.toString() ? `?${params.toString()}` : window.location.pathname;
+            window.history.replaceState({}, '', newURL);
+        }
+
+        // Allow Enter key to add client
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('client-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addClientFilter();
+            });
+            updateClientTags();
+        });
 
         function formatDistance(meters) {
             if (meters < 1000) return `${meters.toFixed(0)} m`;
@@ -259,7 +392,12 @@
 
         async function fetchTracks() {
             try {
-                const response = await fetch('/api/tracks');
+                const params = new URLSearchParams();
+                if (clientFilters.length > 0) {
+                    params.set('clients', clientFilters.join(','));
+                }
+                const url = `/api/tracks${params.toString() ? '?' + params.toString() : ''}`;
+                const response = await fetch(url);
                 const data = await response.json();
                 tracks = data.reduce((acc, track) => {
                     acc[track.id] = track;
@@ -280,6 +418,11 @@
             const data = JSON.parse(event.data);
 
             if (data.type === 'track_update') {
+                // Skip if client filters are active and this client is not in the filter
+                if (clientFilters.length > 0 && !clientFilters.includes(data.userId)) {
+                    return;
+                }
+
                 if (!tracks[data.trackId]) {
                     tracks[data.trackId] = {
                         id: data.trackId,

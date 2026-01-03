@@ -64,9 +64,12 @@ async function handleAPI(req: Request): Promise<Response> {
   }
 
   try {
-    // GET /api/tracks - Get all active tracks
+    // GET /api/tracks - Get all active tracks (or filtered by client IDs)
     if (path === '/api/tracks' && req.method === 'GET') {
-      const tracks = trackStore.getAllActiveTracks();
+      const clientIds = url.searchParams.get('clients')?.split(',').filter(Boolean) || [];
+      const tracks = clientIds.length > 0
+        ? trackStore.getTracksByClientIds(clientIds)
+        : trackStore.getAllActiveTracks();
       return new Response(JSON.stringify(tracks), { headers });
     }
 
