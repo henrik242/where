@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -70,6 +71,12 @@ fun MapScreen(
 
     var showStopTrackDialog by remember { mutableStateOf(false) }
     var trackNameInput by remember { mutableStateOf("") }
+    var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
+
+    // Save camera position across navigation
+    var savedCameraLat by rememberSaveable { mutableStateOf(65.0) }
+    var savedCameraLon by rememberSaveable { mutableStateOf(10.0) }
+    var savedCameraZoom by rememberSaveable { mutableStateOf(5.0) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -113,12 +120,24 @@ fun MapScreen(
         }
     }
 
-    // Zoom to location when permission is granted
+    // Save camera position whenever it changes
+    LaunchedEffect(mapInstance) {
+        val map = mapInstance
+        map?.addOnCameraMoveListener {
+            map.cameraPosition.target?.let { target ->
+                savedCameraLat = target.latitude
+                savedCameraLon = target.longitude
+                savedCameraZoom = map.cameraPosition.zoom
+            }
+        }
+    }
+
+    // Zoom to location when permission is granted (only once on startup)
     LaunchedEffect(hasLocationPermission, mapInstance) {
         val map = mapInstance
-        android.util.Log.d("MapScreen", "Permission effect triggered - hasPermission: $hasLocationPermission, mapInstance: ${map != null}")
-        if (hasLocationPermission && map != null && viewingTrack == null && currentTrack == null) {
-            android.util.Log.d("MapScreen", "Attempting to zoom to user location")
+        android.util.Log.d("MapScreen", "Permission effect triggered - hasPermission: $hasLocationPermission, mapInstance: ${map != null}, hasZoomedToLocation: $hasZoomedToLocation")
+        if (hasLocationPermission && map != null && !hasZoomedToLocation && viewingTrack == null && currentTrack == null) {
+            android.util.Log.d("MapScreen", "Attempting to zoom to user location (first time)")
             try {
                 val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
                 val lastKnownLocation = try {
@@ -142,6 +161,8 @@ fun MapScreen(
                             12.0
                         )
                     )
+                    hasZoomedToLocation = true
+                    android.util.Log.d("MapScreen", "Zoom completed, hasZoomedToLocation set to true")
                 } ?: android.util.Log.d("MapScreen", "No last known location available")
             } catch (e: Exception) {
                 android.util.Log.e("MapScreen", "Error in permission effect", e)
@@ -214,7 +235,7 @@ fun MapScreen(
                     }
                 }
 
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+                Spacer(modifier = Modifier.size(8.dp))
 
                 // Zoom controls
                 SmallFloatingActionButton(
@@ -231,7 +252,7 @@ fun MapScreen(
                     Icon(Icons.Filled.Add, contentDescription = "Zoom In")
                 }
 
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+                Spacer(modifier = Modifier.size(8.dp))
 
                 SmallFloatingActionButton(
                     onClick = {
@@ -247,16 +268,7 @@ fun MapScreen(
                     Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
                 }
 
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
-
-                SmallFloatingActionButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                }
-
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+                Spacer(modifier = Modifier.size(8.dp))
 
                 // Record/Stop button
                 SmallFloatingActionButton(
@@ -285,7 +297,7 @@ fun MapScreen(
                     )
                 }
 
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+                Spacer(modifier = Modifier.size(8.dp))
 
                 // Go to my location button
                 SmallFloatingActionButton(
@@ -308,6 +320,15 @@ fun MapScreen(
                 ) {
                     Icon(Icons.Filled.MyLocation, contentDescription = "My Location")
                 }
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                SmallFloatingActionButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                }
             }
         }
     ) { paddingValues ->
@@ -318,7 +339,10 @@ fun MapScreen(
                 hasLocationPermission = hasLocationPermission,
                 showCountyBorders = showCountyBorders,
                 currentTrack = currentTrack,
-                viewingTrack = viewingTrack
+                viewingTrack = viewingTrack,
+                savedCameraLat = savedCameraLat,
+                savedCameraLon = savedCameraLon,
+                savedCameraZoom = savedCameraZoom
             )
 
             // Show track info and close button when viewing a track
@@ -534,7 +558,10 @@ fun MapLibreMapView(
     hasLocationPermission: Boolean = false,
     showCountyBorders: Boolean = true,
     currentTrack: Track? = null,
-    viewingTrack: Track? = null
+    viewingTrack: Track? = null,
+    savedCameraLat: Double = 65.0,
+    savedCameraLon: Double = 10.0,
+    savedCameraZoom: Double = 5.0
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
@@ -555,33 +582,11 @@ fun MapLibreMapView(
                         val trackToShow = current ?: viewing
                         updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
 
-                        // Only zoom to location on first load when there's no track
-                        if (hasLocationPermission && viewing == null && current == null) {
-                            try {
-                                val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
-                                val lastKnownLocation = try {
-                                    locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
-                                        ?: locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
-                                        ?: locationManager.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER)
-                                } catch (e: SecurityException) {
-                                    null
-                                }
-
-                                lastKnownLocation?.let { location ->
-                                    android.util.Log.d("MapScreen", "LaunchedEffect zooming to: ${location.latitude}, ${location.longitude}")
-                                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                        mapInstance.animateCamera(
-                                            org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                                                LatLng(location.latitude, location.longitude),
-                                                12.0
-                                            )
-                                        )
-                                    }, 300)
-                                }
-                            } catch (e: Exception) {
-                                android.util.Log.e("MapScreen", "LaunchedEffect location error", e)
-                            }
-                        }
+                        // Restore camera position from saved state
+                        mapInstance.cameraPosition = CameraPosition.Builder()
+                            .target(LatLng(savedCameraLat, savedCameraLon))
+                            .zoom(savedCameraZoom)
+                            .build()
                     }
                 })
             } catch (e: Exception) {
@@ -609,10 +614,10 @@ fun MapLibreMapView(
                     map = mapInstance
                     onMapReady(mapInstance)
 
-                    // Set initial camera position to Norway
+                    // Set initial camera position from saved state (or default to Norway)
                     mapInstance.cameraPosition = CameraPosition.Builder()
-                        .target(LatLng(65.0, 10.0))
-                        .zoom(5.0)
+                        .target(LatLng(savedCameraLat, savedCameraLon))
+                        .zoom(savedCameraZoom)
                         .build()
 
                     try {
