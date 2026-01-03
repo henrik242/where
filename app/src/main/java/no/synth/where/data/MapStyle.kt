@@ -4,7 +4,7 @@ import android.content.Context
 import no.synth.where.ui.MapLayer
 
 object MapStyle {
-    fun getStyle(context: Context, selectedLayer: MapLayer = MapLayer.KARTVERKET): String {
+    fun getStyle(context: Context, selectedLayer: MapLayer = MapLayer.KARTVERKET, showCountyBorders: Boolean = true): String {
         val regions = RegionsRepository.getRegions(context)
         val regionsGeoJson = regions.joinToString(",") { region ->
             val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
@@ -39,6 +39,43 @@ object MapStyle {
         val toporasterOpacity = if (selectedLayer == MapLayer.TOPORASTER) 1.0 else 0.01
         val sjokartrasterOpacity = if (selectedLayer == MapLayer.SJOKARTRASTER) 1.0 else 0.01
         val openTopoMapOpacity = if (selectedLayer == MapLayer.OPENTOPOMAP) 1.0 else 0.01
+
+        val countyBordersLayers = if (showCountyBorders) """
+    {
+      "id": "regions-fill",
+      "type": "fill",
+      "source": "regions",
+      "paint": {
+        "fill-color": "#FF8800",
+        "fill-opacity": 0.0
+      }
+    },
+    {
+      "id": "regions-outline",
+      "type": "line",
+      "source": "regions",
+      "paint": {
+        "line-color": "#ff0000",
+        "line-width": 2
+      }
+    },
+    {
+      "id": "regions-label",
+      "type": "symbol",
+      "source": "regions",
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 14,
+        "text-anchor": "center"
+      },
+      "paint": {
+        "text-color": "#333333",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 2
+      }
+    }
+""" else ""
 
         return """
 {
@@ -135,41 +172,8 @@ object MapStyle {
       "paint": {
         "raster-opacity": $openTopoMapOpacity
       }
-    },
-    {
-      "id": "regions-fill",
-      "type": "fill",
-      "source": "regions",
-      "paint": {
-        "fill-color": "#FF8800",
-        "fill-opacity": 0.0
-      }
-    },
-    {
-      "id": "regions-outline",
-      "type": "line",
-      "source": "regions",
-      "paint": {
-        "line-color": "#ff0000",
-        "line-width": 2
-      }
-    },
-    {
-      "id": "regions-label",
-      "type": "symbol",
-      "source": "regions",
-      "layout": {
-        "text-field": ["get", "name"],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": 14,
-        "text-anchor": "center"
-      },
-      "paint": {
-        "text-color": "#333333",
-        "text-halo-color": "#ffffff",
-        "text-halo-width": 2
-      }
-    }
+    }${if (showCountyBorders) "," else ""}
+    $countyBordersLayers
   ]
 }
 """
