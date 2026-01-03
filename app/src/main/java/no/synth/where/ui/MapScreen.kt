@@ -95,18 +95,16 @@ fun MapScreen(
         )
     }
 
-    // Update track line on map when current track, viewing track, or map instance changes
     LaunchedEffect(currentTrack, viewingTrack, mapInstance) {
         val viewing = viewingTrack
         val trackToShow = currentTrack ?: viewing
         val map = mapInstance
 
         map?.style?.let { style ->
-            // Show current recording track or viewing track
             updateTrackOnMap(style, trackToShow, isCurrentTrack = currentTrack != null)
 
-            // If viewing a track, center the map on it
             if (viewing != null && viewing.points.isNotEmpty()) {
+                kotlinx.coroutines.delay(100)
                 val points = viewing.points.map { it.latLng }
                 if (points.isNotEmpty()) {
                     val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
@@ -120,7 +118,6 @@ fun MapScreen(
         }
     }
 
-    // Save camera position whenever it changes
     LaunchedEffect(mapInstance) {
         val map = mapInstance
         map?.addOnCameraMoveListener {
@@ -132,28 +129,20 @@ fun MapScreen(
         }
     }
 
-    // Zoom to location when permission is granted (only once on startup)
     LaunchedEffect(hasLocationPermission, mapInstance) {
         val map = mapInstance
-        android.util.Log.d("MapScreen", "Permission effect triggered - hasPermission: $hasLocationPermission, mapInstance: ${map != null}, hasZoomedToLocation: $hasZoomedToLocation")
         if (hasLocationPermission && map != null && !hasZoomedToLocation && viewingTrack == null && currentTrack == null) {
-            android.util.Log.d("MapScreen", "Attempting to zoom to user location (first time)")
             try {
                 val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
                 val lastKnownLocation = try {
-                    val gps = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
-                    val network = locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
-                    val fused = locationManager.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER)
-                    android.util.Log.d("MapScreen", "Locations - GPS: $gps, Network: $network, Fused: $fused")
-                    gps ?: network ?: fused
+                    locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+                        ?: locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
+                        ?: locationManager.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER)
                 } catch (e: SecurityException) {
-                    android.util.Log.e("MapScreen", "SecurityException", e)
                     null
                 }
 
                 lastKnownLocation?.let { location ->
-                    android.util.Log.d("MapScreen", "Found location, zooming to: ${location.latitude}, ${location.longitude}")
-                    // Give time for location component to initialize
                     kotlinx.coroutines.delay(500)
                     map.animateCamera(
                         org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
@@ -162,10 +151,9 @@ fun MapScreen(
                         )
                     )
                     hasZoomedToLocation = true
-                    android.util.Log.d("MapScreen", "Zoom completed, hasZoomedToLocation set to true")
-                } ?: android.util.Log.d("MapScreen", "No last known location available")
+                }
             } catch (e: Exception) {
-                android.util.Log.e("MapScreen", "Error in permission effect", e)
+                e.printStackTrace()
             }
         }
     }
@@ -174,70 +162,56 @@ fun MapScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
-                // Layer selector dropdown
-                Box {
-                    SmallFloatingActionButton(
-                        onClick = { showLayerMenu = true },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(Icons.Filled.Layers, contentDescription = "Select Layer")
-                    }
+                SmallFloatingActionButton(
+                    onClick = { showLayerMenu = true },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Filled.Layers, contentDescription = "Select Layer")
+                }
 
-                    DropdownMenu(
-                        expanded = showLayerMenu,
-                        onDismissRequest = { showLayerMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(if (selectedLayer == MapLayer.KARTVERKET) "✓ Kartverket" else "Kartverket")
-                            },
-                            onClick = {
-                                selectedLayer = MapLayer.KARTVERKET
-                                showLayerMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(if (selectedLayer == MapLayer.TOPORASTER) "✓ Toporaster (Hiking)" else "Toporaster (Hiking)")
-                            },
-                            onClick = {
-                                selectedLayer = MapLayer.TOPORASTER
-                                showLayerMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(if (selectedLayer == MapLayer.SJOKARTRASTER) "✓ Sjøkartraster (Nautical)" else "Sjøkartraster (Nautical)")
-                            },
-                            onClick = {
-                                selectedLayer = MapLayer.SJOKARTRASTER
-                                showLayerMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(if (selectedLayer == MapLayer.OSM) "✓ OpenStreetMap" else "OpenStreetMap")
-                            },
-                            onClick = {
-                                selectedLayer = MapLayer.OSM
-                                showLayerMenu = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = {
-                                Text(if (selectedLayer == MapLayer.OPENTOPOMAP) "✓ OpenTopoMap (Hiking)" else "OpenTopoMap (Hiking)")
-                            },
-                            onClick = {
-                                selectedLayer = MapLayer.OPENTOPOMAP
-                                showLayerMenu = false
-                            }
-                        )
-                    }
+                DropdownMenu(
+                    expanded = showLayerMenu,
+                    onDismissRequest = { showLayerMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (selectedLayer == MapLayer.KARTVERKET) "✓ Kartverket" else "Kartverket") },
+                        onClick = {
+                            selectedLayer = MapLayer.KARTVERKET
+                            showLayerMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (selectedLayer == MapLayer.TOPORASTER) "✓ Toporaster (Hiking)" else "Toporaster (Hiking)") },
+                        onClick = {
+                            selectedLayer = MapLayer.TOPORASTER
+                            showLayerMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (selectedLayer == MapLayer.SJOKARTRASTER) "✓ Sjøkartraster (Nautical)" else "Sjøkartraster (Nautical)") },
+                        onClick = {
+                            selectedLayer = MapLayer.SJOKARTRASTER
+                            showLayerMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (selectedLayer == MapLayer.OSM) "✓ OpenStreetMap" else "OpenStreetMap") },
+                        onClick = {
+                            selectedLayer = MapLayer.OSM
+                            showLayerMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (selectedLayer == MapLayer.OPENTOPOMAP) "✓ OpenTopoMap (Hiking)" else "OpenTopoMap (Hiking)") },
+                        onClick = {
+                            selectedLayer = MapLayer.OPENTOPOMAP
+                            showLayerMenu = false
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.size(8.dp))
 
-                // Zoom controls
                 SmallFloatingActionButton(
                     onClick = {
                         mapInstance?.let { map ->
@@ -345,7 +319,6 @@ fun MapScreen(
                 savedCameraZoom = savedCameraZoom
             )
 
-            // Show track info and close button when viewing a track
             val viewing = viewingTrack
             if (viewing != null) {
                 Card(
@@ -386,7 +359,6 @@ fun MapScreen(
         }
     }
 
-    // Stop track dialog with rename option
     if (showStopTrackDialog) {
         AlertDialog(
             onDismissRequest = { showStopTrackDialog = false },
@@ -410,7 +382,6 @@ fun MapScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = {
-                            // Discard the track without saving
                             trackRepository.discardRecording()
                             LocationTrackingService.stop(context)
                             scope.launch {
@@ -524,7 +495,6 @@ private fun updateTrackOnMap(style: Style, track: Track?, isCurrentTrack: Boolea
         val sourceId = "track-source"
         val layerId = "track-layer"
 
-        // Remove existing layer and source if present
         style.getLayer(layerId)?.let { style.removeLayer(it) }
         style.getSource(sourceId)?.let { style.removeSource(it) }
 
@@ -536,7 +506,6 @@ private fun updateTrackOnMap(style: Style, track: Track?, isCurrentTrack: Boolea
             val source = GeoJsonSource(sourceId, feature)
             style.addSource(source)
 
-            // Use red for current recording track, blue for viewing track
             val lineColor = if (isCurrentTrack) "#FF0000" else "#0000FF"
 
             val lineLayer = LineLayer(layerId, sourceId).withProperties(
@@ -576,17 +545,16 @@ fun MapLibreMapView(
                 val current = currentTrack
                 mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                     override fun onStyleLoaded(style: Style) {
-                        android.util.Log.d("MapScreen", "LaunchedEffect style loaded")
                         enableLocationComponent(mapInstance, style, context, hasLocationPermission)
-                        // Draw the track after style loads
                         val trackToShow = current ?: viewing
                         updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
 
-                        // Restore camera position from saved state
-                        mapInstance.cameraPosition = CameraPosition.Builder()
-                            .target(LatLng(savedCameraLat, savedCameraLon))
-                            .zoom(savedCameraZoom)
-                            .build()
+                        if (viewing == null && current == null) {
+                            mapInstance.cameraPosition = CameraPosition.Builder()
+                                .target(LatLng(savedCameraLat, savedCameraLon))
+                                .zoom(savedCameraZoom)
+                                .build()
+                        }
                     }
                 })
             } catch (e: Exception) {
@@ -606,15 +574,12 @@ fun MapLibreMapView(
 
     AndroidView(
         factory = { ctx ->
-            MapView(ctx).also { mv ->
-                mapView = mv
-                mv.onCreate(null)
-
-                mv.getMapAsync { mapInstance ->
+            MapView(ctx).also { mapView = it }.apply {
+                onCreate(null)
+                getMapAsync { mapInstance ->
                     map = mapInstance
                     onMapReady(mapInstance)
 
-                    // Set initial camera position from saved state (or default to Norway)
                     mapInstance.cameraPosition = CameraPosition.Builder()
                         .target(LatLng(savedCameraLat, savedCameraLon))
                         .zoom(savedCameraZoom)
@@ -626,48 +591,9 @@ fun MapLibreMapView(
                         val current = currentTrack
                         mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                             override fun onStyleLoaded(style: Style) {
-                                android.util.Log.d("MapScreen", "Style loaded - hasLocationPermission: $hasLocationPermission, viewing: ${viewing?.name}, current: ${current?.name}")
                                 enableLocationComponent(mapInstance, style, ctx, hasLocationPermission)
-                                // Draw the track after initial style loads
                                 val trackToShow = current ?: viewing
                                 updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
-
-                                // Zoom to current location if available and no viewing track
-                                android.util.Log.d("MapScreen", "Checking zoom conditions - permission: $hasLocationPermission, viewing null: ${viewing == null}, current null: ${current == null}")
-                                if (hasLocationPermission && viewing == null && current == null) {
-                                    android.util.Log.d("MapScreen", "Attempting to get last known location")
-                                    // Try to get location from system LocationManager
-                                    try {
-                                        val locationManager = ctx.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
-                                        val lastKnownLocation = try {
-                                            val gps = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
-                                            val network = locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
-                                            val fused = locationManager.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER)
-                                            android.util.Log.d("MapScreen", "GPS: $gps, Network: $network, Fused: $fused")
-                                            gps ?: network ?: fused
-                                        } catch (e: SecurityException) {
-                                            android.util.Log.e("MapScreen", "SecurityException getting location", e)
-                                            null
-                                        }
-
-                                        lastKnownLocation?.let { location ->
-                                            android.util.Log.d("MapScreen", "Zooming to location: ${location.latitude}, ${location.longitude}")
-                                            // Use a small delay to ensure map is ready
-                                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                                mapInstance.animateCamera(
-                                                    org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                                                        LatLng(location.latitude, location.longitude),
-                                                        12.0
-                                                    )
-                                                )
-                                            }, 300)
-                                        } ?: android.util.Log.d("MapScreen", "No last known location available")
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("MapScreen", "Error getting location", e)
-                                    }
-                                } else {
-                                    android.util.Log.d("MapScreen", "Skipping zoom to location - conditions not met")
-                                }
 
                                 mapInstance.triggerRepaint()
                             }
@@ -681,16 +607,15 @@ fun MapLibreMapView(
         modifier = Modifier.fillMaxSize()
     )
 
-    // Manage Lifecycle
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            mapView?.let { mv ->
+            mapView?.let {
                 when (event) {
-                    Lifecycle.Event.ON_START -> mv.onStart()
-                    Lifecycle.Event.ON_RESUME -> mv.onResume()
-                    Lifecycle.Event.ON_PAUSE -> mv.onPause()
-                    Lifecycle.Event.ON_STOP -> mv.onStop()
-                    Lifecycle.Event.ON_DESTROY -> mv.onDestroy()
+                    Lifecycle.Event.ON_START -> it.onStart()
+                    Lifecycle.Event.ON_RESUME -> it.onResume()
+                    Lifecycle.Event.ON_PAUSE -> it.onPause()
+                    Lifecycle.Event.ON_STOP -> it.onStop()
+                    Lifecycle.Event.ON_DESTROY -> it.onDestroy()
                     else -> {}
                 }
             }
