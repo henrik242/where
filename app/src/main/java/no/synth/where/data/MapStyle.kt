@@ -66,6 +66,13 @@ object MapStyle {
       "tileSize": 256,
       "attribution": "Kartverket Toporaster"
     },
+    "sjokartraster": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"],
+      "tileSize": 256,
+      "attribution": "Kartverket Sjøkartraster"
+    },
     "opentopomap": {
       "type": "raster",
       "scheme": "xyz",
@@ -111,6 +118,14 @@ object MapStyle {
       "source": "toporaster",
       "paint": {
         "raster-opacity": $toporasterOpacity
+      }
+    },
+    {
+      "id": "sjokartraster-layer",
+      "type": "raster",
+      "source": "sjokartraster",
+      "paint": {
+        "raster-opacity": $sjokartrasterOpacity
       }
     },
     {
