@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
@@ -57,7 +57,8 @@ enum class MapLayer {
 
 @Composable
 fun MapScreen(
-    onDownloadClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    showCountyBorders: Boolean
 ) {
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
     var selectedLayer by remember { mutableStateOf(MapLayer.KARTVERKET) }
@@ -182,10 +183,10 @@ fun MapScreen(
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
 
                 SmallFloatingActionButton(
-                    onClick = onDownloadClick,
+                    onClick = onSettingsClick,
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Icons.Filled.Download, contentDescription = "Download Maps")
+                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
                 }
 
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
@@ -218,7 +219,8 @@ fun MapScreen(
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
                 selectedLayer = selectedLayer,
-                hasLocationPermission = hasLocationPermission
+                hasLocationPermission = hasLocationPermission,
+                showCountyBorders = showCountyBorders
             )
         }
     }
@@ -291,17 +293,18 @@ private fun forceLocationOnEmulator(map: MapLibreMap, locationComponent: Locatio
 fun MapLibreMapView(
     onMapReady: (MapLibreMap) -> Unit = {},
     selectedLayer: MapLayer = MapLayer.KARTVERKET,
-    hasLocationPermission: Boolean = false
+    hasLocationPermission: Boolean = false,
+    showCountyBorders: Boolean = true
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     val context = LocalContext.current
 
-    LaunchedEffect(selectedLayer, map) {
+    LaunchedEffect(selectedLayer, showCountyBorders, map) {
         map?.let { mapInstance ->
             try {
-                val styleJson = MapStyle.getStyle(context, selectedLayer)
+                val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders)
                 mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
                     override fun onStyleLoaded(style: Style) {
                         enableLocationComponent(mapInstance, style, context, hasLocationPermission)
