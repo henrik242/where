@@ -64,6 +64,8 @@ class LocationTrackingService : Service() {
         ).apply {
             setMinUpdateIntervalMillis(FASTEST_UPDATE_INTERVAL)
             setMaxUpdateDelayMillis(LOCATION_UPDATE_INTERVAL * 2)
+            setWaitForAccurateLocation(false)
+            setMinUpdateDistanceMeters(5f)
         }.build()
 
         fusedLocationClient.requestLocationUpdates(
@@ -101,12 +103,27 @@ class LocationTrackingService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
 
+        val stopIntent = Intent(this, LocationTrackingService::class.java)
+        val stopPendingIntent = PendingIntent.getService(
+            this,
+            1,
+            stopIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Recording Track")
             .setContentText("Location tracking is active")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
+            .addAction(
+                R.drawable.ic_launcher_foreground,
+                "Stop",
+                stopPendingIntent
+            )
             .setOngoing(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
     }
 
