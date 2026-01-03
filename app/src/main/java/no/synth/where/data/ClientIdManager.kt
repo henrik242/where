@@ -34,6 +34,14 @@ class ClientIdManager private constructor(private val context: Context) {
             .joinToString("")
     }
 
+    suspend fun regenerateClientId(): String {
+        val newClientId = generateClientId()
+        context.clientDataStore.edit { preferences ->
+            preferences[CLIENT_ID_KEY] = newClientId
+        }
+        return newClientId
+    }
+
     companion object {
         private val CLIENT_ID_KEY = stringPreferencesKey("client_id")
 

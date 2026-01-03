@@ -47,6 +47,14 @@ class TrackStore {
       .filter(track => track.isActive);
   }
 
+  getTracksByClientIds(clientIds: string[]): Track[] {
+    if (clientIds.length === 0) {
+      return this.getAllActiveTracks();
+    }
+    return Array.from(this.tracks.values())
+      .filter(track => track.isActive && clientIds.includes(track.userId));
+  }
+
   updateTrack(trackId: string, updates: Partial<Track>): Track | undefined {
     const track = this.tracks.get(trackId);
     if (!track) return undefined;
