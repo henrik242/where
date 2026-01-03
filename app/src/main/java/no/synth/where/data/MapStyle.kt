@@ -2,20 +2,16 @@ package no.synth.where.data
 
 import android.content.Context
 import no.synth.where.ui.MapLayer
-import java.io.File
 
 object MapStyle {
     fun getStyle(context: Context, selectedLayer: MapLayer = MapLayer.KARTVERKET): String {
         val regions = RegionsRepository.getRegions(context)
         val regionsGeoJson = regions.joinToString(",") { region ->
-            // Use actual polygon if available, otherwise fall back to bounding box
             val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
-                // Use actual fylke polygon boundaries
                 region.polygon.first().joinToString(",") { latLng ->
                     "[${latLng.longitude}, ${latLng.latitude}]"
                 }
             } else {
-                // Fallback to bounding box rectangle
                 val b = region.boundingBox
                 val north = b.northEast.latitude
                 val south = b.southWest.latitude
@@ -24,7 +20,6 @@ object MapStyle {
                 "[$west, $north],[$west, $south],[$east, $south],[$east, $north],[$west, $north]"
             }
 
-            // Clean region name - remove Sami language variants (text after " - ")
             val cleanName = region.name.substringBefore(" - ")
 
             """
@@ -39,32 +34,11 @@ object MapStyle {
             """
         }
 
-        // Check if we have local tiles downloaded
-        val tilesDir = File(context.getExternalFilesDir(null), "tiles/kartverket")
-        val hasLocalTiles = tilesDir.exists() && tilesDir.listFiles()?.isNotEmpty() == true
-
-        // Use online Kartverket tiles (corrected URL format with {z}/{y}/{x})
-        val kartverketTilesUrl = if (false && hasLocalTiles) {
-            // MapLibre on Android needs file:// protocol
-            "file://${tilesDir.absolutePath}/{z}/{y}/{x}.png"
-        } else {
-            // Kartverket uses {z}/{y}/{x} format, not {z}/{x}/{y}!
-            "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
-        }
-
-        // Add toporaster (hiking map) layer
-        val toporasterTilesUrl = "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
-
-        // Add OpenTopoMap (OSM-based hiking map)
-        val openTopoMapTilesUrl = "https://tile.opentopomap.org/{z}/{x}/{y}.png"
-
-        // Set layer visibility based on selection
         val osmOpacity = if (selectedLayer == MapLayer.OSM) 1.0 else 0.01
         val kartverketOpacity = if (selectedLayer == MapLayer.KARTVERKET) 1.0 else 0.01
         val toporasterOpacity = if (selectedLayer == MapLayer.TOPORASTER) 1.0 else 0.01
+        val sjokartrasterOpacity = if (selectedLayer == MapLayer.SJOKARTRASTER) 1.0 else 0.01
         val openTopoMapOpacity = if (selectedLayer == MapLayer.OPENTOPOMAP) 1.0 else 0.01
-
-
 
         return """
 {
@@ -74,36 +48,28 @@ object MapStyle {
     "osm": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-      ],
+      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
       "tileSize": 256,
       "attribution": "© OpenStreetMap contributors"
     },
     "kartverket": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$kartverketTilesUrl"
-      ],
+      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"],
       "tileSize": 256,
       "attribution": "Kartverket"
     },
     "toporaster": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$toporasterTilesUrl"
-      ],
+      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"],
       "tileSize": 256,
       "attribution": "Kartverket Toporaster"
     },
     "opentopomap": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$openTopoMapTilesUrl"
-      ],
+      "tiles": ["https://tile.opentopomap.org/{z}/{x}/{y}.png"],
       "tileSize": 256,
       "attribution": "© OpenTopoMap (CC-BY-SA)"
     },
@@ -111,9 +77,7 @@ object MapStyle {
       "type": "geojson",
       "data": {
         "type": "FeatureCollection",
-        "features": [
-          $regionsGeoJson
-        ]
+        "features": [$regionsGeoJson]
       }
     }
   },
