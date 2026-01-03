@@ -42,6 +42,23 @@ fun DownloadScreen(
     var downloadProgress by remember { mutableStateOf(0) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var showDeleteDialog by remember { mutableStateOf<Region?>(null) }
+    var cacheSize by remember { mutableStateOf(0L) }
+
+    // Calculate cache size on screen load and when refresh is triggered
+    LaunchedEffect(refreshTrigger) {
+        // Check MapLibre's tile storage directory (external files, not cache)
+        val maplibreTilesDir = File(context.getExternalFilesDir(null), "maplibre-tiles")
+        cacheSize = if (maplibreTilesDir.exists()) {
+            maplibreTilesDir.walkTopDown().sumOf { file ->
+                if (file.isFile) file.length() else 0L
+            }
+        } else {
+            // Fallback to cache directory if the new path doesn't exist yet
+            context.cacheDir.walkTopDown().sumOf { file ->
+                if (file.isFile) file.length() else 0L
+            }
+        }
+    }
 
     fun formatBytes(bytes: Long): String {
         return when {
@@ -112,7 +129,6 @@ fun DownloadScreen(
 
                 // Automatic cache card (MapLibre's on-the-fly cache)
                 item {
-                    val cacheSize = getMapLibreCacheSize()
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
@@ -150,6 +166,8 @@ fun DownloadScreen(
 
                 // Kartverket layer card
                 item {
+                    @Suppress("UNUSED_VARIABLE")
+                    val trigger = refreshTrigger
                     val (size, count) = getLayerStats("kartverket")
                     LayerOverviewCard(
                         layerName = "Kartverket",
@@ -164,6 +182,8 @@ fun DownloadScreen(
 
                 // Toporaster layer card
                 item {
+                    @Suppress("UNUSED_VARIABLE")
+                    val trigger = refreshTrigger
                     val (size, count) = getLayerStats("toporaster")
                     LayerOverviewCard(
                         layerName = "Toporaster",
@@ -178,6 +198,8 @@ fun DownloadScreen(
 
                 // OSM layer card
                 item {
+                    @Suppress("UNUSED_VARIABLE")
+                    val trigger = refreshTrigger
                     val (size, count) = getLayerStats("osm")
                     LayerOverviewCard(
                         layerName = "OpenStreetMap",
@@ -192,6 +214,8 @@ fun DownloadScreen(
 
                 // OpenTopoMap layer card
                 item {
+                    @Suppress("UNUSED_VARIABLE")
+                    val trigger = refreshTrigger
                     val (size, count) = getLayerStats("opentopomap")
                     LayerOverviewCard(
                         layerName = "OpenTopoMap",

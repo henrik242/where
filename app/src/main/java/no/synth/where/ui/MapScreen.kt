@@ -42,7 +42,9 @@ import org.maplibre.android.location.LocationComponentActivationOptions
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import android.content.Context
+import android.location.Location
 import android.location.LocationManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 
 enum class MapLayer {
@@ -190,13 +192,18 @@ fun MapScreen(
                             val locationComponent = map.locationComponent
                             if (locationComponent.isLocationComponentEnabled) {
                                 locationComponent.lastKnownLocation?.let { location ->
+                                    Log.d("MapScreen", "Centering on location: ${location.latitude}, ${location.longitude}")
                                     map.animateCamera(
                                         org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
                                             LatLng(location.latitude, location.longitude),
                                             15.0
                                         )
                                     )
+                                } ?: run {
+                                    Log.w("MapScreen", "No location available yet - location component enabled but no GPS fix")
                                 }
+                            } else {
+                                Log.w("MapScreen", "Location component not enabled")
                             }
                         }
                     },
@@ -232,6 +239,12 @@ private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Con
             Log.d("MapScreen", "Location component already activated, just ensuring it's enabled")
             locationComponent.isLocationComponentEnabled = true
             locationComponent.renderMode = RenderMode.COMPASS
+
+            // Emulator workaround: Force set location if none available
+            if (locationComponent.lastKnownLocation == null && isEmulator()) {
+                Log.d("MapScreen", "Emulator detected with no location - forcing Oslo location as fallback")
+                forceLocationOnEmulator(map, locationComponent)
+            }
             return
         }
 
@@ -254,6 +267,18 @@ private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Con
 
         Log.d("MapScreen", "Render mode set to: ${locationComponent.renderMode}")
 
+        // Log the current location
+        locationComponent.lastKnownLocation?.let { loc ->
+            Log.d("MapScreen", "Last known location: lat=${loc.latitude}, lon=${loc.longitude}")
+        } ?: run {
+            Log.d("MapScreen", "No last known location available yet - waiting for GPS fix")
+
+            // Emulator workaround: Force set location if running on emulator
+            if (isEmulator()) {
+                Log.d("MapScreen", "Emulator detected - forcing Oslo location as fallback")
+                forceLocationOnEmulator(map, locationComponent)
+            }
+        }
 
         Log.d("MapScreen", "Location component fully configured with heading support")
     } catch (e: SecurityException) {
@@ -261,6 +286,41 @@ private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Con
     } catch (e: Exception) {
         Log.e("MapScreen", "Failed to enable location component", e)
         e.printStackTrace()
+    }
+}
+
+private fun isEmulator(): Boolean {
+    return (Build.FINGERPRINT.startsWith("google/sdk_gphone")
+            || Build.FINGERPRINT.startsWith("generic")
+            || Build.FINGERPRINT.contains("unknown")
+            || Build.MODEL.contains("google_sdk")
+            || Build.MODEL.contains("Emulator")
+            || Build.MODEL.contains("Android SDK built for")
+            || Build.MANUFACTURER.contains("Genymotion")
+            || Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")
+            || "google_sdk" == Build.PRODUCT)
+}
+
+@SuppressWarnings("MissingPermission")
+private fun forceLocationOnEmulator(map: MapLibreMap, locationComponent: LocationComponent) {
+    try {
+        // Create a mock location for Oslo
+        val mockLocation = Location("emulator_mock").apply {
+            latitude = 59.9139
+            longitude = 10.7522
+            accuracy = 10f
+            time = System.currentTimeMillis()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                elapsedRealtimeNanos = android.os.SystemClock.elapsedRealtimeNanos()
+            }
+        }
+
+        // Force update the location component
+        locationComponent.forceLocationUpdate(mockLocation)
+
+        Log.d("MapScreen", "Forced mock location on emulator: Oslo (59.9139, 10.7522)")
+    } catch (e: Exception) {
+        Log.e("MapScreen", "Failed to force location on emulator", e)
     }
 }
 
