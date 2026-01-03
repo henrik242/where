@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -20,6 +21,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import no.synth.where.data.MapStyle
+import no.synth.where.data.Track
+import no.synth.where.data.TrackRepository
+import no.synth.where.service.LocationTrackingService
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.location.LocationComponent
@@ -28,6 +32,12 @@ import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.geojson.Feature
+import org.maplibre.geojson.LineString
+import org.maplibre.geojson.Point
 
 enum class MapLayer {
     OSM,
@@ -42,10 +52,17 @@ fun MapScreen(
     onSettingsClick: () -> Unit,
     showCountyBorders: Boolean
 ) {
+    val context = LocalContext.current
+    val trackRepository = remember { TrackRepository.getInstance(context) }
+    val isRecording by trackRepository.isRecording
+    val currentTrack by trackRepository.currentTrack.collectAsState()
+
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
     var selectedLayer by remember { mutableStateOf(MapLayer.KARTVERKET) }
     var showLayerMenu by remember { mutableStateOf(false) }
     var hasLocationPermission by remember { mutableStateOf(false) }
+    var showNewTrackDialog by remember { mutableStateOf(false) }
+    var newTrackName by remember { mutableStateOf("") }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -62,6 +79,13 @@ fun MapScreen(
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
             )
         )
+    }
+
+    // Update track line on map when current track changes
+    LaunchedEffect(currentTrack) {
+        mapInstance?.style?.let { style ->
+            updateTrackOnMap(style, currentTrack)
+        }
     }
 
 
@@ -173,6 +197,28 @@ fun MapScreen(
 
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
 
+                // Record/Stop button
+                SmallFloatingActionButton(
+                    onClick = {
+                        if (isRecording) {
+                            trackRepository.stopRecording()
+                            LocationTrackingService.stop(context)
+                        } else {
+                            showNewTrackDialog = true
+                        }
+                    },
+                    modifier = Modifier.size(48.dp),
+                    containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(
+                        if (isRecording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord,
+                        contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
+                        tint = if (isRecording) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(8.dp))
+
                 // Go to my location button
                 SmallFloatingActionButton(
                     onClick = {
@@ -206,6 +252,44 @@ fun MapScreen(
             )
         }
     }
+
+    // New track dialog
+    if (showNewTrackDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewTrackDialog = false },
+            title = { Text("New Track") },
+            text = {
+                OutlinedTextField(
+                    value = newTrackName,
+                    onValueChange = { newTrackName = it },
+                    label = { Text("Track Name (optional)") },
+                    singleLine = true,
+                    placeholder = { Text("Track ${System.currentTimeMillis()}") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val name = newTrackName.ifBlank { "Track ${System.currentTimeMillis()}" }
+                        trackRepository.startNewTrack(name)
+                        LocationTrackingService.start(context)
+                        newTrackName = ""
+                        showNewTrackDialog = false
+                    }
+                ) {
+                    Text("Start")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    newTrackName = ""
+                    showNewTrackDialog = false
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @SuppressWarnings("MissingPermission")
@@ -219,7 +303,7 @@ private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Con
             locationComponent.isLocationComponentEnabled = true
             locationComponent.renderMode = RenderMode.COMPASS
             if (locationComponent.lastKnownLocation == null && isEmulator()) {
-                forceLocationOnEmulator(map, locationComponent)
+                forceLocationOnEmulator(locationComponent)
             }
             return
         }
@@ -234,7 +318,7 @@ private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Con
         locationComponent.renderMode = RenderMode.COMPASS
 
         if (locationComponent.lastKnownLocation == null && isEmulator()) {
-            forceLocationOnEmulator(map, locationComponent)
+            forceLocationOnEmulator(locationComponent)
         }
     } catch (e: Exception) {
         e.printStackTrace()
@@ -254,18 +338,45 @@ private fun isEmulator(): Boolean {
 }
 
 @SuppressWarnings("MissingPermission")
-private fun forceLocationOnEmulator(map: MapLibreMap, locationComponent: LocationComponent) {
+private fun forceLocationOnEmulator(locationComponent: LocationComponent) {
     try {
         val mockLocation = Location("emulator_mock").apply {
             latitude = 59.9139
             longitude = 10.7522
             accuracy = 10f
             time = System.currentTimeMillis()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                elapsedRealtimeNanos = android.os.SystemClock.elapsedRealtimeNanos()
-            }
+            elapsedRealtimeNanos = android.os.SystemClock.elapsedRealtimeNanos()
         }
         locationComponent.forceLocationUpdate(mockLocation)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+private fun updateTrackOnMap(style: Style, track: Track?) {
+    try {
+        val sourceId = "track-source"
+        val layerId = "track-layer"
+
+        // Remove existing layer and source if present
+        style.getLayer(layerId)?.let { style.removeLayer(it) }
+        style.getSource(sourceId)?.let { style.removeSource(it) }
+
+        if (track != null && track.points.size >= 2) {
+            val points = track.points.map { Point.fromLngLat(it.latLng.longitude, it.latLng.latitude) }
+            val lineString = LineString.fromLngLats(points)
+            val feature = Feature.fromGeometry(lineString)
+
+            val source = GeoJsonSource(sourceId, feature)
+            style.addSource(source)
+
+            val lineLayer = LineLayer(layerId, sourceId).withProperties(
+                PropertyFactory.lineColor("#FF0000"),
+                PropertyFactory.lineWidth(4f),
+                PropertyFactory.lineOpacity(0.8f)
+            )
+            style.addLayer(lineLayer)
+        }
     } catch (e: Exception) {
         e.printStackTrace()
     }

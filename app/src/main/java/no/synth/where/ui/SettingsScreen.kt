@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     onBackClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    onTracksClick: () -> Unit,
     showCountyBorders: Boolean,
     onShowCountyBordersChange: (Boolean) -> Unit
 ) {
@@ -51,6 +52,27 @@ fun SettingsScreen(
                 Switch(
                     checked = showCountyBorders,
                     onCheckedChange = onShowCountyBordersChange
+                )
+            }
+
+            HorizontalDivider()
+
+            // Tracks option
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onTracksClick() }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Saved Tracks",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = "Go to Saved Tracks"
                 )
             }
 

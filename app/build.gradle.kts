@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.maplibre.android.sdk)
     implementation(libs.gson)
+    implementation("com.google.android.gms:play-services-location:21.1.0")
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
