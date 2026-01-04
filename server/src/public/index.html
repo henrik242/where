@@ -288,6 +288,11 @@
         const godModeKey = urlParams.get('godMode');
         if (godModeKey) {
             godMode = true;
+            // Store god mode key in memory, remove from URL for security
+            window.godModeKey = godModeKey;
+            const url = new URL(window.location);
+            url.searchParams.delete('godMode');
+            window.history.replaceState({}, '', url);
             updateGodModeBanner();
         }
 
@@ -305,6 +310,7 @@
 
         function disableGodMode() {
             godMode = false;
+            delete window.godModeKey;
             const url = new URL(window.location);
             url.searchParams.delete('godMode');
             window.history.replaceState({}, '', url);
@@ -560,16 +566,21 @@
         async function fetchTracks() {
             try {
                 const params = new URLSearchParams();
-                if (godMode) {
-                    params.set('godMode', urlParams.get('godMode'));
-                } else if (clientFilters.length > 0) {
+                if (clientFilters.length > 0) {
                     params.set('clients', clientFilters.join(','));
                 }
                 if (showHistorical) {
                     params.set('historical', 'true');
                 }
                 const url = `/api/tracks${params.toString() ? '?' + params.toString() : ''}`;
-                const response = await fetch(url);
+
+                // Build headers with god mode key only (client IDs are in URL for sharing)
+                const headers = {};
+                if (godMode && window.godModeKey) {
+                    headers['X-God-Mode-Key'] = window.godModeKey;
+                }
+
+                const response = await fetch(url, { headers });
                 const data = await response.json();
                 tracks = data.reduce((acc, track) => {
                     acc[track.id] = track;

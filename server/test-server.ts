@@ -1,45 +1,7 @@
-import { trackStore } from './src/store';
-import type { Track, TrackUpdate } from './src/types';
+import {trackStore} from './src/store';
+import type {Track} from './src/types';
 
 export function createTestServer(port: number = 0) {
-  const server = Bun.serve({
-    port, // port 0 = random available port
-
-    async fetch(req, server) {
-      const url = new URL(req.url);
-
-      // WebSocket upgrade
-      if (url.pathname === '/ws') {
-        const upgraded = server.upgrade(req);
-        if (!upgraded) {
-          return new Response('WebSocket upgrade failed', { status: 400 });
-        }
-        return undefined;
-      }
-
-      // API Routes
-      if (url.pathname.startsWith('/api')) {
-        return handleAPI(req);
-      }
-
-      // Serve static files
-      const filePath = url.pathname === '/' ? '/index.html' : url.pathname;
-      const file = Bun.file(`${import.meta.dir}/src/public${filePath}`);
-
-      if (await file.exists()) {
-        return new Response(file);
-      }
-
-      return new Response('Not Found', { status: 404 });
-    },
-
-    websocket: {
-      open(ws) {},
-      message(ws, message) {},
-      close(ws) {}
-    }
-  });
-
   async function handleAPI(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
@@ -48,7 +10,7 @@ export function createTestServer(port: number = 0) {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-God-Mode-Key',
     };
 
     if (req.method === 'OPTIONS') {
@@ -84,9 +46,18 @@ export function createTestServer(port: number = 0) {
       if (path === '/api/tracks' && req.method === 'POST') {
         const body = await req.json() as Partial<Track>;
 
-        if (!body.userId || !body.name) {
+        if (!body.userId) {
           return new Response(JSON.stringify({ error: 'Missing required fields' }), {
             status: 400,
+            headers
+          });
+        }
+
+        // Verify client ID in header matches userId in body
+        const clientIdHeader = req.headers.get('X-Client-Id');
+        if (!clientIdHeader || clientIdHeader !== body.userId) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
             headers
           });
         }
@@ -94,7 +65,7 @@ export function createTestServer(port: number = 0) {
         const track: Track = {
           id: body.id || crypto.randomUUID(),
           userId: body.userId,
-          name: body.name,
+          name: body.name || 'Unnamed Track',
           points: body.points || [],
           startTime: Date.now(),
           isActive: true
@@ -176,6 +147,45 @@ export function createTestServer(port: number = 0) {
     }
   }
 
-  return server;
+  return Bun.serve({
+    port, // port 0 = random available port
+
+    async fetch(req, server) {
+      const url = new URL(req.url);
+
+      // WebSocket upgrade
+      if (url.pathname === '/ws') {
+        const upgraded = server.upgrade(req);
+        if (!upgraded) {
+          return new Response('WebSocket upgrade failed', {status: 400});
+        }
+        return undefined;
+      }
+
+      // API Routes
+      if (url.pathname.startsWith('/api')) {
+        return handleAPI(req);
+      }
+
+      // Serve static files
+      const filePath = url.pathname === '/' ? '/index.html' : url.pathname;
+      const file = Bun.file(`${import.meta.dir}/src/public${filePath}`);
+
+      if (await file.exists()) {
+        return new Response(file);
+      }
+
+      return new Response('Not Found', {status: 404});
+    },
+
+    websocket: {
+      open(ws) {
+      },
+      message(ws, message) {
+      },
+      close(ws) {
+      }
+    }
+  });
 }
 
