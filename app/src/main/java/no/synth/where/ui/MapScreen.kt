@@ -93,6 +93,9 @@ fun MapScreen(
     var clickedPoint by remember { mutableStateOf<no.synth.where.data.SavedPoint?>(null) }
     var showPointInfoDialog by remember { mutableStateOf(false) }
 
+    var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
+    var rulerTrackName by remember { mutableStateOf("") }
+
     // Save camera position across navigation
     var savedCameraLat by rememberSaveable { mutableStateOf(65.0) }
     var savedCameraLon by rememberSaveable { mutableStateOf(10.0) }
@@ -433,49 +436,70 @@ fun MapScreen(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            val totalDistance = rulerState.getTotalDistanceMeters()
-                            Text(
-                                text = if (rulerState.points.isEmpty()) "Tap to measure" else formatDistance(totalDistance),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            if (rulerState.points.size > 1) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                val totalDistance = rulerState.getTotalDistanceMeters()
                                 Text(
-                                    text = "${rulerState.points.size} points",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = if (rulerState.points.isEmpty()) "Tap to measure" else formatDistance(totalDistance),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
+                                if (rulerState.points.size > 1) {
+                                    Text(
+                                        text = "${rulerState.points.size} points",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
-                        }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (rulerState.points.size > 1) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (rulerState.points.size > 1) {
+                                    SmallFloatingActionButton(
+                                        onClick = { rulerState = rulerState.removeLastPoint() },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.Undo,
+                                            contentDescription = "Remove Last Point",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                                 SmallFloatingActionButton(
-                                    onClick = { rulerState = rulerState.removeLastPoint() },
+                                    onClick = { rulerState = rulerState.clear() },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
-                                        Icons.AutoMirrored.Filled.Undo,
-                                        contentDescription = "Remove Last Point",
+                                        Icons.Filled.Clear,
+                                        contentDescription = "Clear All",
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
-                            SmallFloatingActionButton(
-                                onClick = { rulerState = rulerState.clear() },
-                                modifier = Modifier.size(32.dp)
+                        }
+
+                        if (rulerState.points.size >= 2) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                                    rulerTrackName = "Route " + dateFormat.format(Date())
+                                    showSaveRulerAsTrackDialog = true
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(
-                                    Icons.Filled.Clear,
-                                    contentDescription = "Clear All",
-                                    modifier = Modifier.size(16.dp)
+                                    Icons.Filled.Save,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
                                 )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Save as Track")
                             }
                         }
                     }
@@ -831,6 +855,62 @@ fun MapScreen(
                     onClick = {
                         showPointInfoDialog = false
                         clickedPoint = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showSaveRulerAsTrackDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveRulerAsTrackDialog = false },
+            title = { Text("Save Route as Track") },
+            text = {
+                Column {
+                    Text(
+                        text = "Enter a name for this route:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = rulerTrackName,
+                        onValueChange = { rulerTrackName = it },
+                        label = { Text("Track Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${rulerState.points.size} points • ${formatDistance(rulerState.getTotalDistanceMeters())}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (rulerTrackName.isNotBlank()) {
+                            trackRepository.createTrackFromPoints(rulerTrackName, rulerState.points)
+                            rulerState = rulerState.clear()
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Saved as track: $rulerTrackName")
+                            }
+                        }
+                        showSaveRulerAsTrackDialog = false
+                        rulerTrackName = ""
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSaveRulerAsTrackDialog = false
+                        rulerTrackName = ""
                     }
                 ) {
                     Text("Cancel")

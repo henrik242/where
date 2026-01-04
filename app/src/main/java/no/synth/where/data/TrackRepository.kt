@@ -133,6 +133,26 @@ class TrackRepository private constructor(private val context: Context) {
         return true
     }
 
+    fun createTrackFromPoints(name: String, rulerPoints: List<RulerPoint>) {
+        val trackPoints = rulerPoints.map { rulerPoint ->
+            TrackPoint(
+                latLng = rulerPoint.latLng,
+                timestamp = System.currentTimeMillis(),
+                altitude = null,
+                accuracy = null
+            )
+        }
+        val track = Track(
+            name = name,
+            points = trackPoints,
+            startTime = System.currentTimeMillis(),
+            endTime = System.currentTimeMillis(),
+            isRecording = false
+        )
+        _tracks.add(0, track)
+        saveTracks()
+    }
+
     companion object {
         @Volatile
         private var instance: TrackRepository? = null
