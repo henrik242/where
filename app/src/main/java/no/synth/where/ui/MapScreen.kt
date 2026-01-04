@@ -32,6 +32,7 @@ import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
+import no.synth.where.data.UserPreferences
 import no.synth.where.service.LocationTrackingService
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
@@ -71,10 +72,12 @@ fun MapScreen(
     val context = LocalContext.current
     val trackRepository = remember { TrackRepository.getInstance(context) }
     val savedPointsRepository = remember { SavedPointsRepository.getInstance(context) }
+    val userPreferences = remember { UserPreferences.getInstance(context) }
     val savedPoints = savedPointsRepository.savedPoints
     val isRecording by trackRepository.isRecording
     val currentTrack by trackRepository.currentTrack.collectAsState()
     val viewingTrack by trackRepository.viewingTrack.collectAsState()
+    var onlineTrackingEnabled by remember { mutableStateOf(userPreferences.onlineTrackingEnabled) }
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
     var selectedLayer by remember { mutableStateOf(MapLayer.KARTVERKET) }
@@ -307,6 +310,7 @@ fun MapScreen(
                     )
                 }
 
+
                 Spacer(modifier = Modifier.size(8.dp))
 
                 // Go to my location button
@@ -518,27 +522,75 @@ fun MapScreen(
                             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
                         )
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.FiberManualRecord,
-                                contentDescription = null,
-                                tint = Color.Red
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Recording",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.FiberManualRecord,
+                                    contentDescription = null,
+                                    tint = Color.Red
                                 )
-                                val distance = track.getDistanceMeters()
-                                Text(
-                                    text = formatDistance(distance),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Recording",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    val distance = track.getDistanceMeters()
+                                    Text(
+                                        text = formatDistance(distance),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.CloudUpload,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = "Online Tracking",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                Switch(
+                                    checked = onlineTrackingEnabled,
+                                    onCheckedChange = { newValue ->
+                                        userPreferences.updateOnlineTrackingEnabled(newValue)
+                                        onlineTrackingEnabled = newValue
+
+                                        if (newValue) {
+                                            LocationTrackingService.enableOnlineTracking(context)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Online tracking enabled")
+                                            }
+                                        } else {
+                                            LocationTrackingService.disableOnlineTracking(context)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Online tracking disabled")
+                                            }
+                                        }
+                                    }
                                 )
                             }
                         }

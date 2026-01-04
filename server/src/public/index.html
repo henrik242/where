@@ -190,6 +190,12 @@
                 <input type="text" id="client-input" placeholder="Enter client ID (e.g., abc123)" maxlength="6">
                 <button onclick="addClientFilter()">Add</button>
             </div>
+            <div style="margin-top: 8px;">
+                <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="historical-toggle" onchange="toggleHistorical()" style="cursor: pointer;">
+                    Show historical (24h)
+                </label>
+            </div>
         </div>
         <div id="tracks-list">
             <div class="loading">
@@ -230,12 +236,18 @@
         let tracks = {};
         let selectedTrackId = null;
         let clientFilters = [];
+        let showHistorical = false;
+        let godMode = false;
 
-        // Parse URL parameters for client filters
+        // Parse URL parameters for client filters and god mode
         const urlParams = new URLSearchParams(window.location.search);
         const clientsParam = urlParams.get('clients');
         if (clientsParam) {
             clientFilters = clientsParam.split(',').filter(Boolean);
+        }
+        const godModeKey = urlParams.get('godMode');
+        if (godModeKey) {
+            godMode = true;
         }
 
         function updateClientTags() {
@@ -267,6 +279,11 @@
         function removeClientFilter(clientId) {
             clientFilters = clientFilters.filter(id => id !== clientId);
             updateClientTags();
+            fetchTracks();
+        }
+
+        function toggleHistorical() {
+            showHistorical = document.getElementById('historical-toggle').checked;
             fetchTracks();
         }
 
@@ -320,29 +337,62 @@
 
         function updateTracksList() {
             const tracksList = document.getElementById('tracks-list');
-            const activeTracks = Object.values(tracks).filter(t => t.isActive);
+            const allTracks = Object.values(tracks);
 
-            if (activeTracks.length === 0) {
-                tracksList.innerHTML = '<div class="no-tracks">No active tracks</div>';
+            if (allTracks.length === 0) {
+                tracksList.innerHTML = '<div class="no-tracks">No tracks found</div>';
                 return;
             }
 
-            tracksList.innerHTML = activeTracks.map(track => {
-                const distance = calculateDistance(track.points);
-                const pointCount = track.points.length;
-                const isSelected = track.id === selectedTrackId;
+            const activeTracks = allTracks.filter(t => t.isActive);
+            const inactiveTracks = allTracks.filter(t => !t.isActive);
 
-                return `
-                    <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${track.id}')">
-                        <div class="track-name">
-                            <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${track.color || '#FF5722'}; margin-right: 8px;"></span>
-                            ${track.userId} - ${track.name}
+            let html = '';
+
+            if (activeTracks.length > 0) {
+                html += activeTracks.map(track => {
+                    const distance = calculateDistance(track.points);
+                    const pointCount = track.points.length;
+                    const isSelected = track.id === selectedTrackId;
+
+                    return `
+                        <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${track.id}')">
+                            <div class="track-name">
+                                <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${track.color || '#FF5722'}; margin-right: 8px;"></span>
+                                ${track.userId} - ${track.name}
+                            </div>
+                            <div class="track-info">${pointCount} points · Started ${formatTime(track.startTime)}</div>
+                            <div class="track-distance">${formatDistance(distance)}</div>
                         </div>
-                        <div class="track-info">${pointCount} points · Started ${formatTime(track.startTime)}</div>
-                        <div class="track-distance">${formatDistance(distance)}</div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            }
+
+            if (showHistorical && inactiveTracks.length > 0) {
+                html += '<div style="margin-top: 12px; padding: 8px; font-size: 12px; color: #999; border-top: 1px solid #ddd;">Historical Tracks</div>';
+                html += inactiveTracks.map(track => {
+                    const distance = calculateDistance(track.points);
+                    const pointCount = track.points.length;
+                    const isSelected = track.id === selectedTrackId;
+
+                    return `
+                        <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${track.id}')" style="opacity: 0.7;">
+                            <div class="track-name">
+                                <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${track.color || '#FF5722'}; margin-right: 8px;"></span>
+                                ${track.userId} - ${track.name}
+                            </div>
+                            <div class="track-info">${pointCount} points · ${formatTime(track.startTime)} - ${formatTime(track.endTime || track.startTime)}</div>
+                            <div class="track-distance">${formatDistance(distance)}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            if (html === '') {
+                tracksList.innerHTML = '<div class="no-tracks">No tracks found</div>';
+            } else {
+                tracksList.innerHTML = html;
+            }
         }
 
         function selectTrack(trackId) {
@@ -448,8 +498,13 @@
         async function fetchTracks() {
             try {
                 const params = new URLSearchParams();
-                if (clientFilters.length > 0) {
+                if (godMode) {
+                    params.set('godMode', urlParams.get('godMode'));
+                } else if (clientFilters.length > 0) {
                     params.set('clients', clientFilters.join(','));
+                }
+                if (showHistorical) {
+                    params.set('historical', 'true');
                 }
                 const url = `/api/tracks${params.toString() ? '?' + params.toString() : ''}`;
                 const response = await fetch(url);

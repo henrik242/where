@@ -54,24 +54,44 @@ class LocationTrackingService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         trackRepository = TrackRepository.getInstance(this)
 
         serviceScope.launch {
             val userPreferences = UserPreferences.getInstance(this@LocationTrackingService)
             if (userPreferences.onlineTrackingEnabled) {
-                val clientIdManager = ClientIdManager.getInstance(this@LocationTrackingService)
-                val clientId = clientIdManager.getClientId()
-                onlineTrackingClient = OnlineTrackingClient(
-                    serverUrl = userPreferences.trackingServerUrl,
-                    clientId = clientId
-                )
-                val trackName = trackRepository.currentTrack.value?.name ?: "Track"
-                onlineTrackingClient?.startTrack(trackName)
+                enableOnlineTracking()
             }
         }
 
         createNotificationChannel()
+    }
+
+    fun enableOnlineTracking() {
+        serviceScope.launch {
+            val userPreferences = UserPreferences.getInstance(this@LocationTrackingService)
+            val clientIdManager = ClientIdManager.getInstance(this@LocationTrackingService)
+            val clientId = clientIdManager.getClientId()
+            onlineTrackingClient = OnlineTrackingClient(
+                serverUrl = userPreferences.trackingServerUrl,
+                clientId = clientId
+            )
+
+            // Sync existing track if already recording
+            val currentTrack = trackRepository.currentTrack.value
+            if (currentTrack != null && currentTrack.isRecording) {
+                onlineTrackingClient?.syncExistingTrack(currentTrack)
+            } else {
+                val trackName = currentTrack?.name ?: "Track"
+                onlineTrackingClient?.startTrack(trackName)
+            }
+        }
+    }
+
+    fun disableOnlineTracking() {
+        onlineTrackingClient?.stopTrack()
+        onlineTrackingClient = null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -155,6 +175,7 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         fusedLocationClient.removeLocationUpdates(locationCallback)
         onlineTrackingClient?.stopTrack()
         serviceScope.cancel()
@@ -168,6 +189,8 @@ class LocationTrackingService : Service() {
         private const val LOCATION_UPDATE_INTERVAL = 5000L // 5 seconds
         private const val FASTEST_UPDATE_INTERVAL = 2000L // 2 seconds
 
+        private var instance: LocationTrackingService? = null
+
         fun start(context: Context) {
             val intent = Intent(context, LocationTrackingService::class.java)
             context.startForegroundService(intent)
@@ -176,6 +199,14 @@ class LocationTrackingService : Service() {
         fun stop(context: Context) {
             val intent = Intent(context, LocationTrackingService::class.java)
             context.stopService(intent)
+        }
+
+        fun enableOnlineTracking(context: Context) {
+            instance?.enableOnlineTracking()
+        }
+
+        fun disableOnlineTracking(context: Context) {
+            instance?.disableOnlineTracking()
         }
     }
 }

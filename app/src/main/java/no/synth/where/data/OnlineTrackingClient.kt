@@ -55,6 +55,63 @@ class OnlineTrackingClient(
         }
     }
 
+    fun syncExistingTrack(track: Track) {
+        scope.launch {
+            try {
+                // Create track on server
+                val json = JSONObject().apply {
+                    put("userId", clientId)
+                    put("name", track.name)
+                }
+
+                val body = json.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("$serverUrl/api/tracks")
+                    .post(body)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val responseBody = response.body.string()
+                    val trackId = JSONObject(responseBody).getString("id")
+                    currentTrackId = trackId
+                    Log.d("OnlineTracking", "Track synced: $trackId")
+
+                    // Send all existing points
+                    track.points.forEach { point ->
+                        sendPointSync(trackId, point.latLng, point.altitude, point.accuracy)
+                    }
+                } else {
+                    Log.e("OnlineTracking", "Failed to sync track: ${response.code}")
+                }
+            } catch (e: Exception) {
+                Log.e("OnlineTracking", "Error syncing track", e)
+            }
+        }
+    }
+
+    private fun sendPointSync(trackId: String, latLng: LatLng, altitude: Double?, accuracy: Float?) {
+        try {
+            val json = JSONObject().apply {
+                put("lat", latLng.latitude)
+                put("lon", latLng.longitude)
+                put("timestamp", System.currentTimeMillis())
+                altitude?.let { put("altitude", it) }
+                accuracy?.let { put("accuracy", it.toDouble()) }
+            }
+
+            val body = json.toString().toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url("$serverUrl/api/tracks/$trackId/points")
+                .post(body)
+                .build()
+
+            client.newCall(request).execute()
+        } catch (e: Exception) {
+            Log.e("OnlineTracking", "Error sending sync point", e)
+        }
+    }
+
     fun sendPoint(latLng: LatLng, altitude: Double? = null, accuracy: Float? = null) {
         val trackId = currentTrackId ?: return
 
