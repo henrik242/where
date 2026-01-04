@@ -159,7 +159,7 @@ fun DownloadScreen(
                     val (size, count) = getLayerStats("kartverket")
                     LayerOverviewCard(
                         layerName = "Kartverket",
-                        description = "Norwegian standard topographic maps",
+                        description = "Kartverket topographic maps",
                         tileCount = count,
                         totalSize = size,
                         formatBytes = ::formatBytes,
@@ -174,8 +174,8 @@ fun DownloadScreen(
                     val trigger = refreshTrigger
                     val (size, count) = getLayerStats("toporaster")
                     LayerOverviewCard(
-                        layerName = "Toporaster",
-                        description = "Norwegian hiking & outdoor maps",
+                        layerName = "Kartverket toporaster",
+                        description = "Kartverket topographic raster maps",
                         tileCount = count,
                         totalSize = size,
                         formatBytes = ::formatBytes,
@@ -190,8 +190,8 @@ fun DownloadScreen(
                     val trigger = refreshTrigger
                     val (size, count) = getLayerStats("sjokartraster")
                     LayerOverviewCard(
-                        layerName = "Sjøkartraster",
-                        description = "Norwegian nautical charts",
+                        layerName = "Kartverket sjøkart",
+                        description = "Kartverket nautical charts",
                         tileCount = count,
                         totalSize = size,
                         formatBytes = ::formatBytes,
@@ -207,7 +207,7 @@ fun DownloadScreen(
                     val (size, count) = getLayerStats("osm")
                     LayerOverviewCard(
                         layerName = "OpenStreetMap",
-                        description = "Standard street maps",
+                        description = "Community-sourced street maps",
                         tileCount = count,
                         totalSize = size,
                         formatBytes = ::formatBytes,
@@ -223,7 +223,7 @@ fun DownloadScreen(
                     val (size, count) = getLayerStats("opentopomap")
                     LayerOverviewCard(
                         layerName = "OpenTopoMap",
-                        description = "International hiking maps",
+                        description = "Topographic maps with hiking trails (OSM)",
                         tileCount = count,
                         totalSize = size,
                         formatBytes = ::formatBytes,
@@ -239,7 +239,7 @@ fun DownloadScreen(
                     val (size, count) = getLayerStats("waymarkedtrails")
                     LayerOverviewCard(
                         layerName = "Waymarked Trails",
-                        description = "Hiking trail markers",
+                        description = "Hiking trail overlay (OSM-based)",
                         tileCount = count,
                         totalSize = size,
                         formatBytes = ::formatBytes,
