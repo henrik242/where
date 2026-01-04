@@ -54,6 +54,19 @@ class TrackRepository private constructor(context: Context) {
         }
     }
 
+    private fun getUniqueTrackName(baseName: String): String {
+        val existingNames = _tracks.map { it.name }.toSet()
+        if (!existingNames.contains(baseName)) {
+            return baseName
+        }
+
+        var counter = 2
+        while (existingNames.contains("$baseName ($counter)")) {
+            counter++
+        }
+        return "$baseName ($counter)"
+    }
+
     fun startNewTrack(name: String = "Track ${System.currentTimeMillis()}") {
         val track = Track(
             name = name,
@@ -84,7 +97,9 @@ class TrackRepository private constructor(context: Context) {
 
     fun stopRecording() {
         val current = _currentTrack.value ?: return
+        val uniqueName = getUniqueTrackName(current.name)
         val finishedTrack = current.copy(
+            name = uniqueName,
             endTime = System.currentTimeMillis(),
             isRecording = false
         )
@@ -128,12 +143,15 @@ class TrackRepository private constructor(context: Context) {
 
     fun importTrack(gpxContent: String): Boolean {
         val track = Track.fromGPX(gpxContent) ?: return false
-        _tracks.add(0, track)
+        val uniqueName = getUniqueTrackName(track.name)
+        val trackWithUniqueName = track.copy(name = uniqueName)
+        _tracks.add(0, trackWithUniqueName)
         saveTracks()
         return true
     }
 
     fun createTrackFromPoints(name: String, rulerPoints: List<RulerPoint>) {
+        val uniqueName = getUniqueTrackName(name)
         val trackPoints = rulerPoints.map { rulerPoint ->
             TrackPoint(
                 latLng = rulerPoint.latLng,
@@ -143,7 +161,7 @@ class TrackRepository private constructor(context: Context) {
             )
         }
         val track = Track(
-            name = name,
+            name = uniqueName,
             points = trackPoints,
             startTime = System.currentTimeMillis(),
             endTime = System.currentTimeMillis(),

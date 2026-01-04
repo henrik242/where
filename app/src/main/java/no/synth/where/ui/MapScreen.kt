@@ -27,6 +27,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
+import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.MapStyle
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointsRepository
@@ -88,11 +89,80 @@ fun MapScreen(
 
     var showStopTrackDialog by remember { mutableStateOf(false) }
     var trackNameInput by remember { mutableStateOf("") }
+
+    // Geocode location when stop dialog opens
+    LaunchedEffect(showStopTrackDialog) {
+        if (showStopTrackDialog) {
+            val track = currentTrack
+            if (track != null && trackNameInput.isBlank() && track.points.isNotEmpty()) {
+                // Get start and end locations
+                val firstPoint = track.points.first()
+                val lastPoint = track.points.last()
+
+                val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
+
+                // Check if start and end are different (more than 100 meters apart)
+                val distance = FloatArray(1)
+                android.location.Location.distanceBetween(
+                    firstPoint.latLng.latitude, firstPoint.latLng.longitude,
+                    lastPoint.latLng.latitude, lastPoint.latLng.longitude,
+                    distance
+                )
+
+                val baseName = if (distance[0] > 100 && startName != null) {
+                    // Different locations - use "Start → End" format
+                    val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
+                    if (endName != null && startName != endName) {
+                        "$startName → $endName"
+                    } else {
+                        startName
+                    }
+                } else {
+                    // Same location - just use start name
+                    startName
+                }
+
+                // Make name unique by checking existing tracks
+                if (baseName != null) {
+                    val existingNames = trackRepository.tracks.map { it.name }.toSet()
+                    trackNameInput = if (!existingNames.contains(baseName)) {
+                        baseName
+                    } else {
+                        var counter = 2
+                        while (existingNames.contains("$baseName ($counter)")) {
+                            counter++
+                        }
+                        "$baseName ($counter)"
+                    }
+                }
+            }
+        }
+    }
     var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
 
     var showSavePointDialog by remember { mutableStateOf(false) }
     var savePointLatLng by remember { mutableStateOf<LatLng?>(null) }
     var savePointName by remember { mutableStateOf("") }
+
+    // Geocode location when save point dialog opens
+    LaunchedEffect(showSavePointDialog, savePointLatLng) {
+        if (showSavePointDialog && savePointLatLng != null && savePointName.isBlank()) {
+            val locationName = GeocodingHelper.reverseGeocode(savePointLatLng!!)
+            if (locationName != null) {
+                // Make name unique by checking existing points
+                val existingNames = savedPointsRepository.savedPoints.map { it.name }.toSet()
+                savePointName = if (!existingNames.contains(locationName)) {
+                    locationName
+                } else {
+                    var counter = 2
+                    while (existingNames.contains("$locationName ($counter)")) {
+                        counter++
+                    }
+                    "$locationName ($counter)"
+                }
+            }
+        }
+    }
 
     var clickedPoint by remember { mutableStateOf<no.synth.where.data.SavedPoint?>(null) }
     var showPointInfoDialog by remember { mutableStateOf(false) }
@@ -106,6 +176,28 @@ fun MapScreen(
     var savedCameraZoom by rememberSaveable { mutableStateOf(5.0) }
 
     var rulerState by remember { mutableStateOf(RulerState()) }
+
+    // Geocode location when ruler save dialog opens
+    LaunchedEffect(showSaveRulerAsTrackDialog) {
+        if (showSaveRulerAsTrackDialog && rulerState.points.isNotEmpty()) {
+            val firstPoint = rulerState.points.first()
+            val locationName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
+            if (locationName != null) {
+                // Make name unique by checking existing tracks
+                val existingNames = trackRepository.tracks.map { it.name }.toSet()
+                rulerTrackName = if (!existingNames.contains(locationName)) {
+                    locationName
+                } else {
+                    var counter = 2
+                    while (existingNames.contains("$locationName ($counter)")) {
+                        counter++
+                    }
+                    "$locationName ($counter)"
+                }
+            }
+        }
+    }
+
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -287,8 +379,8 @@ fun MapScreen(
                 SmallFloatingActionButton(
                     onClick = {
                         if (isRecording) {
-                            // Set default name to current track name and show dialog
-                            trackNameInput = currentTrack?.name ?: ""
+                            // Clear name input so geocoding can pre-fill it
+                            trackNameInput = ""
                             showStopTrackDialog = true
                         } else {
                             val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -492,8 +584,6 @@ fun MapScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = {
-                                    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                                    rulerTrackName = "Route " + dateFormat.format(Date())
                                     showSaveRulerAsTrackDialog = true
                                 },
                                 modifier = Modifier.fillMaxWidth()
