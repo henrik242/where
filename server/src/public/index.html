@@ -31,6 +31,38 @@
             width: 100%;
         }
 
+        .god-mode-banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            z-index: 2;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-weight: 600;
+        }
+
+        .god-mode-banner button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .god-mode-banner button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
         .info-panel {
             position: absolute;
             top: 20px;
@@ -41,6 +73,10 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             max-width: 300px;
             z-index: 1;
+        }
+
+        .info-panel.god-mode-active {
+            top: 70px;
         }
 
         .info-panel h2 {
@@ -180,8 +216,12 @@
     </style>
 </head>
 <body>
+    <div id="god-mode-banner" class="god-mode-banner" style="display: none;">
+        <span>👑 GOD MODE ACTIVE - Viewing all tracks</span>
+        <button onclick="disableGodMode()">Disable</button>
+    </div>
     <div id="map"></div>
-    <div class="info-panel">
+    <div class="info-panel" id="info-panel">
         <h2>Live Tracks</h2>
         <div class="client-filter">
             <h3>Filter by Client ID</h3>
@@ -248,6 +288,28 @@
         const godModeKey = urlParams.get('godMode');
         if (godModeKey) {
             godMode = true;
+            updateGodModeBanner();
+        }
+
+        function updateGodModeBanner() {
+            const banner = document.getElementById('god-mode-banner');
+            const infoPanel = document.getElementById('info-panel');
+            if (godMode) {
+                banner.style.display = 'flex';
+                infoPanel.classList.add('god-mode-active');
+            } else {
+                banner.style.display = 'none';
+                infoPanel.classList.remove('god-mode-active');
+            }
+        }
+
+        function disableGodMode() {
+            godMode = false;
+            const url = new URL(window.location);
+            url.searchParams.delete('godMode');
+            window.history.replaceState({}, '', url);
+            updateGodModeBanner();
+            fetchTracks();
         }
 
         function updateClientTags() {
