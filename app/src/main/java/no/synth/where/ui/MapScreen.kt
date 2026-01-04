@@ -63,6 +63,28 @@ enum class MapLayer {
 }
 
 @Composable
+private fun LayerMenuItem(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text((if (isSelected) "✓ " else "") + text) },
+        onClick = onClick
+    )
+}
+
+@Composable
+private fun MenuSection(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
 fun MapScreen(
     onSettingsClick: () -> Unit,
     showCountyBorders: Boolean,
@@ -302,70 +324,71 @@ fun MapScreen(
                     expanded = showLayerMenu,
                     onDismissRequest = { showLayerMenu = false }
                 ) {
-                    Text(
-                        text = "Map Layers",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    DropdownMenuItem(
-                        text = { Text((if (selectedLayer == MapLayer.KARTVERKET) "✓ " else "") + "Kartverket (Norway)") },
+                    MenuSection("Map Layers")
+
+                    LayerMenuItem(
+                        text = "Kartverket (Norway)",
+                        isSelected = selectedLayer == MapLayer.KARTVERKET,
                         onClick = {
                             selectedLayer = MapLayer.KARTVERKET
                             showLayerMenu = false
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text((if (selectedLayer == MapLayer.TOPORASTER) "✓ " else "") + "Kartverket toporaster") },
+                    LayerMenuItem(
+                        text = "Kartverket toporaster",
+                        isSelected = selectedLayer == MapLayer.TOPORASTER,
                         onClick = {
                             selectedLayer = MapLayer.TOPORASTER
                             showLayerMenu = false
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text((if (selectedLayer == MapLayer.SJOKARTRASTER) "✓ " else "") + "Kartverket sjøkart") },
+                    LayerMenuItem(
+                        text = "Kartverket sjøkart",
+                        isSelected = selectedLayer == MapLayer.SJOKARTRASTER,
                         onClick = {
                             selectedLayer = MapLayer.SJOKARTRASTER
                             showLayerMenu = false
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text((if (selectedLayer == MapLayer.OSM) "✓ " else "") + "OpenStreetMap") },
+                    LayerMenuItem(
+                        text = "OpenStreetMap",
+                        isSelected = selectedLayer == MapLayer.OSM,
                         onClick = {
                             selectedLayer = MapLayer.OSM
                             showLayerMenu = false
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text((if (selectedLayer == MapLayer.OPENTOPOMAP) "✓ " else "") + "OpenTopoMap") },
+                    LayerMenuItem(
+                        text = "OpenTopoMap",
+                        isSelected = selectedLayer == MapLayer.OPENTOPOMAP,
                         onClick = {
                             selectedLayer = MapLayer.OPENTOPOMAP
                             showLayerMenu = false
                         }
                     )
+
                     HorizontalDivider()
-                    Text(
-                        text = "Overlays",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    DropdownMenuItem(
-                        text = { Text((if (showWaymarkedTrails) "✓ " else "") + "Waymarked Trails (OSM)") },
+                    MenuSection("Overlays")
+
+                    LayerMenuItem(
+                        text = "Waymarked Trails (OSM)",
+                        isSelected = showWaymarkedTrails,
                         onClick = {
                             showWaymarkedTrails = !showWaymarkedTrails
                             showLayerMenu = false
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text((if (showCountyBorders) "✓ " else "") + "County Borders (Norway)") },
+                    LayerMenuItem(
+                        text = "County Borders (Norway)",
+                        isSelected = showCountyBorders,
                         onClick = {
                             onShowCountyBordersChange(!showCountyBorders)
                             showLayerMenu = false
                         }
                     )
-                    DropdownMenuItem(
-                        text = { Text((if (showSavedPoints) "✓ " else "") + "Saved Points") },
+                    LayerMenuItem(
+                        text = "Saved Points",
+                        isSelected = showSavedPoints,
                         onClick = {
                             onShowSavedPointsChange(!showSavedPoints)
                             showLayerMenu = false
