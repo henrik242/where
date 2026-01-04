@@ -6,7 +6,10 @@ import android.location.Location
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,6 +27,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import no.synth.where.data.MapStyle
 import no.synth.where.data.RulerState
+import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.service.LocationTrackingService
@@ -55,10 +59,17 @@ enum class MapLayer {
 @Composable
 fun MapScreen(
     onSettingsClick: () -> Unit,
-    showCountyBorders: Boolean
+    showCountyBorders: Boolean,
+    onShowCountyBordersChange: (Boolean) -> Unit,
+    showSavedPoints: Boolean,
+    onShowSavedPointsChange: (Boolean) -> Unit,
+    viewingPoint: no.synth.where.data.SavedPoint? = null,
+    onClearViewingPoint: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val trackRepository = remember { TrackRepository.getInstance(context) }
+    val savedPointsRepository = remember { SavedPointsRepository.getInstance(context) }
+    val savedPoints = savedPointsRepository.savedPoints
     val isRecording by trackRepository.isRecording
     val currentTrack by trackRepository.currentTrack.collectAsState()
     val viewingTrack by trackRepository.viewingTrack.collectAsState()
@@ -73,6 +84,13 @@ fun MapScreen(
     var showStopTrackDialog by remember { mutableStateOf(false) }
     var trackNameInput by remember { mutableStateOf("") }
     var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
+
+    var showSavePointDialog by remember { mutableStateOf(false) }
+    var savePointLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var savePointName by remember { mutableStateOf("") }
+
+    var clickedPoint by remember { mutableStateOf<no.synth.where.data.SavedPoint?>(null) }
+    var showPointInfoDialog by remember { mutableStateOf(false) }
 
     // Save camera position across navigation
     var savedCameraLat by rememberSaveable { mutableStateOf(65.0) }
@@ -161,6 +179,20 @@ fun MapScreen(
         }
     }
 
+    LaunchedEffect(viewingPoint, mapInstance) {
+        val point = viewingPoint
+        val map = mapInstance
+        if (point != null && map != null) {
+            kotlinx.coroutines.delay(100)
+            map.animateCamera(
+                org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                    point.latLng,
+                    15.0
+                )
+            )
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
@@ -169,13 +201,19 @@ fun MapScreen(
                     onClick = { showLayerMenu = true },
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Icons.Filled.Layers, contentDescription = "Select Layer")
+                    Icon(Icons.Filled.Layers, contentDescription = "Layers & Overlays")
                 }
 
                 DropdownMenu(
                     expanded = showLayerMenu,
                     onDismissRequest = { showLayerMenu = false }
                 ) {
+                    Text(
+                        text = "Map Layers",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     DropdownMenuItem(
                         text = { Text(if (selectedLayer == MapLayer.KARTVERKET) "✓ Kartverket" else "Kartverket") },
                         onClick = {
@@ -208,6 +246,27 @@ fun MapScreen(
                         text = { Text(if (selectedLayer == MapLayer.OPENTOPOMAP) "✓ OpenTopoMap (Hiking)" else "OpenTopoMap (Hiking)") },
                         onClick = {
                             selectedLayer = MapLayer.OPENTOPOMAP
+                            showLayerMenu = false
+                        }
+                    )
+                    HorizontalDivider()
+                    Text(
+                        text = "Overlays",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (showCountyBorders) "✓ County Borders" else "County Borders") },
+                        onClick = {
+                            onShowCountyBordersChange(!showCountyBorders)
+                            showLayerMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (showSavedPoints) "✓ Saved Points" else "Saved Points") },
+                        onClick = {
+                            onShowSavedPointsChange(!showSavedPoints)
                             showLayerMenu = false
                         }
                     )
@@ -320,6 +379,7 @@ fun MapScreen(
 
                 Spacer(modifier = Modifier.size(8.dp))
 
+
                 SmallFloatingActionButton(
                     onClick = onSettingsClick,
                     modifier = Modifier.size(48.dp)
@@ -335,6 +395,8 @@ fun MapScreen(
                 selectedLayer = selectedLayer,
                 hasLocationPermission = hasLocationPermission,
                 showCountyBorders = showCountyBorders,
+                showSavedPoints = showSavedPoints,
+                savedPoints = savedPoints,
                 currentTrack = currentTrack,
                 viewingTrack = viewingTrack,
                 savedCameraLat = savedCameraLat,
@@ -343,6 +405,15 @@ fun MapScreen(
                 rulerState = rulerState,
                 onRulerPointAdded = { latLng ->
                     rulerState = rulerState.addPoint(latLng)
+                },
+                onLongPress = { latLng ->
+                    savePointLatLng = latLng
+                    savePointName = ""
+                    showSavePointDialog = true
+                },
+                onPointClick = { point ->
+                    clickedPoint = point
+                    showPointInfoDialog = true
                 }
             )
 
@@ -481,6 +552,46 @@ fun MapScreen(
                     }
                 }
             }
+
+            viewingPoint?.let { point ->
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(
+                                    color = Color(android.graphics.Color.parseColor(point.color)),
+                                    shape = CircleShape
+                                )
+                        )
+                        Text(
+                            text = point.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = onClearViewingPoint
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Close Point View"
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -545,6 +656,175 @@ fun MapScreen(
                     onClick = {
                         showStopTrackDialog = false
                         trackNameInput = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showSavePointDialog && savePointLatLng != null) {
+        AlertDialog(
+            onDismissRequest = { showSavePointDialog = false },
+            title = { Text("Save Point") },
+            text = {
+                Column {
+                    Text(
+                        text = "Enter a name for this point:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = savePointName,
+                        onValueChange = { savePointName = it },
+                        label = { Text("Point Name") },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (savePointName.isNotBlank()) {
+                            savedPointsRepository.addPoint(
+                                name = savePointName,
+                                latLng = savePointLatLng!!
+                            )
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Point saved")
+                            }
+                        }
+                        showSavePointDialog = false
+                        savePointName = ""
+                        savePointLatLng = null
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSavePointDialog = false
+                        savePointName = ""
+                        savePointLatLng = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showPointInfoDialog && clickedPoint != null) {
+        var editName by remember { mutableStateOf(clickedPoint!!.name) }
+        var editDescription by remember { mutableStateOf(clickedPoint!!.description) }
+        var editColor by remember { mutableStateOf(clickedPoint!!.color) }
+
+        val colors = listOf(
+            "#FF5722" to "Red",
+            "#2196F3" to "Blue",
+            "#4CAF50" to "Green",
+            "#FFC107" to "Yellow",
+            "#9C27B0" to "Purple",
+            "#FF9800" to "Orange",
+            "#00BCD4" to "Cyan",
+            "#E91E63" to "Pink"
+        )
+
+        AlertDialog(
+            onDismissRequest = { showPointInfoDialog = false },
+            title = { Text("Edit Point") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = editDescription,
+                        onValueChange = { editDescription = it },
+                        label = { Text("Description (optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text("Color", style = MaterialTheme.typography.labelMedium)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        colors.forEach { (colorHex, _) ->
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        color = Color(android.graphics.Color.parseColor(colorHex)),
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    )
+                                    .clickable { editColor = colorHex }
+                                    .then(
+                                        if (editColor == colorHex) {
+                                            Modifier.padding(4.dp)
+                                        } else Modifier
+                                    )
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "${clickedPoint!!.latLng.latitude.toString().take(10)}, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            savedPointsRepository.deletePoint(clickedPoint!!.id)
+                            showPointInfoDialog = false
+                            clickedPoint = null
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Point deleted")
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Delete")
+                    }
+                    TextButton(
+                        onClick = {
+                            if (editName.isNotBlank()) {
+                                savedPointsRepository.updatePoint(
+                                    clickedPoint!!.id,
+                                    editName,
+                                    editDescription,
+                                    editColor
+                                )
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Point updated")
+                                }
+                            }
+                            showPointInfoDialog = false
+                            clickedPoint = null
+                        }
+                    ) {
+                        Text("Save")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showPointInfoDialog = false
+                        clickedPoint = null
                     }
                 ) {
                     Text("Cancel")
@@ -703,6 +983,49 @@ private fun updateRulerOnMap(style: Style, rulerState: RulerState) {
     }
 }
 
+private fun updateSavedPointsOnMap(style: Style, savedPoints: List<no.synth.where.data.SavedPoint>) {
+    try {
+        val sourceId = "saved-points-source"
+        val layerId = "saved-points-layer"
+
+        style.getLayer(layerId)?.let { style.removeLayer(it) }
+        style.getSource(sourceId)?.let { style.removeSource(it) }
+
+        if (savedPoints.isNotEmpty()) {
+            val features = savedPoints.map { point ->
+                Feature.fromGeometry(
+                    Point.fromLngLat(point.latLng.longitude, point.latLng.latitude)
+                ).apply {
+                    addStringProperty("name", point.name)
+                    addStringProperty("color", point.color)
+                }
+            }
+
+            val source = GeoJsonSource(
+                sourceId,
+                com.google.gson.Gson().toJson(
+                    mapOf("type" to "FeatureCollection", "features" to features)
+                )
+            )
+            style.addSource(source)
+
+            val circleLayer = org.maplibre.android.style.layers.CircleLayer(layerId, sourceId)
+                .withProperties(
+                    org.maplibre.android.style.layers.PropertyFactory.circlePitchAlignment("viewport"),
+                    org.maplibre.android.style.layers.PropertyFactory.circleRadius(6f),
+                    org.maplibre.android.style.layers.PropertyFactory.circleColor(
+                        org.maplibre.android.style.expressions.Expression.get("color")
+                    ),
+                    org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth(2f),
+                    org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor("#FFFFFF")
+                )
+            style.addLayer(circleLayer)
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
 private fun formatDistance(meters: Double): String {
     return when {
         meters < 1000 -> "%.0f m".format(meters)
@@ -717,20 +1040,24 @@ fun MapLibreMapView(
     selectedLayer: MapLayer = MapLayer.KARTVERKET,
     hasLocationPermission: Boolean = false,
     showCountyBorders: Boolean = true,
+    showSavedPoints: Boolean = true,
+    savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
     currentTrack: Track? = null,
     viewingTrack: Track? = null,
     savedCameraLat: Double = 65.0,
     savedCameraLon: Double = 10.0,
     savedCameraZoom: Double = 5.0,
     rulerState: RulerState = RulerState(),
-    onRulerPointAdded: (LatLng) -> Unit = {}
+    onRulerPointAdded: (LatLng) -> Unit = {},
+    onLongPress: (LatLng) -> Unit = {},
+    onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {}
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     val context = LocalContext.current
 
-    LaunchedEffect(selectedLayer, showCountyBorders, map) {
+    LaunchedEffect(selectedLayer, showCountyBorders, showSavedPoints, savedPoints.size, map) {
         map?.let { mapInstance ->
             try {
                 val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders)
@@ -742,6 +1069,10 @@ fun MapLibreMapView(
                         val trackToShow = current ?: viewing
                         updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
                         updateRulerOnMap(style, rulerState)
+
+                        if (showSavedPoints && savedPoints.isNotEmpty()) {
+                            updateSavedPointsOnMap(style, savedPoints)
+                        }
 
                         if (viewing == null && current == null) {
                             mapInstance.cameraPosition = CameraPosition.Builder()
@@ -772,11 +1103,45 @@ fun MapLibreMapView(
         }
     }
 
-    LaunchedEffect(rulerState.isActive, map) {
+    LaunchedEffect(rulerState.isActive, savedPoints, map) {
         map?.let { mapInstance ->
             mapInstance.addOnMapClickListener { point ->
                 if (rulerState.isActive) {
                     onRulerPointAdded(point)
+                    true
+                } else {
+                    // Check if a saved point was clicked
+                    // Find the closest point within 500 meters
+                    val clickedSavedPoint = savedPoints.minByOrNull { savedPoint ->
+                        val distance = FloatArray(1)
+                        android.location.Location.distanceBetween(
+                            point.latitude, point.longitude,
+                            savedPoint.latLng.latitude, savedPoint.latLng.longitude,
+                            distance
+                        )
+                        distance[0]
+                    }?.let { closestPoint ->
+                        val distance = FloatArray(1)
+                        android.location.Location.distanceBetween(
+                            point.latitude, point.longitude,
+                            closestPoint.latLng.latitude, closestPoint.latLng.longitude,
+                            distance
+                        )
+                        if (distance[0] < 500) closestPoint else null // 500 meters threshold
+                    }
+
+                    if (clickedSavedPoint != null) {
+                        onPointClick(clickedSavedPoint)
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+
+            mapInstance.addOnMapLongClickListener { point ->
+                if (!rulerState.isActive) {
+                    onLongPress(point)
                     true
                 } else {
                     false

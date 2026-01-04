@@ -24,6 +24,7 @@ fun SettingsScreen(
     onBackClick: () -> Unit,
     onDownloadClick: () -> Unit,
     onTracksClick: () -> Unit,
+    onSavedPointsClick: () -> Unit,
     showCountyBorders: Boolean,
     onShowCountyBordersChange: (Boolean) -> Unit
 ) {
@@ -55,25 +56,6 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // County borders toggle
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Show County Borders",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Switch(
-                    checked = showCountyBorders,
-                    onCheckedChange = onShowCountyBordersChange
-                )
-            }
-
-            HorizontalDivider()
 
             Column(
                 modifier = Modifier
@@ -150,6 +132,26 @@ fun SettingsScreen(
                 Icon(
                     Icons.Filled.ChevronRight,
                     contentDescription = "Go to Saved Tracks"
+                )
+            }
+
+            HorizontalDivider()
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSavedPointsClick() }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Saved Points",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = "Go to Saved Points"
                 )
             }
 
