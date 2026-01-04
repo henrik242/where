@@ -359,17 +359,58 @@
         }
 
         function updateMap() {
+            // Wait for map to be loaded
+            if (!map.loaded()) {
+                map.once('load', () => updateMap());
+                return;
+            }
+
             Object.keys(tracks).forEach(trackId => {
                 const track = tracks[trackId];
                 const sourceId = `track-${trackId}`;
                 const layerId = `track-layer-${trackId}`;
 
-                if (track.points.length < 2) {
+                // Remove track if no points
+                if (track.points.length === 0) {
                     if (map.getLayer(layerId)) map.removeLayer(layerId);
                     if (map.getSource(sourceId)) map.removeSource(sourceId);
                     return;
                 }
 
+                // For single point, show as a marker
+                if (track.points.length === 1) {
+                    const geojson = {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [track.points[0].lon, track.points[0].lat]
+                        }
+                    };
+
+                    if (map.getSource(sourceId)) {
+                        map.getSource(sourceId).setData(geojson);
+                    } else {
+                        map.addSource(sourceId, {
+                            type: 'geojson',
+                            data: geojson
+                        });
+
+                        map.addLayer({
+                            id: layerId,
+                            type: 'circle',
+                            source: sourceId,
+                            paint: {
+                                'circle-radius': 6,
+                                'circle-color': track.color || '#FF5722',
+                                'circle-stroke-width': 2,
+                                'circle-stroke-color': '#FFFFFF'
+                            }
+                        });
+                    }
+                    return;
+                }
+
+                // For multiple points, show as a line
                 const geojson = {
                     type: 'Feature',
                     geometry: {
@@ -380,6 +421,10 @@
 
                 if (map.getSource(sourceId)) {
                     map.getSource(sourceId).setData(geojson);
+                    // Update line width if selection changed
+                    if (map.getLayer(layerId)) {
+                        map.setPaintProperty(layerId, 'line-width', trackId === selectedTrackId ? 4 : 3);
+                    }
                 } else {
                     map.addSource(sourceId, {
                         type: 'geojson',
