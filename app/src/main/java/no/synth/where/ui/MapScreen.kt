@@ -274,37 +274,6 @@ fun MapScreen(
 
                 Spacer(modifier = Modifier.size(8.dp))
 
-                SmallFloatingActionButton(
-                    onClick = {
-                        mapInstance?.let { map ->
-                            val currentZoom = map.cameraPosition.zoom
-                            map.animateCamera(
-                                org.maplibre.android.camera.CameraUpdateFactory.zoomTo(currentZoom + 1)
-                            )
-                        }
-                    },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Zoom In")
-                }
-
-                Spacer(modifier = Modifier.size(8.dp))
-
-                SmallFloatingActionButton(
-                    onClick = {
-                        mapInstance?.let { map ->
-                            val currentZoom = map.cameraPosition.zoom
-                            map.animateCamera(
-                                org.maplibre.android.camera.CameraUpdateFactory.zoomTo(currentZoom - 1)
-                            )
-                        }
-                    },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
-                }
-
-                Spacer(modifier = Modifier.size(8.dp))
 
                 // Record/Stop button
                 SmallFloatingActionButton(
@@ -416,6 +385,42 @@ fun MapScreen(
                     showPointInfoDialog = true
                 }
             )
+
+            // Zoom controls in top-left corner
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SmallFloatingActionButton(
+                    onClick = {
+                        mapInstance?.let { map ->
+                            val currentZoom = map.cameraPosition.zoom
+                            map.animateCamera(
+                                org.maplibre.android.camera.CameraUpdateFactory.zoomTo(currentZoom + 1)
+                            )
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Zoom In")
+                }
+
+                SmallFloatingActionButton(
+                    onClick = {
+                        mapInstance?.let { map ->
+                            val currentZoom = map.cameraPosition.zoom
+                            map.animateCamera(
+                                org.maplibre.android.camera.CameraUpdateFactory.zoomTo(currentZoom - 1)
+                            )
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
+                }
+            }
 
             if (rulerState.isActive) {
                 Card(

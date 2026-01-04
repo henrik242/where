@@ -224,6 +224,9 @@
             zoom: 10
         });
 
+        // Add zoom controls to top-left corner
+        map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
         let tracks = {};
         let selectedTrackId = null;
         let clientFilters = [];
