@@ -12,6 +12,7 @@ import no.synth.where.data.UserPreferences
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.DownloadScreen
 import no.synth.where.ui.MapScreen
+import no.synth.where.ui.SavedPointsScreen
 import no.synth.where.ui.SettingsScreen
 import no.synth.where.ui.TracksScreen
 
@@ -24,36 +25,23 @@ fun WhereApp(
     val context = LocalContext.current
     val userPreferences = remember { UserPreferences.getInstance(context) }
     val trackRepository = remember { TrackRepository.getInstance(context) }
+    var showSavedPoints by remember { mutableStateOf(true) }
+    var viewingPoint by remember { mutableStateOf<no.synth.where.data.SavedPoint?>(null) }
 
     LaunchedEffect(pendingGpxUri) {
-        pendingGpxUri?.let { uri ->
-            try {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val gpxContent = inputStream?.bufferedReader()?.use { it.readText() }
-                inputStream?.close()
-
-                if (gpxContent != null) {
-                    val track = Track.fromGPX(gpxContent)
-                    if (track != null) {
-                        trackRepository.importTrack(gpxContent)
-                        trackRepository.setViewingTrack(track)
-                        navController.navigate("map") {
-                            popUpTo("map") { inclusive = false }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-            onGpxHandled()
-        }
+        // ...existing code...
     }
 
     NavHost(navController = navController, startDestination = "map") {
         composable("map") {
             MapScreen(
                 onSettingsClick = { navController.navigate("settings") },
-                showCountyBorders = userPreferences.showCountyBorders
+                showCountyBorders = userPreferences.showCountyBorders,
+                onShowCountyBordersChange = { userPreferences.updateShowCountyBorders(it) },
+                showSavedPoints = showSavedPoints,
+                onShowSavedPointsChange = { showSavedPoints = it },
+                viewingPoint = viewingPoint,
+                onClearViewingPoint = { viewingPoint = null }
             )
         }
         composable("settings") {
@@ -61,8 +49,18 @@ fun WhereApp(
                 onBackClick = { navController.popBackStack() },
                 onDownloadClick = { navController.navigate("download") },
                 onTracksClick = { navController.navigate("tracks") },
+                onSavedPointsClick = { navController.navigate("savedpoints") },
                 showCountyBorders = userPreferences.showCountyBorders,
                 onShowCountyBordersChange = { userPreferences.updateShowCountyBorders(it) }
+            )
+        }
+        composable("savedpoints") {
+            SavedPointsScreen(
+                onBackClick = { navController.popBackStack() },
+                onShowOnMap = { point ->
+                    viewingPoint = point
+                    navController.popBackStack("map", false)
+                }
             )
         }
         composable("tracks") {
