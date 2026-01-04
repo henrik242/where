@@ -309,35 +309,35 @@ fun MapScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     DropdownMenuItem(
-                        text = { Text(if (selectedLayer == MapLayer.KARTVERKET) "✓ Kartverket" else "Kartverket") },
+                        text = { Text((if (selectedLayer == MapLayer.KARTVERKET) "✓ " else "") + "Kartverket (Norway)") },
                         onClick = {
                             selectedLayer = MapLayer.KARTVERKET
                             showLayerMenu = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(if (selectedLayer == MapLayer.TOPORASTER) "✓ Toporaster (Hiking)" else "Toporaster (Hiking)") },
+                        text = { Text((if (selectedLayer == MapLayer.TOPORASTER) "✓ " else "") + "Kartverket toporaster") },
                         onClick = {
                             selectedLayer = MapLayer.TOPORASTER
                             showLayerMenu = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(if (selectedLayer == MapLayer.SJOKARTRASTER) "✓ Sjøkartraster (Nautical)" else "Sjøkartraster (Nautical)") },
+                        text = { Text((if (selectedLayer == MapLayer.SJOKARTRASTER) "✓ " else "") + "Kartverket sjøkart") },
                         onClick = {
                             selectedLayer = MapLayer.SJOKARTRASTER
                             showLayerMenu = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(if (selectedLayer == MapLayer.OSM) "✓ OpenStreetMap" else "OpenStreetMap") },
+                        text = { Text((if (selectedLayer == MapLayer.OSM) "✓ " else "") + "OpenStreetMap") },
                         onClick = {
                             selectedLayer = MapLayer.OSM
                             showLayerMenu = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(if (selectedLayer == MapLayer.OPENTOPOMAP) "✓ OpenTopoMap (Hiking)" else "OpenTopoMap (Hiking)") },
+                        text = { Text((if (selectedLayer == MapLayer.OPENTOPOMAP) "✓ " else "") + "OpenTopoMap") },
                         onClick = {
                             selectedLayer = MapLayer.OPENTOPOMAP
                             showLayerMenu = false
@@ -351,21 +351,21 @@ fun MapScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     DropdownMenuItem(
-                        text = { Text(if (showWaymarkedTrails) "✓ Hiking Trails" else "Hiking Trails") },
+                        text = { Text((if (showWaymarkedTrails) "✓ " else "") + "Waymarked Trails (OSM)") },
                         onClick = {
                             showWaymarkedTrails = !showWaymarkedTrails
                             showLayerMenu = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(if (showCountyBorders) "✓ County Borders" else "County Borders") },
+                        text = { Text((if (showCountyBorders) "✓ " else "") + "County Borders (Norway)") },
                         onClick = {
                             onShowCountyBordersChange(!showCountyBorders)
                             showLayerMenu = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(if (showSavedPoints) "✓ Saved Points" else "Saved Points") },
+                        text = { Text((if (showSavedPoints) "✓ " else "") + "Saved Points") },
                         onClick = {
                             onShowSavedPointsChange(!showSavedPoints)
                             showLayerMenu = false
