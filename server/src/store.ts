@@ -47,12 +47,23 @@ class TrackStore {
       .filter(track => track.isActive);
   }
 
-  getTracksByClientIds(clientIds: string[]): Track[] {
-    if (clientIds.length === 0) {
-      return this.getAllActiveTracks();
-    }
+  getAllTracks(): Track[] {
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
     return Array.from(this.tracks.values())
-      .filter(track => track.isActive && clientIds.includes(track.userId));
+      .filter(track => track.startTime >= twentyFourHoursAgo);
+  }
+
+  getTracksByClientIds(clientIds: string[], includeHistorical: boolean = false): Track[] {
+    if (clientIds.length === 0) {
+      return includeHistorical ? this.getAllTracks() : this.getAllActiveTracks();
+    }
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+    return Array.from(this.tracks.values())
+      .filter(track => {
+        const matchesClient = clientIds.includes(track.userId);
+        const isRecent = track.startTime >= twentyFourHoursAgo;
+        return matchesClient && (includeHistorical ? isRecent : track.isActive);
+      });
   }
 
   updateTrack(trackId: string, updates: Partial<Track>): Track | undefined {

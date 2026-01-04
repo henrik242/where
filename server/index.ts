@@ -1,5 +1,7 @@
 import { trackStore } from './src/store';
-import type { Track, TrackUpdate } from './src/types';
+import type { Track } from './src/types';
+
+const GOD_MODE_KEY = process.env.GOD_MODE_KEY;
 
 const server = Bun.serve({
   port: process.env.PORT || 3000,
@@ -67,9 +69,21 @@ async function handleAPI(req: Request): Promise<Response> {
     // GET /api/tracks - Get all active tracks (or filtered by client IDs)
     if (path === '/api/tracks' && req.method === 'GET') {
       const clientIds = url.searchParams.get('clients')?.split(',').filter(Boolean) || [];
-      const tracks = clientIds.length > 0
-        ? trackStore.getTracksByClientIds(clientIds)
-        : trackStore.getAllActiveTracks();
+      const includeHistorical = url.searchParams.get('historical') === 'true';
+      const godModeKey = url.searchParams.get('godMode');
+
+      let tracks;
+      if (GOD_MODE_KEY && godModeKey === GOD_MODE_KEY) {
+        // God mode: show all tracks regardless of client filter (only if GOD_MODE_KEY is set)
+        tracks = includeHistorical ? trackStore.getAllTracks() : trackStore.getAllActiveTracks();
+      } else if (clientIds.length > 0) {
+        // Show only specified client IDs
+        tracks = trackStore.getTracksByClientIds(clientIds, includeHistorical);
+      } else {
+        // Default: no tracks shown unless clients are specified
+        tracks = [];
+      }
+
       return new Response(JSON.stringify(tracks), { headers });
     }
 
