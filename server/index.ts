@@ -1,7 +1,43 @@
 import { trackStore } from './src/store';
-import type { Track } from './src/types';
+import type { Track, TrackUpdate } from './src/types';
 
 const GOD_MODE_KEY = process.env.GOD_MODE_KEY;
+
+async function reverseGeocode(lat: number, lon: number): Promise<string> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+      {
+        headers: {
+          'User-Agent': 'Where-App/1.0'
+        }
+      }
+    );
+
+    if (!response.ok) return 'Unnamed Track';
+
+    const data = await response.json();
+    const addr = data.address;
+
+    // Try to build a nice name from available data
+    if (addr.road) {
+      return addr.road;
+    } else if (addr.village || addr.town || addr.city) {
+      return addr.village || addr.town || addr.city;
+    } else if (addr.county) {
+      return addr.county;
+    } else if (data.display_name) {
+      // Extract first meaningful part
+      const parts = data.display_name.split(',');
+      return parts[0].trim();
+    }
+
+    return 'Unnamed Track';
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return 'Unnamed Track';
+  }
+}
 
 const server = Bun.serve({
   port: process.env.PORT || 3000,
@@ -106,17 +142,29 @@ async function handleAPI(req: Request): Promise<Response> {
     if (path === '/api/tracks' && req.method === 'POST') {
       const body = await req.json() as Partial<Track>;
 
-      if (!body.userId || !body.name) {
+      if (!body.userId) {
         return new Response(JSON.stringify({ error: 'Missing required fields' }), {
           status: 400,
           headers
         });
       }
 
+      // Auto-generate name if not provided or if it's generic
+      let trackName = body.name || '';
+      const isGenericName = !trackName || trackName.match(/^(Track|Recording|Unnamed)/i);
+
+      if (isGenericName && body.points && body.points.length > 0) {
+        // Use first point to geocode
+        const firstPoint = body.points[0];
+        trackName = await reverseGeocode(firstPoint.lat, firstPoint.lon);
+      } else if (!trackName) {
+        trackName = 'Unnamed Track';
+      }
+
       const track: Track = {
         id: body.id || crypto.randomUUID(),
         userId: body.userId,
-        name: body.name,
+        name: trackName,
         points: body.points || [],
         startTime: Date.now(),
         isActive: true

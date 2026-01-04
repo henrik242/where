@@ -75,10 +75,24 @@ class SavedPointsRepository private constructor(context: Context) {
         }
     }
 
+    private fun getUniquePointName(baseName: String): String {
+        val existingNames = savedPoints.map { it.name }.toSet()
+        if (!existingNames.contains(baseName)) {
+            return baseName
+        }
+
+        var counter = 2
+        while (existingNames.contains("$baseName ($counter)")) {
+            counter++
+        }
+        return "$baseName ($counter)"
+    }
+
     fun addPoint(name: String, latLng: LatLng, description: String = "", color: String = "#FF5722") {
+        val uniqueName = getUniquePointName(name)
         val point = SavedPoint(
             id = java.util.UUID.randomUUID().toString(),
-            name = name,
+            name = uniqueName,
             latLng = latLng,
             description = description,
             color = color
@@ -96,8 +110,20 @@ class SavedPointsRepository private constructor(context: Context) {
         val index = savedPoints.indexOfFirst { it.id == pointId }
         if (index != -1) {
             val point = savedPoints[index]
+            // Get unique name, but exclude the current point from the check
+            val otherNames = savedPoints.filter { it.id != pointId }.map { it.name }.toSet()
+            val uniqueName = if (otherNames.contains(name)) {
+                var counter = 2
+                while (otherNames.contains("$name ($counter)")) {
+                    counter++
+                }
+                "$name ($counter)"
+            } else {
+                name
+            }
+
             savedPoints[index] = point.copy(
-                name = name,
+                name = uniqueName,
                 description = description,
                 color = color
             )
