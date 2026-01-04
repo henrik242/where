@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -460,7 +461,7 @@ fun MapScreen(
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
-                                        Icons.Filled.Undo,
+                                        Icons.AutoMirrored.Filled.Undo,
                                         contentDescription = "Remove Last Point",
                                         modifier = Modifier.size(16.dp)
                                     )
