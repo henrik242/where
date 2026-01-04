@@ -85,6 +85,7 @@ fun MapScreen(
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
     var selectedLayer by remember { mutableStateOf(MapLayer.KARTVERKET) }
     var showLayerMenu by remember { mutableStateOf(false) }
+    var showWaymarkedTrails by remember { mutableStateOf(false) }
     var hasLocationPermission by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -350,6 +351,13 @@ fun MapScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     DropdownMenuItem(
+                        text = { Text(if (showWaymarkedTrails) "✓ Hiking Trails" else "Hiking Trails") },
+                        onClick = {
+                            showWaymarkedTrails = !showWaymarkedTrails
+                            showLayerMenu = false
+                        }
+                    )
+                    DropdownMenuItem(
                         text = { Text(if (showCountyBorders) "✓ County Borders" else "County Borders") },
                         onClick = {
                             onShowCountyBordersChange(!showCountyBorders)
@@ -458,6 +466,7 @@ fun MapScreen(
                 selectedLayer = selectedLayer,
                 hasLocationPermission = hasLocationPermission,
                 showCountyBorders = showCountyBorders,
+                showWaymarkedTrails = showWaymarkedTrails,
                 showSavedPoints = showSavedPoints,
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,
@@ -1244,6 +1253,7 @@ fun MapLibreMapView(
     selectedLayer: MapLayer = MapLayer.KARTVERKET,
     hasLocationPermission: Boolean = false,
     showCountyBorders: Boolean = true,
+    showWaymarkedTrails: Boolean = false,
     showSavedPoints: Boolean = true,
     savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
     currentTrack: Track? = null,
@@ -1265,10 +1275,10 @@ fun MapLibreMapView(
     var clickListener by remember { mutableStateOf<MapLibreMap.OnMapClickListener?>(null) }
     var longClickListener by remember { mutableStateOf<MapLibreMap.OnMapLongClickListener?>(null) }
 
-    LaunchedEffect(selectedLayer, showCountyBorders, showSavedPoints, savedPoints.size, map) {
+    LaunchedEffect(selectedLayer, showCountyBorders, showWaymarkedTrails, showSavedPoints, savedPoints.size, map) {
         map?.let { mapInstance ->
             try {
-                val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders)
+                val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders, showWaymarkedTrails)
                 val viewing = viewingTrack
                 val current = currentTrack
                 mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
@@ -1385,7 +1395,7 @@ fun MapLibreMapView(
                     // Don't add any click listeners here to avoid conflicts
 
                     try {
-                        val styleJson = MapStyle.getStyle(ctx, selectedLayer)
+                        val styleJson = MapStyle.getStyle(ctx, selectedLayer, showCountyBorders, showWaymarkedTrails)
                         val viewing = viewingTrack
                         val current = currentTrack
                         mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {

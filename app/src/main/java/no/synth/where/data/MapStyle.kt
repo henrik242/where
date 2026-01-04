@@ -4,7 +4,12 @@ import android.content.Context
 import no.synth.where.ui.MapLayer
 
 object MapStyle {
-    fun getStyle(context: Context, selectedLayer: MapLayer = MapLayer.KARTVERKET, showCountyBorders: Boolean = true): String {
+    fun getStyle(
+        context: Context,
+        selectedLayer: MapLayer = MapLayer.KARTVERKET,
+        showCountyBorders: Boolean = true,
+        showWaymarkedTrails: Boolean = false
+    ): String {
         val regions = RegionsRepository.getRegions(context)
         val regionsGeoJson = regions.joinToString(",") { region ->
             val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
@@ -39,6 +44,7 @@ object MapStyle {
         val toporasterOpacity = if (selectedLayer == MapLayer.TOPORASTER) 1.0 else 0.01
         val sjokartrasterOpacity = if (selectedLayer == MapLayer.SJOKARTRASTER) 1.0 else 0.01
         val openTopoMapOpacity = if (selectedLayer == MapLayer.OPENTOPOMAP) 1.0 else 0.01
+        val waymarkedTrailsOpacity = if (showWaymarkedTrails) 1.0 else 0.0
 
         val countyBordersLayers = if (showCountyBorders) """
     {
@@ -117,6 +123,13 @@ object MapStyle {
       "tileSize": 256,
       "attribution": "© OpenTopoMap (CC-BY-SA)"
     },
+    "waymarkedtrails": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "attribution": "© Waymarked Trails, OSM"
+    },
     "regions": {
       "type": "geojson",
       "data": {
@@ -171,6 +184,14 @@ object MapStyle {
       "source": "opentopomap",
       "paint": {
         "raster-opacity": $openTopoMapOpacity
+      }
+    },
+    {
+      "id": "waymarkedtrails-layer",
+      "type": "raster",
+      "source": "waymarkedtrails",
+      "paint": {
+        "raster-opacity": $waymarkedTrailsOpacity
       }
     }${if (showCountyBorders) "," else ""}
     $countyBordersLayers

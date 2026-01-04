@@ -24,7 +24,8 @@ class MapDownloadManager(private val context: Context) {
             "toporaster" to "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator",
             "sjokartraster" to "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator",
             "osm" to "https://tile.openstreetmap.org",
-            "opentopomap" to "https://tile.opentopomap.org"
+            "opentopomap" to "https://tile.opentopomap.org",
+            "waymarkedtrails" to "https://tile.waymarkedtrails.org/hiking"
         )
 
         private val LAYER_COORD_FORMAT = mapOf(
@@ -32,7 +33,8 @@ class MapDownloadManager(private val context: Context) {
             "toporaster" to "{z}/{y}/{x}",
             "sjokartraster" to "{z}/{y}/{x}",
             "osm" to "{z}/{x}/{y}",
-            "opentopomap" to "{z}/{x}/{y}"
+            "opentopomap" to "{z}/{x}/{y}",
+            "waymarkedtrails" to "{z}/{x}/{y}"
         )
     }
 

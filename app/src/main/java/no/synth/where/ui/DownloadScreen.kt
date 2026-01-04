@@ -25,7 +25,8 @@ enum class DownloadTab {
     TOPORASTER,
     SJOKARTRASTER,
     OSM,
-    OPENTOPOMAP
+    OPENTOPOMAP,
+    WAYMARKEDTRAILS
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -231,6 +232,22 @@ fun DownloadScreen(
                     )
                 }
 
+                // Waymarked Trails layer card
+                item {
+                    @Suppress("UNUSED_VARIABLE")
+                    val trigger = refreshTrigger
+                    val (size, count) = getLayerStats("waymarkedtrails")
+                    LayerOverviewCard(
+                        layerName = "Waymarked Trails",
+                        description = "Hiking trail markers",
+                        tileCount = count,
+                        totalSize = size,
+                        formatBytes = ::formatBytes,
+                        isSelected = selectedTab == DownloadTab.WAYMARKEDTRAILS,
+                        onClick = { selectedTab = DownloadTab.WAYMARKEDTRAILS }
+                    )
+                }
+
                 item {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
@@ -244,6 +261,7 @@ fun DownloadScreen(
                             DownloadTab.SJOKARTRASTER -> "Sjøkartraster Regions"
                             DownloadTab.OSM -> "OSM Regions"
                             DownloadTab.OPENTOPOMAP -> "OpenTopoMap Regions"
+                            DownloadTab.WAYMARKEDTRAILS -> "Waymarked Trails Regions"
                         },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
@@ -287,6 +305,7 @@ fun DownloadScreen(
                         DownloadTab.SJOKARTRASTER -> "sjokartraster"
                         DownloadTab.OSM -> "osm"
                         DownloadTab.OPENTOPOMAP -> "opentopomap"
+                        DownloadTab.WAYMARKEDTRAILS -> "waymarkedtrails"
                     }
 
                     val tileInfo = downloadManager.getRegionTileInfo(region, layerName)
@@ -362,6 +381,7 @@ fun DownloadScreen(
             DownloadTab.SJOKARTRASTER -> "sjokartraster"
             DownloadTab.OSM -> "osm"
             DownloadTab.OPENTOPOMAP -> "opentopomap"
+            DownloadTab.WAYMARKEDTRAILS -> "waymarkedtrails"
         }
 
         AlertDialog(
