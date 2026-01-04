@@ -6,15 +6,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.service.LocationTrackingService
-import no.synth.where.ui.DownloadScreen
-import no.synth.where.ui.MapScreen
-import no.synth.where.ui.SavedPointsScreen
-import no.synth.where.ui.SettingsScreen
-import no.synth.where.ui.TracksScreen
+import no.synth.where.ui.*
 
 @Composable
 fun WhereApp(
@@ -29,7 +24,19 @@ fun WhereApp(
     var viewingPoint by remember { mutableStateOf<no.synth.where.data.SavedPoint?>(null) }
 
     LaunchedEffect(pendingGpxUri) {
-        // ...existing code...
+        pendingGpxUri?.let { uri ->
+            try {
+                val gpxContent = context.contentResolver.openInputStream(uri)?.use {
+                    it.bufferedReader().readText()
+                }
+                if (gpxContent != null) {
+                    trackRepository.importTrack(gpxContent)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            onGpxHandled()
+        }
     }
 
     NavHost(navController = navController, startDestination = "map") {
