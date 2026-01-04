@@ -16,7 +16,7 @@ class MapStyleTest {
     private val context = object : ContextWrapper(null) {
         private val baseDir = File("build/test-ext")
 
-        override fun getExternalFilesDir(type: String?): File? {
+        override fun getExternalFilesDir(type: String?): File {
             val target = if (type == null) baseDir else File(baseDir, type)
             if (!target.exists()) {
                 target.mkdirs()
@@ -64,11 +64,6 @@ class MapStyleTest {
     fun testStyleJsonIsValid() {
         val styleJson = MapStyle.getStyle(context)
 
-        println("Generated Style JSON:")
-        println(styleJson)
-        println("\nJSON Length: ${styleJson.length}")
-
-        // Basic JSON validation
         assertTrue("Style should start with {", styleJson.trim().startsWith("{"))
         assertTrue("Style should end with }", styleJson.trim().endsWith("}"))
         assertTrue("Style should contain version", styleJson.contains("\"version\""))
@@ -82,12 +77,10 @@ class MapStyleTest {
     fun testRegionsGeoJson() {
         val styleJson = MapStyle.getStyle(context)
 
-        // Check for region names
         assertTrue("Should contain Oslo", styleJson.contains("\"Oslo\""))
         assertTrue("Should contain Vestland", styleJson.contains("\"Vestland\""))
         assertTrue("Should contain Trøndelag", styleJson.contains("\"Trøndelag\""))
 
-        // Check for coordinates
         assertTrue("Should contain coordinates array", styleJson.contains("\"coordinates\""))
     }
 }

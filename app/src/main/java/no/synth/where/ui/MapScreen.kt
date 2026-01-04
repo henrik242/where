@@ -3,7 +3,6 @@ package no.synth.where.ui
 import android.Manifest
 import android.content.Context
 import android.location.Location
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -35,6 +34,9 @@ import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.service.LocationTrackingService
+import no.synth.where.util.DeviceUtils
+import no.synth.where.util.formatDistance
+import no.synth.where.util.NamingUtils
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.location.LocationComponent
@@ -103,14 +105,13 @@ fun MapScreen(
 
                 // Check if start and end are different (more than 100 meters apart)
                 val distance = FloatArray(1)
-                android.location.Location.distanceBetween(
+                Location.distanceBetween(
                     firstPoint.latLng.latitude, firstPoint.latLng.longitude,
                     lastPoint.latLng.latitude, lastPoint.latLng.longitude,
                     distance
                 )
 
                 val baseName = if (distance[0] > 100 && startName != null) {
-                    // Different locations - use "Start → End" format
                     val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
                     if (endName != null && startName != endName) {
                         "$startName → $endName"
@@ -118,22 +119,11 @@ fun MapScreen(
                         startName
                     }
                 } else {
-                    // Same location - just use start name
                     startName
                 }
 
-                // Make name unique by checking existing tracks
                 if (baseName != null) {
-                    val existingNames = trackRepository.tracks.map { it.name }.toSet()
-                    trackNameInput = if (!existingNames.contains(baseName)) {
-                        baseName
-                    } else {
-                        var counter = 2
-                        while (existingNames.contains("$baseName ($counter)")) {
-                            counter++
-                        }
-                        "$baseName ($counter)"
-                    }
+                    trackNameInput = NamingUtils.makeUnique(baseName, trackRepository.tracks.map { it.name })
                 }
             }
         }
@@ -144,22 +134,11 @@ fun MapScreen(
     var savePointLatLng by remember { mutableStateOf<LatLng?>(null) }
     var savePointName by remember { mutableStateOf("") }
 
-    // Geocode location when save point dialog opens
     LaunchedEffect(showSavePointDialog, savePointLatLng) {
         if (showSavePointDialog && savePointLatLng != null && savePointName.isBlank()) {
             val locationName = GeocodingHelper.reverseGeocode(savePointLatLng!!)
             if (locationName != null) {
-                // Make name unique by checking existing points
-                val existingNames = savedPointsRepository.savedPoints.map { it.name }.toSet()
-                savePointName = if (!existingNames.contains(locationName)) {
-                    locationName
-                } else {
-                    var counter = 2
-                    while (existingNames.contains("$locationName ($counter)")) {
-                        counter++
-                    }
-                    "$locationName ($counter)"
-                }
+                savePointName = NamingUtils.makeUnique(locationName, savedPointsRepository.savedPoints.map { it.name })
             }
         }
     }
@@ -177,23 +156,37 @@ fun MapScreen(
 
     var rulerState by remember { mutableStateOf(RulerState()) }
 
-    // Geocode location when ruler save dialog opens
     LaunchedEffect(showSaveRulerAsTrackDialog) {
         if (showSaveRulerAsTrackDialog && rulerState.points.isNotEmpty()) {
             val firstPoint = rulerState.points.first()
-            val locationName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
-            if (locationName != null) {
-                // Make name unique by checking existing tracks
-                val existingNames = trackRepository.tracks.map { it.name }.toSet()
-                rulerTrackName = if (!existingNames.contains(locationName)) {
-                    locationName
-                } else {
-                    var counter = 2
-                    while (existingNames.contains("$locationName ($counter)")) {
-                        counter++
+            val lastPoint = rulerState.points.last()
+
+            val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
+
+            val baseName = if (rulerState.points.size > 1) {
+                val distance = FloatArray(1)
+                Location.distanceBetween(
+                    firstPoint.latLng.latitude, firstPoint.latLng.longitude,
+                    lastPoint.latLng.latitude, lastPoint.latLng.longitude,
+                    distance
+                )
+
+                if (distance[0] > 100 && startName != null) {
+                    val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
+                    if (endName != null && startName != endName) {
+                        "$startName → $endName"
+                    } else {
+                        startName
                     }
-                    "$locationName ($counter)"
+                } else {
+                    startName
                 }
+            } else {
+                startName
+            }
+
+            if (baseName != null) {
+                rulerTrackName = NamingUtils.makeUnique(baseName, trackRepository.tracks.map { it.name })
             }
         }
     }
@@ -541,7 +534,7 @@ fun MapScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 val totalDistance = rulerState.getTotalDistanceMeters()
                                 Text(
-                                    text = if (rulerState.points.isEmpty()) "Tap to measure" else formatDistance(totalDistance),
+                                    text = if (rulerState.points.isEmpty()) "Tap to measure" else totalDistance.formatDistance(),
                                     style = MaterialTheme.typography.titleLarge,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -630,7 +623,7 @@ fun MapScreen(
                                     )
                                     val distance = track.getDistanceMeters()
                                     Text(
-                                        text = formatDistance(distance),
+                                        text = distance.formatDistance(),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.onErrorContainer
                                     )
@@ -1026,7 +1019,7 @@ fun MapScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${rulerState.points.size} points • ${formatDistance(rulerState.getTotalDistanceMeters())}",
+                        text = "${rulerState.points.size} points • ${rulerState.getTotalDistanceMeters().formatDistance()}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1073,7 +1066,7 @@ private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Con
         if (locationComponent.isLocationComponentActivated) {
             locationComponent.isLocationComponentEnabled = true
             locationComponent.renderMode = RenderMode.COMPASS
-            if (locationComponent.lastKnownLocation == null && isEmulator()) {
+            if (locationComponent.lastKnownLocation == null && DeviceUtils.isEmulator()) {
                 forceLocationOnEmulator(locationComponent)
             }
             return
@@ -1088,7 +1081,7 @@ private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Con
         locationComponent.isLocationComponentEnabled = true
         locationComponent.renderMode = RenderMode.COMPASS
 
-        if (locationComponent.lastKnownLocation == null && isEmulator()) {
+        if (locationComponent.lastKnownLocation == null && DeviceUtils.isEmulator()) {
             forceLocationOnEmulator(locationComponent)
         }
     } catch (e: Exception) {
@@ -1096,17 +1089,6 @@ private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Con
     }
 }
 
-private fun isEmulator(): Boolean {
-    return (Build.FINGERPRINT.startsWith("google/sdk_gphone")
-            || Build.FINGERPRINT.startsWith("generic")
-            || Build.FINGERPRINT.contains("unknown")
-            || Build.MODEL.contains("google_sdk")
-            || Build.MODEL.contains("Emulator")
-            || Build.MODEL.contains("Android SDK built for")
-            || Build.MANUFACTURER.contains("Genymotion")
-            || Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")
-            || "google_sdk" == Build.PRODUCT)
-}
 
 @SuppressWarnings("MissingPermission")
 private fun forceLocationOnEmulator(locationComponent: LocationComponent) {
@@ -1255,13 +1237,6 @@ private fun updateSavedPointsOnMap(style: Style, savedPoints: List<no.synth.wher
     }
 }
 
-private fun formatDistance(meters: Double): String {
-    return when {
-        meters < 1000 -> "%.0f m".format(meters)
-        meters < 10000 -> "%.2f km".format(meters / 1000)
-        else -> "%.1f km".format(meters / 1000)
-    }
-}
 
 @Composable
 fun MapLibreMapView(

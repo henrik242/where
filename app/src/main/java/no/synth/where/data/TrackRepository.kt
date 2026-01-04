@@ -8,12 +8,13 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import no.synth.where.util.NamingUtils
 import org.maplibre.android.geometry.LatLng
 import java.io.File
 
 class TrackRepository private constructor(context: Context) {
     private val gson = Gson()
-    private val tracksFile = File(context.applicationContext.filesDir, "tracks.json")
+    private val tracksFile = File(context.filesDir, "tracks.json")
 
     private val _tracks = mutableStateListOf<Track>()
     val tracks: List<Track> get() = _tracks
@@ -54,18 +55,6 @@ class TrackRepository private constructor(context: Context) {
         }
     }
 
-    private fun getUniqueTrackName(baseName: String): String {
-        val existingNames = _tracks.map { it.name }.toSet()
-        if (!existingNames.contains(baseName)) {
-            return baseName
-        }
-
-        var counter = 2
-        while (existingNames.contains("$baseName ($counter)")) {
-            counter++
-        }
-        return "$baseName ($counter)"
-    }
 
     fun startNewTrack(name: String = "Track ${System.currentTimeMillis()}") {
         val track = Track(
@@ -97,7 +86,7 @@ class TrackRepository private constructor(context: Context) {
 
     fun stopRecording() {
         val current = _currentTrack.value ?: return
-        val uniqueName = getUniqueTrackName(current.name)
+        val uniqueName = NamingUtils.makeUnique(current.name, _tracks.map { it.name })
         val finishedTrack = current.copy(
             name = uniqueName,
             endTime = System.currentTimeMillis(),
@@ -120,11 +109,9 @@ class TrackRepository private constructor(context: Context) {
     }
 
     fun renameTrack(track: Track, newName: String) {
-        // Check if it's the current recording track
         if (_currentTrack.value?.id == track.id) {
             _currentTrack.value = track.copy(name = newName)
         } else {
-            // It's a saved track
             val index = _tracks.indexOf(track)
             if (index >= 0) {
                 _tracks[index] = track.copy(name = newName)
@@ -143,7 +130,7 @@ class TrackRepository private constructor(context: Context) {
 
     fun importTrack(gpxContent: String): Boolean {
         val track = Track.fromGPX(gpxContent) ?: return false
-        val uniqueName = getUniqueTrackName(track.name)
+        val uniqueName = NamingUtils.makeUnique(track.name, _tracks.map { it.name })
         val trackWithUniqueName = track.copy(name = uniqueName)
         _tracks.add(0, trackWithUniqueName)
         saveTracks()
@@ -151,7 +138,7 @@ class TrackRepository private constructor(context: Context) {
     }
 
     fun createTrackFromPoints(name: String, rulerPoints: List<RulerPoint>) {
-        val uniqueName = getUniqueTrackName(name)
+        val uniqueName = NamingUtils.makeUnique(name, _tracks.map { it.name })
         val trackPoints = rulerPoints.map { rulerPoint ->
             TrackPoint(
                 latLng = rulerPoint.latLng,
