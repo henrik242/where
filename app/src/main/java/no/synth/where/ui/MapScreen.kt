@@ -1063,6 +1063,10 @@ fun MapLibreMapView(
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     val context = LocalContext.current
 
+    // Track click listeners to replace them when ruler state changes
+    var clickListener by remember { mutableStateOf<MapLibreMap.OnMapClickListener?>(null) }
+    var longClickListener by remember { mutableStateOf<MapLibreMap.OnMapLongClickListener?>(null) }
+
     LaunchedEffect(selectedLayer, showCountyBorders, showSavedPoints, savedPoints.size, map) {
         map?.let { mapInstance ->
             try {
@@ -1109,18 +1113,23 @@ fun MapLibreMapView(
         }
     }
 
-    LaunchedEffect(rulerState.isActive, savedPoints, map) {
+    LaunchedEffect(rulerState.isActive, savedPoints.size, map) {
         map?.let { mapInstance ->
-            mapInstance.addOnMapClickListener { point ->
+            // Remove old listeners if they exist
+            clickListener?.let { mapInstance.removeOnMapClickListener(it) }
+            longClickListener?.let { mapInstance.removeOnMapLongClickListener(it) }
+
+            // Create and add new click listener
+            val newClickListener = MapLibreMap.OnMapClickListener { point ->
                 if (rulerState.isActive) {
+                    // When ruler is active, add ruler points and ignore saved point clicks
                     onRulerPointAdded(point)
                     true
                 } else {
-                    // Check if a saved point was clicked
-                    // Find the closest point within 500 meters
+                    // Check if a saved point was clicked (only when ruler is NOT active)
                     val clickedSavedPoint = savedPoints.minByOrNull { savedPoint ->
                         val distance = FloatArray(1)
-                        android.location.Location.distanceBetween(
+                        Location.distanceBetween(
                             point.latitude, point.longitude,
                             savedPoint.latLng.latitude, savedPoint.latLng.longitude,
                             distance
@@ -1128,12 +1137,12 @@ fun MapLibreMapView(
                         distance[0]
                     }?.let { closestPoint ->
                         val distance = FloatArray(1)
-                        android.location.Location.distanceBetween(
+                        Location.distanceBetween(
                             point.latitude, point.longitude,
                             closestPoint.latLng.latitude, closestPoint.latLng.longitude,
                             distance
                         )
-                        if (distance[0] < 500) closestPoint else null // 500 meters threshold
+                        if (distance[0] < 500) closestPoint else null
                     }
 
                     if (clickedSavedPoint != null) {
@@ -1144,8 +1153,11 @@ fun MapLibreMapView(
                     }
                 }
             }
+            mapInstance.addOnMapClickListener(newClickListener)
+            clickListener = newClickListener
 
-            mapInstance.addOnMapLongClickListener { point ->
+            // Create and add new long click listener
+            val newLongClickListener = MapLibreMap.OnMapLongClickListener { point ->
                 if (!rulerState.isActive) {
                     onLongPress(point)
                     true
@@ -1153,6 +1165,8 @@ fun MapLibreMapView(
                     false
                 }
             }
+            mapInstance.addOnMapLongClickListener(newLongClickListener)
+            longClickListener = newLongClickListener
         }
     }
 
@@ -1169,14 +1183,8 @@ fun MapLibreMapView(
                         .zoom(savedCameraZoom)
                         .build()
 
-                    mapInstance.addOnMapClickListener { point ->
-                        if (rulerState.isActive) {
-                            onRulerPointAdded(point)
-                            true
-                        } else {
-                            false
-                        }
-                    }
+                    // Click listeners are handled by LaunchedEffect above
+                    // Don't add any click listeners here to avoid conflicts
 
                     try {
                         val styleJson = MapStyle.getStyle(ctx, selectedLayer)
