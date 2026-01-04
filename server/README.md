@@ -27,6 +27,21 @@ bun install
 bun run index.ts
 
 # The server will start on http://localhost:3000
+
+# Testing a track
+curl -X POST http://localhost:3000/api/tracks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "test01",
+    "name": "Quick Test Track",
+    "color": "#2196F3",
+    "points": [
+      {"lat": 59.9139, "lon": 10.7522, "timestamp": 1704297600000},
+      {"lat": 59.9145, "lon": 10.7530, "timestamp": 1704297610000},
+      {"lat": 59.9150, "lon": 10.7540, "timestamp": 1704297620000},
+      {"lat": 59.9155, "lon": 10.7550, "timestamp": 1704297630000}
+    ]
+  }'
 ```
 
 ## Data Format
