@@ -72,11 +72,91 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             max-width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
             z-index: 1;
+            transition: transform 0.3s ease;
         }
 
         .info-panel.god-mode-active {
             top: 70px;
+        }
+
+        .info-panel.collapsed {
+            transform: translateX(calc(100% + 20px));
+        }
+
+        .toggle-panel-btn {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-panel-btn.god-mode-active {
+            top: 130px;
+        }
+
+        .toggle-panel-btn:hover {
+            background: #f0f0f0;
+        }
+
+        @media (max-width: 768px) {
+            .info-panel {
+                top: auto;
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                max-width: none;
+                max-height: 40vh;
+                padding: 16px;
+            }
+
+            .info-panel.god-mode-active {
+                top: auto;
+            }
+
+            .info-panel.collapsed {
+                transform: translateY(calc(100% + 20px));
+            }
+
+            .toggle-panel-btn {
+                top: auto;
+                bottom: 20px;
+                right: 20px;
+                left: auto;
+            }
+
+            .toggle-panel-btn.god-mode-active {
+                top: auto;
+            }
+
+            .info-panel h2 {
+                font-size: 16px;
+                margin-bottom: 8px;
+            }
+
+            .client-filter {
+                padding: 8px;
+                margin-bottom: 12px;
+            }
+
+            .track-item {
+                padding: 8px;
+                margin-bottom: 6px;
+            }
         }
 
         .info-panel h2 {
@@ -221,6 +301,9 @@
         <button onclick="disableGodMode()">Disable</button>
     </div>
     <div id="map"></div>
+    <button id="toggle-panel-btn" class="toggle-panel-btn" onclick="togglePanel()" title="Toggle panel">
+        ☰
+    </button>
     <div class="info-panel" id="info-panel">
         <h2>Live Tracks</h2>
         <div class="client-filter">
@@ -278,6 +361,7 @@
         let clientFilters = [];
         let showHistorical = false;
         let godMode = false;
+        let panelCollapsed = false;
 
         // Parse URL parameters for client filters and god mode
         const urlParams = new URLSearchParams(window.location.search);
@@ -299,12 +383,29 @@
         function updateGodModeBanner() {
             const banner = document.getElementById('god-mode-banner');
             const infoPanel = document.getElementById('info-panel');
+            const toggleBtn = document.getElementById('toggle-panel-btn');
             if (godMode) {
                 banner.style.display = 'flex';
                 infoPanel.classList.add('god-mode-active');
+                toggleBtn.classList.add('god-mode-active');
             } else {
                 banner.style.display = 'none';
                 infoPanel.classList.remove('god-mode-active');
+                toggleBtn.classList.remove('god-mode-active');
+            }
+        }
+
+        function togglePanel() {
+            const infoPanel = document.getElementById('info-panel');
+            const toggleBtn = document.getElementById('toggle-panel-btn');
+            panelCollapsed = !panelCollapsed;
+
+            if (panelCollapsed) {
+                infoPanel.classList.add('collapsed');
+                toggleBtn.textContent = '☰';
+            } else {
+                infoPanel.classList.remove('collapsed');
+                toggleBtn.textContent = '✕';
             }
         }
 
