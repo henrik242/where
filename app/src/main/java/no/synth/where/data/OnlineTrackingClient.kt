@@ -42,8 +42,8 @@ class OnlineTrackingClient(
 
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
-                    val responseBody = response.body?.string()
-                    val trackId = JSONObject(responseBody!!).getString("id")
+                    val responseBody = response.body.string()
+                    val trackId = JSONObject(responseBody).getString("id")
                     currentTrackId = trackId
                     Log.d("OnlineTracking", "Track started: $trackId")
                 } else {
