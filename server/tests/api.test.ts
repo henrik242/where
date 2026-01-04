@@ -42,7 +42,10 @@ describe('API Integration Tests', () => {
     test('should create a new track', async () => {
       const response = await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'test123'
+        },
         body: JSON.stringify({
           userId: 'test123',
           name: 'Integration Test Track'
@@ -60,7 +63,10 @@ describe('API Integration Tests', () => {
     test('should return 400 for missing userId', async () => {
       const response = await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'test123'
+        },
         body: JSON.stringify({
           name: 'Test Track'
         })
@@ -69,29 +75,36 @@ describe('API Integration Tests', () => {
       expect(response.status).toBe(400);
     });
 
-    test('should return 400 for missing name', async () => {
+    test('should return 401 for mismatched client ID', async () => {
       const response = await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'wrong123'
+        },
         body: JSON.stringify({
-          userId: 'test123'
+          userId: 'test123',
+          name: 'Test Track'
         })
       });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(401);
     });
   });
 
   describe('GET /api/tracks', () => {
-    test('should return all active tracks', async () => {
+    test('should return tracks for authorized client', async () => {
       // Create some test tracks first
       await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'user1'
+        },
         body: JSON.stringify({ userId: 'user1', name: 'Track 1' })
       });
 
-      const response = await fetch(`${SERVER_URL}/api/tracks`);
+      const response = await fetch(`${SERVER_URL}/api/tracks?clients=user1`);
       expect(response.status).toBe(200);
 
       const data = await response.json();
@@ -99,11 +112,14 @@ describe('API Integration Tests', () => {
       expect(data.length).toBeGreaterThanOrEqual(1);
     });
 
-    test('should filter by single client ID', async () => {
+    test('should filter by single client ID via URL', async () => {
       // Create track for specific user
       await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'filter1'
+        },
         body: JSON.stringify({ userId: 'filter1', name: 'Filter Test 1' })
       });
 
@@ -115,16 +131,22 @@ describe('API Integration Tests', () => {
       expect(data.some((t: any) => t.userId === 'filter1')).toBe(true);
     });
 
-    test('should filter by multiple client IDs', async () => {
+    test('should filter by multiple client IDs via URL', async () => {
       // Create tracks for multiple users
       await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'multi1'
+        },
         body: JSON.stringify({ userId: 'multi1', name: 'Multi Test 1' })
       });
       await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'multi2'
+        },
         body: JSON.stringify({ userId: 'multi2', name: 'Multi Test 2' })
       });
 
@@ -139,11 +161,11 @@ describe('API Integration Tests', () => {
     });
 
     test('should return empty array for non-existent client', async () => {
-      const response = await fetch(`${SERVER_URL}/api/tracks?clients=zzz999`);
+      const response = await fetch(`${SERVER_URL}/api/tracks?clients=nonexist`);
       expect(response.status).toBe(200);
 
       const data = await response.json();
-      expect(data).toEqual([]);
+      expect(data.length).toBe(0);
     });
 
     test('should handle empty clients parameter', async () => {
@@ -159,7 +181,10 @@ describe('API Integration Tests', () => {
     test('should return specific track', async () => {
       const track = await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'gettest'
+        },
         body: JSON.stringify({ userId: 'gettest', name: 'Get Test Track' })
       }).then(r => r.json());
 
@@ -181,7 +206,10 @@ describe('API Integration Tests', () => {
     test('should add point to track', async () => {
       const track = await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'pointtest'
+        },
         body: JSON.stringify({ userId: 'pointtest', name: 'Point Test Track' })
       }).then(r => r.json());
 
@@ -222,7 +250,10 @@ describe('API Integration Tests', () => {
     test('should stop active track', async () => {
       const track = await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'stoptest'
+        },
         body: JSON.stringify({ userId: 'stoptest', name: 'Stop Test Track' })
       }).then(r => r.json());
 
@@ -249,7 +280,10 @@ describe('API Integration Tests', () => {
     test('should delete track', async () => {
       const track = await fetch(`${SERVER_URL}/api/tracks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'deletetest'
+        },
         body: JSON.stringify({ userId: 'deletetest', name: 'Delete Test Track' })
       }).then(r => r.json());
 

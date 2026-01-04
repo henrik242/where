@@ -37,6 +37,7 @@ class OnlineTrackingClient(
                 val body = json.toString().toRequestBody("application/json".toMediaType())
                 val request = Request.Builder()
                     .url("$serverUrl/api/tracks")
+                    .addHeader("X-Client-Id", clientId)
                     .post(body)
                     .build()
 
@@ -58,7 +59,6 @@ class OnlineTrackingClient(
     fun syncExistingTrack(track: Track) {
         scope.launch {
             try {
-                // Create track on server with first point for geocoding
                 val json = JSONObject().apply {
                     put("userId", clientId)
                     put("name", track.name)
@@ -79,6 +79,7 @@ class OnlineTrackingClient(
                 val body = json.toString().toRequestBody("application/json".toMediaType())
                 val request = Request.Builder()
                     .url("$serverUrl/api/tracks")
+                    .addHeader("X-Client-Id", clientId)
                     .post(body)
                     .build()
 
@@ -89,7 +90,6 @@ class OnlineTrackingClient(
                     currentTrackId = trackId
                     Log.d("OnlineTracking", "Track synced: $trackId")
 
-                    // Send remaining points (skip first since it was sent with track creation)
                     track.points.drop(1).forEach { point ->
                         sendPointSync(trackId, point.latLng, point.altitude, point.accuracy)
                     }

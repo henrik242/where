@@ -1,5 +1,5 @@
 import { trackStore } from './src/store';
-import type { Track, TrackUpdate } from './src/types';
+import type { Track } from './src/types';
 
 const GOD_MODE_KEY = process.env.GOD_MODE_KEY;
 
@@ -94,7 +94,7 @@ async function handleAPI(req: Request): Promise<Response> {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-God-Mode-Key',
   };
 
   if (req.method === 'OPTIONS') {
@@ -104,17 +104,20 @@ async function handleAPI(req: Request): Promise<Response> {
   try {
     // GET /api/tracks - Get all active tracks (or filtered by client IDs)
     if (path === '/api/tracks' && req.method === 'GET') {
-      const clientIds = url.searchParams.get('clients')?.split(',').filter(Boolean) || [];
+      // Get client IDs from URL query params (for sharing) OR header (for god mode)
+      const clientIdsParam = url.searchParams.get('clients')?.split(',').filter(Boolean) || [];
       const includeHistorical = url.searchParams.get('historical') === 'true';
-      const godModeKey = url.searchParams.get('godMode');
+
+      // Get god mode key from secure header
+      const godModeKey = req.headers.get('X-God-Mode-Key');
 
       let tracks;
       if (GOD_MODE_KEY && godModeKey === GOD_MODE_KEY) {
         // God mode: show all tracks regardless of client filter (only if GOD_MODE_KEY is set)
         tracks = includeHistorical ? trackStore.getAllTracks() : trackStore.getAllActiveTracks();
-      } else if (clientIds.length > 0) {
-        // Show only specified client IDs
-        tracks = trackStore.getTracksByClientIds(clientIds, includeHistorical);
+      } else if (clientIdsParam.length > 0) {
+        // Show only specified client IDs from URL
+        tracks = trackStore.getTracksByClientIds(clientIdsParam, includeHistorical);
       } else {
         // Default: no tracks shown unless clients are specified
         tracks = [];
@@ -145,6 +148,15 @@ async function handleAPI(req: Request): Promise<Response> {
       if (!body.userId) {
         return new Response(JSON.stringify({ error: 'Missing required fields' }), {
           status: 400,
+          headers
+        });
+      }
+
+      // Verify client ID in header matches userId in body
+      const clientIdHeader = req.headers.get('X-Client-Id');
+      if (!clientIdHeader || clientIdHeader !== body.userId) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
           headers
         });
       }
