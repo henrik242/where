@@ -1,14 +1,6 @@
 # Where Server
 
-Backend component for the Where Android navigation app. Provides live tracking visualization on a web interface.
-
-## Features
-
-- 📍 Real-time GPS tracking display
-- 🗺️ Live map visualization with MapLibre GL
-- 🔄 WebSocket updates for instant tracking
-- 📊 Track distance calculation
-- 🎨 Clean, minimal UI
+Backend component for the Where? Android navigation app. Provides live tracking visualization on a web interface.
 
 ## API Endpoints
 
@@ -37,49 +29,6 @@ bun run index.ts
 # The server will start on http://localhost:3000
 ```
 
-## Production
-
-```bash
-# Set production port
-export PORT=3000
-
-# Run server
-bun run index.ts
-```
-
-## Deployment to where.synth.no
-
-1. Copy server files to production server
-2. Install Bun on the server
-3. Set up systemd service or PM2
-4. Configure nginx reverse proxy
-5. Set environment variables
-
-Example nginx configuration:
-
-```nginx
-server {
-    server_name where.synth.no;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    location /ws {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
-        proxy_set_header Host $host;
-    }
-}
-```
-
 ## Data Format
 
 ### Track Point
@@ -105,8 +54,3 @@ server {
   "isActive": false
 }
 ```
-
-## License
-
-Same as the main Where app
-
