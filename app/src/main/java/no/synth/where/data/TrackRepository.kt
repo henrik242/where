@@ -11,9 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.maplibre.android.geometry.LatLng
 import java.io.File
 
-class TrackRepository private constructor(private val context: Context) {
+class TrackRepository private constructor(context: Context) {
     private val gson = Gson()
-    private val tracksFile = File(context.filesDir, "tracks.json")
+    private val tracksFile = File(context.applicationContext.filesDir, "tracks.json")
 
     private val _tracks = mutableStateListOf<Track>()
     val tracks: List<Track> get() = _tracks

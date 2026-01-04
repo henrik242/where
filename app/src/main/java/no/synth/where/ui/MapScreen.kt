@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -158,12 +159,12 @@ fun MapScreen(
         val map = mapInstance
         if (hasLocationPermission && map != null && !hasZoomedToLocation && viewingTrack == null && currentTrack == null) {
             try {
-                val locationManager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
                 val lastKnownLocation = try {
                     locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
                         ?: locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
                         ?: locationManager.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER)
-                } catch (e: SecurityException) {
+                } catch (_: SecurityException) {
                     null
                 }
 
@@ -602,7 +603,7 @@ fun MapScreen(
                             modifier = Modifier
                                 .size(24.dp)
                                 .background(
-                                    color = Color(android.graphics.Color.parseColor(point.color)),
+                                    color = Color(point.color.toColorInt()),
                                     shape = CircleShape
                                 )
                         )
@@ -792,8 +793,8 @@ fun MapScreen(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .background(
-                                        color = Color(android.graphics.Color.parseColor(colorHex)),
-                                        shape = androidx.compose.foundation.shape.CircleShape
+                                        color = Color(colorHex.toColorInt()),
+                                        shape = CircleShape
                                     )
                                     .clickable { editColor = colorHex }
                                     .then(
@@ -1057,10 +1058,10 @@ private fun updateRulerOnMap(style: Style, rulerState: RulerState) {
             style.addSource(pointSource)
 
             val pointLayer = org.maplibre.android.style.layers.CircleLayer(pointLayerId, pointSourceId).withProperties(
-                org.maplibre.android.style.layers.PropertyFactory.circleRadius(6f),
-                org.maplibre.android.style.layers.PropertyFactory.circleColor("#FFA500"),
-                org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth(2f),
-                org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor("#FFFFFF")
+                PropertyFactory.circleRadius(6f),
+                PropertyFactory.circleColor("#FFA500"),
+                PropertyFactory.circleStrokeWidth(2f),
+                PropertyFactory.circleStrokeColor("#FFFFFF")
             )
             style.addLayer(pointLayer)
         }
@@ -1097,13 +1098,13 @@ private fun updateSavedPointsOnMap(style: Style, savedPoints: List<no.synth.wher
 
             val circleLayer = org.maplibre.android.style.layers.CircleLayer(layerId, sourceId)
                 .withProperties(
-                    org.maplibre.android.style.layers.PropertyFactory.circlePitchAlignment("viewport"),
-                    org.maplibre.android.style.layers.PropertyFactory.circleRadius(6f),
-                    org.maplibre.android.style.layers.PropertyFactory.circleColor(
+                    PropertyFactory.circlePitchAlignment("viewport"),
+                    PropertyFactory.circleRadius(6f),
+                    PropertyFactory.circleColor(
                         org.maplibre.android.style.expressions.Expression.get("color")
                     ),
-                    org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth(2f),
-                    org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor("#FFFFFF")
+                    PropertyFactory.circleStrokeWidth(2f),
+                    PropertyFactory.circleStrokeColor("#FFFFFF")
                 )
             style.addLayer(circleLayer)
         }
