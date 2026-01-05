@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -19,9 +21,26 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Load HMAC secret from environment variable or local.properties
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(localPropertiesFile.inputStream())
+        }
+
         val trackingHmacSecret = System.getenv("TRACKING_HMAC_SECRET")
-            ?: project.findProperty("TRACKING_HMAC_SECRET") as? String
-            ?: ""
+            ?: localProperties.getProperty("TRACKING_HMAC_SECRET")
+            ?: throw org.gradle.api.GradleException(
+                "TRACKING_HMAC_SECRET is not set!\n" +
+                "Add it to local.properties:\n" +
+                "  TRACKING_HMAC_SECRET=your-secret-key\n" +
+                "Or set it as an environment variable.\n" +
+                "Generate a key with: openssl rand -base64 32"
+            )
+
+        if (trackingHmacSecret.isBlank()) {
+            throw org.gradle.api.GradleException("TRACKING_HMAC_SECRET cannot be empty!")
+        }
+
         buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
     }
 
