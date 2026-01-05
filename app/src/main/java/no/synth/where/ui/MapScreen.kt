@@ -7,19 +7,66 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,8 +87,8 @@ import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.util.DeviceUtils
-import no.synth.where.util.formatDistance
 import no.synth.where.util.NamingUtils
+import no.synth.where.util.formatDistance
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.location.LocationComponent
@@ -57,7 +104,8 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 enum class MapLayer {
     OSM,
@@ -152,7 +200,8 @@ fun MapScreen(
                 }
 
                 if (baseName != null) {
-                    trackNameInput = NamingUtils.makeUnique(baseName, trackRepository.tracks.map { it.name })
+                    trackNameInput =
+                        NamingUtils.makeUnique(baseName, trackRepository.tracks.map { it.name })
                 }
             }
         }
@@ -167,7 +216,9 @@ fun MapScreen(
         if (showSavePointDialog && savePointLatLng != null && savePointName.isBlank()) {
             val locationName = savePointLatLng?.let { GeocodingHelper.reverseGeocode(it) }
             if (locationName != null) {
-                savePointName = NamingUtils.makeUnique(locationName, savedPointsRepository.savedPoints.map { it.name })
+                savePointName = NamingUtils.makeUnique(
+                    locationName,
+                    savedPointsRepository.savedPoints.map { it.name })
             }
         }
     }
@@ -215,7 +266,8 @@ fun MapScreen(
             }
 
             if (baseName != null) {
-                rulerTrackName = NamingUtils.makeUnique(baseName, trackRepository.tracks.map { it.name })
+                rulerTrackName =
+                    NamingUtils.makeUnique(baseName, trackRepository.tracks.map { it.name })
             }
         }
     }
@@ -276,7 +328,8 @@ fun MapScreen(
         val map = mapInstance
         if (hasLocationPermission && map != null && !hasZoomedToLocation && viewingTrack == null && currentTrack == null) {
             try {
-                val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
+                val locationManager =
+                    context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
                 val lastKnownLocation = try {
                     locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
                         ?: locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
@@ -413,7 +466,8 @@ fun MapScreen(
                             trackNameInput = ""
                             showStopTrackDialog = true
                         } else {
-                            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                            val dateFormat =
+                                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                             val trackName = dateFormat.format(Date())
                             trackRepository.startNewTrack(trackName)
                             LocationTrackingService.start(context)
@@ -489,7 +543,9 @@ fun MapScreen(
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+        Box(modifier = Modifier
+            .padding(paddingValues)
+            .fillMaxSize()) {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
                 selectedLayer = selectedLayer,
@@ -777,7 +833,7 @@ fun MapScreen(
                             modifier = Modifier
                                 .size(24.dp)
                                 .background(
-                                    color = Color(point.color.toColorInt()),
+                                    color = Color((point.color ?: "#FF5722").toColorInt()),
                                     shape = CircleShape
                                 )
                         )
@@ -926,8 +982,8 @@ fun MapScreen(
 
     if (showPointInfoDialog && clickedPoint != null) {
         var editName by remember { mutableStateOf(clickedPoint!!.name) }
-        var editDescription by remember { mutableStateOf(clickedPoint!!.description) }
-        var editColor by remember { mutableStateOf(clickedPoint!!.color) }
+        var editDescription by remember { mutableStateOf(clickedPoint!!.description ?: "") }
+        var editColor by remember { mutableStateOf(clickedPoint!!.color ?: "#FF5722") }
 
         val colors = listOf(
             "#FF5722" to "Red",
@@ -983,7 +1039,9 @@ fun MapScreen(
                     }
 
                     Text(
-                        text = "${clickedPoint!!.latLng.latitude.toString().take(10)}, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
+                        text = "${
+                            clickedPoint!!.latLng.latitude.toString().take(10)
+                        }, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1064,7 +1122,9 @@ fun MapScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${rulerState.points.size} points • ${rulerState.getTotalDistanceMeters().formatDistance()}",
+                        text = "${rulerState.points.size} points • ${
+                            rulerState.getTotalDistanceMeters().formatDistance()
+                        }",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1102,7 +1162,12 @@ fun MapScreen(
 }
 
 @SuppressWarnings("MissingPermission")
-private fun enableLocationComponent(map: MapLibreMap, style: Style, context: Context, hasPermission: Boolean) {
+private fun enableLocationComponent(
+    map: MapLibreMap,
+    style: Style,
+    context: Context,
+    hasPermission: Boolean
+) {
     if (!hasPermission) return
 
     try {
@@ -1160,7 +1225,8 @@ private fun updateTrackOnMap(style: Style, track: Track?, isCurrentTrack: Boolea
         style.getSource(sourceId)?.let { style.removeSource(it) }
 
         if (track != null && track.points.size >= 2) {
-            val points = track.points.map { Point.fromLngLat(it.latLng.longitude, it.latLng.latitude) }
+            val points =
+                track.points.map { Point.fromLngLat(it.latLng.longitude, it.latLng.latitude) }
             val lineString = LineString.fromLngLats(points)
             val feature = Feature.fromGeometry(lineString)
 
@@ -1214,24 +1280,29 @@ private fun updateRulerOnMap(style: Style, rulerState: RulerState) {
             }
 
             val pointFeatures = rulerState.points.map { rulerPoint ->
-                Feature.fromGeometry(Point.fromLngLat(
-                    rulerPoint.latLng.longitude,
-                    rulerPoint.latLng.latitude
-                ))
+                Feature.fromGeometry(
+                    Point.fromLngLat(
+                        rulerPoint.latLng.longitude,
+                        rulerPoint.latLng.latitude
+                    )
+                )
             }
-            val pointSource = GeoJsonSource(pointSourceId,
+            val pointSource = GeoJsonSource(
+                pointSourceId,
                 com.google.gson.Gson().toJson(
                     mapOf("type" to "FeatureCollection", "features" to pointFeatures)
                 )
             )
             style.addSource(pointSource)
 
-            val pointLayer = org.maplibre.android.style.layers.CircleLayer(pointLayerId, pointSourceId).withProperties(
-                PropertyFactory.circleRadius(6f),
-                PropertyFactory.circleColor("#FFA500"),
-                PropertyFactory.circleStrokeWidth(2f),
-                PropertyFactory.circleStrokeColor("#FFFFFF")
-            )
+            val pointLayer =
+                org.maplibre.android.style.layers.CircleLayer(pointLayerId, pointSourceId)
+                    .withProperties(
+                        PropertyFactory.circleRadius(6f),
+                        PropertyFactory.circleColor("#FFA500"),
+                        PropertyFactory.circleStrokeWidth(2f),
+                        PropertyFactory.circleStrokeColor("#FFFFFF")
+                    )
             style.addLayer(pointLayer)
         }
     } catch (e: Exception) {
@@ -1239,7 +1310,10 @@ private fun updateRulerOnMap(style: Style, rulerState: RulerState) {
     }
 }
 
-private fun updateSavedPointsOnMap(style: Style, savedPoints: List<no.synth.where.data.SavedPoint>) {
+private fun updateSavedPointsOnMap(
+    style: Style,
+    savedPoints: List<no.synth.where.data.SavedPoint>
+) {
     try {
         val sourceId = "saved-points-source"
         val layerId = "saved-points-layer"
@@ -1253,7 +1327,7 @@ private fun updateSavedPointsOnMap(style: Style, savedPoints: List<no.synth.wher
                     Point.fromLngLat(point.latLng.longitude, point.latLng.latitude)
                 ).apply {
                     addStringProperty("name", point.name)
-                    addStringProperty("color", point.color)
+                    addStringProperty("color", point.color ?: "#FF5722")
                 }
             }
 
@@ -1311,7 +1385,8 @@ fun MapLibreMapView(
     var wasInitialized by remember { mutableStateOf(false) }
 
     DisposableEffect(context) {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         val networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
@@ -1343,31 +1418,52 @@ fun MapLibreMapView(
     var clickListener by remember { mutableStateOf<MapLibreMap.OnMapClickListener?>(null) }
     var longClickListener by remember { mutableStateOf<MapLibreMap.OnMapLongClickListener?>(null) }
 
-    LaunchedEffect(selectedLayer, showCountyBorders, showWaymarkedTrails, showSavedPoints, savedPoints.size, isOnline, regionsLoadedTrigger, map) {
+    LaunchedEffect(
+        selectedLayer,
+        showCountyBorders,
+        showWaymarkedTrails,
+        showSavedPoints,
+        savedPoints.size,
+        isOnline,
+        regionsLoadedTrigger,
+        map
+    ) {
         map?.let { mapInstance ->
             try {
-                val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders, showWaymarkedTrails)
+                val styleJson = MapStyle.getStyle(
+                    context,
+                    selectedLayer,
+                    showCountyBorders,
+                    showWaymarkedTrails
+                )
                 val viewing = viewingTrack
                 val current = currentTrack
-                mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
-                    override fun onStyleLoaded(style: Style) {
-                        enableLocationComponent(mapInstance, style, context, hasLocationPermission)
-                        val trackToShow = current ?: viewing
-                        updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
-                        updateRulerOnMap(style, rulerState)
+                mapInstance.setStyle(
+                    Style.Builder().fromJson(styleJson),
+                    object : Style.OnStyleLoaded {
+                        override fun onStyleLoaded(style: Style) {
+                            enableLocationComponent(
+                                mapInstance,
+                                style,
+                                context,
+                                hasLocationPermission
+                            )
+                            val trackToShow = current ?: viewing
+                            updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
+                            updateRulerOnMap(style, rulerState)
 
-                        if (showSavedPoints && savedPoints.isNotEmpty()) {
-                            updateSavedPointsOnMap(style, savedPoints)
-                        }
+                            if (showSavedPoints && savedPoints.isNotEmpty()) {
+                                updateSavedPointsOnMap(style, savedPoints)
+                            }
 
-                        if (viewing == null && current == null) {
-                            mapInstance.cameraPosition = CameraPosition.Builder()
-                                .target(LatLng(savedCameraLat, savedCameraLon))
-                                .zoom(savedCameraZoom)
-                                .build()
+                            if (viewing == null && current == null) {
+                                mapInstance.cameraPosition = CameraPosition.Builder()
+                                    .target(LatLng(savedCameraLat, savedCameraLon))
+                                    .zoom(savedCameraZoom)
+                                    .build()
+                            }
                         }
-                    }
-                })
+                    })
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -1393,23 +1489,39 @@ fun MapLibreMapView(
         if (wasInitialized && isOnline && map != null) {
 
             map?.let { mapInstance ->
-                val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders, showWaymarkedTrails)
+                val styleJson = MapStyle.getStyle(
+                    context,
+                    selectedLayer,
+                    showCountyBorders,
+                    showWaymarkedTrails
+                )
                 val viewing = viewingTrack
                 val current = currentTrack
 
                 try {
-                    mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
-                        override fun onStyleLoaded(style: Style) {
-                            enableLocationComponent(mapInstance, style, context, hasLocationPermission)
-                            val trackToShow = current ?: viewing
-                            updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
-                            updateRulerOnMap(style, rulerState)
+                    mapInstance.setStyle(
+                        Style.Builder().fromJson(styleJson),
+                        object : Style.OnStyleLoaded {
+                            override fun onStyleLoaded(style: Style) {
+                                enableLocationComponent(
+                                    mapInstance,
+                                    style,
+                                    context,
+                                    hasLocationPermission
+                                )
+                                val trackToShow = current ?: viewing
+                                updateTrackOnMap(
+                                    style,
+                                    trackToShow,
+                                    isCurrentTrack = current != null
+                                )
+                                updateRulerOnMap(style, rulerState)
 
-                            if (showSavedPoints && savedPoints.isNotEmpty()) {
-                                updateSavedPointsOnMap(style, savedPoints)
+                                if (showSavedPoints && savedPoints.isNotEmpty()) {
+                                    updateSavedPointsOnMap(style, savedPoints)
+                                }
                             }
-                        }
-                    })
+                        })
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -1495,18 +1607,34 @@ fun MapLibreMapView(
                     // Don't add any click listeners here to avoid conflicts
 
                     try {
-                        val styleJson = MapStyle.getStyle(ctx, selectedLayer, showCountyBorders, showWaymarkedTrails)
+                        val styleJson = MapStyle.getStyle(
+                            ctx,
+                            selectedLayer,
+                            showCountyBorders,
+                            showWaymarkedTrails
+                        )
                         val viewing = viewingTrack
                         val current = currentTrack
-                        mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
-                            override fun onStyleLoaded(style: Style) {
-                                enableLocationComponent(mapInstance, style, ctx, hasLocationPermission)
-                                val trackToShow = current ?: viewing
-                                updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
-                                updateRulerOnMap(style, rulerState)
-                                mapInstance.triggerRepaint()
-                            }
-                        })
+                        mapInstance.setStyle(
+                            Style.Builder().fromJson(styleJson),
+                            object : Style.OnStyleLoaded {
+                                override fun onStyleLoaded(style: Style) {
+                                    enableLocationComponent(
+                                        mapInstance,
+                                        style,
+                                        ctx,
+                                        hasLocationPermission
+                                    )
+                                    val trackToShow = current ?: viewing
+                                    updateTrackOnMap(
+                                        style,
+                                        trackToShow,
+                                        isCurrentTrack = current != null
+                                    )
+                                    updateRulerOnMap(style, rulerState)
+                                    mapInstance.triggerRepaint()
+                                }
+                            })
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }

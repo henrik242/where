@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
+import androidx.core.graphics.toColorInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,7 +132,15 @@ fun SavedPointItem(
                     modifier = Modifier
                         .size(40.dp)
                         .background(
-                            color = Color(android.graphics.Color.parseColor(point.color)),
+                            color = try {
+                                if (!point.color.isNullOrBlank()) {
+                                    Color(point.color.toColorInt())
+                                } else {
+                                    Color(0xFFFF5722) // Default red color
+                                }
+                            } catch (e: Exception) {
+                                Color(0xFFFF5722) // Fallback to default red color
+                            },
                             shape = CircleShape
                         )
                 )
@@ -143,7 +152,7 @@ fun SavedPointItem(
                         text = point.name,
                         style = MaterialTheme.typography.titleMedium
                     )
-                    if (point.description.isNotBlank()) {
+                    if (!point.description.isNullOrBlank()) {
                         Text(
                             text = point.description,
                             style = MaterialTheme.typography.bodySmall,
@@ -227,8 +236,8 @@ fun EditPointDialog(
     onSave: (String, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf(point.name) }
-    var description by remember { mutableStateOf(point.description) }
-    var selectedColor by remember { mutableStateOf(point.color) }
+    var description by remember { mutableStateOf(point.description ?: "") }
+    var selectedColor by remember { mutableStateOf(point.color?.ifBlank { "#FF5722" } ?: "#FF5722") }
 
     val colors = listOf(
         "#FF5722" to "Red",

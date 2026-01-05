@@ -97,7 +97,7 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("View on Map")
+                        Text("View on Web")
                     }
 
                     OutlinedButton(
@@ -167,7 +167,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Download Manager",
+                    text = "Offline Maps",
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Icon(
