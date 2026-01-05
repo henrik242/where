@@ -845,7 +845,7 @@ fun MapScreen(
                             trackRepository.stopRecording()
                             LocationTrackingService.stop(context)
                             scope.launch {
-                                snackbarHostState.showSnackbar("Recording stopped")
+                                snackbarHostState.showSnackbar("Track saved")
                             }
                             showStopTrackDialog = false
                             trackNameInput = ""
