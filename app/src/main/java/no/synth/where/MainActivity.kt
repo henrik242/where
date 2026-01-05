@@ -9,23 +9,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
-import no.synth.where.data.FylkeDownloader
 
 class MainActivity : ComponentActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
+    private var regionsLoaded by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        lifecycleScope.launch {
-            FylkeDownloader.downloadAndCacheFylker(this@MainActivity)
-        }
-
         handleIntent(intent)
 
         setContent {
@@ -34,9 +29,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    WhereApp(pendingGpxUri = pendingGpxUri) {
-                        pendingGpxUri = null
-                    }
+                    WhereApp(
+                        pendingGpxUri = pendingGpxUri,
+                        regionsLoadedTrigger = regionsLoaded,
+                        onGpxHandled = { pendingGpxUri = null },
+                        onRegionsLoaded = { regionsLoaded++ }
+                    )
                 }
             }
         }
@@ -49,12 +47,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        when (intent.action) {
-            Intent.ACTION_VIEW -> {
-                intent.data?.let { uri ->
-                    pendingGpxUri = uri
-                }
-            }
+        if (intent.action == Intent.ACTION_VIEW) {
+            intent.data?.let { uri -> pendingGpxUri = uri }
         }
     }
 }

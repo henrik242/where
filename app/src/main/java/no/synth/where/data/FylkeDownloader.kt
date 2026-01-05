@@ -21,12 +21,10 @@ object FylkeDownloader {
             if (cacheFile.exists()) {
                 val ageInDays = (System.currentTimeMillis() - cacheFile.lastModified()) / (1000 * 60 * 60 * 24)
                 if (ageInDays < 7) {
-                    Log.d(TAG, "Using cached GeoJSON (${ageInDays} days old)")
                     return@withContext true
                 }
             }
 
-            Log.d(TAG, "Downloading counties from $GEOJSON_URL")
             val url = URL(GEOJSON_URL)
             val connection = url.openConnection()
             connection.connectTimeout = 30000
@@ -38,7 +36,6 @@ object FylkeDownloader {
                     var entry = zipInput.nextEntry
                     while (entry != null) {
                         if (entry.name.endsWith(".geojson", ignoreCase = true)) {
-                            Log.d(TAG, "Extracting ${entry.name} from ZIP")
                             cacheFile.outputStream().use { output ->
                                 zipInput.copyTo(output)
                             }
@@ -54,10 +51,9 @@ object FylkeDownloader {
                 return@withContext false
             }
 
-            Log.d(TAG, "Downloaded and cached ${cacheFile.length()} bytes")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to download counties", e)
+            Log.e(TAG, "Failed to download counties: ${e.javaClass.simpleName}: ${e.message}", e)
             false
         }
     }
