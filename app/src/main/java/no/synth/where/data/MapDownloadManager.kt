@@ -4,75 +4,26 @@ import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
-import kotlin.math.PI
-import kotlin.math.floor
-import kotlin.math.ln
-import kotlin.math.pow
+import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.offline.OfflineManager
+import org.maplibre.android.offline.OfflineRegion
+import org.maplibre.android.offline.OfflineRegionError
+import org.maplibre.android.offline.OfflineRegionStatus
+import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
+import org.json.JSONObject
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class MapDownloadManager(private val context: Context) {
 
     companion object {
-        private const val TILE_REFRESH_DAYS = 90
         const val DEFAULT_MAX_CACHE_SIZE_MB = 500L
-
-        private val LAYER_URLS = mapOf(
-            "kartverket" to "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator",
-            "toporaster" to "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator",
-            "sjokartraster" to "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator",
-            "osm" to "https://tile.openstreetmap.org",
-            "opentopomap" to "https://tile.opentopomap.org",
-            "waymarkedtrails" to "https://tile.waymarkedtrails.org/hiking"
-        )
-
-        private val LAYER_COORD_FORMAT = mapOf(
-            "kartverket" to "{z}/{y}/{x}",
-            "toporaster" to "{z}/{y}/{x}",
-            "sjokartraster" to "{z}/{y}/{x}",
-            "osm" to "{z}/{x}/{y}",
-            "opentopomap" to "{z}/{x}/{y}",
-            "waymarkedtrails" to "{z}/{x}/{y}"
-        )
     }
 
-    private fun getTilesDir(layerName: String) = File(context.getExternalFilesDir(null), "tiles/$layerName")
-    private fun getMetadataFile(layerName: String) = File(context.getExternalFilesDir(null), "tiles/${layerName}_metadata.json")
-
-    data class TileMetadata(
-        val regions: MutableSet<String> = mutableSetOf(),
-        var downloadedAt: Long = System.currentTimeMillis()
-    )
-
-    private fun loadMetadata(layerName: String): MutableMap<String, TileMetadata> {
-        val metadataFile = getMetadataFile(layerName)
-        if (!metadataFile.exists()) return mutableMapOf()
-        return try {
-            val json = metadataFile.readText()
-            com.google.gson.Gson().fromJson(json,
-                object : com.google.gson.reflect.TypeToken<MutableMap<String, TileMetadata>>() {}.type)
-                ?: mutableMapOf()
-        } catch (e: Exception) {
-            Log.w("MapDownloadManager", "Failed to load metadata for $layerName", e)
-            mutableMapOf()
-        }
-    }
-
-    private fun saveMetadata(layerName: String, metadata: Map<String, TileMetadata>) {
-        try {
-            val metadataFile = getMetadataFile(layerName)
-            metadataFile.parentFile?.mkdirs()
-            val json = com.google.gson.Gson().toJson(metadata)
-            metadataFile.writeText(json)
-        } catch (e: Exception) {
-            Log.e("MapDownloadManager", "Failed to save metadata for $layerName", e)
-        }
-    }
+    private val offlineManager by lazy { OfflineManager.getInstance(context) }
 
     /**
-     * Download map tiles for a region
+     * Download map tiles for a region using MapLibre's OfflineManager
      */
     suspend fun downloadRegion(
         region: Region,
@@ -82,78 +33,79 @@ class MapDownloadManager(private val context: Context) {
         onProgress: (Int) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Main) {
             try {
-                Log.d("MapDownloadManager", "Starting tile download for: ${region.name} on layer $layerName")
-                Log.d("MapDownloadManager", "Zoom levels: $minZoom - $maxZoom")
+                Log.d("MapDownloadManager", "Starting offline download for: ${region.name} on layer $layerName")
 
-                // Create tiles directory for this layer
-                val tilesDir = getTilesDir(layerName)
-                tilesDir.mkdirs()
+                val styleUrl = getStyleUrlForLayer(layerName)
+                val regionName = "${region.name}-$layerName"
 
-                // Load metadata for this layer
-                val metadata = loadMetadata(layerName)
-
-                // Calculate tile ranges for each zoom level
-                val tilesToDownload = mutableListOf<TileCoordinate>()
-                for (zoom in minZoom..maxZoom) {
-                    val tiles = getTilesForBounds(region.boundingBox, zoom)
-                    tilesToDownload.addAll(tiles)
-                }
-
-                Log.d("MapDownloadManager", "Total tiles to download: ${tilesToDownload.size}")
-
-                var downloaded = 0
-                var skipped = 0
-                var failed = 0
-                val currentTime = System.currentTimeMillis()
-
-                for ((index, tile) in tilesToDownload.withIndex()) {
-                    val coordFormat = LAYER_COORD_FORMAT[layerName] ?: "{z}/{x}/{y}"
-                    val tileKey = if (coordFormat == "{z}/{y}/{x}") {
-                        "${tile.z}/${tile.y}/${tile.x}"
-                    } else {
-                        "${tile.z}/${tile.x}/${tile.y}"
-                    }
-                    val tileFile = File(tilesDir, "$tileKey.png")
-                    val tileMeta = metadata[tileKey]
-
-                    // Skip if tile exists and is not outdated
-                    val tileAge = if (tileFile.exists() && tileMeta != null) {
-                        (currentTime - tileMeta.downloadedAt) / (1000 * 60 * 60 * 24)
-                    } else -1
-
-                    if (tileFile.exists() && tileAge >= 0 && tileAge < TILE_REFRESH_DAYS) {
-                        // Update metadata to associate with this region
-                        tileMeta?.regions?.add(region.name)
-                        skipped++
-                    } else {
-                        // Download tile (updates existing or creates new)
-                        val success = downloadTile(tile, layerName, tilesDir)
-                        if (success) {
-                            // Update or create metadata
-                            val meta = metadata.getOrPut(tileKey) { TileMetadata() }
-                            meta.regions.add(region.name)
-                            meta.downloadedAt = currentTime
-                            downloaded++
-                        } else {
-                            failed++
+                // Check if region already exists
+                val existingRegion = findOfflineRegion(regionName)
+                if (existingRegion != null) {
+                    Log.d("MapDownloadManager", "Region $regionName already exists, updating...")
+                    existingRegion.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
+                        override fun onDelete() {
+                            Log.d("MapDownloadManager", "Deleted existing region")
                         }
-                    }
-
-                    val progress = ((index + 1) * 100) / tilesToDownload.size
-                    onProgress(progress)
-
-                    if (index % 10 == 0) {
-                        Log.d("MapDownloadManager", "Progress: $progress% ($downloaded new, $skipped existing, $failed failed)")
-                    }
+                        override fun onError(error: String) {
+                            Log.w("MapDownloadManager", "Error deleting existing region: $error")
+                        }
+                    })
                 }
 
-                // Save metadata for this layer
-                saveMetadata(layerName, metadata)
+                // Create offline region definition
+                val definition = OfflineTilePyramidRegionDefinition(
+                    styleUrl,
+                    region.boundingBox,
+                    minZoom.toDouble(),
+                    maxZoom.toDouble(),
+                    context.resources.displayMetrics.density
+                )
 
-                Log.d("MapDownloadManager", "Download complete: $downloaded new, $skipped existing, $failed failed")
-                onComplete(failed == 0)
+                val metadata = JSONObject().apply {
+                    put("name", regionName)
+                    put("layer", layerName)
+                    put("region", region.name)
+                }.toString().toByteArray()
+
+                // Create the offline region
+                offlineManager.createOfflineRegion(definition, metadata, object : OfflineManager.CreateOfflineRegionCallback {
+                    override fun onCreate(offlineRegion: OfflineRegion) {
+                        offlineRegion.setDownloadState(OfflineRegion.STATE_ACTIVE)
+
+                        offlineRegion.setObserver(object : OfflineRegion.OfflineRegionObserver {
+                            override fun onStatusChanged(status: OfflineRegionStatus) {
+                                val progress = if (status.requiredResourceCount > 0) {
+                                    (status.completedResourceCount * 100 / status.requiredResourceCount).toInt()
+                                } else 0
+
+                                onProgress(progress)
+
+                                if (status.isComplete) {
+                                    offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                                    Log.d("MapDownloadManager", "Download complete for $regionName")
+                                    onComplete(true)
+                                }
+                            }
+
+                            override fun onError(error: OfflineRegionError) {
+                                Log.e("MapDownloadManager", "Download error: ${error.message}")
+                                offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                                onComplete(false)
+                            }
+
+                            override fun mapboxTileCountLimitExceeded(limit: Long) {
+                                Log.w("MapDownloadManager", "Tile count limit exceeded: $limit")
+                            }
+                        })
+                    }
+
+                    override fun onError(error: String) {
+                        Log.e("MapDownloadManager", "Error creating offline region: $error")
+                        onComplete(false)
+                    }
+                })
 
             } catch (e: Exception) {
                 Log.e("MapDownloadManager", "Download error", e)
@@ -162,190 +114,213 @@ class MapDownloadManager(private val context: Context) {
         }
     }
 
-    private fun getTilesForBounds(bounds: org.maplibre.android.geometry.LatLngBounds, zoom: Int): List<TileCoordinate> {
-        val tiles = mutableListOf<TileCoordinate>()
-
-        val northWest = latLngToTile(bounds.northEast.latitude, bounds.southWest.longitude, zoom)
-        val southEast = latLngToTile(bounds.southWest.latitude, bounds.northEast.longitude, zoom)
-
-        val minX = minOf(northWest.x, southEast.x)
-        val maxX = maxOf(northWest.x, southEast.x)
-        val minY = minOf(northWest.y, southEast.y)
-        val maxY = maxOf(northWest.y, southEast.y)
-
-        for (x in minX..maxX) {
-            for (y in minY..maxY) {
-                tiles.add(TileCoordinate(zoom, x, y))
+    private suspend fun findOfflineRegion(name: String): OfflineRegion? = suspendCoroutine { continuation ->
+        offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+            override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                val region = offlineRegions?.find { region ->
+                    try {
+                        val metadata = String(region.metadata)
+                        val json = JSONObject(metadata)
+                        json.getString("name") == name
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
+                continuation.resume(region)
             }
-        }
 
-        return tiles
+            override fun onError(error: String) {
+                Log.e("MapDownloadManager", "Error listing regions: $error")
+                continuation.resume(null)
+            }
+        })
     }
 
-    private fun latLngToTile(lat: Double, lng: Double, zoom: Int): TileCoordinate {
-        val n = 2.0.pow(zoom)
-        val x = floor((lng + 180.0) / 360.0 * n).toInt()
-        val latRad = lat * PI / 180.0
-        val y = floor((1.0 - ln(kotlin.math.tan(latRad) + 1.0 / kotlin.math.cos(latRad)) / PI) / 2.0 * n).toInt()
-        return TileCoordinate(zoom, x, y)
-    }
-
-    private suspend fun downloadTile(tile: TileCoordinate, layerName: String, tilesDir: File): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                val baseUrl = LAYER_URLS[layerName] ?: return@withContext false
-                val coordFormat = LAYER_COORD_FORMAT[layerName] ?: "{z}/{x}/{y}"
-
-                // Build URL based on coordinate format
-                val url = if (coordFormat == "{z}/{y}/{x}") {
-                    "$baseUrl/${tile.z}/${tile.y}/${tile.x}.png"
-                } else {
-                    "$baseUrl/${tile.z}/${tile.x}/${tile.y}.png"
-                }
-
-                // Build file path (same as URL path)
-                val tilePath = if (coordFormat == "{z}/{y}/{x}") {
-                    "${tile.z}/${tile.y}/${tile.x}.png"
-                } else {
-                    "${tile.z}/${tile.x}/${tile.y}.png"
-                }
-                val tileFile = File(tilesDir, tilePath)
-
-                // Create directory
-                tileFile.parentFile?.mkdirs()
-
-                // Download tile (overwrites if exists and outdated)
-                val connection = URL(url).openConnection() as HttpURLConnection
-                connection.connectTimeout = 10000
-                connection.readTimeout = 10000
-                connection.setRequestProperty("User-Agent", "Hvor/1.0")
-
-                if (connection.responseCode == 200) {
-                    val contentLength = connection.contentLength
-                    connection.inputStream.use { input ->
-                        FileOutputStream(tileFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    val actualSize = tileFile.length()
-
-                    // Log a sample of downloads for debugging
-                    if (tile.z <= 7 || (tile.x + tile.y) % 50 == 0) {
-                        Log.d("MapDownloadManager", "Downloaded $layerName tile $tilePath: " +
-                            "expected=$contentLength bytes, actual=$actualSize bytes")
-                    }
-
-                    true
-                } else {
-                    Log.w("MapDownloadManager", "Failed to download tile: ${connection.responseCode} for $url")
-                    false
-                }
-            } catch (e: Exception) {
-                Log.w("MapDownloadManager", "Error downloading tile for $layerName", e)
-                false
-            }
+    private fun getStyleUrlForLayer(layerName: String): String {
+        // OfflineManager requires a full MapLibre style JSON, not just a tile URL
+        // We'll create a minimal style JSON as a data URI
+        val tileUrl = when (layerName) {
+            "kartverket" -> "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
+            "toporaster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
+            "sjokartraster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"
+            "osm" -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            "opentopomap" -> "https://tile.opentopomap.org/{z}/{x}/{y}.png"
+            "waymarkedtrails" -> "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
+            else -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         }
+
+        // Create a minimal MapLibre style JSON
+        val styleJson = """
+        {
+          "version": 8,
+          "sources": {
+            "$layerName": {
+              "type": "raster",
+              "tiles": ["$tileUrl"],
+              "tileSize": 256
+            }
+          },
+          "layers": [
+            {
+              "id": "$layerName-layer",
+              "type": "raster",
+              "source": "$layerName"
+            }
+          ]
+        }
+        """.trimIndent()
+
+        // Return as data URI
+        return "data:application/json;charset=utf-8," + java.net.URLEncoder.encode(styleJson, "UTF-8")
     }
 
     /**
-     * Get the tiles required for a region and their total size
+     * Get info about downloaded regions
      */
-    fun getRegionTileInfo(
+    suspend fun getRegionTileInfo(
         region: Region,
         layerName: String = "kartverket",
         minZoom: Int = 5,
         maxZoom: Int = 12
-    ): RegionTileInfo {
-        val metadata = loadMetadata(layerName)
-        val tilesDir = getTilesDir(layerName)
-        val tilesToCheck = mutableListOf<TileCoordinate>()
+    ): RegionTileInfo = suspendCoroutine { continuation ->
+        val regionName = "${region.name}-$layerName"
 
-        for (zoom in minZoom..maxZoom) {
-            val tiles = getTilesForBounds(region.boundingBox, zoom)
-            tilesToCheck.addAll(tiles)
-        }
+        offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+            override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                val offlineRegion = offlineRegions?.find { region ->
+                    try {
+                        val metadata = String(region.metadata)
+                        val json = JSONObject(metadata)
+                        json.getString("name") == regionName
+                    } catch (e: Exception) {
+                        false
+                    }
+                }
 
-        var existingTiles = 0
-        var existingSize = 0L
+                if (offlineRegion != null) {
+                    offlineRegion.getStatus(object : OfflineRegion.OfflineRegionStatusCallback {
+                        override fun onStatus(status: OfflineRegionStatus?) {
+                            if (status != null) {
+                                continuation.resume(RegionTileInfo(
+                                    totalTiles = status.requiredResourceCount.toInt(),
+                                    downloadedTiles = status.completedResourceCount.toInt(),
+                                    downloadedSize = status.completedResourceSize,
+                                    isFullyDownloaded = status.isComplete
+                                ))
+                            } else {
+                                continuation.resume(RegionTileInfo(0, 0, 0, false))
+                            }
+                        }
 
-        val coordFormat = LAYER_COORD_FORMAT[layerName] ?: "{z}/{x}/{y}"
+                        override fun onError(error: String?) {
+                            continuation.resume(RegionTileInfo(0, 0, 0, false))
+                        }
 
-        for (tile in tilesToCheck) {
-            val tileKey = if (coordFormat == "{z}/{y}/{x}") {
-                "${tile.z}/${tile.y}/${tile.x}"
-            } else {
-                "${tile.z}/${tile.x}/${tile.y}"
+                        @JvmName("onErrorNonNull")
+                        fun onError(error: String) {
+                            onError(error as String?)
+                        }
+                    })
+                } else {
+                    continuation.resume(RegionTileInfo(0, 0, 0, false))
+                }
             }
-            val tileFile = File(tilesDir, "$tileKey.png")
-            val tileMeta = metadata[tileKey]
 
-            // Count tile if it exists and is associated with this region
-            if (tileFile.exists() && tileMeta?.regions?.contains(region.name) == true) {
-                existingTiles++
-                existingSize += tileFile.length()
+            override fun onError(error: String) {
+                continuation.resume(RegionTileInfo(0, 0, 0, false))
             }
-        }
-
-        return RegionTileInfo(
-            totalTiles = tilesToCheck.size,
-            downloadedTiles = existingTiles,
-            downloadedSize = existingSize,
-            isFullyDownloaded = existingTiles == tilesToCheck.size
-        )
+        })
     }
 
     /**
      * Delete all tiles for a specific region
      */
-    fun deleteRegionTiles(region: Region, layerName: String = "kartverket") {
-        val metadata = loadMetadata(layerName)
-        val tilesDir = getTilesDir(layerName)
-        var deletedCount = 0
-        var freedSize = 0L
+    suspend fun deleteRegionTiles(region: Region, layerName: String = "kartverket"): Boolean = suspendCoroutine { continuation ->
+        val regionName = "${region.name}-$layerName"
 
-        // Remove region from metadata and delete orphaned tiles
-        val keysToRemove = mutableListOf<String>()
-        metadata.forEach { (tileKey, meta) ->
-            if (meta.regions.contains(region.name)) {
-                meta.regions.remove(region.name)
-
-                // If no regions reference this tile anymore, delete it
-                if (meta.regions.isEmpty()) {
-                    val tileFile = File(tilesDir, "$tileKey.png")
-                    if (tileFile.exists()) {
-                        freedSize += tileFile.length()
-                        tileFile.delete()
-                        deletedCount++
+        offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+            override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                val offlineRegion = offlineRegions?.find { region ->
+                    try {
+                        val metadata = String(region.metadata)
+                        val json = JSONObject(metadata)
+                        json.getString("name") == regionName
+                    } catch (e: Exception) {
+                        false
                     }
-                    keysToRemove.add(tileKey)
+                }
+
+                if (offlineRegion != null) {
+                    offlineRegion.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
+                        override fun onDelete() {
+                            Log.d("MapDownloadManager", "Deleted region: $regionName")
+                            continuation.resume(true)
+                        }
+
+                        override fun onError(error: String) {
+                            Log.e("MapDownloadManager", "Error deleting region: $error")
+                            continuation.resume(false)
+                        }
+                    })
+                } else {
+                    continuation.resume(false)
                 }
             }
-        }
 
-        // Remove orphaned metadata entries
-        keysToRemove.forEach { metadata.remove(it) }
-
-        saveMetadata(layerName, metadata)
-        Log.d("MapDownloadManager", "Deleted $deletedCount $layerName tiles for ${region.name}, freed ${freedSize / 1024}KB")
+            override fun onError(error: String) {
+                continuation.resume(false)
+            }
+        })
     }
 
     /**
-     * Get total cache size and tile count
+     * Get total cache size
      */
-    fun getTotalCacheInfo(): Pair<Long, Int> {
-        var totalSize = 0L
-        var tileCount = 0
+    suspend fun getTotalCacheInfo(): Pair<Long, Int> = suspendCoroutine { continuation ->
+        offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+            override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                var totalSize = 0L
+                var totalTiles = 0
+                var processed = 0
 
-        // Sum all layer directories
-        val baseDir = File(context.getExternalFilesDir(null), "tiles")
-        baseDir.walkTopDown().forEach { file ->
-            if (file.isFile && file.extension == "png") {
-                totalSize += file.length()
-                tileCount++
+                if (offlineRegions.isNullOrEmpty()) {
+                    continuation.resume(Pair(0L, 0))
+                    return
+                }
+
+                offlineRegions.forEach { region ->
+                    region.getStatus(object : OfflineRegion.OfflineRegionStatusCallback {
+                        override fun onStatus(status: OfflineRegionStatus?) {
+                            if (status != null) {
+                                totalSize += status.completedResourceSize
+                                totalTiles += status.completedResourceCount.toInt()
+                            }
+                            processed++
+
+                            if (processed == offlineRegions.size) {
+                                continuation.resume(Pair(totalSize, totalTiles))
+                            }
+                        }
+
+                        override fun onError(error: String?) {
+                            processed++
+                            if (processed == offlineRegions.size) {
+                                continuation.resume(Pair(totalSize, totalTiles))
+                            }
+                        }
+
+                        @JvmName("onErrorNonNull")
+                        fun onError(error: String) {
+                            onError(error as String?)
+                        }
+                    })
+                }
             }
-        }
 
-        return Pair(totalSize, tileCount)
+            override fun onError(error: String) {
+                continuation.resume(Pair(0L, 0))
+            }
+        })
     }
 
     data class RegionTileInfo(
@@ -354,7 +329,4 @@ class MapDownloadManager(private val context: Context) {
         val downloadedSize: Long,
         val isFullyDownloaded: Boolean
     )
-
-    data class TileCoordinate(val z: Int, val x: Int, val y: Int)
 }
-
