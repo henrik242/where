@@ -45,9 +45,33 @@ Toggle "Show historical (24h)" checkbox to include stopped tracks.
 ### Environment Variables
 
 ```bash
-GOD_MODE_KEY=your-secret-key  # Required for god mode (no default)
-PORT=3000                      # Default: 3000
+TRACKING_HMAC_SECRET=your-secret  # Required for HMAC verification
+GOD_MODE_KEY=your-secret-key      # Required for god mode (no default)
+PORT=3000                          # Default: 3000
 ```
+
+**Important:** `TRACKING_HMAC_SECRET` must be set or all tracking requests will be rejected.
+
+## Setup
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Generate a secret key:
+   ```bash
+   openssl rand -base64 32
+   ```
+
+3. Edit `.env` and set `TRACKING_HMAC_SECRET` to the generated key
+
+4. Start the server:
+   ```bash
+   bun run index.ts
+   ```
+
+The same secret must be configured in the Android app build.
 
 ## Development
 
@@ -55,29 +79,13 @@ PORT=3000                      # Default: 3000
 # Install dependencies
 bun install
 
-# Run development server
+# Run development server (after setting up .env)
 bun run index.ts
 
-# Run with custom god mode key
-GOD_MODE_KEY=my-secret bun run index.ts
-
 # The server will start on http://localhost:3000
-
-# Testing a track
-curl -X POST http://localhost:3000/api/tracks \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "test01",
-    "name": "Quick Test Track",
-    "color": "#2196F3",
-    "points": [
-      {"lat": 59.9139, "lon": 10.7522, "timestamp": 1704297600000},
-      {"lat": 59.9145, "lon": 10.7530, "timestamp": 1704297610000},
-      {"lat": 59.9150, "lon": 10.7540, "timestamp": 1704297620000},
-      {"lat": 59.9155, "lon": 10.7550, "timestamp": 1704297630000}
-    ]
-  }'
 ```
+
+**Note:** All POST/PUT requests require HMAC-SHA256 signatures in the `X-Signature` header. See `.env.example` for setup.
 
 ## Data Format
 

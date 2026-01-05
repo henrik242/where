@@ -17,6 +17,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Load HMAC secret from environment variable or local.properties
+        val trackingHmacSecret = System.getenv("TRACKING_HMAC_SECRET")
+            ?: project.findProperty("TRACKING_HMAC_SECRET") as? String
+            ?: ""
+        buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
     }
 
     buildTypes {
@@ -27,6 +33,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21

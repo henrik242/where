@@ -1,0 +1,10 @@
+# Local configuration file (this file should not be checked in)
+# Copy this to local.properties and fill in your values
+
+sdk.dir=/Users/foobar/Library/Android/sdk
+
+# HMAC secret key for signing tracking requests
+# Generate a secure random string (e.g., using: openssl rand -base64 32)
+# This must match the TRACKING_HMAC_SECRET on the server
+TRACKING_HMAC_SECRET=your-secret-key-here
+

@@ -2,6 +2,49 @@ import { trackStore } from './src/store';
 import type { Track } from './src/types';
 
 const GOD_MODE_KEY = process.env.GOD_MODE_KEY;
+const TRACKING_HMAC_SECRET = process.env.TRACKING_HMAC_SECRET;
+
+if (!TRACKING_HMAC_SECRET) {
+  console.warn('⚠️  WARNING: TRACKING_HMAC_SECRET not set! All tracking requests will be rejected.');
+}
+
+/**
+ * Verify HMAC signature for request body
+ */
+async function verifyHmacSignature(body: string, signature: string | null): Promise<boolean> {
+  if (!TRACKING_HMAC_SECRET) {
+    return false; // Reject if secret not configured
+  }
+
+  if (!signature) {
+    return false; // Reject if no signature provided
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(TRACKING_HMAC_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signatureBytes = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(body)
+    );
+
+    // Convert to base64 for comparison
+    const expectedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)));
+
+    return signature === expectedSignature;
+  } catch (error) {
+    console.error('HMAC verification error:', error);
+    return false;
+  }
+}
 
 async function reverseGeocode(lat: number, lon: number): Promise<string> {
   try {
@@ -94,7 +137,7 @@ async function handleAPI(req: Request): Promise<Response> {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-God-Mode-Key',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-God-Mode-Key, X-Signature',
   };
 
   if (req.method === 'OPTIONS') {
@@ -102,6 +145,25 @@ async function handleAPI(req: Request): Promise<Response> {
   }
 
   try {
+    // Verify HMAC signature for mutating requests (POST, PUT)
+    if (req.method === 'POST' || req.method === 'PUT') {
+      const bodyText = await req.text();
+      const signature = req.headers.get('X-Signature');
+
+      const isValid = await verifyHmacSignature(bodyText, signature);
+
+      if (!isValid) {
+        console.warn('❌ Invalid or missing HMAC signature');
+        return new Response(JSON.stringify({ error: 'Invalid or missing signature' }), {
+          status: 401,
+          headers
+        });
+      }
+
+      // Re-parse body as JSON for later use
+      const body = JSON.parse(bodyText);
+      (req as any).parsedBody = body;
+    }
     // GET /api/tracks - Get all active tracks (or filtered by client IDs)
     if (path === '/api/tracks' && req.method === 'GET') {
       // Get client IDs from URL query params (for sharing) OR header (for god mode)
@@ -143,7 +205,7 @@ async function handleAPI(req: Request): Promise<Response> {
 
     // POST /api/tracks - Create new track
     if (path === '/api/tracks' && req.method === 'POST') {
-      const body = await req.json() as Partial<Track>;
+      const body = (req as any).parsedBody as Partial<Track>;
 
       if (!body.userId) {
         return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -202,7 +264,7 @@ async function handleAPI(req: Request): Promise<Response> {
     // POST /api/tracks/:trackId/points - Add point to track
     if (path.match(/^\/api\/tracks\/[^\/]+\/points$/) && req.method === 'POST') {
       const trackId = path.split('/')[3];
-      const point = await req.json();
+      const point = (req as any).parsedBody;
 
       const track = trackStore.getTrack(trackId);
       if (!track) {

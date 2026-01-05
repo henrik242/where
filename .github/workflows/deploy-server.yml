@@ -49,6 +49,9 @@ jobs:
           echo "✅ Deployment successful!"
           echo "Server is running at https://where.synth.no"
           echo "Files copied to ${{ secrets.REMOTE_TARGET }}"
+          echo ""
+          echo "⚠️  REMINDER: Ensure TRACKING_HMAC_SECRET is set in the server's .env file!"
+          echo "The server will reject all tracking requests without a valid HMAC secret."
         else
           echo "❌ Deployment failed!"
           exit 1
