@@ -11,12 +11,12 @@
          so users can lock screen or use other apps during outdoor activity tracking sessions.
          Users explicitly start/stop tracking via prominent UI controls and notification. -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
-        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
+        tools:ignore="BackgroundLocationPolicy" />
 
     <!-- Foreground service with location type ensures transparent GPS tracking with persistent
          notification showing tracking status. Required for Android 14+ location tracking. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"
-        tools:ignore="ForegroundServicePermission" />
+        tools:ignore="ForegroundServicesPolicy" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
 
     <application
