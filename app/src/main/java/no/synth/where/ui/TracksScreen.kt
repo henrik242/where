@@ -52,8 +52,8 @@ fun TracksScreen(
                 inputStream?.close()
 
                 if (gpxContent != null) {
-                    val success = trackRepository.importTrack(gpxContent)
-                    if (!success) {
+                    val importedTrack = trackRepository.importTrack(gpxContent)
+                    if (importedTrack == null) {
                         importErrorMessage = "Failed to import GPX file. The file may be corrupted or in an unsupported format."
                         showImportError = true
                     }

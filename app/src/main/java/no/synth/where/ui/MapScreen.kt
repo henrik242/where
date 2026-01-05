@@ -246,6 +246,7 @@ fun MapScreen(
             updateTrackOnMap(style, trackToShow, isCurrentTrack = currentTrack != null)
 
             if (viewing != null && viewing.points.isNotEmpty()) {
+                hasZoomedToLocation = true  // Prevent auto-zoom to location
                 kotlinx.coroutines.delay(100)
                 val points = viewing.points.map { it.latLng }
                 if (points.isNotEmpty()) {
@@ -271,7 +272,7 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(hasLocationPermission, mapInstance) {
+    LaunchedEffect(hasLocationPermission, mapInstance, viewingTrack, currentTrack) {
         val map = mapInstance
         if (hasLocationPermission && map != null && !hasZoomedToLocation && viewingTrack == null && currentTrack == null) {
             try {
