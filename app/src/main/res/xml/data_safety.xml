@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Data Safety declarations for Google Play Console
+  ~
+  ~ Background Location Usage Justification:
+  ~ This GPS tracking app requires background location access as its core functionality.
+  ~ Users explicitly start GPS tracking sessions to record their routes/tracks while
+  ~ hiking, biking, or other outdoor activities. The app continues to record location
+  ~ data when in the background so users can use other apps or lock their screen while
+  ~ tracking their activity. This is critical for the app's primary purpose.
+  ~
+  ~ Foreground Service Justification:
+  ~ The location foreground service displays a persistent notification showing active
+  ~ GPS tracking status, ensuring users are always aware when location tracking is active.
+  ~ This provides transparency and allows users to easily stop tracking from the notification.
+  -->
+<resources>
+    <!-- This file serves as documentation for Play Console data safety declarations -->
+</resources>
+
