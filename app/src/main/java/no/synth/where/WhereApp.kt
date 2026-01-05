@@ -136,6 +136,16 @@ fun WhereApp(
         }
         composable("download") {
             DownloadScreen(
+                onBackClick = { navController.popBackStack() },
+                onLayerClick = { layerId ->
+                    navController.navigate("download/$layerId")
+                }
+            )
+        }
+        composable("download/{layerId}") { backStackEntry ->
+            val layerId = backStackEntry.arguments?.getString("layerId") ?: "kartverket"
+            LayerRegionsScreen(
+                layerId = layerId,
                 onBackClick = { navController.popBackStack() }
             )
         }
