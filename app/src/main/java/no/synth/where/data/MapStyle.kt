@@ -1,10 +1,38 @@
 package no.synth.where.data
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import no.synth.where.ui.MapLayer
 import java.io.File
 
 object MapStyle {
+    private fun isOnline(context: Context): Boolean = try {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        connectivityManager?.let {
+            val activeNetwork = it.activeNetwork
+            val capabilities = it.getNetworkCapabilities(activeNetwork)
+            capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        } ?: true
+    } catch (e: Exception) {
+        true
+    }
+
+    private fun getTileUrls(
+        context: Context,
+        tilesDir: File,
+        layerName: String,
+        onlineUrl: String,
+        coordPattern: String
+    ): String {
+        val offlinePath = "file://${File(tilesDir, layerName).absolutePath}"
+        return if (isOnline(context)) {
+            """["$onlineUrl"]"""
+        } else {
+            """["$offlinePath/$coordPattern.png"]"""
+        }
+    }
+
     fun getStyle(
         context: Context,
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
@@ -12,15 +40,7 @@ object MapStyle {
         showWaymarkedTrails: Boolean = false
     ): String {
         val regions = RegionsRepository.getRegions(context)
-
-        // Get paths to offline tiles
         val tilesDir = File(context.getExternalFilesDir(null), "tiles")
-        val osmTilesPath = "file://${File(tilesDir, "osm").absolutePath}"
-        val kartverketTilesPath = "file://${File(tilesDir, "kartverket").absolutePath}"
-        val toporasterTilesPath = "file://${File(tilesDir, "toporaster").absolutePath}"
-        val sjokartrasterTilesPath = "file://${File(tilesDir, "sjokartraster").absolutePath}"
-        val opentopoMapTilesPath = "file://${File(tilesDir, "opentopomap").absolutePath}"
-        val waymarkedTrailsTilesPath = "file://${File(tilesDir, "waymarkedtrails").absolutePath}"
         val regionsGeoJson = regions.joinToString(",") { region ->
             val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
                 region.polygon.first().joinToString(",") { latLng ->
@@ -101,60 +121,90 @@ object MapStyle {
     "osm": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$osmTilesPath/{z}/{x}/{y}.png",
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-      ],
+      "tiles": ${
+            getTileUrls(
+                context,
+                tilesDir,
+                "osm",
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "{z}/{x}/{y}"
+            )
+        },
       "tileSize": 256,
       "attribution": "© OpenStreetMap contributors"
     },
     "kartverket": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$kartverketTilesPath/{z}/{y}/{x}.png",
-        "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
-      ],
+      "tiles": ${
+            getTileUrls(
+                context,
+                tilesDir,
+                "kartverket",
+                "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png",
+                "{z}/{y}/{x}"
+            )
+        },
       "tileSize": 256,
       "attribution": "Kartverket"
     },
     "toporaster": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$toporasterTilesPath/{z}/{y}/{x}.png",
-        "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
-      ],
+      "tiles": ${
+            getTileUrls(
+                context,
+                tilesDir,
+                "toporaster",
+                "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png",
+                "{z}/{y}/{x}"
+            )
+        },
       "tileSize": 256,
       "attribution": "Kartverket Toporaster"
     },
     "sjokartraster": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$sjokartrasterTilesPath/{z}/{y}/{x}.png",
-        "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"
-      ],
+      "tiles": ${
+            getTileUrls(
+                context,
+                tilesDir,
+                "sjokartraster",
+                "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png",
+                "{z}/{y}/{x}"
+            )
+        },
       "tileSize": 256,
       "attribution": "Kartverket Sjøkartraster"
     },
     "opentopomap": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$opentopoMapTilesPath/{z}/{x}/{y}.png",
-        "https://tile.opentopomap.org/{z}/{x}/{y}.png"
-      ],
+      "tiles": ${
+            getTileUrls(
+                context,
+                tilesDir,
+                "opentopomap",
+                "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+                "{z}/{x}/{y}"
+            )
+        },
       "tileSize": 256,
       "attribution": "© OpenTopoMap (CC-BY-SA)"
     },
     "waymarkedtrails": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": [
-        "$waymarkedTrailsTilesPath/{z}/{x}/{y}.png",
-        "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
-      ],
+      "tiles": ${
+            getTileUrls(
+                context,
+                tilesDir,
+                "waymarkedtrails",
+                "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png",
+                "{z}/{x}/{y}"
+            )
+        },
       "tileSize": 256,
       "attribution": "© Waymarked Trails, OSM"
     },

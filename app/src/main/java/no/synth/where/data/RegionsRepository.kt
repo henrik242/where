@@ -12,6 +12,10 @@ object RegionsRepository {
         return _regions ?: emptyList()
     }
 
+    fun reloadRegions(context: Context) {
+        _regions = FylkeDataLoader.loadFylker(context)
+    }
+
     fun setRegionsForTest(regions: List<Region>?) {
         _regions = regions
     }

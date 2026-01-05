@@ -1,11 +1,14 @@
 package no.synth.where
 
-import android.net.Uri
+import android.content.Context
+import android.net.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import no.synth.where.data.FylkeDownloader
+import no.synth.where.data.RegionsRepository
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.service.LocationTrackingService
@@ -14,7 +17,9 @@ import no.synth.where.ui.*
 @Composable
 fun WhereApp(
     pendingGpxUri: Uri? = null,
-    onGpxHandled: () -> Unit = {}
+    regionsLoadedTrigger: Int = 0,
+    onGpxHandled: () -> Unit = {},
+    onRegionsLoaded: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -22,6 +27,47 @@ fun WhereApp(
     val trackRepository = remember { TrackRepository.getInstance(context) }
     var showSavedPoints by remember { mutableStateOf(true) }
     var viewingPoint by remember { mutableStateOf<no.synth.where.data.SavedPoint?>(null) }
+    var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(context)) }
+    var isOnline by remember { mutableStateOf(false) }
+
+    DisposableEffect(context) {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        val networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                isOnline = true
+            }
+
+            override fun onLost(network: Network) {
+                isOnline = false
+            }
+        }
+
+        val networkRequest = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+
+        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+
+        val activeNetwork = connectivityManager.activeNetwork
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+        isOnline = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+        onDispose {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        }
+    }
+
+    LaunchedEffect(isOnline) {
+        if (isOnline && !hasDownloadedCounties) {
+            val success = FylkeDownloader.downloadAndCacheFylker(context)
+            if (success) {
+                hasDownloadedCounties = true
+                RegionsRepository.reloadRegions(context)
+                onRegionsLoaded()
+            }
+        }
+    }
 
     LaunchedEffect(pendingGpxUri) {
         pendingGpxUri?.let { uri ->
@@ -48,7 +94,8 @@ fun WhereApp(
                 showSavedPoints = showSavedPoints,
                 onShowSavedPointsChange = { showSavedPoints = it },
                 viewingPoint = viewingPoint,
-                onClearViewingPoint = { viewingPoint = null }
+                onClearViewingPoint = { viewingPoint = null },
+                regionsLoadedTrigger = regionsLoadedTrigger
             )
         }
         composable("settings") {

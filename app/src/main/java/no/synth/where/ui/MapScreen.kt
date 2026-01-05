@@ -3,6 +3,11 @@ package no.synth.where.ui
 import android.Manifest
 import android.content.Context
 import android.location.Location
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -92,7 +97,8 @@ fun MapScreen(
     showSavedPoints: Boolean,
     onShowSavedPointsChange: (Boolean) -> Unit,
     viewingPoint: no.synth.where.data.SavedPoint? = null,
-    onClearViewingPoint: () -> Unit = {}
+    onClearViewingPoint: () -> Unit = {},
+    regionsLoadedTrigger: Int = 0
 ) {
     val context = LocalContext.current
     val trackRepository = remember { TrackRepository.getInstance(context) }
@@ -498,6 +504,7 @@ fun MapScreen(
                 savedCameraLon = savedCameraLon,
                 savedCameraZoom = savedCameraZoom,
                 rulerState = rulerState,
+                regionsLoadedTrigger = regionsLoadedTrigger,
                 onRulerPointAdded = { latLng ->
                     rulerState = rulerState.addPoint(latLng)
                 },
@@ -1285,6 +1292,7 @@ fun MapLibreMapView(
     savedCameraLon: Double = 10.0,
     savedCameraZoom: Double = 5.0,
     rulerState: RulerState = RulerState(),
+    regionsLoadedTrigger: Int = 0,
     onRulerPointAdded: (LatLng) -> Unit = {},
     onLongPress: (LatLng) -> Unit = {},
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {}
@@ -1293,12 +1301,43 @@ fun MapLibreMapView(
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     val context = LocalContext.current
+    var isOnline by remember { mutableStateOf(true) }
+    var wasInitialized by remember { mutableStateOf(false) }
+
+    DisposableEffect(context) {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        val networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                isOnline = true
+            }
+
+            override fun onLost(network: Network) {
+                val activeNetwork = connectivityManager.activeNetwork
+                isOnline = activeNetwork != null
+            }
+        }
+
+        val networkRequest = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+
+        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+
+        val activeNetwork = connectivityManager.activeNetwork
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+        isOnline = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+        onDispose {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        }
+    }
 
     // Track click listeners to replace them when ruler state changes
     var clickListener by remember { mutableStateOf<MapLibreMap.OnMapClickListener?>(null) }
     var longClickListener by remember { mutableStateOf<MapLibreMap.OnMapLongClickListener?>(null) }
 
-    LaunchedEffect(selectedLayer, showCountyBorders, showWaymarkedTrails, showSavedPoints, savedPoints.size, map) {
+    LaunchedEffect(selectedLayer, showCountyBorders, showWaymarkedTrails, showSavedPoints, savedPoints.size, isOnline, regionsLoadedTrigger, map) {
         map?.let { mapInstance ->
             try {
                 val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders, showWaymarkedTrails)
@@ -1341,6 +1380,38 @@ fun MapLibreMapView(
     LaunchedEffect(rulerState, map) {
         map?.style?.let { style ->
             updateRulerOnMap(style, rulerState)
+        }
+    }
+
+    LaunchedEffect(isOnline, map) {
+        if (wasInitialized && isOnline && map != null) {
+
+            map?.let { mapInstance ->
+                val styleJson = MapStyle.getStyle(context, selectedLayer, showCountyBorders, showWaymarkedTrails)
+                val viewing = viewingTrack
+                val current = currentTrack
+
+                try {
+                    mapInstance.setStyle(Style.Builder().fromJson(styleJson), object : Style.OnStyleLoaded {
+                        override fun onStyleLoaded(style: Style) {
+                            enableLocationComponent(mapInstance, style, context, hasLocationPermission)
+                            val trackToShow = current ?: viewing
+                            updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
+                            updateRulerOnMap(style, rulerState)
+
+                            if (showSavedPoints && savedPoints.isNotEmpty()) {
+                                updateSavedPointsOnMap(style, savedPoints)
+                            }
+                        }
+                    })
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
+        if (map != null) {
+            wasInitialized = true
         }
     }
 
