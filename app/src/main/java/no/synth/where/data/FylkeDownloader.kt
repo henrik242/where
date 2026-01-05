@@ -53,7 +53,7 @@ object FylkeDownloader {
 
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to download counties: ${e.javaClass.simpleName}: ${e.message}", e)
+            Log.e(TAG, "Failed to download counties: $e", e)
             false
         }
     }

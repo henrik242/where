@@ -54,7 +54,7 @@ object GeocodingHelper {
 
             null
         } catch (e: Exception) {
-            Log.e("GeocodingHelper", "Error reverse geocoding", e)
+            Log.e("GeocodingHelper", "Error reverse geocoding: $e", e)
             null
         }
     }

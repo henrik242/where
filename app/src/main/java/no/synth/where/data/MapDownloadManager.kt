@@ -31,7 +31,7 @@ class MapDownloadManager(private val context: Context) {
             styleServer?.start()
             Log.d("MapDownloadManager", "Style server started on port $STYLE_SERVER_PORT")
         } catch (e: Exception) {
-            Log.e("MapDownloadManager", "Failed to start style server", e)
+            Log.e("MapDownloadManager", "Failed to start style server: $e", e)
         }
     }
 
@@ -167,7 +167,7 @@ class MapDownloadManager(private val context: Context) {
                     })
 
             } catch (e: Exception) {
-                Log.e("MapDownloadManager", "Download error", e)
+                Log.e("MapDownloadManager", "Download error: $e", e)
                 onComplete(false)
             }
         }

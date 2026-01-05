@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "no.synth.where"
-    compileSdk = 36
+    compileSdkVersion("android-36.1")
+    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "no.synth.where"

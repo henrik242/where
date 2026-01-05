@@ -321,7 +321,7 @@ fun DownloadScreen(
                             headlineContent = { Text(cleanRegionName(region.name)) },
                             supportingContent = {
                                 if (isDownloaded) {
-                                    Text("✓ ${info?.downloadedTiles ?: 0} tiles • ${formatBytes(info?.downloadedSize ?: 0)}")
+                                    Text("✓ ${info.downloadedTiles} tiles • ${formatBytes(info.downloadedSize)}")
                                 } else if (hasPartialDownload) {
                                     Text("${info?.downloadedTiles ?: 0}/${info?.totalTiles ?: 0} tiles • ${formatBytes(info?.downloadedSize ?: 0)}")
                                 } else {
