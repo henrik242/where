@@ -10,8 +10,6 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 
     <application
             android:name=".WhereApplication"
@@ -40,10 +38,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="file" />
                 <data android:host="*" />
-                <data android:pathPattern=".*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\..*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.gpx" />
+                <data android:pathSuffix=".gpx" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -59,10 +54,7 @@
                 <data android:scheme="content" />
                 <data android:mimeType="application/xml" />
                 <data android:host="*" />
-                <data android:pathPattern=".*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\..*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.gpx" />
+                <data android:pathSuffix=".gpx" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -71,10 +63,7 @@
                 <data android:scheme="content" />
                 <data android:mimeType="text/xml" />
                 <data android:host="*" />
-                <data android:pathPattern=".*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\..*\\.gpx" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.gpx" />
+                <data android:pathSuffix=".gpx" />
             </intent-filter>
         </activity>
 
