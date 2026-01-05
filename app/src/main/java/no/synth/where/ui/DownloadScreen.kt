@@ -308,9 +308,15 @@ fun DownloadScreen(
                         DownloadTab.WAYMARKEDTRAILS -> "waymarkedtrails"
                     }
 
-                    val tileInfo = downloadManager.getRegionTileInfo(region, layerName)
-                    val isDownloaded = tileInfo.isFullyDownloaded
-                    val hasPartialDownload = tileInfo.downloadedTiles > 0
+                    var tileInfo by remember { mutableStateOf<MapDownloadManager.RegionTileInfo?>(null) }
+
+                    LaunchedEffect(region, layerName) {
+                        tileInfo = downloadManager.getRegionTileInfo(region, layerName)
+                    }
+
+                    val info = tileInfo
+                    val isDownloaded = info?.isFullyDownloaded == true
+                    val hasPartialDownload = (info?.downloadedTiles ?: 0) > 0
 
                     Card(
                         modifier = Modifier.fillMaxWidth()
@@ -319,11 +325,11 @@ fun DownloadScreen(
                             headlineContent = { Text(cleanRegionName(region.name)) },
                             supportingContent = {
                                 if (isDownloaded) {
-                                    Text("✓ ${tileInfo.downloadedTiles} tiles • ${formatBytes(tileInfo.downloadedSize)}")
+                                    Text("✓ ${info?.downloadedTiles ?: 0} tiles • ${formatBytes(info?.downloadedSize ?: 0)}")
                                 } else if (hasPartialDownload) {
-                                    Text("${tileInfo.downloadedTiles}/${tileInfo.totalTiles} tiles • ${formatBytes(tileInfo.downloadedSize)}")
+                                    Text("${info?.downloadedTiles ?: 0}/${info?.totalTiles ?: 0} tiles • ${formatBytes(info?.downloadedSize ?: 0)}")
                                 } else {
-                                    Text("${tileInfo.totalTiles} tiles needed")
+                                    Text("${info?.totalTiles ?: 0} tiles needed")
                                 }
                             },
                             trailingContent = {
@@ -391,9 +397,11 @@ fun DownloadScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        downloadManager.deleteRegionTiles(region, layerName)
-                        showDeleteDialog = null
-                        refreshTrigger++
+                        scope.launch {
+                            downloadManager.deleteRegionTiles(region, layerName)
+                            showDeleteDialog = null
+                            refreshTrigger++
+                        }
                     }
                 ) {
                     Text("Delete")
