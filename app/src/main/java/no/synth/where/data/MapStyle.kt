@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import android.content.Context
 import no.synth.where.ui.MapLayer
+import java.io.File
 
 object MapStyle {
     fun getStyle(
@@ -11,6 +12,15 @@ object MapStyle {
         showWaymarkedTrails: Boolean = false
     ): String {
         val regions = RegionsRepository.getRegions(context)
+
+        // Get paths to offline tiles
+        val tilesDir = File(context.getExternalFilesDir(null), "tiles")
+        val osmTilesPath = "file://${File(tilesDir, "osm").absolutePath}"
+        val kartverketTilesPath = "file://${File(tilesDir, "kartverket").absolutePath}"
+        val toporasterTilesPath = "file://${File(tilesDir, "toporaster").absolutePath}"
+        val sjokartrasterTilesPath = "file://${File(tilesDir, "sjokartraster").absolutePath}"
+        val opentopoMapTilesPath = "file://${File(tilesDir, "opentopomap").absolutePath}"
+        val waymarkedTrailsTilesPath = "file://${File(tilesDir, "waymarkedtrails").absolutePath}"
         val regionsGeoJson = regions.joinToString(",") { region ->
             val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
                 region.polygon.first().joinToString(",") { latLng ->
@@ -91,42 +101,60 @@ object MapStyle {
     "osm": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      "tiles": [
+        "$osmTilesPath/{z}/{x}/{y}.png",
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      ],
       "tileSize": 256,
       "attribution": "© OpenStreetMap contributors"
     },
     "kartverket": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"],
+      "tiles": [
+        "$kartverketTilesPath/{z}/{y}/{x}.png",
+        "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
+      ],
       "tileSize": 256,
       "attribution": "Kartverket"
     },
     "toporaster": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"],
+      "tiles": [
+        "$toporasterTilesPath/{z}/{y}/{x}.png",
+        "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
+      ],
       "tileSize": 256,
       "attribution": "Kartverket Toporaster"
     },
     "sjokartraster": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"],
+      "tiles": [
+        "$sjokartrasterTilesPath/{z}/{y}/{x}.png",
+        "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"
+      ],
       "tileSize": 256,
       "attribution": "Kartverket Sjøkartraster"
     },
     "opentopomap": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": ["https://tile.opentopomap.org/{z}/{x}/{y}.png"],
+      "tiles": [
+        "$opentopoMapTilesPath/{z}/{x}/{y}.png",
+        "https://tile.opentopomap.org/{z}/{x}/{y}.png"
+      ],
       "tileSize": 256,
       "attribution": "© OpenTopoMap (CC-BY-SA)"
     },
     "waymarkedtrails": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
+      "tiles": [
+        "$waymarkedTrailsTilesPath/{z}/{x}/{y}.png",
+        "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
+      ],
       "tileSize": 256,
       "attribution": "© Waymarked Trails, OSM"
     },
