@@ -51,7 +51,7 @@ class OnlineTrackingClient(
                     Log.e("OnlineTracking", "Failed to start track: ${response.code}")
                 }
             } catch (e: Exception) {
-                Log.e("OnlineTracking", "Error starting track", e)
+                Log.e("OnlineTracking", "Error starting track: $e", e)
             }
         }
     }
@@ -97,7 +97,7 @@ class OnlineTrackingClient(
                     Log.e("OnlineTracking", "Failed to sync track: ${response.code}")
                 }
             } catch (e: Exception) {
-                Log.e("OnlineTracking", "Error syncing track", e)
+                Log.e("OnlineTracking", "Error syncing track: $e", e)
             }
         }
     }
@@ -120,7 +120,7 @@ class OnlineTrackingClient(
 
             client.newCall(request).execute()
         } catch (e: Exception) {
-            Log.e("OnlineTracking", "Error sending sync point", e)
+            Log.e("OnlineTracking", "Error sending sync point: $e", e)
         }
     }
 
@@ -150,7 +150,7 @@ class OnlineTrackingClient(
                     Log.e("OnlineTracking", "Failed to send point: ${response.code}")
                 }
             } catch (e: Exception) {
-                Log.e("OnlineTracking", "Error sending point", e)
+                Log.e("OnlineTracking", "Error sending point: $e", e)
             }
         }
     }
@@ -173,7 +173,7 @@ class OnlineTrackingClient(
                     Log.e("OnlineTracking", "Failed to stop track: ${response.code}")
                 }
             } catch (e: Exception) {
-                Log.e("OnlineTracking", "Error stopping track", e)
+                Log.e("OnlineTracking", "Error stopping track: $e", e)
             }
         }
     }

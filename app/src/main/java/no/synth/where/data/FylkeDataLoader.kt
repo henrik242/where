@@ -1,6 +1,7 @@
 package no.synth.where.data
 
 import android.content.Context
+import android.util.Log
 import com.google.gson.Gson
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
@@ -44,7 +45,7 @@ object FylkeDataLoader {
                 return emptyList()
             }
         } catch (e: Exception) {
-            android.util.Log.e("FylkeDataLoader", "Error loading counties: ${e.message}")
+            Log.e("FylkeDataLoader", "Error loading counties: $e")
             return emptyList()
         }
 

@@ -165,7 +165,7 @@ fun MapScreen(
 
     LaunchedEffect(showSavePointDialog, savePointLatLng) {
         if (showSavePointDialog && savePointLatLng != null && savePointName.isBlank()) {
-            val locationName = GeocodingHelper.reverseGeocode(savePointLatLng!!)
+            val locationName = savePointLatLng?.let { GeocodingHelper.reverseGeocode(it) }
             if (locationName != null) {
                 savePointName = NamingUtils.makeUnique(locationName, savedPointsRepository.savedPoints.map { it.name })
             }
@@ -892,10 +892,12 @@ fun MapScreen(
                 TextButton(
                     onClick = {
                         if (savePointName.isNotBlank()) {
-                            savedPointsRepository.addPoint(
-                                name = savePointName,
-                                latLng = savePointLatLng!!
-                            )
+                            savePointLatLng?.let {
+                                savedPointsRepository.addPoint(
+                                    name = savePointName,
+                                    latLng = it
+                                )
+                            }
                             scope.launch {
                                 snackbarHostState.showSnackbar("Point saved")
                             }
@@ -991,7 +993,9 @@ fun MapScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = {
-                            savedPointsRepository.deletePoint(clickedPoint!!.id)
+                            clickedPoint?.let {
+                                savedPointsRepository.deletePoint(it.id)
+                            }
                             showPointInfoDialog = false
                             clickedPoint = null
                             scope.launch {
@@ -1007,12 +1011,14 @@ fun MapScreen(
                     TextButton(
                         onClick = {
                             if (editName.isNotBlank()) {
-                                savedPointsRepository.updatePoint(
-                                    clickedPoint!!.id,
-                                    editName,
-                                    editDescription,
-                                    editColor
-                                )
+                                clickedPoint?.let {
+                                    savedPointsRepository.updatePoint(
+                                        it.id,
+                                        editName,
+                                        editDescription,
+                                        editColor
+                                    )
+                                }
                                 scope.launch {
                                     snackbarHostState.showSnackbar("Point updated")
                                 }
