@@ -107,8 +107,6 @@ fun WhereApp(
                 onDownloadClick = { navController.navigate("download") },
                 onTracksClick = { navController.navigate("tracks") },
                 onSavedPointsClick = { navController.navigate("savedpoints") },
-                showCountyBorders = userPreferences.showCountyBorders,
-                onShowCountyBordersChange = { userPreferences.updateShowCountyBorders(it) }
             )
         }
         composable("savedpoints") {
