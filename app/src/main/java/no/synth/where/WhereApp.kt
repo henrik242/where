@@ -76,7 +76,10 @@ fun WhereApp(
                     it.bufferedReader().readText()
                 }
                 if (gpxContent != null) {
-                    trackRepository.importTrack(gpxContent)
+                    val importedTrack = trackRepository.importTrack(gpxContent)
+                    if (importedTrack != null) {
+                        trackRepository.setViewingTrack(importedTrack)
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

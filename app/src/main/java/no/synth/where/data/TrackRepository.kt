@@ -128,13 +128,13 @@ class TrackRepository private constructor(context: Context) {
         _viewingTrack.value = null
     }
 
-    fun importTrack(gpxContent: String): Boolean {
-        val track = Track.fromGPX(gpxContent) ?: return false
+    fun importTrack(gpxContent: String): Track? {
+        val track = Track.fromGPX(gpxContent) ?: return null
         val uniqueName = NamingUtils.makeUnique(track.name, _tracks.map { it.name })
         val trackWithUniqueName = track.copy(name = uniqueName)
         _tracks.add(0, trackWithUniqueName)
         saveTracks()
-        return true
+        return trackWithUniqueName
     }
 
     fun createTrackFromPoints(name: String, rulerPoints: List<RulerPoint>) {
