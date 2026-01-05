@@ -641,6 +641,15 @@
                 if (track.points.length === 0) {
                     if (map.getLayer(layerId)) map.removeLayer(layerId);
                     if (map.getSource(sourceId)) map.removeSource(sourceId);
+                    // Clean up start/end point markers
+                    const startPointLayerId = `track-start-layer-${trackId}`;
+                    const startPointSourceId = `track-start-${trackId}`;
+                    const endPointLayerId = `track-end-layer-${trackId}`;
+                    const endPointSourceId = `track-end-${trackId}`;
+                    if (map.getLayer(startPointLayerId)) map.removeLayer(startPointLayerId);
+                    if (map.getSource(startPointSourceId)) map.removeSource(startPointSourceId);
+                    if (map.getLayer(endPointLayerId)) map.removeLayer(endPointLayerId);
+                    if (map.getSource(endPointSourceId)) map.removeSource(endPointSourceId);
                     return;
                 }
 
@@ -706,6 +715,71 @@
                             'line-color': track.color || '#FF5722',
                             'line-width': trackId === selectedTrackId ? 4 : 3,
                             'line-opacity': 0.8
+                        }
+                    });
+                }
+
+                // Add start point marker (green dot)
+                const startPointSourceId = `track-start-${trackId}`;
+                const startPointLayerId = `track-start-layer-${trackId}`;
+                const startPointGeoJson = {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [track.points[0].lon, track.points[0].lat]
+                    }
+                };
+
+                if (map.getSource(startPointSourceId)) {
+                    map.getSource(startPointSourceId).setData(startPointGeoJson);
+                } else {
+                    map.addSource(startPointSourceId, {
+                        type: 'geojson',
+                        data: startPointGeoJson
+                    });
+
+                    map.addLayer({
+                        id: startPointLayerId,
+                        type: 'circle',
+                        source: startPointSourceId,
+                        paint: {
+                            'circle-radius': 5,
+                            'circle-color': '#4CAF50',
+                            'circle-stroke-width': 2,
+                            'circle-stroke-color': '#FFFFFF'
+                        }
+                    });
+                }
+
+                // Add end point marker (red dot) - only if track has ended or is active with multiple points
+                const endPointSourceId = `track-end-${trackId}`;
+                const endPointLayerId = `track-end-layer-${trackId}`;
+                const lastPoint = track.points[track.points.length - 1];
+                const endPointGeoJson = {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [lastPoint.lon, lastPoint.lat]
+                    }
+                };
+
+                if (map.getSource(endPointSourceId)) {
+                    map.getSource(endPointSourceId).setData(endPointGeoJson);
+                } else {
+                    map.addSource(endPointSourceId, {
+                        type: 'geojson',
+                        data: endPointGeoJson
+                    });
+
+                    map.addLayer({
+                        id: endPointLayerId,
+                        type: 'circle',
+                        source: endPointSourceId,
+                        paint: {
+                            'circle-radius': 5,
+                            'circle-color': track.isActive ? '#2196F3' : '#F44336',
+                            'circle-stroke-width': 2,
+                            'circle-stroke-color': '#FFFFFF'
                         }
                     });
                 }

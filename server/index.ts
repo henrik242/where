@@ -352,4 +352,6 @@ function broadcastToAll(message: any) {
 console.log(`🚀 Where Server running at http://localhost:${server.port}`);
 console.log(`📡 WebSocket available at ws://localhost:${server.port}/ws`);
 console.log(`🌐 Web interface at http://localhost:${server.port}`);
+console.log(`🔑 God mode: ${GOD_MODE_KEY ? 'ENABLED' : 'DISABLED'}`);
+console.log(`🔒 HMAC verification: ${TRACKING_HMAC_SECRET ? 'ENABLED' : 'DISABLED'}`);
 
