@@ -9,3 +9,7 @@
 .cxx
 local.properties
 .kotlin
+
+# Environment files with secrets
+.env
+server/.env

@@ -5,6 +5,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import no.synth.where.BuildConfig
+import no.synth.where.util.HmacUtils
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,6 +27,23 @@ class OnlineTrackingClient(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var currentTrackId: String? = null
+    private val hmacSecret = BuildConfig.TRACKING_HMAC_SECRET
+
+    /**
+     * Create a signed request with HMAC signature
+     */
+    private fun createSignedRequest(url: String, jsonBody: String, method: String = "POST"): Request {
+        val signature = HmacUtils.generateSignature(jsonBody, hmacSecret)
+
+        val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+        return Request.Builder()
+            .url(url)
+            .addHeader("X-Client-Id", clientId)
+            .addHeader("X-Signature", signature)
+            .method(method, if (method == "POST" || method == "PUT") body else null)
+            .build()
+    }
 
     fun startTrack(trackName: String) {
         scope.launch {
@@ -34,12 +53,7 @@ class OnlineTrackingClient(
                     put("name", trackName)
                 }
 
-                val body = json.toString().toRequestBody("application/json".toMediaType())
-                val request = Request.Builder()
-                    .url("$serverUrl/api/tracks")
-                    .addHeader("X-Client-Id", clientId)
-                    .post(body)
-                    .build()
+                val request = createSignedRequest("$serverUrl/api/tracks", json.toString())
 
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
@@ -76,12 +90,7 @@ class OnlineTrackingClient(
                     }
                 }
 
-                val body = json.toString().toRequestBody("application/json".toMediaType())
-                val request = Request.Builder()
-                    .url("$serverUrl/api/tracks")
-                    .addHeader("X-Client-Id", clientId)
-                    .post(body)
-                    .build()
+                val request = createSignedRequest("$serverUrl/api/tracks", json.toString())
 
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
@@ -112,12 +121,7 @@ class OnlineTrackingClient(
                 accuracy?.let { put("accuracy", it.toDouble()) }
             }
 
-            val body = json.toString().toRequestBody("application/json".toMediaType())
-            val request = Request.Builder()
-                .url("$serverUrl/api/tracks/$trackId/points")
-                .post(body)
-                .build()
-
+            val request = createSignedRequest("$serverUrl/api/tracks/$trackId/points", json.toString())
             client.newCall(request).execute()
         } catch (e: Exception) {
             Log.e("OnlineTracking", "Error sending sync point: $e", e)
@@ -137,11 +141,7 @@ class OnlineTrackingClient(
                     accuracy?.let { put("accuracy", it.toDouble()) }
                 }
 
-                val body = json.toString().toRequestBody("application/json".toMediaType())
-                val request = Request.Builder()
-                    .url("$serverUrl/api/tracks/$trackId/points")
-                    .post(body)
-                    .build()
+                val request = createSignedRequest("$serverUrl/api/tracks/$trackId/points", json.toString())
 
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
@@ -160,10 +160,7 @@ class OnlineTrackingClient(
 
         scope.launch {
             try {
-                val request = Request.Builder()
-                    .url("$serverUrl/api/tracks/$trackId/stop")
-                    .put("{}".toRequestBody("application/json".toMediaType()))
-                    .build()
+                val request = createSignedRequest("$serverUrl/api/tracks/$trackId/stop", "{}", "PUT")
 
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {

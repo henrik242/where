@@ -6,7 +6,6 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/opt/where-server
-Environment="PORT=3000,GOD_MODE_KEY="
 ExecStart=/usr/local/bin/bun run index.ts
 Restart=always
 RestartSec=10

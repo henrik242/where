@@ -37,12 +37,18 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build debug APK
+      env:
+        TRACKING_HMAC_SECRET: ${{ secrets.TRACKING_HMAC_SECRET }}
       run: ./gradlew assembleDebug --stacktrace
 
     - name: Build release APK
+      env:
+        TRACKING_HMAC_SECRET: ${{ secrets.TRACKING_HMAC_SECRET }}
       run: ./gradlew assembleRelease --stacktrace
 
     - name: Run tests
+      env:
+        TRACKING_HMAC_SECRET: ${{ secrets.TRACKING_HMAC_SECRET }}
       run: ./gradlew testDebugUnitTest --stacktrace
 
     - name: Upload debug APK
