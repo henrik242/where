@@ -2,7 +2,6 @@ package no.synth.where.data
 
 import android.content.Context
 import android.util.Log
-import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -34,48 +33,6 @@ class MapDownloadManager(private val context: Context) {
             Log.e("MapDownloadManager", "Failed to start style server: $e", e)
         }
     }
-
-    private class StyleServer(port: Int) : NanoHTTPD(port) {
-        override fun serve(session: IHTTPSession): Response {
-            val uri = session.uri
-
-            // Extract layer name from URI like /styles/kartverket-style.json
-            val layerName = uri.substringAfter("/styles/").substringBefore("-style.json")
-
-            val tileUrl = when (layerName) {
-                "kartverket" -> "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
-                "toporaster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
-                "sjokartraster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"
-                "osm" -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                "opentopomap" -> "https://tile.opentopomap.org/{z}/{x}/{y}.png"
-                "waymarkedtrails" -> "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
-                else -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            }
-
-            val styleJson = """
-{
-  "version": 8,
-  "sources": {
-    "$layerName": {
-      "type": "raster",
-      "tiles": ["$tileUrl"],
-      "tileSize": 256
-    }
-  },
-  "layers": [
-    {
-      "id": "$layerName-layer",
-      "type": "raster",
-      "source": "$layerName"
-    }
-  ]
-}
-            """.trimIndent()
-
-            return newFixedLengthResponse(Response.Status.OK, "application/json", styleJson)
-        }
-    }
-
 
     /**
      * Download map tiles for a region using MapLibre's OfflineManager
