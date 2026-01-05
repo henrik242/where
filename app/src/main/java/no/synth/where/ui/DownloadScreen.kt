@@ -72,19 +72,9 @@ fun DownloadScreen(
 
     fun cleanRegionName(name: String): String = name.substringBefore(" - ")
 
-    fun getLayerStats(layerName: String): Pair<Long, Int> {
-        val layerDir = File(context.getExternalFilesDir(null), "tiles/$layerName")
-        if (!layerDir.exists()) return Pair(0L, 0)
-
-        var totalSize = 0L
-        var tileCount = 0
-        layerDir.walkTopDown().forEach { file ->
-            if (file.isFile && file.extension == "png") {
-                totalSize += file.length()
-                tileCount++
-            }
-        }
-        return Pair(totalSize, tileCount)
+    suspend fun getLayerStats(layerName: String): Pair<Long, Int> {
+        // Query MapLibre's OfflineManager for stats about this layer
+        return downloadManager.getLayerStats(layerName)
     }
 
 
@@ -154,14 +144,15 @@ fun DownloadScreen(
 
                 // Kartverket layer card
                 item {
-                    @Suppress("UNUSED_VARIABLE")
-                    val trigger = refreshTrigger
-                    val (size, count) = getLayerStats("kartverket")
+                    var stats by remember { mutableStateOf(Pair(0L, 0)) }
+                    LaunchedEffect(refreshTrigger) {
+                        stats = getLayerStats("kartverket")
+                    }
                     LayerOverviewCard(
                         layerName = "Kartverket",
                         description = "Kartverket topographic maps",
-                        tileCount = count,
-                        totalSize = size,
+                        tileCount = stats.second,
+                        totalSize = stats.first,
                         formatBytes = ::formatBytes,
                         isSelected = selectedTab == DownloadTab.KARTVERKET,
                         onClick = { selectedTab = DownloadTab.KARTVERKET }
@@ -170,14 +161,15 @@ fun DownloadScreen(
 
                 // Toporaster layer card
                 item {
-                    @Suppress("UNUSED_VARIABLE")
-                    val trigger = refreshTrigger
-                    val (size, count) = getLayerStats("toporaster")
+                    var stats by remember { mutableStateOf(Pair(0L, 0)) }
+                    LaunchedEffect(refreshTrigger) {
+                        stats = getLayerStats("toporaster")
+                    }
                     LayerOverviewCard(
                         layerName = "Kartverket toporaster",
                         description = "Kartverket topographic raster maps",
-                        tileCount = count,
-                        totalSize = size,
+                        tileCount = stats.second,
+                        totalSize = stats.first,
                         formatBytes = ::formatBytes,
                         isSelected = selectedTab == DownloadTab.TOPORASTER,
                         onClick = { selectedTab = DownloadTab.TOPORASTER }
@@ -186,14 +178,15 @@ fun DownloadScreen(
 
                 // Sjøkartraster layer card
                 item {
-                    @Suppress("UNUSED_VARIABLE")
-                    val trigger = refreshTrigger
-                    val (size, count) = getLayerStats("sjokartraster")
+                    var stats by remember { mutableStateOf(Pair(0L, 0)) }
+                    LaunchedEffect(refreshTrigger) {
+                        stats = getLayerStats("sjokartraster")
+                    }
                     LayerOverviewCard(
                         layerName = "Kartverket sjøkart",
                         description = "Kartverket nautical charts",
-                        tileCount = count,
-                        totalSize = size,
+                        tileCount = stats.second,
+                        totalSize = stats.first,
                         formatBytes = ::formatBytes,
                         isSelected = selectedTab == DownloadTab.SJOKARTRASTER,
                         onClick = { selectedTab = DownloadTab.SJOKARTRASTER }
@@ -202,14 +195,15 @@ fun DownloadScreen(
 
                 // OSM layer card
                 item {
-                    @Suppress("UNUSED_VARIABLE")
-                    val trigger = refreshTrigger
-                    val (size, count) = getLayerStats("osm")
+                    var stats by remember { mutableStateOf(Pair(0L, 0)) }
+                    LaunchedEffect(refreshTrigger) {
+                        stats = getLayerStats("osm")
+                    }
                     LayerOverviewCard(
                         layerName = "OpenStreetMap",
                         description = "Community-sourced street maps",
-                        tileCount = count,
-                        totalSize = size,
+                        tileCount = stats.second,
+                        totalSize = stats.first,
                         formatBytes = ::formatBytes,
                         isSelected = selectedTab == DownloadTab.OSM,
                         onClick = { selectedTab = DownloadTab.OSM }
@@ -218,14 +212,15 @@ fun DownloadScreen(
 
                 // OpenTopoMap layer card
                 item {
-                    @Suppress("UNUSED_VARIABLE")
-                    val trigger = refreshTrigger
-                    val (size, count) = getLayerStats("opentopomap")
+                    var stats by remember { mutableStateOf(Pair(0L, 0)) }
+                    LaunchedEffect(refreshTrigger) {
+                        stats = getLayerStats("opentopomap")
+                    }
                     LayerOverviewCard(
                         layerName = "OpenTopoMap",
                         description = "Topographic maps with hiking trails (OSM)",
-                        tileCount = count,
-                        totalSize = size,
+                        tileCount = stats.second,
+                        totalSize = stats.first,
                         formatBytes = ::formatBytes,
                         isSelected = selectedTab == DownloadTab.OPENTOPOMAP,
                         onClick = { selectedTab = DownloadTab.OPENTOPOMAP }
@@ -234,14 +229,15 @@ fun DownloadScreen(
 
                 // Waymarked Trails layer card
                 item {
-                    @Suppress("UNUSED_VARIABLE")
-                    val trigger = refreshTrigger
-                    val (size, count) = getLayerStats("waymarkedtrails")
+                    var stats by remember { mutableStateOf(Pair(0L, 0)) }
+                    LaunchedEffect(refreshTrigger) {
+                        stats = getLayerStats("waymarkedtrails")
+                    }
                     LayerOverviewCard(
                         layerName = "Waymarked Trails",
                         description = "Hiking trail overlay (OSM-based)",
-                        tileCount = count,
-                        totalSize = size,
+                        tileCount = stats.second,
+                        totalSize = stats.first,
                         formatBytes = ::formatBytes,
                         isSelected = selectedTab == DownloadTab.WAYMARKEDTRAILS,
                         onClick = { selectedTab = DownloadTab.WAYMARKEDTRAILS }
