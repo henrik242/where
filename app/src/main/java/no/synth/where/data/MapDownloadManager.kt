@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import android.content.Context
 import android.util.Log
+import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.maplibre.android.geometry.LatLngBounds
@@ -18,9 +19,68 @@ class MapDownloadManager(private val context: Context) {
 
     companion object {
         const val DEFAULT_MAX_CACHE_SIZE_MB = 500L
+        private const val STYLE_SERVER_PORT = 8765
     }
 
     private val offlineManager by lazy { OfflineManager.getInstance(context) }
+    private var styleServer: StyleServer? = null
+
+    init {
+        // Start the local HTTP server for serving style JSON files
+        startStyleServer()
+    }
+
+    private fun startStyleServer() {
+        try {
+            styleServer = StyleServer(STYLE_SERVER_PORT)
+            styleServer?.start()
+            Log.d("MapDownloadManager", "Style server started on port $STYLE_SERVER_PORT")
+        } catch (e: Exception) {
+            Log.e("MapDownloadManager", "Failed to start style server", e)
+        }
+    }
+
+    private class StyleServer(port: Int) : NanoHTTPD(port) {
+        override fun serve(session: IHTTPSession): Response {
+            val uri = session.uri
+
+            // Extract layer name from URI like /styles/kartverket-style.json
+            val layerName = uri.substringAfter("/styles/").substringBefore("-style.json")
+
+            val tileUrl = when (layerName) {
+                "kartverket" -> "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
+                "toporaster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
+                "sjokartraster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"
+                "osm" -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                "opentopomap" -> "https://tile.opentopomap.org/{z}/{x}/{y}.png"
+                "waymarkedtrails" -> "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
+                else -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            }
+
+            val styleJson = """
+{
+  "version": 8,
+  "sources": {
+    "$layerName": {
+      "type": "raster",
+      "tiles": ["$tileUrl"],
+      "tileSize": 256
+    }
+  },
+  "layers": [
+    {
+      "id": "$layerName-layer",
+      "type": "raster",
+      "source": "$layerName"
+    }
+  ]
+}
+            """.trimIndent()
+
+            return newFixedLengthResponse(Response.Status.OK, "application/json", styleJson)
+        }
+    }
+
 
     /**
      * Download map tiles for a region using MapLibre's OfflineManager
@@ -137,41 +197,8 @@ class MapDownloadManager(private val context: Context) {
     }
 
     private fun getStyleUrlForLayer(layerName: String): String {
-        // OfflineManager requires a full MapLibre style JSON, not just a tile URL
-        // We'll create a minimal style JSON as a data URI
-        val tileUrl = when (layerName) {
-            "kartverket" -> "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
-            "toporaster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
-            "sjokartraster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"
-            "osm" -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            "opentopomap" -> "https://tile.opentopomap.org/{z}/{x}/{y}.png"
-            "waymarkedtrails" -> "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
-            else -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        }
-
-        // Create a minimal MapLibre style JSON
-        val styleJson = """
-        {
-          "version": 8,
-          "sources": {
-            "$layerName": {
-              "type": "raster",
-              "tiles": ["$tileUrl"],
-              "tileSize": 256
-            }
-          },
-          "layers": [
-            {
-              "id": "$layerName-layer",
-              "type": "raster",
-              "source": "$layerName"
-            }
-          ]
-        }
-        """.trimIndent()
-
-        // Return as data URI
-        return "data:application/json;charset=utf-8," + java.net.URLEncoder.encode(styleJson, "UTF-8")
+        // Return the localhost URL for the style JSON served by our local HTTP server
+        return "http://127.0.0.1:$STYLE_SERVER_PORT/styles/$layerName-style.json"
     }
 
     /**
@@ -185,14 +212,17 @@ class MapDownloadManager(private val context: Context) {
     ): RegionTileInfo = suspendCoroutine { continuation ->
         val regionName = "${region.name}-$layerName"
 
+        // Calculate estimated tile count for this region
+        val estimatedTileCount = estimateTileCount(region.boundingBox, minZoom, maxZoom)
+
         offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
             override fun onList(offlineRegions: Array<OfflineRegion>?) {
-                val offlineRegion = offlineRegions?.find { region ->
+                val offlineRegion = offlineRegions?.find { r ->
                     try {
-                        val metadata = String(region.metadata)
+                        val metadata = String(r.metadata)
                         val json = JSONObject(metadata)
                         json.getString("name") == regionName
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         false
                     }
                 }
@@ -208,12 +238,12 @@ class MapDownloadManager(private val context: Context) {
                                     isFullyDownloaded = status.isComplete
                                 ))
                             } else {
-                                continuation.resume(RegionTileInfo(0, 0, 0, false))
+                                continuation.resume(RegionTileInfo(estimatedTileCount, 0, 0, false))
                             }
                         }
 
                         override fun onError(error: String?) {
-                            continuation.resume(RegionTileInfo(0, 0, 0, false))
+                            continuation.resume(RegionTileInfo(estimatedTileCount, 0, 0, false))
                         }
 
                         @JvmName("onErrorNonNull")
@@ -222,14 +252,32 @@ class MapDownloadManager(private val context: Context) {
                         }
                     })
                 } else {
-                    continuation.resume(RegionTileInfo(0, 0, 0, false))
+                    // Region not downloaded yet, return estimated tile count
+                    continuation.resume(RegionTileInfo(estimatedTileCount, 0, 0, false))
                 }
             }
 
             override fun onError(error: String) {
-                continuation.resume(RegionTileInfo(0, 0, 0, false))
+                continuation.resume(RegionTileInfo(estimatedTileCount, 0, 0, false))
             }
         })
+    }
+
+    /**
+     * Estimate the number of tiles needed for a bounding box across zoom levels
+     */
+    private fun estimateTileCount(bounds: LatLngBounds, minZoom: Int, maxZoom: Int): Int {
+        var totalTiles = 0
+        for (zoom in minZoom..maxZoom) {
+            val tilesPerSide = 1 shl zoom // 2^zoom
+            val latSpan = bounds.latitudeSpan
+            val lonSpan = bounds.longitudeSpan
+
+            // Rough estimate: tiles = (latSpan/180) * (lonSpan/360) * tilesPerSide^2
+            val tilesAtZoom = ((latSpan / 180.0) * (lonSpan / 360.0) * tilesPerSide * tilesPerSide).toInt()
+            totalTiles += tilesAtZoom
+        }
+        return totalTiles.coerceAtLeast(1)
     }
 
     /**
@@ -240,12 +288,12 @@ class MapDownloadManager(private val context: Context) {
 
         offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
             override fun onList(offlineRegions: Array<OfflineRegion>?) {
-                val offlineRegion = offlineRegions?.find { region ->
+                val offlineRegion = offlineRegions?.find { r ->
                     try {
-                        val metadata = String(region.metadata)
+                        val metadata = String(r.metadata)
                         val json = JSONObject(metadata)
                         json.getString("name") == regionName
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         false
                     }
                 }
@@ -305,6 +353,72 @@ class MapDownloadManager(private val context: Context) {
                         override fun onError(error: String?) {
                             processed++
                             if (processed == offlineRegions.size) {
+                                continuation.resume(Pair(totalSize, totalTiles))
+                            }
+                        }
+
+                        @JvmName("onErrorNonNull")
+                        fun onError(error: String) {
+                            onError(error as String?)
+                        }
+                    })
+                }
+            }
+
+            override fun onError(error: String) {
+                continuation.resume(Pair(0L, 0))
+            }
+        })
+    }
+
+    /**
+     * Get statistics for a specific layer
+     */
+    suspend fun getLayerStats(layerName: String): Pair<Long, Int> = suspendCoroutine { continuation ->
+        offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+            override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                var totalSize = 0L
+                var totalTiles = 0
+                var processed = 0
+
+                if (offlineRegions.isNullOrEmpty()) {
+                    continuation.resume(Pair(0L, 0))
+                    return
+                }
+
+                // Filter regions for this specific layer
+                val layerRegions = offlineRegions.filter { r ->
+                    try {
+                        val metadata = String(r.metadata)
+                        val json = JSONObject(metadata)
+                        json.getString("layer") == layerName
+                    } catch (_: Exception) {
+                        false
+                    }
+                }
+
+                if (layerRegions.isEmpty()) {
+                    continuation.resume(Pair(0L, 0))
+                    return
+                }
+
+                layerRegions.forEach { region ->
+                    region.getStatus(object : OfflineRegion.OfflineRegionStatusCallback {
+                        override fun onStatus(status: OfflineRegionStatus?) {
+                            if (status != null) {
+                                totalSize += status.completedResourceSize
+                                totalTiles += status.completedResourceCount.toInt()
+                            }
+                            processed++
+
+                            if (processed == layerRegions.size) {
+                                continuation.resume(Pair(totalSize, totalTiles))
+                            }
+                        }
+
+                        override fun onError(error: String?) {
+                            processed++
+                            if (processed == layerRegions.size) {
                                 continuation.resume(Pair(totalSize, totalTiles))
                             }
                         }

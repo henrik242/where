@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
+    implementation(libs.nanohttpd)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.androidx.ui.test.junit4)
