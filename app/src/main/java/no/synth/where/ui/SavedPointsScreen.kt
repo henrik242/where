@@ -138,7 +138,7 @@ fun SavedPointItem(
                                 } else {
                                     Color(0xFFFF5722) // Default red color
                                 }
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 Color(0xFFFF5722) // Fallback to default red color
                             },
                             shape = CircleShape
@@ -281,7 +281,7 @@ fun EditPointDialog(
                             modifier = Modifier
                                 .size(40.dp)
                                 .background(
-                                    color = Color(android.graphics.Color.parseColor(colorHex)),
+                                    color = Color(colorHex.toColorInt()),
                                     shape = CircleShape
                                 )
                                 .clickable { selectedColor = colorHex }
