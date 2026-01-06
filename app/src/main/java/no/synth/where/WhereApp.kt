@@ -107,6 +107,12 @@ fun WhereApp(
                 onDownloadClick = { navController.navigate("download") },
                 onTracksClick = { navController.navigate("tracks") },
                 onSavedPointsClick = { navController.navigate("savedpoints") },
+                onOnlineTrackingClick = { navController.navigate("onlinetracking") }
+            )
+        }
+        composable("onlinetracking") {
+            OnlineTrackingScreen(
+                onBackClick = { navController.popBackStack() }
             )
         }
         composable("savedpoints") {
