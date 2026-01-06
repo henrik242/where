@@ -142,7 +142,7 @@ fun SettingsScreen(
 
             // Version number at the bottom
             Text(
-                text = "Version ${BuildConfig.VERSION_NAME}",
+                text = "${BuildConfig.GIT_COMMIT_COUNT}.${BuildConfig.GIT_SHORT_SHA} ${BuildConfig.BUILD_DATE}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
