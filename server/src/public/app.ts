@@ -476,10 +476,22 @@ async function fetchTracks(): Promise<void> {
 
     updateAdminIndicator(data.admin);
 
-    tracks = data.tracks.reduce((acc, track) => {
+    // Get IDs of tracks that will be removed
+    const oldTrackIds = Object.keys(tracks);
+    const newTracks = data.tracks.reduce((acc, track) => {
       acc[track.id] = track;
       return acc;
     }, {} as Record<string, Track>);
+    const newTrackIds = Object.keys(newTracks);
+
+    // Remove layers for tracks that are no longer in the response
+    oldTrackIds.forEach(trackId => {
+      if (!newTrackIds.includes(trackId)) {
+        cleanupTrackLayers(trackId);
+      }
+    });
+
+    tracks = newTracks;
 
     updateTracksList();
     updateMap();
