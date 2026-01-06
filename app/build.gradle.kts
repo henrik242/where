@@ -44,18 +44,20 @@ android {
         buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
 
         // Generate version info from git
-        val gitCommitCount = try {
-            Runtime.getRuntime().exec("git rev-list --count HEAD").inputStream.bufferedReader().readText().trim()
-        } catch (e: Exception) {
-            "0"
+        fun execGit(command: String): String {
+            return try {
+                val process = Runtime.getRuntime().exec(command)
+                process.inputStream.bufferedReader().readText().trim().also {
+                    process.waitFor()
+                }
+            } catch (e: Exception) {
+                println("Warning: Failed to execute '$command': ${e.message}")
+                ""
+            }
         }
         
-        val gitShortSha = try {
-            Runtime.getRuntime().exec("git rev-parse --short HEAD").inputStream.bufferedReader().readText().trim()
-        } catch (e: Exception) {
-            "unknown"
-        }
-        
+        val gitCommitCount = execGit("git rev-list --count HEAD").ifEmpty { "0" }
+        val gitShortSha = execGit("git rev-parse --short HEAD").ifEmpty { "unknown" }
         val buildDate = java.time.LocalDate.now().toString()
         
         buildConfigField("String", "GIT_COMMIT_COUNT", "\"$gitCommitCount\"")
