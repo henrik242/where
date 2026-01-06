@@ -615,8 +615,7 @@ fun MapScreen(
                 Card(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(bottom = 80.dp)
-                        .padding(start = 16.dp, end = 72.dp),
+                        .padding(start = 16.dp, end = 80.dp, bottom = 16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
@@ -693,9 +692,8 @@ fun MapScreen(
                 if (isRecording) {
                     Card(
                         modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 16.dp)
-                            .padding(horizontal = 16.dp),
+                            .align(Alignment.BottomStart)
+                            .padding(start = 16.dp, end = 80.dp, bottom = 16.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
                         )
