@@ -83,7 +83,7 @@ function initMap(): void {
         // Successfully got position - fly to it
         map.flyTo({
           center: [position.coords.longitude, position.coords.latitude],
-          zoom: 10,
+          zoom: 14,
           essential: true
         });
       },
