@@ -2,6 +2,7 @@ package no.synth.where.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import no.synth.where.BuildConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,92 +49,106 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Online Tracking option
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOnlineTrackingClick() }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    text = "Online Tracking",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Icon(
-                    Icons.Filled.ChevronRight,
-                    contentDescription = "Go to Online Tracking"
-                )
+                // Online Tracking option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOnlineTrackingClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Online Tracking",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = "Go to Online Tracking"
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onTracksClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Saved Tracks",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = "Go to Saved Tracks"
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSavedPointsClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Saved Points",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = "Go to Saved Points"
+                    )
+                }
+
+                HorizontalDivider()
+
+                // Download Manager option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onDownloadClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Offline Maps",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Icon(
+                        Icons.Filled.ChevronRight,
+                        contentDescription = "Go to Download Manager"
+                    )
+                }
+
+                HorizontalDivider()
             }
 
-            HorizontalDivider()
-
-            Row(
+            // Version number at the bottom
+            Text(
+                text = "Version ${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onTracksClick() }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Saved Tracks",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Icon(
-                    Icons.Filled.ChevronRight,
-                    contentDescription = "Go to Saved Tracks"
-                )
-            }
-
-            HorizontalDivider()
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onSavedPointsClick() }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Saved Points",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Icon(
-                    Icons.Filled.ChevronRight,
-                    contentDescription = "Go to Saved Points"
-                )
-            }
-
-            HorizontalDivider()
-
-            // Download Manager option
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onDownloadClick() }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Offline Maps",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                Icon(
-                    Icons.Filled.ChevronRight,
-                    contentDescription = "Go to Download Manager"
-                )
-            }
-
-            HorizontalDivider()
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+            )
         }
     }
 }
