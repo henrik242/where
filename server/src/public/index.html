@@ -31,37 +31,6 @@
             width: 100%;
         }
 
-        .god-mode-banner {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            z-index: 2;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            font-weight: 600;
-        }
-
-        .god-mode-banner button {
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.4);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .god-mode-banner button:hover {
-            background: rgba(255,255,255,0.3);
-        }
 
         .info-panel {
             position: absolute;
@@ -78,9 +47,6 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .info-panel.god-mode-active {
-            top: 70px;
-        }
 
         .info-panel.hidden {
             transform: translateX(calc(100% + 40px));
@@ -146,9 +112,6 @@
             display: block;
         }
 
-        .show-panel-btn.god-mode-active {
-            top: 70px;
-        }
 
         .show-panel-btn:hover {
             background: #f8f8f8;
@@ -169,9 +132,6 @@
                 padding: 16px;
             }
 
-            .info-panel.god-mode-active {
-                top: auto;
-            }
 
             .info-panel.hidden {
                 transform: translateY(100%);
@@ -185,9 +145,6 @@
                 right: auto;
             }
 
-            .show-panel-btn.god-mode-active {
-                top: auto;
-            }
 
             .panel-header h2 {
                 font-size: 16px;
@@ -240,6 +197,36 @@
             border-radius: 12px;
             font-size: 12px;
             cursor: pointer;
+        }
+
+        .admin-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            display: none;
+        }
+
+        .admin-section.active {
+            display: block;
+        }
+
+        .admin-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .admin-button:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .client-tag:hover {
@@ -341,10 +328,6 @@
     </style>
 </head>
 <body>
-    <div id="god-mode-banner" class="god-mode-banner" style="display: none;">
-        <span>👑 GOD MODE ACTIVE - Viewing all tracks</span>
-        <button onclick="disableGodMode()">Disable</button>
-    </div>
     <div id="map"></div>
     <button id="show-panel-btn" class="show-panel-btn" onclick="showPanel()">
         📍 Live Tracks
@@ -353,6 +336,11 @@
         <div class="panel-header">
             <h2>Live Tracks</h2>
             <button class="close-btn" onclick="hidePanel()" title="Close">×</button>
+        </div>
+        <div class="admin-section" id="admin-section">
+            <div style="font-weight: 600; margin-bottom: 4px;">👑 Admin Active</div>
+            <div style="font-size: 11px; opacity: 0.9; margin-bottom: 8px;">Viewing all tracks</div>
+            <button class="admin-button" onclick="disableAdmin()">Disable Admin</button>
         </div>
         <div class="client-filter">
             <h3>Filter by Client ID</h3>
@@ -376,496 +364,7 @@
     </div>
 
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-    <script>
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: {
-                version: 8,
-                sources: {
-                    osm: {
-                        type: 'raster',
-                        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                        tileSize: 256,
-                        attribution: '© OpenStreetMap contributors'
-                    }
-                },
-                layers: [{
-                    id: 'osm',
-                    type: 'raster',
-                    source: 'osm',
-                    minzoom: 0,
-                    maxzoom: 19
-                }]
-            },
-            center: [10.7522, 59.9139], // Oslo
-            zoom: 10
-        });
-
-        // Add zoom controls to top-left corner
-        map.addControl(new maplibregl.NavigationControl(), 'top-left');
-
-        let tracks = {};
-        let selectedTrackId = null;
-        let clientFilters = [];
-        let showHistorical = false;
-        let godMode = false;
-        let panelCollapsed = false;
-
-        // Parse URL parameters for client filters and god mode
-        const urlParams = new URLSearchParams(window.location.search);
-        const clientsParam = urlParams.get('clients');
-        if (clientsParam) {
-            clientFilters = clientsParam.split(',').filter(Boolean);
-        }
-        const godModeKey = urlParams.get('godMode');
-        if (godModeKey) {
-            godMode = true;
-            // Store god mode key in memory, remove from URL for security
-            window.godModeKey = godModeKey;
-            const url = new URL(window.location);
-            url.searchParams.delete('godMode');
-            window.history.replaceState({}, '', url);
-            updateGodModeBanner();
-        }
-
-        function updateGodModeBanner() {
-            const banner = document.getElementById('god-mode-banner');
-            const infoPanel = document.getElementById('info-panel');
-            const showBtn = document.getElementById('show-panel-btn');
-            if (godMode) {
-                banner.style.display = 'flex';
-                infoPanel.classList.add('god-mode-active');
-                showBtn.classList.add('god-mode-active');
-            } else {
-                banner.style.display = 'none';
-                infoPanel.classList.remove('god-mode-active');
-                showBtn.classList.remove('god-mode-active');
-            }
-        }
-
-        function hidePanel() {
-            const infoPanel = document.getElementById('info-panel');
-            const showBtn = document.getElementById('show-panel-btn');
-            infoPanel.classList.add('hidden');
-            showBtn.classList.add('visible');
-        }
-
-        function showPanel() {
-            const infoPanel = document.getElementById('info-panel');
-            const showBtn = document.getElementById('show-panel-btn');
-            infoPanel.classList.remove('hidden');
-            showBtn.classList.remove('visible');
-        }
-
-        function disableGodMode() {
-            godMode = false;
-            delete window.godModeKey;
-            const url = new URL(window.location);
-            url.searchParams.delete('godMode');
-            window.history.replaceState({}, '', url);
-            updateGodModeBanner();
-            fetchTracks();
-        }
-
-        function updateClientTags() {
-            const tagsContainer = document.getElementById('client-tags');
-            if (clientFilters.length === 0) {
-                tagsContainer.innerHTML = '<span style="color: #999; font-size: 12px;">Showing all clients</span>';
-            } else {
-                tagsContainer.innerHTML = clientFilters.map(clientId => `
-                    <div class="client-tag" onclick="removeClientFilter('${clientId}')">
-                        ${clientId}
-                        <span class="remove">×</span>
-                    </div>
-                `).join('');
-            }
-            updateURL();
-        }
-
-        function addClientFilter() {
-            const input = document.getElementById('client-input');
-            const clientId = input.value.trim().toLowerCase();
-            if (clientId && clientId.length === 6 && !clientFilters.includes(clientId)) {
-                clientFilters.push(clientId);
-                updateClientTags();
-                fetchTracks();
-                input.value = '';
-            }
-        }
-
-        function removeClientFilter(clientId) {
-            clientFilters = clientFilters.filter(id => id !== clientId);
-            updateClientTags();
-            fetchTracks();
-        }
-
-        function toggleHistorical() {
-            showHistorical = document.getElementById('historical-toggle').checked;
-            fetchTracks();
-        }
-
-        function updateURL() {
-            const params = new URLSearchParams();
-            if (clientFilters.length > 0) {
-                params.set('clients', clientFilters.join(','));
-            }
-            const newURL = params.toString() ? `?${params.toString()}` : window.location.pathname;
-            window.history.replaceState({}, '', newURL);
-        }
-
-        // Allow Enter key to add client
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('client-input').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addClientFilter();
-            });
-            updateClientTags();
-        });
-
-        function formatDistance(meters) {
-            if (meters < 1000) return `${meters.toFixed(0)} m`;
-            if (meters < 10000) return `${(meters / 1000).toFixed(2)} km`;
-            return `${(meters / 1000).toFixed(1)} km`;
-        }
-
-        function calculateDistance(points) {
-            if (points.length < 2) return 0;
-
-            let distance = 0;
-            for (let i = 1; i < points.length; i++) {
-                const R = 6371000; // Earth radius in meters
-                const lat1 = points[i - 1].lat * Math.PI / 180;
-                const lat2 = points[i].lat * Math.PI / 180;
-                const dLat = (points[i].lat - points[i - 1].lat) * Math.PI / 180;
-                const dLon = (points[i].lon - points[i - 1].lon) * Math.PI / 180;
-
-                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                         Math.cos(lat1) * Math.cos(lat2) *
-                         Math.sin(dLon/2) * Math.sin(dLon/2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                distance += R * c;
-            }
-            return distance;
-        }
-
-        function formatTime(timestamp) {
-            const date = new Date(timestamp);
-            return date.toLocaleTimeString();
-        }
-
-        function updateTracksList() {
-            const tracksList = document.getElementById('tracks-list');
-            const allTracks = Object.values(tracks);
-
-            if (allTracks.length === 0) {
-                tracksList.innerHTML = '<div class="no-tracks">No tracks found</div>';
-                return;
-            }
-
-            const activeTracks = allTracks.filter(t => t.isActive);
-            const inactiveTracks = allTracks.filter(t => !t.isActive);
-
-            let html = '';
-
-            if (activeTracks.length > 0) {
-                html += activeTracks.map(track => {
-                    const distance = calculateDistance(track.points);
-                    const pointCount = track.points.length;
-                    const isSelected = track.id === selectedTrackId;
-
-                    return `
-                        <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${track.id}')">
-                            <div class="track-name">
-                                <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${track.color || '#FF5722'}; margin-right: 8px;"></span>
-                                ${track.userId} - ${track.name}
-                            </div>
-                            <div class="track-info">${pointCount} points · Started ${formatTime(track.startTime)}</div>
-                            <div class="track-distance">${formatDistance(distance)}</div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            if (showHistorical && inactiveTracks.length > 0) {
-                html += '<div style="margin-top: 12px; padding: 8px; font-size: 12px; color: #999; border-top: 1px solid #ddd;">Historical Tracks</div>';
-                html += inactiveTracks.map(track => {
-                    const distance = calculateDistance(track.points);
-                    const pointCount = track.points.length;
-                    const isSelected = track.id === selectedTrackId;
-
-                    return `
-                        <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${track.id}')" style="opacity: 0.7;">
-                            <div class="track-name">
-                                <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${track.color || '#FF5722'}; margin-right: 8px;"></span>
-                                ${track.userId} - ${track.name}
-                            </div>
-                            <div class="track-info">${pointCount} points · ${formatTime(track.startTime)} - ${formatTime(track.endTime || track.startTime)}</div>
-                            <div class="track-distance">${formatDistance(distance)}</div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            if (html === '') {
-                tracksList.innerHTML = '<div class="no-tracks">No tracks found</div>';
-            } else {
-                tracksList.innerHTML = html;
-            }
-        }
-
-        function selectTrack(trackId) {
-            selectedTrackId = trackId;
-            updateTracksList();
-            updateMap();
-
-            const track = tracks[trackId];
-            if (track && track.points.length > 0) {
-                const bounds = new maplibregl.LngLatBounds();
-                track.points.forEach(p => bounds.extend([p.lon, p.lat]));
-                map.fitBounds(bounds, { padding: 50 });
-            }
-        }
-
-        function updateMap() {
-            // Wait for map to be loaded
-            if (!map.loaded()) {
-                map.once('load', () => updateMap());
-                return;
-            }
-
-            Object.keys(tracks).forEach(trackId => {
-                const track = tracks[trackId];
-                const sourceId = `track-${trackId}`;
-                const layerId = `track-layer-${trackId}`;
-
-                // Remove track if no points
-                if (track.points.length === 0) {
-                    if (map.getLayer(layerId)) map.removeLayer(layerId);
-                    if (map.getSource(sourceId)) map.removeSource(sourceId);
-                    // Clean up start/end point markers
-                    const startPointLayerId = `track-start-layer-${trackId}`;
-                    const startPointSourceId = `track-start-${trackId}`;
-                    const endPointLayerId = `track-end-layer-${trackId}`;
-                    const endPointSourceId = `track-end-${trackId}`;
-                    if (map.getLayer(startPointLayerId)) map.removeLayer(startPointLayerId);
-                    if (map.getSource(startPointSourceId)) map.removeSource(startPointSourceId);
-                    if (map.getLayer(endPointLayerId)) map.removeLayer(endPointLayerId);
-                    if (map.getSource(endPointSourceId)) map.removeSource(endPointSourceId);
-                    return;
-                }
-
-                // For single point, show as a marker
-                if (track.points.length === 1) {
-                    const geojson = {
-                        type: 'Feature',
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [track.points[0].lon, track.points[0].lat]
-                        }
-                    };
-
-                    if (map.getSource(sourceId)) {
-                        map.getSource(sourceId).setData(geojson);
-                    } else {
-                        map.addSource(sourceId, {
-                            type: 'geojson',
-                            data: geojson
-                        });
-
-                        map.addLayer({
-                            id: layerId,
-                            type: 'circle',
-                            source: sourceId,
-                            paint: {
-                                'circle-radius': 6,
-                                'circle-color': track.color || '#FF5722',
-                                'circle-stroke-width': 2,
-                                'circle-stroke-color': '#FFFFFF'
-                            }
-                        });
-                    }
-                    return;
-                }
-
-                // For multiple points, show as a line
-                const geojson = {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: track.points.map(p => [p.lon, p.lat])
-                    }
-                };
-
-                if (map.getSource(sourceId)) {
-                    map.getSource(sourceId).setData(geojson);
-                    // Update line width if selection changed
-                    if (map.getLayer(layerId)) {
-                        map.setPaintProperty(layerId, 'line-width', trackId === selectedTrackId ? 4 : 3);
-                    }
-                } else {
-                    map.addSource(sourceId, {
-                        type: 'geojson',
-                        data: geojson
-                    });
-
-                    map.addLayer({
-                        id: layerId,
-                        type: 'line',
-                        source: sourceId,
-                        paint: {
-                            'line-color': track.color || '#FF5722',
-                            'line-width': trackId === selectedTrackId ? 4 : 3,
-                            'line-opacity': 0.8
-                        }
-                    });
-                }
-
-                // Add start point marker (green dot)
-                const startPointSourceId = `track-start-${trackId}`;
-                const startPointLayerId = `track-start-layer-${trackId}`;
-                const startPointGeoJson = {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Point',
-                        coordinates: [track.points[0].lon, track.points[0].lat]
-                    }
-                };
-
-                if (map.getSource(startPointSourceId)) {
-                    map.getSource(startPointSourceId).setData(startPointGeoJson);
-                } else {
-                    map.addSource(startPointSourceId, {
-                        type: 'geojson',
-                        data: startPointGeoJson
-                    });
-
-                    map.addLayer({
-                        id: startPointLayerId,
-                        type: 'circle',
-                        source: startPointSourceId,
-                        paint: {
-                            'circle-radius': 5,
-                            'circle-color': '#4CAF50',
-                            'circle-stroke-width': 2,
-                            'circle-stroke-color': '#FFFFFF'
-                        }
-                    });
-                }
-
-                // Add end point marker (red dot) - only if track has ended or is active with multiple points
-                const endPointSourceId = `track-end-${trackId}`;
-                const endPointLayerId = `track-end-layer-${trackId}`;
-                const lastPoint = track.points[track.points.length - 1];
-                const endPointGeoJson = {
-                    type: 'Feature',
-                    geometry: {
-                        type: 'Point',
-                        coordinates: [lastPoint.lon, lastPoint.lat]
-                    }
-                };
-
-                if (map.getSource(endPointSourceId)) {
-                    map.getSource(endPointSourceId).setData(endPointGeoJson);
-                } else {
-                    map.addSource(endPointSourceId, {
-                        type: 'geojson',
-                        data: endPointGeoJson
-                    });
-
-                    map.addLayer({
-                        id: endPointLayerId,
-                        type: 'circle',
-                        source: endPointSourceId,
-                        paint: {
-                            'circle-radius': 5,
-                            'circle-color': track.isActive ? '#2196F3' : '#F44336',
-                            'circle-stroke-width': 2,
-                            'circle-stroke-color': '#FFFFFF'
-                        }
-                    });
-                }
-            });
-        }
-
-        async function fetchTracks() {
-            try {
-                const params = new URLSearchParams();
-                if (clientFilters.length > 0) {
-                    params.set('clients', clientFilters.join(','));
-                }
-                if (showHistorical) {
-                    params.set('historical', 'true');
-                }
-                const url = `/api/tracks${params.toString() ? '?' + params.toString() : ''}`;
-
-                // Build headers with god mode key only (client IDs are in URL for sharing)
-                const headers = {};
-                if (godMode && window.godModeKey) {
-                    headers['X-God-Mode-Key'] = window.godModeKey;
-                }
-
-                const response = await fetch(url, { headers });
-                const data = await response.json();
-                tracks = data.reduce((acc, track) => {
-                    acc[track.id] = track;
-                    return acc;
-                }, {});
-                updateTracksList();
-                updateMap();
-            } catch (error) {
-                console.error('Error fetching tracks:', error);
-            }
-        }
-
-        // Setup WebSocket for live updates
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-
-            if (data.type === 'track_update') {
-                // Skip if client filters are active and this client is not in the filter
-                if (clientFilters.length > 0 && !clientFilters.includes(data.userId)) {
-                    return;
-                }
-
-                if (!tracks[data.trackId]) {
-                    tracks[data.trackId] = {
-                        id: data.trackId,
-                        userId: data.userId,
-                        name: data.name || 'Unnamed Track',
-                        points: [],
-                        startTime: data.point.timestamp,
-                        isActive: true,
-                        color: data.color
-                    };
-                }
-                tracks[data.trackId].points.push(data.point);
-                updateTracksList();
-                updateMap();
-            } else if (data.type === 'track_stopped') {
-                if (tracks[data.trackId]) {
-                    tracks[data.trackId].isActive = false;
-                    updateTracksList();
-                }
-            }
-        };
-
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
-
-        ws.onclose = () => {
-            console.log('WebSocket connection closed, attempting to reconnect...');
-            setTimeout(() => location.reload(), 5000);
-        };
-
-        // Initial fetch
-        fetchTracks();
-
-        // Refresh every 30 seconds as backup
-        setInterval(fetchTracks, 30000);
-    </script>
+    <script src="/app.js"></script>
 </body>
 </html>
 

@@ -10,7 +10,7 @@ export function createTestServer(port: number = 0) {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-God-Mode-Key',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-Admin-Key',
     };
 
     if (req.method === 'OPTIONS') {

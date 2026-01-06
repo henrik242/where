@@ -1,11 +1,53 @@
 import { trackStore } from './src/store';
 import type { Track } from './src/types';
 
-const GOD_MODE_KEY = process.env.GOD_MODE_KEY;
+const ADMIN_KEY = process.env.ADMIN_KEY;
 const TRACKING_HMAC_SECRET = process.env.TRACKING_HMAC_SECRET;
 
 if (!TRACKING_HMAC_SECRET) {
   console.warn('⚠️  WARNING: TRACKING_HMAC_SECRET not set! All tracking requests will be rejected.');
+}
+
+/**
+ * Calculate distance between two points using Haversine formula
+ */
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000; // Earth radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+           Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+           Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+/**
+ * Calculate total distance for a track
+ */
+function calculateTrackDistance(points: any[]): number {
+  if (points.length < 2) return 0;
+  let distance = 0;
+  for (let i = 1; i < points.length; i++) {
+    distance += calculateDistance(
+      points[i - 1].lat,
+      points[i - 1].lon,
+      points[i].lat,
+      points[i].lon
+    );
+  }
+  return distance;
+}
+
+/**
+ * Enrich track with calculated metadata
+ */
+function enrichTrack(track: Track) {
+  return {
+    ...track,
+    distance: calculateTrackDistance(track.points),
+    pointCount: track.points.length
+  };
 }
 
 /**
@@ -137,7 +179,7 @@ async function handleAPI(req: Request): Promise<Response> {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-God-Mode-Key, X-Signature',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-Admin-Key, X-Signature',
   };
 
   if (req.method === 'OPTIONS') {
@@ -166,16 +208,26 @@ async function handleAPI(req: Request): Promise<Response> {
     }
     // GET /api/tracks - Get all active tracks (or filtered by client IDs)
     if (path === '/api/tracks' && req.method === 'GET') {
-      // Get client IDs from URL query params (for sharing) OR header (for god mode)
+      // Get client IDs from URL query params (for sharing) OR header (for admin)
       const clientIdsParam = url.searchParams.get('clients')?.split(',').filter(Boolean) || [];
       const includeHistorical = url.searchParams.get('historical') === 'true';
 
-      // Get god mode key from secure header
-      const godModeKey = req.headers.get('X-God-Mode-Key');
+      // Get admin key from secure header
+      const adminKey = req.headers.get('X-Admin-Key');
+
+      // If admin key is provided but invalid, return 401
+      if (adminKey && (!ADMIN_KEY || adminKey !== ADMIN_KEY)) {
+        return new Response(JSON.stringify({ error: 'Invalid admin key' }), {
+          status: 401,
+          headers
+        });
+      }
+
+      const isAdmin = ADMIN_KEY && adminKey === ADMIN_KEY;
 
       let tracks;
-      if (GOD_MODE_KEY && godModeKey === GOD_MODE_KEY) {
-        // God mode: show all tracks regardless of client filter (only if GOD_MODE_KEY is set)
+      if (isAdmin) {
+        // Admin: show all tracks regardless of client filter (only if ADMIN_KEY is set)
         tracks = includeHistorical ? trackStore.getAllTracks() : trackStore.getAllActiveTracks();
       } else if (clientIdsParam.length > 0) {
         // Show only specified client IDs from URL
@@ -185,7 +237,16 @@ async function handleAPI(req: Request): Promise<Response> {
         tracks = [];
       }
 
-      return new Response(JSON.stringify(tracks), { headers });
+      // Enrich tracks with calculated metadata
+      const enrichedTracks = tracks.map(enrichTrack);
+
+      // Return tracks with admin status
+      const response = {
+        admin: isAdmin,
+        tracks: enrichedTracks
+      };
+
+      return new Response(JSON.stringify(response), { headers });
     }
 
     // GET /api/tracks/:trackId - Get specific track
@@ -352,6 +413,6 @@ function broadcastToAll(message: any) {
 console.log(`🚀 Where Server running at http://localhost:${server.port}`);
 console.log(`📡 WebSocket available at ws://localhost:${server.port}/ws`);
 console.log(`🌐 Web interface at http://localhost:${server.port}`);
-console.log(`🔑 God mode: ${GOD_MODE_KEY ? 'ENABLED' : 'DISABLED'}`);
+console.log(`🔑 Admin: ${ADMIN_KEY ? 'ENABLED' : 'DISABLED'}`);
 console.log(`🔒 HMAC verification: ${TRACKING_HMAC_SECRET ? 'ENABLED' : 'DISABLED'}`);
 
