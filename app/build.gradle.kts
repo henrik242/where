@@ -47,9 +47,9 @@ android {
         fun execGit(command: String): String {
             return try {
                 val process = Runtime.getRuntime().exec(command)
-                process.inputStream.bufferedReader().readText().trim().also {
-                    process.waitFor()
-                }
+                val output = process.inputStream.bufferedReader().readText().trim()
+                process.waitFor()
+                output
             } catch (e: Exception) {
                 println("Warning: Failed to execute '$command': ${e.message}")
                 ""
