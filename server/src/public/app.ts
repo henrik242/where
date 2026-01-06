@@ -66,7 +66,9 @@ function initMap(): void {
       }]
     },
     center: [10.7522, 59.9139], // Oslo
-    zoom: 10
+    zoom: 10,
+    minZoom: 0,
+    maxZoom: 18
   });
 
   map.addControl(new maplibregl.NavigationControl(), 'top-left');
