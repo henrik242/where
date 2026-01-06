@@ -15,6 +15,7 @@ export interface Track {
   endTime?: number;
   isActive: boolean;
   color?: string;
+  lastUpdateTime?: number;
 }
 
 export class Track {
