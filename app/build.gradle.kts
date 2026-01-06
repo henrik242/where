@@ -42,6 +42,25 @@ android {
         }
 
         buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
+
+        // Generate version info from git
+        val gitCommitCount = try {
+            Runtime.getRuntime().exec("git rev-list --count HEAD").inputStream.bufferedReader().readText().trim()
+        } catch (e: Exception) {
+            "0"
+        }
+        
+        val gitShortSha = try {
+            Runtime.getRuntime().exec("git rev-parse --short HEAD").inputStream.bufferedReader().readText().trim()
+        } catch (e: Exception) {
+            "unknown"
+        }
+        
+        val buildDate = java.time.LocalDate.now().toString()
+        
+        buildConfigField("String", "GIT_COMMIT_COUNT", "\"$gitCommitCount\"")
+        buildConfigField("String", "GIT_SHORT_SHA", "\"$gitShortSha\"")
+        buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
     }
 
     buildTypes {
