@@ -43,8 +43,10 @@ let showHistorical = false;
 let admin = false;
 let adminKey: string | undefined;
 
-// Initialize map
 function initMap(): void {
+  const defaultCenter: [number, number] = [10.7522, 59.9139]; // Oslo
+  const defaultZoom = 10;
+
   map = new maplibregl.Map({
     container: 'map',
     style: {
@@ -65,13 +67,37 @@ function initMap(): void {
         maxzoom: 19
       }]
     },
-    center: [10.7522, 59.9139], // Oslo
-    zoom: 10,
+    center: defaultCenter,
+    zoom: defaultZoom,
     minZoom: 0,
     maxZoom: 18
   });
 
   map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
+  // Try to get user's location (only if no client filters specified in URL)
+  // Client filters take priority - we'll zoom to those tracks instead
+  if ('geolocation' in navigator && clientFilters.length === 0) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        // Successfully got position - fly to it
+        map.flyTo({
+          center: [position.coords.longitude, position.coords.latitude],
+          zoom: 10,
+          essential: true
+        });
+      },
+      (error) => {
+        // Failed to get position - already using Oslo fallback
+        console.debug('Geolocation unavailable, using default location:', error.message);
+      },
+      {
+        timeout: 5000,
+        maximumAge: 300000, // Accept cached position up to 5 minutes old
+        enableHighAccuracy: false
+      }
+    );
+  }
 }
 
 // Parse URL parameters
@@ -457,8 +483,34 @@ async function fetchTracks(): Promise<void> {
 
     updateTracksList();
     updateMap();
+
+    // If client filters are specified, zoom to show all those tracks
+    if (clientFilters.length > 0) {
+      zoomToClientTracks();
+    }
   } catch (error) {
     console.error('Error fetching tracks:', error);
+  }
+}
+
+// Zoom map to show all client tracks
+function zoomToClientTracks(): void {
+  const allPoints: Point[] = [];
+
+  Object.values(tracks).forEach(track => {
+    allPoints.push(...track.points);
+  });
+
+  if (allPoints.length > 0) {
+    const bounds = new maplibregl.LngLatBounds();
+    allPoints.forEach(point => {
+      bounds.extend([point.lon, point.lat]);
+    });
+
+    map.fitBounds(bounds, {
+      padding: 50,
+      maxZoom: 15 // Don't zoom in too close if there's only one point
+    });
   }
 }
 
@@ -526,8 +578,8 @@ function setupWebSocket(): void {
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
+  parseURLParameters(); // Parse URL first so clientFilters is set
   initMap();
-  parseURLParameters();
   updateClientTags();
 
   document.getElementById('client-input')?.addEventListener('keypress', (e) => {
