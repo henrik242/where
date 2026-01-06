@@ -304,7 +304,8 @@ async function handleAPI(req: Request): Promise<Response> {
         name: trackName,
         points: body.points || [],
         startTime: Date.now(),
-        isActive: true
+        isActive: true,
+        lastUpdateTime: Date.now()
       };
 
       trackStore.saveTrack(track);
@@ -337,8 +338,13 @@ async function handleAPI(req: Request): Promise<Response> {
         });
       }
 
+      // If track was inactive, reactivate it
+      const wasInactive = !track.isActive;
+
       const updatedTrack = trackStore.updateTrack(trackId, {
-        points: [...track.points, point]
+        points: [...track.points, point],
+        isActive: true, // Reactivate if receiving updates
+        lastUpdateTime: Date.now()
       });
 
       // Broadcast update to all WebSocket clients
@@ -350,6 +356,17 @@ async function handleAPI(req: Request): Promise<Response> {
         point: point,
         color: track.color
       });
+
+      // If track was reactivated, also broadcast that
+      if (wasInactive) {
+        broadcastToAll({
+          type: 'track_started',
+          trackId: trackId,
+          userId: track.userId,
+          name: track.name,
+          color: track.color
+        });
+      }
 
       return new Response(JSON.stringify(updatedTrack), { headers });
     }
@@ -412,9 +429,41 @@ function broadcastToAll(message: any) {
   server.publish('tracking', JSON.stringify(message));
 }
 
+// Background job to check for stale tracks (no updates in 10 minutes)
+function checkStaleTracks() {
+  const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+  const activeTracks = trackStore.getAllActiveTracks();
+
+  activeTracks.forEach(track => {
+    const lastUpdate = track.lastUpdateTime || track.startTime;
+    if (lastUpdate < tenMinutesAgo) {
+      // Mark track as inactive
+      const updatedTrack = trackStore.updateTrack(track.id, {
+        isActive: false,
+        endTime: lastUpdate
+      });
+
+      if (updatedTrack) {
+        console.log(`⏱️  Track ${track.id} (${track.userId}) marked as inactive after 10 minutes of no updates`);
+
+        // Broadcast that track stopped
+        broadcastToAll({
+          type: 'track_stopped',
+          trackId: track.id,
+          userId: track.userId
+        });
+      }
+    }
+  });
+}
+
+// Run stale track check every minute
+setInterval(checkStaleTracks, 60 * 1000);
+
 console.log(`🚀 Where Server running at http://localhost:${server.port}`);
 console.log(`📡 WebSocket available at ws://localhost:${server.port}/ws`);
 console.log(`🌐 Web interface at http://localhost:${server.port}`);
 console.log(`🔑 Admin: ${ADMIN_KEY ? 'ENABLED' : 'DISABLED'}`);
 console.log(`🔒 HMAC verification: ${TRACKING_HMAC_SECRET ? 'ENABLED' : 'DISABLED'}`);
+console.log(`⏱️  Auto-stop inactive tracks after 10 minutes`);
 
