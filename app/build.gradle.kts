@@ -1,3 +1,4 @@
+import java.time.LocalDate
 import java.util.Properties
 
 plugins {
@@ -58,7 +59,7 @@ android {
         
         val gitCommitCount = execGit("git rev-list --count HEAD").ifEmpty { "0" }
         val gitShortSha = execGit("git rev-parse --short HEAD").ifEmpty { "unknown" }
-        val buildDate = java.time.LocalDate.now().toString()
+        val buildDate = LocalDate.now().toString()
         
         buildConfigField("String", "GIT_COMMIT_COUNT", "\"$gitCommitCount\"")
         buildConfigField("String", "GIT_SHORT_SHA", "\"$gitShortSha\"")
