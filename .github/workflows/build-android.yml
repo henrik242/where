@@ -36,19 +36,33 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    - name: Validate secrets
+      run: |
+        if [ -z "${{ secrets.TRACKING_HMAC_SECRET }}" ]; then
+          echo "❌ ERROR: TRACKING_HMAC_SECRET is not set in GitHub secrets!"
+          echo ""
+          echo "To fix this:"
+          echo "1. Generate a secret key: openssl rand -base64 32"
+          echo "2. Go to repository Settings → Secrets and variables → Actions"
+          echo "3. Add a new repository secret named TRACKING_HMAC_SECRET"
+          echo "4. Paste the generated key as the value"
+          exit 1
+        fi
+        echo "✅ TRACKING_HMAC_SECRET is set"
+
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+        echo "TRACKING_HMAC_SECRET=${{ secrets.TRACKING_HMAC_SECRET }}" >> local.properties
+        echo "✅ local.properties created"
+
     - name: Build debug APK
-      env:
-        TRACKING_HMAC_SECRET: ${{ secrets.TRACKING_HMAC_SECRET }}
       run: ./gradlew assembleDebug --stacktrace
 
     - name: Build release APK
-      env:
-        TRACKING_HMAC_SECRET: ${{ secrets.TRACKING_HMAC_SECRET }}
       run: ./gradlew assembleRelease --stacktrace
 
     - name: Run tests
-      env:
-        TRACKING_HMAC_SECRET: ${{ secrets.TRACKING_HMAC_SECRET }}
       run: ./gradlew testDebugUnitTest --stacktrace
 
     - name: Upload debug APK
