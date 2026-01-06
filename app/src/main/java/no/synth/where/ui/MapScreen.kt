@@ -10,7 +10,6 @@ import android.net.NetworkRequest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,8 +37,6 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -49,14 +46,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -86,34 +81,20 @@ import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.service.LocationTrackingService
-import no.synth.where.util.DeviceUtils
+import no.synth.where.ui.map.MapDialogs
+import no.synth.where.ui.map.MapLayer
+import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.util.NamingUtils
 import no.synth.where.util.formatDistance
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.location.LocationComponent
-import org.maplibre.android.location.LocationComponentActivationOptions
-import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import org.maplibre.android.style.layers.LineLayer
-import org.maplibre.android.style.layers.PropertyFactory
-import org.maplibre.android.style.sources.GeoJsonSource
-import org.maplibre.geojson.Feature
-import org.maplibre.geojson.LineString
-import org.maplibre.geojson.Point
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-enum class MapLayer {
-    OSM,
-    OPENTOPOMAP,
-    KARTVERKET,
-    TOPORASTER,
-    SJOKARTRASTER
-}
 
 @Composable
 private fun LayerMenuItem(
@@ -295,7 +276,7 @@ fun MapScreen(
         val map = mapInstance
 
         map?.style?.let { style ->
-            updateTrackOnMap(style, trackToShow, isCurrentTrack = currentTrack != null)
+            MapRenderUtils.updateTrackOnMap(style, trackToShow, isCurrentTrack = currentTrack != null)
 
             if (viewing != null && viewing.points.isNotEmpty()) {
                 hasZoomedToLocation = true  // Prevent auto-zoom to location
@@ -855,125 +836,64 @@ fun MapScreen(
     }
 
     if (showStopTrackDialog) {
-        AlertDialog(
-            onDismissRequest = { showStopTrackDialog = false },
-            title = { Text("Save Track") },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter a name for your track:",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = trackNameInput,
-                        onValueChange = { trackNameInput = it },
-                        label = { Text("Track Name") },
-                        singleLine = true
-                    )
+        MapDialogs.StopTrackDialog(
+            trackNameInput = trackNameInput,
+            onTrackNameChange = { trackNameInput = it },
+            onDiscard = {
+                trackRepository.discardRecording()
+                LocationTrackingService.stop(context)
+                scope.launch {
+                    snackbarHostState.showSnackbar("Track discarded")
                 }
+                showStopTrackDialog = false
+                trackNameInput = ""
             },
-            confirmButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(
-                        onClick = {
-                            trackRepository.discardRecording()
-                            LocationTrackingService.stop(context)
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Track discarded")
-                            }
-                            showStopTrackDialog = false
-                            trackNameInput = ""
-                        },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Text("Discard")
-                    }
-                    TextButton(
-                        onClick = {
-                            val currentTrackValue = currentTrack
-                            if (currentTrackValue != null && trackNameInput.isNotBlank()) {
-                                trackRepository.renameTrack(currentTrackValue, trackNameInput)
-                            }
-                            trackRepository.stopRecording()
-                            LocationTrackingService.stop(context)
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Track saved")
-                            }
-                            showStopTrackDialog = false
-                            trackNameInput = ""
-                        }
-                    ) {
-                        Text("Save")
-                    }
+            onSave = {
+                val currentTrackValue = currentTrack
+                if (currentTrackValue != null && trackNameInput.isNotBlank()) {
+                    trackRepository.renameTrack(currentTrackValue, trackNameInput)
                 }
+                trackRepository.stopRecording()
+                LocationTrackingService.stop(context)
+                scope.launch {
+                    snackbarHostState.showSnackbar("Track saved")
+                }
+                showStopTrackDialog = false
+                trackNameInput = ""
             },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showStopTrackDialog = false
-                        trackNameInput = ""
-                    }
-                ) {
-                    Text("Cancel")
-                }
+            onDismiss = {
+                showStopTrackDialog = false
+                trackNameInput = ""
             }
         )
     }
 
     if (showSavePointDialog && savePointLatLng != null) {
-        AlertDialog(
-            onDismissRequest = { showSavePointDialog = false },
-            title = { Text("Save Point") },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter a name for this point:",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = savePointName,
-                        onValueChange = { savePointName = it },
-                        label = { Text("Point Name") },
-                        singleLine = true
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (savePointName.isNotBlank()) {
-                            savePointLatLng?.let {
-                                savedPointsRepository.addPoint(
-                                    name = savePointName,
-                                    latLng = it
-                                )
-                            }
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Point saved")
-                            }
-                        }
-                        showSavePointDialog = false
-                        savePointName = ""
-                        savePointLatLng = null
+        val latLng = savePointLatLng!!  // Non-null assertion since we checked above
+        MapDialogs.SavePointDialog(
+            pointName = savePointName,
+            onPointNameChange = { savePointName = it },
+            coordinates = "${latLng.latitude.toString().take(10)}, ${latLng.longitude.toString().take(10)}",
+            onSave = {
+                if (savePointName.isNotBlank()) {
+                    savePointLatLng?.let {
+                        savedPointsRepository.addPoint(
+                            name = savePointName,
+                            latLng = it
+                        )
                     }
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showSavePointDialog = false
-                        savePointName = ""
-                        savePointLatLng = null
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Point saved")
                     }
-                ) {
-                    Text("Cancel")
                 }
+                showSavePointDialog = false
+                savePointName = ""
+                savePointLatLng = null
+            },
+            onDismiss = {
+                showSavePointDialog = false
+                savePointName = ""
+                savePointLatLng = null
             }
         )
     }
@@ -994,363 +914,70 @@ fun MapScreen(
             "#E91E63" to "Pink"
         )
 
-        AlertDialog(
-            onDismissRequest = { showPointInfoDialog = false },
-            title = { Text("Edit Point") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = editName,
-                        onValueChange = { editName = it },
-                        label = { Text("Name") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = editDescription,
-                        onValueChange = { editDescription = it },
-                        label = { Text("Description (optional)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Text("Color", style = MaterialTheme.typography.labelMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        colors.forEach { (colorHex, _) ->
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        color = Color(colorHex.toColorInt()),
-                                        shape = CircleShape
-                                    )
-                                    .clickable { editColor = colorHex }
-                                    .then(
-                                        if (editColor == colorHex) {
-                                            Modifier.padding(4.dp)
-                                        } else Modifier
-                                    )
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = "${
-                            clickedPoint!!.latLng.latitude.toString().take(10)
-                        }, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        MapDialogs.PointInfoDialog(
+            pointName = editName,
+            pointDescription = editDescription,
+            pointColor = editColor,
+            coordinates = "${clickedPoint!!.latLng.latitude.toString().take(10)}, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
+            availableColors = colors,
+            onNameChange = { editName = it },
+            onDescriptionChange = { editDescription = it },
+            onColorChange = { editColor = it },
+            onDelete = {
+                clickedPoint?.let {
+                    savedPointsRepository.deletePoint(it.id)
+                }
+                showPointInfoDialog = false
+                clickedPoint = null
+                scope.launch {
+                    snackbarHostState.showSnackbar("Point deleted")
                 }
             },
-            confirmButton = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(
-                        onClick = {
-                            clickedPoint?.let {
-                                savedPointsRepository.deletePoint(it.id)
-                            }
-                            showPointInfoDialog = false
-                            clickedPoint = null
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Point deleted")
-                            }
-                        },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
+            onSave = {
+                if (editName.isNotBlank()) {
+                    clickedPoint?.let {
+                        savedPointsRepository.updatePoint(
+                            it.id,
+                            editName,
+                            editDescription,
+                            editColor
                         )
-                    ) {
-                        Text("Delete")
                     }
-                    TextButton(
-                        onClick = {
-                            if (editName.isNotBlank()) {
-                                clickedPoint?.let {
-                                    savedPointsRepository.updatePoint(
-                                        it.id,
-                                        editName,
-                                        editDescription,
-                                        editColor
-                                    )
-                                }
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Point updated")
-                                }
-                            }
-                            showPointInfoDialog = false
-                            clickedPoint = null
-                        }
-                    ) {
-                        Text("Save")
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Point updated")
                     }
                 }
+                showPointInfoDialog = false
+                clickedPoint = null
             },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showPointInfoDialog = false
-                        clickedPoint = null
-                    }
-                ) {
-                    Text("Cancel")
-                }
+            onDismiss = {
+                showPointInfoDialog = false
+                clickedPoint = null
             }
         )
     }
 
     if (showSaveRulerAsTrackDialog) {
-        AlertDialog(
-            onDismissRequest = { showSaveRulerAsTrackDialog = false },
-            title = { Text("Save Route as Track") },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter a name for this route:",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = rulerTrackName,
-                        onValueChange = { rulerTrackName = it },
-                        label = { Text("Track Name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "${rulerState.points.size} points • ${
-                            rulerState.getTotalDistanceMeters().formatDistance()
-                        }",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (rulerTrackName.isNotBlank()) {
-                            trackRepository.createTrackFromPoints(rulerTrackName, rulerState.points)
-                            rulerState = rulerState.clear()
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Saved as track: $rulerTrackName")
-                            }
-                        }
-                        showSaveRulerAsTrackDialog = false
-                        rulerTrackName = ""
+        MapDialogs.SaveRulerAsTrackDialog(
+            trackName = rulerTrackName,
+            rulerState = rulerState,
+            onTrackNameChange = { rulerTrackName = it },
+            onSave = {
+                if (rulerTrackName.isNotBlank()) {
+                    trackRepository.createTrackFromPoints(rulerTrackName, rulerState.points)
+                    rulerState = rulerState.clear()
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Saved as track: $rulerTrackName")
                     }
-                ) {
-                    Text("Save")
                 }
+                showSaveRulerAsTrackDialog = false
+                rulerTrackName = ""
             },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showSaveRulerAsTrackDialog = false
-                        rulerTrackName = ""
-                    }
-                ) {
-                    Text("Cancel")
-                }
+            onDismiss = {
+                showSaveRulerAsTrackDialog = false
+                rulerTrackName = ""
             }
         )
-    }
-}
-
-@SuppressWarnings("MissingPermission")
-private fun enableLocationComponent(
-    map: MapLibreMap,
-    style: Style,
-    context: Context,
-    hasPermission: Boolean
-) {
-    if (!hasPermission) return
-
-    try {
-        val locationComponent = map.locationComponent
-
-        if (locationComponent.isLocationComponentActivated) {
-            locationComponent.isLocationComponentEnabled = true
-            locationComponent.renderMode = RenderMode.COMPASS
-            if (locationComponent.lastKnownLocation == null && DeviceUtils.isEmulator()) {
-                forceLocationOnEmulator(locationComponent)
-            }
-            return
-        }
-
-        locationComponent.activateLocationComponent(
-            LocationComponentActivationOptions.builder(context, style)
-                .useDefaultLocationEngine(true)
-                .build()
-        )
-
-        locationComponent.isLocationComponentEnabled = true
-        locationComponent.renderMode = RenderMode.COMPASS
-
-        if (locationComponent.lastKnownLocation == null && DeviceUtils.isEmulator()) {
-            forceLocationOnEmulator(locationComponent)
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}
-
-
-@SuppressWarnings("MissingPermission")
-private fun forceLocationOnEmulator(locationComponent: LocationComponent) {
-    try {
-        val mockLocation = Location("emulator_mock").apply {
-            latitude = 59.9139
-            longitude = 10.7522
-            accuracy = 10f
-            time = System.currentTimeMillis()
-            elapsedRealtimeNanos = android.os.SystemClock.elapsedRealtimeNanos()
-        }
-        locationComponent.forceLocationUpdate(mockLocation)
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}
-
-private fun updateTrackOnMap(style: Style, track: Track?, isCurrentTrack: Boolean = true) {
-    try {
-        val sourceId = "track-source"
-        val layerId = "track-layer"
-
-        style.getLayer(layerId)?.let { style.removeLayer(it) }
-        style.getSource(sourceId)?.let { style.removeSource(it) }
-
-        if (track != null && track.points.size >= 2) {
-            val points =
-                track.points.map { Point.fromLngLat(it.latLng.longitude, it.latLng.latitude) }
-            val lineString = LineString.fromLngLats(points)
-            val feature = Feature.fromGeometry(lineString)
-
-            val source = GeoJsonSource(sourceId, feature)
-            style.addSource(source)
-
-            val lineColor = if (isCurrentTrack) "#FF0000" else "#0000FF"
-
-            val lineLayer = LineLayer(layerId, sourceId).withProperties(
-                PropertyFactory.lineColor(lineColor),
-                PropertyFactory.lineWidth(4f),
-                PropertyFactory.lineOpacity(0.8f)
-            )
-            style.addLayer(lineLayer)
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}
-
-private fun updateRulerOnMap(style: Style, rulerState: RulerState) {
-    try {
-        val lineSourceId = "ruler-line-source"
-        val lineLayerId = "ruler-line-layer"
-        val pointSourceId = "ruler-point-source"
-        val pointLayerId = "ruler-point-layer"
-
-        style.getLayer(lineLayerId)?.let { style.removeLayer(it) }
-        style.getSource(lineSourceId)?.let { style.removeSource(it) }
-        style.getLayer(pointLayerId)?.let { style.removeLayer(it) }
-        style.getSource(pointSourceId)?.let { style.removeSource(it) }
-
-        if (rulerState.points.isNotEmpty()) {
-            if (rulerState.points.size >= 2) {
-                val points = rulerState.points.map {
-                    Point.fromLngLat(it.latLng.longitude, it.latLng.latitude)
-                }
-                val lineString = LineString.fromLngLats(points)
-                val lineFeature = Feature.fromGeometry(lineString)
-
-                val lineSource = GeoJsonSource(lineSourceId, lineFeature)
-                style.addSource(lineSource)
-
-                val lineLayer = LineLayer(lineLayerId, lineSourceId).withProperties(
-                    PropertyFactory.lineColor("#FFA500"),
-                    PropertyFactory.lineWidth(3f),
-                    PropertyFactory.lineOpacity(0.9f),
-                    PropertyFactory.lineDasharray(arrayOf(2f, 2f))
-                )
-                style.addLayer(lineLayer)
-            }
-
-            val pointFeatures = rulerState.points.map { rulerPoint ->
-                Feature.fromGeometry(
-                    Point.fromLngLat(
-                        rulerPoint.latLng.longitude,
-                        rulerPoint.latLng.latitude
-                    )
-                )
-            }
-            val pointSource = GeoJsonSource(
-                pointSourceId,
-                com.google.gson.Gson().toJson(
-                    mapOf("type" to "FeatureCollection", "features" to pointFeatures)
-                )
-            )
-            style.addSource(pointSource)
-
-            val pointLayer =
-                org.maplibre.android.style.layers.CircleLayer(pointLayerId, pointSourceId)
-                    .withProperties(
-                        PropertyFactory.circleRadius(6f),
-                        PropertyFactory.circleColor("#FFA500"),
-                        PropertyFactory.circleStrokeWidth(2f),
-                        PropertyFactory.circleStrokeColor("#FFFFFF")
-                    )
-            style.addLayer(pointLayer)
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}
-
-private fun updateSavedPointsOnMap(
-    style: Style,
-    savedPoints: List<no.synth.where.data.SavedPoint>
-) {
-    try {
-        val sourceId = "saved-points-source"
-        val layerId = "saved-points-layer"
-
-        style.getLayer(layerId)?.let { style.removeLayer(it) }
-        style.getSource(sourceId)?.let { style.removeSource(it) }
-
-        if (savedPoints.isNotEmpty()) {
-            val features = savedPoints.map { point ->
-                Feature.fromGeometry(
-                    Point.fromLngLat(point.latLng.longitude, point.latLng.latitude)
-                ).apply {
-                    addStringProperty("name", point.name)
-                    addStringProperty("color", point.color ?: "#FF5722")
-                }
-            }
-
-            val source = GeoJsonSource(
-                sourceId,
-                com.google.gson.Gson().toJson(
-                    mapOf("type" to "FeatureCollection", "features" to features)
-                )
-            )
-            style.addSource(source)
-
-            val circleLayer = org.maplibre.android.style.layers.CircleLayer(layerId, sourceId)
-                .withProperties(
-                    PropertyFactory.circlePitchAlignment("viewport"),
-                    PropertyFactory.circleRadius(6f),
-                    PropertyFactory.circleColor(
-                        org.maplibre.android.style.expressions.Expression.get("color")
-                    ),
-                    PropertyFactory.circleStrokeWidth(2f),
-                    PropertyFactory.circleStrokeColor("#FFFFFF")
-                )
-            style.addLayer(circleLayer)
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
     }
 }
 
@@ -1440,18 +1067,18 @@ fun MapLibreMapView(
                     Style.Builder().fromJson(styleJson),
                     object : Style.OnStyleLoaded {
                         override fun onStyleLoaded(style: Style) {
-                            enableLocationComponent(
+                            MapRenderUtils.enableLocationComponent(
                                 mapInstance,
                                 style,
                                 context,
                                 hasLocationPermission
                             )
                             val trackToShow = current ?: viewing
-                            updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
-                            updateRulerOnMap(style, rulerState)
+                            MapRenderUtils.updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
+                            MapRenderUtils.updateRulerOnMap(style, rulerState)
 
                             if (showSavedPoints && savedPoints.isNotEmpty()) {
-                                updateSavedPointsOnMap(style, savedPoints)
+                                MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
                             }
 
                             if (viewing == null && current == null) {
@@ -1472,14 +1099,14 @@ fun MapLibreMapView(
         val mapInstance = map
         if (hasLocationPermission && mapInstance != null) {
             mapInstance.style?.let { style ->
-                enableLocationComponent(mapInstance, style, context, hasLocationPermission)
+                MapRenderUtils.enableLocationComponent(mapInstance, style, context, hasLocationPermission)
             }
         }
     }
 
     LaunchedEffect(rulerState, map) {
         map?.style?.let { style ->
-            updateRulerOnMap(style, rulerState)
+            MapRenderUtils.updateRulerOnMap(style, rulerState)
         }
     }
 
@@ -1500,25 +1127,25 @@ fun MapLibreMapView(
                     mapInstance.setStyle(
                         Style.Builder().fromJson(styleJson),
                         object : Style.OnStyleLoaded {
-                            override fun onStyleLoaded(style: Style) {
-                                enableLocationComponent(
-                                    mapInstance,
-                                    style,
-                                    context,
-                                    hasLocationPermission
-                                )
-                                val trackToShow = current ?: viewing
-                                updateTrackOnMap(
-                                    style,
-                                    trackToShow,
-                                    isCurrentTrack = current != null
-                                )
-                                updateRulerOnMap(style, rulerState)
+                        override fun onStyleLoaded(style: Style) {
+                            MapRenderUtils.enableLocationComponent(
+                                mapInstance,
+                                style,
+                                context,
+                                hasLocationPermission
+                            )
+                            val trackToShow = current ?: viewing
+                            MapRenderUtils.updateTrackOnMap(
+                                style,
+                                trackToShow,
+                                isCurrentTrack = current != null
+                            )
+                            MapRenderUtils.updateRulerOnMap(style, rulerState)
 
-                                if (showSavedPoints && savedPoints.isNotEmpty()) {
-                                    updateSavedPointsOnMap(style, savedPoints)
-                                }
+                            if (showSavedPoints && savedPoints.isNotEmpty()) {
+                                MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
                             }
+                        }
                         })
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -1535,7 +1162,7 @@ fun MapLibreMapView(
     LaunchedEffect(savedPoints.toList(), showSavedPoints) {
         map?.getStyle { style ->
             if (showSavedPoints) {
-                updateSavedPointsOnMap(style, savedPoints)
+                MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
             } else {
                 // Remove saved points layer when hidden
                 try {
@@ -1634,19 +1261,19 @@ fun MapLibreMapView(
                             Style.Builder().fromJson(styleJson),
                             object : Style.OnStyleLoaded {
                                 override fun onStyleLoaded(style: Style) {
-                                    enableLocationComponent(
+                                    MapRenderUtils.enableLocationComponent(
                                         mapInstance,
                                         style,
                                         ctx,
                                         hasLocationPermission
                                     )
                                     val trackToShow = current ?: viewing
-                                    updateTrackOnMap(
+                                    MapRenderUtils.updateTrackOnMap(
                                         style,
                                         trackToShow,
                                         isCurrentTrack = current != null
                                     )
-                                    updateRulerOnMap(style, rulerState)
+                                    MapRenderUtils.updateRulerOnMap(style, rulerState)
                                     mapInstance.triggerRepaint()
                                 }
                             })

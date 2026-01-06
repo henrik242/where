@@ -1,7 +1,7 @@
 package no.synth.where.data
 
 import android.content.Context
-import no.synth.where.ui.MapLayer
+import no.synth.where.ui.map.MapLayer
 
 object MapStyle {
     fun getStyle(
