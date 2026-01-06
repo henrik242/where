@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "bun run index.ts",
     "start": "bun run index.ts",
+    "build": "bun build src/public/app.ts --outfile=src/public/app.js --target=browser --minify",
     "test": "bun test",
     "test:unit": "bun test tests/store.test.ts tests/track.test.ts",
     "test:api": "bun test tests/api.test.ts",

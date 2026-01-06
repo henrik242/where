@@ -27,6 +27,11 @@ jobs:
         cd server
         bun install
 
+    - name: Build client TypeScript
+      run: |
+        cd server
+        bun run build
+
     - name: Run unit tests
       run: |
         cd server
