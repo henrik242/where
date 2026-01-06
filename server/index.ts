@@ -158,6 +158,7 @@ const server = Bun.serve({
   websocket: {
     open(ws) {
       console.log('WebSocket client connected');
+      ws.subscribe('tracking');
     },
 
     message(ws, message) {
@@ -166,6 +167,7 @@ const server = Bun.serve({
 
     close(ws) {
       console.log('WebSocket client disconnected');
+      ws.unsubscribe('tracking');
     }
   }
 });

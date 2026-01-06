@@ -328,8 +328,15 @@ function renderTrackLine(track: Track, sourceId: string, layerId: string): void 
 
   if (map.getSource(sourceId)) {
     (map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geojson);
-    if (map.getLayer(layerId)) {
-      map.setPaintProperty(layerId, 'line-width', track.id === selectedTrackId ? 4 : 3);
+    // Update line width if layer exists
+    const layer = map.getLayer(layerId);
+    if (layer) {
+      try {
+        map.setPaintProperty(layerId, 'line-width', track.id === selectedTrackId ? 4 : 3);
+      } catch (e) {
+        // Ignore errors from setPaintProperty - layer might be in transition
+        console.debug('Error setting paint property:', e);
+      }
     }
   } else {
     map.addSource(sourceId, { type: 'geojson', data: geojson });
