@@ -434,8 +434,30 @@ function checkStaleTracks() {
   const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
   const activeTracks = trackStore.getAllActiveTracks();
 
+  if (activeTracks.length === 0) {
+    return; // No active tracks to check
+  }
+
+  let stoppedCount = 0;
+
   activeTracks.forEach(track => {
-    const lastUpdate = track.lastUpdateTime || track.startTime;
+    // Determine last update time from:
+    // 1. lastUpdateTime field (if set)
+    // 2. Last point's timestamp (if points exist)
+    // 3. startTime (fallback)
+    let lastUpdate = track.lastUpdateTime;
+
+    if (!lastUpdate && track.points.length > 0) {
+      // Use the timestamp of the most recent point
+      lastUpdate = track.points[track.points.length - 1].timestamp;
+    }
+
+    if (!lastUpdate) {
+      lastUpdate = track.startTime;
+    }
+
+    const minutesSinceUpdate = Math.floor((Date.now() - lastUpdate) / 60000);
+
     if (lastUpdate < tenMinutesAgo) {
       // Mark track as inactive
       const updatedTrack = trackStore.updateTrack(track.id, {
@@ -444,7 +466,8 @@ function checkStaleTracks() {
       });
 
       if (updatedTrack) {
-        console.log(`⏱️  Track ${track.id} (${track.userId}) marked as inactive after 10 minutes of no updates`);
+        stoppedCount++;
+        console.log(`⏱️  Track ${track.id.substring(0, 8)}... (${track.userId}) marked as inactive after ${minutesSinceUpdate} minutes of no updates`);
 
         // Broadcast that track stopped
         broadcastToAll({
@@ -455,10 +478,20 @@ function checkStaleTracks() {
       }
     }
   });
+
+  if (stoppedCount > 0) {
+    console.log(`✅ Stopped ${stoppedCount} stale track(s)`);
+  }
 }
 
 // Run stale track check every minute
 setInterval(checkStaleTracks, 60 * 1000);
+
+// Run initial check after 10 seconds to catch existing stale tracks
+setTimeout(() => {
+  console.log('🔍 Running initial stale track check...');
+  checkStaleTracks();
+}, 10 * 1000);
 
 console.log(`🚀 Where Server running at http://localhost:${server.port}`);
 console.log(`📡 WebSocket available at ws://localhost:${server.port}/ws`);
