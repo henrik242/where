@@ -1531,6 +1531,23 @@ fun MapLibreMapView(
         }
     }
 
+    // Update saved points on map when they change (including color changes)
+    LaunchedEffect(savedPoints.toList(), showSavedPoints) {
+        map?.getStyle { style ->
+            if (showSavedPoints) {
+                updateSavedPointsOnMap(style, savedPoints)
+            } else {
+                // Remove saved points layer when hidden
+                try {
+                    style.getLayer("saved-points-layer")?.let { style.removeLayer(it) }
+                    style.getSource("saved-points-source")?.let { style.removeSource(it) }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
     LaunchedEffect(rulerState.isActive, savedPoints.size, map) {
         map?.let { mapInstance ->
             // Remove old listeners if they exist
