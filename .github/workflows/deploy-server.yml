@@ -27,15 +27,30 @@ jobs:
         cd server
         bun install
 
+    - name: Generate version info
+      run: |
+        cd server
+        GIT_COMMIT_COUNT=$(git rev-list --count HEAD)
+        GIT_SHORT_SHA=$(git rev-parse --short HEAD)
+        BUILD_DATE=$(date +%Y-%m-%d)
+        VERSION_STRING="${GIT_COMMIT_COUNT}.${GIT_SHORT_SHA} ${BUILD_DATE}"
+        echo "VERSION_STRING=$VERSION_STRING" >> $GITHUB_ENV
+        echo "Generated version: $VERSION_STRING"
+
     - name: Build client TypeScript
       run: |
         cd server
         bun run build
 
+    - name: Inject version into HTML
+      run: |
+        cd server
+        sed -i "s|<!-- VERSION_PLACEHOLDER -->|<div id=\"version-info\" style=\"display:none;\">${VERSION_STRING}</div>|g" src/public/index.html
+
     - name: Run unit tests
       run: |
         cd server
-        npm run test:unit
+        bun run test:unit
 
     - name: Deploy to server
       uses: easingthemes/ssh-deploy@main
