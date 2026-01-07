@@ -28,7 +28,7 @@ body {
     max-width: 320px;
     max-height: 80vh;
     overflow-y: auto;
-    z-index: 1;
+    z-index: 10;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -88,7 +88,7 @@ body {
     font-size: 14px;
     font-weight: 500;
     color: #333;
-    z-index: 1;
+    z-index: 10;
     transition: all 0.2s;
     display: none;
 }
@@ -330,4 +330,17 @@ body {
         font-size: 10px;
         padding: 3px 6px;
     }
+}
+.maplibregl-ctrl-attrib.maplibregl-compact {
+    background-color: rgb(255,255,255,0.6);
+    color: #333;
+    font-size: 10px;
+}
+.maplibregl-ctrl-attrib-button {
+    opacity: 0.5;
+}
+details.maplibregl-ctrl-attrib {
+    background-color: rgb(255,255,255,0.6);
+    color: #333;
+    font-size: 10px;
 }
