@@ -325,10 +325,33 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .version-display {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 11px;
+            color: rgba(0, 0, 0, 0.4);
+            background: rgba(255, 255, 255, 0.85);
+            padding: 4px 8px;
+            border-radius: 3px;
+            z-index: 1;
+            pointer-events: none;
+            font-family: monospace;
+        }
+
+        @media (max-width: 768px) {
+            .version-display {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <div class="version-display" id="version-display"></div>
+    <!-- VERSION_PLACEHOLDER -->
     <button id="show-panel-btn" class="show-panel-btn" onclick="showPanel()">
         📍 Live Tracks
     </button>
