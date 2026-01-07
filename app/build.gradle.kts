@@ -1,3 +1,4 @@
+import java.time.LocalDate
 import java.util.Properties
 
 plugins {
@@ -42,6 +43,27 @@ android {
         }
 
         buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
+
+        // Generate version info from git
+        fun execGit(command: String): String {
+            return try {
+                val process = Runtime.getRuntime().exec(command)
+                val output = process.inputStream.bufferedReader().readText().trim()
+                process.waitFor()
+                output
+            } catch (e: Exception) {
+                println("Warning: Failed to execute '$command': ${e.message}")
+                ""
+            }
+        }
+        
+        val gitCommitCount = execGit("git rev-list --count HEAD").ifEmpty { "0" }
+        val gitShortSha = execGit("git rev-parse --short HEAD").ifEmpty { "unknown" }
+        val buildDate = LocalDate.now().toString()
+        
+        buildConfigField("String", "GIT_COMMIT_COUNT", "\"$gitCommitCount\"")
+        buildConfigField("String", "GIT_SHORT_SHA", "\"$gitShortSha\"")
+        buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
     }
 
     buildTypes {
