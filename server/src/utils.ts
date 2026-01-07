@@ -82,47 +82,6 @@ export async function verifyHmacSignature(
 }
 
 /**
- * Reverse geocode coordinates to a place name
- */
-export async function reverseGeocode(
-  lat: number,
-  lon: number
-): Promise<string> {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
-      {
-        headers: {
-          'User-Agent': 'Where-App/1.0',
-        },
-      }
-    );
-
-    if (!response.ok) return 'Unnamed Track';
-
-    const data = await response.json();
-    const addr = data.address;
-
-    // Try to build a nice name from available data
-    if (addr.road) {
-      return addr.road;
-    } else if (addr.village || addr.town || addr.city) {
-      return addr.village || addr.town || addr.city;
-    } else if (addr.county) {
-      return addr.county;
-    } else if (data.display_name) {
-      const parts = data.display_name.split(',');
-      return parts[0].trim();
-    }
-
-    return 'Unnamed Track';
-  } catch (error) {
-    console.error('Geocoding error:', error);
-    return 'Unnamed Track';
-  }
-}
-
-/**
  * Determine the last update time for a track
  */
 export function getTrackLastUpdate(track: {
