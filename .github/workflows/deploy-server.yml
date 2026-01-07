@@ -50,7 +50,7 @@ jobs:
     - name: Run unit tests
       run: |
         cd server
-        npm run test:unit
+        bun run test:unit
 
     - name: Deploy to server
       uses: easingthemes/ssh-deploy@main
