@@ -149,9 +149,7 @@ function updateClientTags(): void {
   const tagsContainer = document.getElementById('client-tags');
   if (!tagsContainer) return;
 
-  if (clientFilters.length === 0) {
-    tagsContainer.innerHTML = '<span style="color: #999; font-size: 12px;">Showing all clients</span>';
-  } else {
+  if (clientFilters.length !== 0) {
     tagsContainer.innerHTML = clientFilters.map(clientId => `
       <div class="client-tag" onclick="removeClientFilter('${clientId}')">
         ${clientId}
