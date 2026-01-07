@@ -1,6 +1,6 @@
 import { trackStore } from './store';
 import type { Track } from './types';
-import { verifyHmacSignature, reverseGeocode } from './utils';
+import { verifyHmacSignature } from './utils';
 import { enrichTrack, broadcastToAll } from './tracking';
 import { CONFIG } from './config';
 
@@ -147,16 +147,7 @@ async function handleCreateTrack(req: Request): Promise<Response> {
     return jsonResponse({ error: 'Unauthorized' }, 401);
   }
 
-  // Auto-generate name from geocoding if needed
   let trackName = body.name || '';
-  const isGenericName = !trackName || /^(Track|Recording|Unnamed)/i.test(trackName);
-
-  if (isGenericName && body.points && body.points.length > 0) {
-    const firstPoint = body.points[0];
-    trackName = await reverseGeocode(firstPoint.lat, firstPoint.lon);
-  } else if (!trackName) {
-    trackName = 'Unnamed Track';
-  }
 
   const track: Track = {
     id: body.id || crypto.randomUUID(),
