@@ -22,14 +22,14 @@ const server = Bun.serve({
       return handleAPI(req);
     }
 
-    // Privacy Policy
-    if (url.pathname === '/privacy') {
-      const file = Bun.file(`${import.meta.dir}/src/public/privacy.html`);
-      return new Response(file);
-    }
-
     // Serve static files
-    const filePath = url.pathname === '/' ? '/index.html' : url.pathname;
+    let filePath = url.pathname;
+    if (filePath === '/') {
+      filePath = '/index.html';
+    }
+    if (filePath === '/privacy') {
+      filePath = '/privacy.html';
+    }
     const file = Bun.file(`${import.meta.dir}/src/public${filePath}`);
 
     if (await file.exists()) {
