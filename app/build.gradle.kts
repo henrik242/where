@@ -12,12 +12,38 @@ android {
     compileSdkVersion("android-36.1")
     compileSdkMinor = 1
 
+    signingConfigs {
+        create("release") {
+            val localProperties = Properties()
+            val localPropertiesFile = rootProject.file("local.properties")
+            if (localPropertiesFile.exists()) {
+                localProperties.load(localPropertiesFile.inputStream())
+            }
+
+            val storeFile = System.getenv("SIGNING_STORE_FILE")?.let { rootProject.file(it) }
+                ?: localProperties.getProperty("SIGNING_STORE_FILE")?.let { rootProject.file(it) }
+            val storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                ?: localProperties.getProperty("SIGNING_STORE_PASSWORD")
+            val keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                ?: localProperties.getProperty("SIGNING_KEY_ALIAS")
+            val keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+                ?: localProperties.getProperty("SIGNING_KEY_PASSWORD")
+
+            if (storeFile?.exists() == true && !storePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
+                this.storeFile = storeFile
+                this.storePassword = storePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
     defaultConfig {
         applicationId = "no.synth.where"
         minSdk = 36
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -30,22 +56,22 @@ android {
 
         val trackingHmacSecret = System.getenv("TRACKING_HMAC_SECRET")
             ?: localProperties.getProperty("TRACKING_HMAC_SECRET")
-            ?: throw org.gradle.api.GradleException(
+            ?: throw GradleException(
                 "TRACKING_HMAC_SECRET is not set!\n" +
-                "Add it to local.properties:\n" +
-                "  TRACKING_HMAC_SECRET=your-secret-key\n" +
-                "Or set it as an environment variable.\n" +
-                "Generate a key with: openssl rand -base64 32"
+                        "Add it to local.properties:\n" +
+                        "  TRACKING_HMAC_SECRET=your-secret-key\n" +
+                        "Or set it as an environment variable.\n" +
+                        "Generate a key with: openssl rand -base64 32"
             )
 
         if (trackingHmacSecret.isBlank()) {
-            throw org.gradle.api.GradleException("TRACKING_HMAC_SECRET cannot be empty!")
+            throw GradleException("TRACKING_HMAC_SECRET cannot be empty!")
         }
 
         buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
 
         // Generate version info from git
-        fun execGit(command: String): String {
+        fun execGit(command: Array<String>): String {
             return try {
                 val process = Runtime.getRuntime().exec(command)
                 val output = process.inputStream.bufferedReader().readText().trim()
@@ -56,11 +82,12 @@ android {
                 ""
             }
         }
-        
-        val gitCommitCount = execGit("git rev-list --count HEAD").ifEmpty { "0" }
-        val gitShortSha = execGit("git rev-parse --short HEAD").ifEmpty { "unknown" }
+
+        val gitCommitCount = execGit(arrayOf("git", "rev-list", "--count", "HEAD")).ifEmpty { "0" }
+        val gitShortSha =
+            execGit(arrayOf("git", "rev-parse", "--short", "HEAD")).ifEmpty { "unknown" }
         val buildDate = LocalDate.now().toString()
-        
+
         buildConfigField("String", "GIT_COMMIT_COUNT", "\"$gitCommitCount\"")
         buildConfigField("String", "GIT_SHORT_SHA", "\"$gitShortSha\"")
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
@@ -68,8 +95,15 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName("release")
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
     buildFeatures {
