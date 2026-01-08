@@ -22,6 +22,12 @@ const server = Bun.serve({
       return handleAPI(req);
     }
 
+    // Privacy Policy
+    if (url.pathname === '/privacy') {
+      const file = Bun.file(`${import.meta.dir}/src/public/privacy.html`);
+      return new Response(file);
+    }
+
     // Serve static files
     const filePath = url.pathname === '/' ? '/index.html' : url.pathname;
     const file = Bun.file(`${import.meta.dir}/src/public${filePath}`);
@@ -63,6 +69,3 @@ console.log(`🌐 Web interface at http://localhost:${server.port}`);
 console.log(`🔑 Admin: ${CONFIG.ADMIN_KEY ? 'ENABLED' : 'DISABLED'}`);
 console.log(`🔒 HMAC verification: ${CONFIG.TRACKING_HMAC_SECRET ? 'ENABLED' : 'DISABLED'}`);
 console.log(`⏱️  Auto-stop inactive tracks after 10 minutes`);
-
-
-
