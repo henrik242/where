@@ -9,3 +9,8 @@
 # Generate with: openssl rand -base64 32
 # Must match TRACKING_HMAC_SECRET on the server
 TRACKING_HMAC_SECRET=your-secret-key-here
+
+SIGNING_STORE_FILE=/Users/example/keystores/example.jks
+SIGNING_STORE_PASSWORD=example password
+SIGNING_KEY_ALIAS=where
+SIGNING_KEY_PASSWORD=example password
