@@ -42,8 +42,6 @@ android {
         applicationId = "no.synth.where"
         minSdk = 36
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -56,7 +54,7 @@ android {
 
         val trackingHmacSecret = System.getenv("TRACKING_HMAC_SECRET")
             ?: localProperties.getProperty("TRACKING_HMAC_SECRET")
-            ?: throw GradleException(
+            ?: throw org.gradle.api.GradleException(
                 "TRACKING_HMAC_SECRET is not set!\n" +
                         "Add it to local.properties:\n" +
                         "  TRACKING_HMAC_SECRET=your-secret-key\n" +
@@ -65,7 +63,7 @@ android {
             )
 
         if (trackingHmacSecret.isBlank()) {
-            throw GradleException("TRACKING_HMAC_SECRET cannot be empty!")
+            throw org.gradle.api.GradleException("TRACKING_HMAC_SECRET cannot be empty!")
         }
 
         buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
@@ -87,6 +85,9 @@ android {
         val gitShortSha =
             execGit(arrayOf("git", "rev-parse", "--short", "HEAD")).ifEmpty { "unknown" }
         val buildDate = LocalDate.now().toString()
+
+        versionCode = gitCommitCount.toInt()
+        versionName = "$gitCommitCount.$gitShortSha $buildDate"
 
         buildConfigField("String", "GIT_COMMIT_COUNT", "\"$gitCommitCount\"")
         buildConfigField("String", "GIT_SHORT_SHA", "\"$gitShortSha\"")
