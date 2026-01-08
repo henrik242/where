@@ -5,8 +5,8 @@
   "main": "index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun run index.ts",
-    "start": "bun run index.ts",
+    "dev": "bun --hot run index.ts",
+    "start": "bun --watch run index.ts",
     "build": "bun build src/public/app.ts --outfile=src/public/app.js --target=browser --minify",
     "test": "bun test",
     "test:unit": "bun test tests/store.test.ts tests/track.test.ts",
