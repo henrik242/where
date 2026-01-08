@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/opt/where-server
-ExecStart=/usr/local/bin/bun run index.ts
+ExecStart=/usr/local/bin/bun --watch run index.ts
 Restart=always
 RestartSec=10
 
