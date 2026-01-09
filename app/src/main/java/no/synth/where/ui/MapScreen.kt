@@ -592,163 +592,167 @@ fun MapScreen(
                 }
             }
 
-            if (rulerState.isActive) {
-                Card(
+            // Stack ruler and tracking modals when both are active
+            if (rulerState.isActive || isRecording) {
+                Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 16.dp, end = 80.dp, bottom = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                    )
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                val totalDistance = rulerState.getTotalDistanceMeters()
-                                Text(
-                                    text = if (rulerState.points.isEmpty()) "Tap to measure" else totalDistance.formatDistance(),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                if (rulerState.points.size > 1) {
-                                    Text(
-                                        text = "${rulerState.points.size} points",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (rulerState.points.size > 1) {
-                                    SmallFloatingActionButton(
-                                        onClick = { rulerState = rulerState.removeLastPoint() },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.Undo,
-                                            contentDescription = "Remove Last Point",
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                                SmallFloatingActionButton(
-                                    onClick = { rulerState = rulerState.clear() },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Clear,
-                                        contentDescription = "Clear All",
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        if (rulerState.points.size >= 2) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = {
-                                    showSaveRulerAsTrackDialog = true
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    Icons.Filled.Save,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Save as Track")
-                            }
-                        }
-                    }
-                }
-            }
-
-            currentTrack?.let { track ->
-                if (isRecording) {
-                    Card(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, end = 80.dp, bottom = 16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    Icons.Filled.FiberManualRecord,
-                                    contentDescription = null,
-                                    tint = Color.Red
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Recording",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                    val distance = track.getDistanceMeters()
-                                    Text(
-                                        text = distance.formatDistance(),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                }
-                            }
-
-                            HorizontalDivider(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
+                    if (rulerState.isActive) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                             )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Filled.CloudUpload,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Text(
-                                        text = "Online Tracking",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                }
-                                Switch(
-                                    checked = onlineTrackingEnabled,
-                                    onCheckedChange = { newValue ->
-                                        userPreferences.updateOnlineTrackingEnabled(newValue)
-                                        onlineTrackingEnabled = newValue
-
-                                        if (newValue) {
-                                            LocationTrackingService.enableOnlineTracking(context)
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Online tracking enabled")
-                                            }
-                                        } else {
-                                            LocationTrackingService.disableOnlineTracking(context)
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Online tracking disabled")
-                                            }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        val totalDistance = rulerState.getTotalDistanceMeters()
+                                        Text(
+                                            text = if (rulerState.points.isEmpty()) "Tap to measure" else totalDistance.formatDistance(),
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        if (rulerState.points.size > 1) {
+                                            Text(
+                                                text = "${rulerState.points.size} points",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     }
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        if (rulerState.points.size > 1) {
+                                            SmallFloatingActionButton(
+                                                onClick = { rulerState = rulerState.removeLastPoint() },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.Undo,
+                                                    contentDescription = "Remove Last Point",
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                        SmallFloatingActionButton(
+                                            onClick = { rulerState = rulerState.clear() },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.Clear,
+                                                contentDescription = "Clear All",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (rulerState.points.size >= 2) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    OutlinedButton(
+                                        onClick = {
+                                            showSaveRulerAsTrackDialog = true
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Save,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Save as Track")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    currentTrack?.let { track ->
+                        if (isRecording) {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
                                 )
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.FiberManualRecord,
+                                            contentDescription = null,
+                                            tint = Color.Red
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Recording",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            val distance = track.getDistanceMeters()
+                                            Text(
+                                                text = distance.formatDistance(),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        }
+                                    }
+
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.CloudUpload,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Text(
+                                                text = "Online Tracking",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        }
+                                        Switch(
+                                            checked = onlineTrackingEnabled,
+                                            onCheckedChange = { newValue ->
+                                                userPreferences.updateOnlineTrackingEnabled(newValue)
+                                                onlineTrackingEnabled = newValue
+
+                                                if (newValue) {
+                                                    LocationTrackingService.enableOnlineTracking(context)
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar("Online tracking enabled")
+                                                    }
+                                                } else {
+                                                    LocationTrackingService.disableOnlineTracking(context)
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar("Online tracking disabled")
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
