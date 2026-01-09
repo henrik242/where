@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import no.synth.where.ui.theme.WhereTheme
 
 class MainActivity : ComponentActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
@@ -24,7 +25,7 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
 
         setContent {
-            MaterialTheme {
+            WhereTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
