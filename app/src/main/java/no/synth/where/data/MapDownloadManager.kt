@@ -18,6 +18,7 @@ class MapDownloadManager(private val context: Context) {
 
     private val offlineManager by lazy { OfflineManager.getInstance(context) }
     private var styleServer: StyleServer? = null
+    private val activeDownloads = mutableMapOf<String, OfflineRegion>()
 
     init {
         // Start the local HTTP server for serving style JSON files
@@ -88,6 +89,7 @@ class MapDownloadManager(private val context: Context) {
                     metadata,
                     object : OfflineManager.CreateOfflineRegionCallback {
                         override fun onCreate(offlineRegion: OfflineRegion) {
+                            activeDownloads[regionName] = offlineRegion
                             offlineRegion.setDownloadState(OfflineRegion.STATE_ACTIVE)
 
                             offlineRegion.setObserver(object : OfflineRegion.OfflineRegionObserver {
@@ -100,6 +102,7 @@ class MapDownloadManager(private val context: Context) {
 
                                     if (status.isComplete) {
                                         offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                                        activeDownloads.remove(regionName)
                                         Log.d("MapDownloadManager", "Download complete for $regionName")
                                         onComplete(true)
                                     }
@@ -108,6 +111,7 @@ class MapDownloadManager(private val context: Context) {
                                 override fun onError(error: OfflineRegionError) {
                                     Log.e("MapDownloadManager", "Download error: ${error.message}")
                                     offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                                    activeDownloads.remove(regionName)
                                     onComplete(false)
                                 }
 
@@ -155,6 +159,17 @@ class MapDownloadManager(private val context: Context) {
     private fun getStyleUrlForLayer(layerName: String): String {
         // Return the localhost URL for the style JSON served by our local HTTP server
         return "http://127.0.0.1:$STYLE_SERVER_PORT/styles/$layerName-style.json"
+    }
+
+    /**
+     * Stop an ongoing download for a region
+     */
+    fun stopDownload(regionName: String) {
+        activeDownloads[regionName]?.let { offlineRegion ->
+            offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+            activeDownloads.remove(regionName)
+            Log.d("MapDownloadManager", "Stopped download for $regionName")
+        }
     }
 
     /**
