@@ -26,6 +26,8 @@ import no.synth.where.data.RegionsRepository
 class MapDownloadService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var downloadManager: MapDownloadManager
+    private var currentDownloadJob: kotlinx.coroutines.Job? = null
+    private var currentRegionName: String? = null
 
     data class DownloadState(
         val region: Region? = null,
@@ -65,6 +67,12 @@ class MapDownloadService : Service() {
     }
 
     private fun startDownload(region: Region, layerName: String, minZoom: Int, maxZoom: Int) {
+        // Cancel any existing download
+        currentDownloadJob?.cancel()
+        currentRegionName?.let { downloadManager.stopDownload(it) }
+        
+        currentRegionName = "${region.name}-$layerName"
+        
         _downloadState.value = DownloadState(
             region = region,
             layerName = layerName,
@@ -74,7 +82,7 @@ class MapDownloadService : Service() {
 
         startForeground(NOTIFICATION_ID, createNotification(region.name, 0))
 
-        serviceScope.launch {
+        currentDownloadJob = serviceScope.launch {
             downloadManager.downloadRegion(
                 region = region,
                 layerName = layerName,
@@ -86,6 +94,7 @@ class MapDownloadService : Service() {
                 },
                 onComplete = { success ->
                     _downloadState.value = DownloadState()
+                    currentRegionName = null
                     stopSelf()
                 }
             )
@@ -93,8 +102,11 @@ class MapDownloadService : Service() {
     }
 
     private fun stopDownload() {
+        currentDownloadJob?.cancel()
+        currentDownloadJob = null
+        currentRegionName?.let { downloadManager.stopDownload(it) }
+        currentRegionName = null
         _downloadState.value = DownloadState()
-        serviceScope.cancel()
         stopSelf()
     }
 
