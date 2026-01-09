@@ -28,6 +28,8 @@ class MapDownloadService : Service() {
     private lateinit var downloadManager: MapDownloadManager
     private var currentDownloadJob: kotlinx.coroutines.Job? = null
     private var currentRegionName: String? = null
+    private var lastNotificationUpdate = 0L
+    private var lastNotificationProgress = -1
 
     data class DownloadState(
         val region: Region? = null,
@@ -78,6 +80,8 @@ class MapDownloadService : Service() {
         currentRegionName?.let { downloadManager.stopDownload(it) }
         
         currentRegionName = "${region.name}-$layerName"
+        lastNotificationUpdate = 0L
+        lastNotificationProgress = -1
         
         _downloadState.value = DownloadState(
             region = region,
@@ -96,7 +100,20 @@ class MapDownloadService : Service() {
                 maxZoom = maxZoom,
                 onProgress = { progress ->
                     _downloadState.value = _downloadState.value.copy(progress = progress)
-                    updateNotification(region.name, progress)
+                    // Throttle notification updates to avoid overwhelming the system
+                    val now = System.currentTimeMillis()
+                    val timeSinceLastUpdate = now - lastNotificationUpdate
+                    val progressChange = kotlin.math.abs(progress - lastNotificationProgress)
+                    
+                    // Update notification if: 
+                    // - At least 1 second has passed since last update, OR
+                    // - Progress changed by 5% or more, OR
+                    // - Progress reached 100%
+                    if (timeSinceLastUpdate >= 1000 || progressChange >= 5 || progress == 100) {
+                        updateNotification(region.name, progress)
+                        lastNotificationUpdate = now
+                        lastNotificationProgress = progress
+                    }
                 },
                 onComplete = { success ->
                     _downloadState.value = DownloadState()
