@@ -41,6 +41,12 @@ class MapDownloadService : Service() {
         instance = this
         downloadManager = MapDownloadManager(this)
         createNotificationChannel()
+        
+        // If service is being recreated but state shows download in progress,
+        // reset the state as the download was interrupted
+        if (_downloadState.value.isDownloading) {
+            _downloadState.value = DownloadState()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
