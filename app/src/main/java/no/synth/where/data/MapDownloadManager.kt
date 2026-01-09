@@ -27,7 +27,7 @@ class MapDownloadManager(private val context: Context) {
 
     private fun startStyleServer() {
         try {
-            styleServer = StyleServer.getInstance(STYLE_SERVER_PORT)
+            styleServer = StyleServer.getInstance()
             styleServer?.start()
             Log.d("MapDownloadManager", "Style server started on port $STYLE_SERVER_PORT")
         } catch (e: Exception) {
