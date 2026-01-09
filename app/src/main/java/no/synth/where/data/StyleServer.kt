@@ -11,8 +11,9 @@ import kotlin.concurrent.thread
 /**
  * Simple HTTP server for serving MapLibre style JSON files locally.
  * Runs on localhost and generates style JSON dynamically based on the requested layer.
+ * This is a singleton to prevent multiple servers from binding to the same port.
  */
-class StyleServer(private val port: Int) {
+class StyleServer private constructor(private val port: Int) {
     @Volatile
     private var serverSocket: ServerSocket? = null
 
@@ -20,13 +21,16 @@ class StyleServer(private val port: Int) {
     private var isRunning = false
 
     fun start() {
-        if (isRunning) return
+        if (isRunning) {
+            Log.d(TAG, "Server already running on port $port")
+            return
+        }
 
         isRunning = true
         thread(start = true, isDaemon = true, name = "StyleServer") {
             try {
                 serverSocket = ServerSocket(port)
-                Log.d(TAG, "Server listening on port $port")
+                Log.d(TAG, "Server started on port $port")
 
                 while (isRunning) {
                     try {
@@ -128,5 +132,14 @@ $styleJson"""
 
     companion object {
         private const val TAG = "StyleServer"
+        
+        @Volatile
+        private var instance: StyleServer? = null
+        
+        fun getInstance(port: Int = 8765): StyleServer {
+            return instance ?: synchronized(this) {
+                instance ?: StyleServer(port).also { instance = it }
+            }
+        }
     }
 }
