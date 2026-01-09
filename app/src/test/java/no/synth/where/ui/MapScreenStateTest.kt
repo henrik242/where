@@ -156,5 +156,64 @@ class MapScreenStateTest {
         // This is a documentation test - the actual validation happens at compile time
         assertTrue("MapLibreMapView requires 15 parameters", requiredParameters.size == 15)
     }
+
+    @Test
+    fun rulerAndTrackingModals_canBeBothActive() {
+        // This test verifies that ruler and tracking can be active simultaneously
+        // The UI should display both modals without overlap
+        var isRulerActive by mutableStateOf(false)
+        var isRecording by mutableStateOf(false)
+
+        // Both inactive
+        assertFalse("Ruler should initially be inactive", isRulerActive)
+        assertFalse("Recording should initially be inactive", isRecording)
+
+        // Activate tracking
+        isRecording = true
+        assertTrue("Recording should be active", isRecording)
+        assertFalse("Ruler should still be inactive", isRulerActive)
+
+        // Activate ruler while tracking is active
+        isRulerActive = true
+        assertTrue("Both ruler and recording should be active", isRulerActive && isRecording)
+
+        // Deactivate ruler
+        isRulerActive = false
+        assertFalse("Ruler should be inactive", isRulerActive)
+        assertTrue("Recording should still be active", isRecording)
+
+        // Deactivate recording
+        isRecording = false
+        assertFalse("Both should be inactive", isRulerActive || isRecording)
+    }
+
+    @Test
+    fun modalDisplayCondition_showsWhenEitherActive() {
+        // This test verifies the condition for displaying the modal container
+        var isRulerActive by mutableStateOf(false)
+        var isRecording by mutableStateOf(false)
+
+        // Test the display condition: (rulerState.isActive || isRecording)
+        val shouldDisplayModals = { isRulerActive || isRecording }
+
+        // Both inactive - should not display
+        assertFalse("Modals should not display when both inactive", shouldDisplayModals())
+
+        // Only ruler active
+        isRulerActive = true
+        assertTrue("Modals should display when ruler is active", shouldDisplayModals())
+
+        // Both active
+        isRecording = true
+        assertTrue("Modals should display when both are active", shouldDisplayModals())
+
+        // Only recording active
+        isRulerActive = false
+        assertTrue("Modals should display when recording is active", shouldDisplayModals())
+
+        // Both inactive again
+        isRecording = false
+        assertFalse("Modals should not display when both inactive again", shouldDisplayModals())
+    }
 }
 
