@@ -132,13 +132,14 @@ $styleJson"""
 
     companion object {
         private const val TAG = "StyleServer"
+        private const val DEFAULT_PORT = 8765
         
         @Volatile
         private var instance: StyleServer? = null
         
-        fun getInstance(port: Int = 8765): StyleServer {
+        fun getInstance(): StyleServer {
             return instance ?: synchronized(this) {
-                instance ?: StyleServer(port).also { instance = it }
+                instance ?: StyleServer(DEFAULT_PORT).also { instance = it }
             }
         }
     }
