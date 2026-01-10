@@ -18,6 +18,7 @@ class MapDownloadManager(private val context: Context) {
 
     private val offlineManager by lazy { OfflineManager.getInstance(context) }
     private var styleServer: StyleServer? = null
+    private val activeDownloads = mutableMapOf<String, OfflineRegion>()
 
     init {
         // Start the local HTTP server for serving style JSON files
@@ -26,7 +27,7 @@ class MapDownloadManager(private val context: Context) {
 
     private fun startStyleServer() {
         try {
-            styleServer = StyleServer(STYLE_SERVER_PORT)
+            styleServer = StyleServer.getInstance()
             styleServer?.start()
             Log.d("MapDownloadManager", "Style server started on port $STYLE_SERVER_PORT")
         } catch (e: Exception) {
@@ -88,6 +89,7 @@ class MapDownloadManager(private val context: Context) {
                     metadata,
                     object : OfflineManager.CreateOfflineRegionCallback {
                         override fun onCreate(offlineRegion: OfflineRegion) {
+                            activeDownloads[regionName] = offlineRegion
                             offlineRegion.setDownloadState(OfflineRegion.STATE_ACTIVE)
 
                             offlineRegion.setObserver(object : OfflineRegion.OfflineRegionObserver {
@@ -100,15 +102,32 @@ class MapDownloadManager(private val context: Context) {
 
                                     if (status.isComplete) {
                                         offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                                        activeDownloads.remove(regionName)
                                         Log.d("MapDownloadManager", "Download complete for $regionName")
                                         onComplete(true)
                                     }
                                 }
 
                                 override fun onError(error: OfflineRegionError) {
-                                    Log.e("MapDownloadManager", "Download error: ${error.message}")
-                                    offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
-                                    onComplete(false)
+                                    val errorMessage = error.message ?: "Unknown error"
+                                    val reason = error.reason ?: ""
+                                    
+                                    // Check if this is a temporary/retriable error
+                                    val isTemporaryError = errorMessage.contains("timeout", ignoreCase = true) ||
+                                                         errorMessage.contains("temporary", ignoreCase = true) ||
+                                                         reason.contains("CONNECTION", ignoreCase = true) ||
+                                                         reason.contains("TIMEOUT", ignoreCase = true)
+                                    
+                                    if (isTemporaryError) {
+                                        // Log but don't stop - MapLibre will retry
+                                        Log.w("MapDownloadManager", "Temporary download error for $regionName: $errorMessage (reason: $reason). Download will continue with retry.")
+                                    } else {
+                                        // Permanent error - stop the download
+                                        Log.e("MapDownloadManager", "Permanent download error for $regionName: $errorMessage (reason: $reason)")
+                                        offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                                        activeDownloads.remove(regionName)
+                                        onComplete(false)
+                                    }
                                 }
 
                                 override fun mapboxTileCountLimitExceeded(limit: Long) {
@@ -155,6 +174,17 @@ class MapDownloadManager(private val context: Context) {
     private fun getStyleUrlForLayer(layerName: String): String {
         // Return the localhost URL for the style JSON served by our local HTTP server
         return "http://127.0.0.1:$STYLE_SERVER_PORT/styles/$layerName-style.json"
+    }
+
+    /**
+     * Stop an ongoing download for a region
+     */
+    fun stopDownload(regionName: String) {
+        activeDownloads[regionName]?.let { offlineRegion ->
+            offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+            activeDownloads.remove(regionName)
+            Log.d("MapDownloadManager", "Stopped download for $regionName")
+        }
     }
 
     /**
