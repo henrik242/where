@@ -43,6 +43,32 @@ let showHistorical = false;
 let admin = false;
 let adminKey: string | undefined;
 
+// Theme management
+function initTheme(): void {
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+  
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeIcon(theme);
+}
+
+function toggleTheme(): void {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme: string): void {
+  const icon = document.getElementById('theme-icon');
+  if (icon) {
+    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+  }
+}
+
 function initMap(): void {
   const defaultCenter: [number, number] = [10.7522, 59.9139]; // Oslo
   const defaultZoom = 10;
@@ -577,6 +603,7 @@ function setupWebSocket(): void {
 (window as any).toggleHistorical = toggleHistorical;
 (window as any).disableAdmin = disableAdmin;
 (window as any).selectTrack = selectTrack;
+(window as any).toggleTheme = toggleTheme;
 (window as any).hidePanel = function() {
   document.getElementById('info-panel')?.classList.add('hidden');
   document.getElementById('show-panel-btn')?.classList.add('visible');
@@ -588,6 +615,7 @@ function setupWebSocket(): void {
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme(); // Initialize theme first
   parseURLParameters(); // Parse URL first so clientFilters is set
   initMap();
   updateClientTags();
