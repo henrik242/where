@@ -355,7 +355,8 @@ fun MapScreen(
             Column(horizontalAlignment = Alignment.End) {
                 SmallFloatingActionButton(
                     onClick = { showLayerMenu = true },
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Icon(Icons.Filled.Layers, contentDescription = "Layers & Overlays")
                 }
@@ -458,7 +459,7 @@ fun MapScreen(
                         }
                     },
                     modifier = Modifier.size(48.dp),
-                    containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primaryContainer
+                    containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Icon(
                         if (isRecording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord,
@@ -487,7 +488,8 @@ fun MapScreen(
                             }
                         }
                     },
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Icon(Icons.Filled.MyLocation, contentDescription = "My Location")
                 }
@@ -517,7 +519,8 @@ fun MapScreen(
 
                 SmallFloatingActionButton(
                     onClick = onSettingsClick,
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Icon(Icons.Filled.Settings, contentDescription = "Settings")
                 }
@@ -572,7 +575,8 @@ fun MapScreen(
                             )
                         }
                     },
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = "Zoom In")
                 }
@@ -586,7 +590,8 @@ fun MapScreen(
                             )
                         }
                     },
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
                 }
@@ -631,7 +636,8 @@ fun MapScreen(
                                         if (rulerState.points.size > 1) {
                                             SmallFloatingActionButton(
                                                 onClick = { rulerState = rulerState.removeLastPoint() },
-                                                modifier = Modifier.size(32.dp)
+                                                modifier = Modifier.size(32.dp),
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
                                             ) {
                                                 Icon(
                                                     Icons.AutoMirrored.Filled.Undo,
@@ -642,7 +648,8 @@ fun MapScreen(
                                         }
                                         SmallFloatingActionButton(
                                             onClick = { rulerState = rulerState.clear() },
-                                            modifier = Modifier.size(32.dp)
+                                            modifier = Modifier.size(32.dp),
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                                         ) {
                                             Icon(
                                                 Icons.Filled.Clear,
