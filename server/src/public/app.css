@@ -238,7 +238,7 @@ body {
 
 .add-client-form button {
     padding: 6px 12px;
-    background: #5A5A5A;
+    background: #2196F3;
     color: white;
     border: none;
     border-radius: 4px;
@@ -247,7 +247,7 @@ body {
 }
 
 .add-client-form button:hover {
-    background: #4A4A4A;
+    background: #1976D2;
 }
 
 .track-item {
