@@ -33,12 +33,15 @@ class MainActivity : ComponentActivity() {
             val darkTheme = isSystemInDarkTheme()
             
             // Fix status bar icon visibility in dark mode
+            // Note: MaterialTheme with no color scheme defaults to light backgrounds,
+            // so we need dark icons even when system is in dark mode
             if (!view.isInEditMode) {
                 SideEffect {
                     val window = (view.context as? Activity)?.window ?: return@SideEffect
                     WindowCompat.getInsetsController(window, view).apply {
-                        isAppearanceLightStatusBars = !darkTheme
-                        isAppearanceLightNavigationBars = !darkTheme
+                        // Always use dark icons since Material3 defaults to light background
+                        isAppearanceLightStatusBars = true
+                        isAppearanceLightNavigationBars = true
                     }
                 }
             }
