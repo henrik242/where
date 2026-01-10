@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
+import no.synth.where.service.MapDownloadService
 import java.io.File
 import java.util.Locale
 
@@ -37,6 +39,7 @@ fun DownloadScreen(
     val downloadManager = remember { MapDownloadManager(context) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var cacheSize by remember { mutableStateOf(0L) }
+    val downloadState by MapDownloadService.downloadState.collectAsState()
 
     val layers = remember {
         listOf(
@@ -131,6 +134,51 @@ fun DownloadScreen(
                 }
             }
 
+            // Active download progress card
+            if (downloadState.isDownloading && downloadState.region != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Downloading ${downloadState.region?.name}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        downloadState.layerName ?: "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                TextButton(onClick = {
+                                    MapDownloadService.stopDownload(context)
+                                }) {
+                                    Text("Stop")
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LinearProgressIndicator(
+                                progress = { downloadState.progress / 100f },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("${downloadState.progress}%", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+
             // Layer cards
             items(layers) { layer ->
                 var stats by remember { mutableStateOf(Pair(0L, 0)) }
@@ -193,10 +241,16 @@ fun LayerRegionsScreen(
     val downloadManager = remember { MapDownloadManager(context) }
     val regions = remember { RegionsRepository.getRegions(context) }
 
-    var downloadingRegion by remember { mutableStateOf<Region?>(null) }
-    var downloadProgress by remember { mutableStateOf(0) }
+    val downloadState by MapDownloadService.downloadState.collectAsState()
     var refreshTrigger by remember { mutableStateOf(0) }
     var showDeleteDialog by remember { mutableStateOf<Region?>(null) }
+
+    // Trigger refresh when download completes
+    LaunchedEffect(downloadState.isDownloading) {
+        if (!downloadState.isDownloading && downloadState.region != null) {
+            refreshTrigger++
+        }
+    }
 
     val layerDisplayName = remember(layerId) {
         when (layerId) {
@@ -249,7 +303,7 @@ fun LayerRegionsScreen(
             }
 
             // Show downloading progress if active
-            if (downloadingRegion != null) {
+            if (downloadState.isDownloading && downloadState.region != null && downloadState.layerName == layerId) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -259,14 +313,25 @@ fun LayerRegionsScreen(
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Downloading ${cleanRegionName(downloadingRegion?.name ?: "")}...")
+                            Text("Downloading ${cleanRegionName(downloadState.region?.name ?: "")}...")
                             Spacer(modifier = Modifier.height(8.dp))
                             LinearProgressIndicator(
-                                progress = { downloadProgress / 100f },
+                                progress = { downloadState.progress / 100f },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("$downloadProgress%", style = MaterialTheme.typography.bodySmall)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("${downloadState.progress}%", style = MaterialTheme.typography.bodySmall)
+                                TextButton(onClick = {
+                                    MapDownloadService.stopDownload(context)
+                                }) {
+                                    Text("Stop")
+                                }
+                            }
                         }
                     }
                 }
@@ -313,23 +378,15 @@ fun LayerRegionsScreen(
                                 }
                                 Button(
                                     onClick = {
-                                        downloadingRegion = region
-                                        scope.launch {
-                                            downloadManager.downloadRegion(
-                                                region = region,
-                                                layerName = layerId,
-                                                minZoom = 5,
-                                                maxZoom = 12,
-                                                onProgress = { progress -> downloadProgress = progress },
-                                                onComplete = { _ ->
-                                                    downloadingRegion = null
-                                                    downloadProgress = 0
-                                                    refreshTrigger++
-                                                }
-                                            )
-                                        }
+                                        MapDownloadService.startDownload(
+                                            context = context,
+                                            region = region,
+                                            layerName = layerId,
+                                            minZoom = 5,
+                                            maxZoom = 12
+                                        )
                                     },
-                                    enabled = downloadingRegion == null
+                                    enabled = !downloadState.isDownloading
                                 ) {
                                     Text(
                                         when {
