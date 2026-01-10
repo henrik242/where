@@ -229,7 +229,7 @@ fun OnlineTrackingScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "When online tracking is enabled, your location is shared in real-time with anyone who has your Client ID. They can view your track on the web interface.",
+                        text = "When you press record in map view and online tracking is enabled, your location is shared in real-time with anyone who has your Client ID. They can view your track on the web interface.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer
                     )
