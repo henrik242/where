@@ -86,7 +86,7 @@ $trackPointsXml
                     val timeStr = content.substringAfter("<time>", "").substringBefore("</time>", "")
                     val timestamp = try {
                         dateFormat.parse(timeStr)?.time ?: System.currentTimeMillis()
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         System.currentTimeMillis()
                     }
 
