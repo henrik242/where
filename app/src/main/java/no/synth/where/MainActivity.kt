@@ -1,23 +1,18 @@
 package no.synth.where
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 
 class MainActivity : ComponentActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
@@ -29,23 +24,6 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
 
         setContent {
-            val view = LocalView.current
-            val darkTheme = isSystemInDarkTheme()
-            
-            // Fix status bar icon visibility in dark mode
-            // Note: MaterialTheme with no color scheme defaults to light backgrounds,
-            // so we need dark icons even when system is in dark mode
-            if (!view.isInEditMode) {
-                SideEffect {
-                    val window = (view.context as? Activity)?.window ?: return@SideEffect
-                    WindowCompat.getInsetsController(window, view).apply {
-                        // Always use dark icons since Material3 defaults to light background
-                        isAppearanceLightStatusBars = true
-                        isAppearanceLightNavigationBars = true
-                    }
-                }
-            }
-            
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
