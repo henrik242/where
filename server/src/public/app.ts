@@ -125,22 +125,7 @@ function initMap(): void {
 // Enable follow mode with device orientation tracking
 function enableFollowMode(): void {
   followMode = true;
-  
-  // Request permission for device orientation on iOS 13+
-  if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-    (DeviceOrientationEvent as any).requestPermission()
-      .then((permissionState: string) => {
-        if (permissionState === 'granted') {
-          startOrientationTracking();
-        }
-      })
-      .catch((error: Error) => {
-        console.error('Error requesting device orientation permission:', error);
-      });
-  } else {
-    // Non-iOS devices don't need permission
-    startOrientationTracking();
-  }
+  startOrientationTracking();
 }
 
 // Disable follow mode and stop orientation tracking
@@ -161,13 +146,8 @@ function startOrientationTracking(): void {
   deviceOrientationHandler = (event: DeviceOrientationEvent) => {
     if (!followMode) return;
     
-    // Get the compass heading
-    // alpha is the rotation around the z-axis (compass direction)
-    // For iOS with webkitCompassHeading
-    let heading = event.alpha;
-    if (typeof (event as any).webkitCompassHeading !== 'undefined') {
-      heading = (event as any).webkitCompassHeading;
-    }
+    // Get the compass heading from alpha (rotation around z-axis)
+    const heading = event.alpha;
     
     if (heading !== null) {
       // Rotate map to match device orientation
