@@ -98,11 +98,6 @@ android {
         debug {
             applicationIdSuffix = ".debug"
         }
-        create("dev") {
-            initWith(getByName("debug"))
-            applicationIdSuffix = ".dev"
-            versionNameSuffix = "-dev"
-        }
         release {
             isMinifyEnabled = true
             proguardFiles(
