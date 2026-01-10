@@ -42,6 +42,9 @@ let clientFilters: string[] = [];
 let showHistorical = false;
 let admin = false;
 let adminKey: string | undefined;
+let geolocateControl: maplibregl.GeolocateControl;
+let followMode = false;
+let deviceOrientationHandler: ((event: DeviceOrientationEvent) => void) | null = null;
 
 function initMap(): void {
   const defaultCenter: [number, number] = [10.7522, 59.9139]; // Oslo
@@ -75,6 +78,25 @@ function initMap(): void {
 
   map.addControl(new maplibregl.NavigationControl(), 'top-left');
 
+  // Add geolocate control with tracking enabled
+  geolocateControl = new maplibregl.GeolocateControl({
+    positionOptions: {
+      enableHighAccuracy: true
+    },
+    trackUserLocation: true,
+    showUserHeading: true
+  });
+  map.addControl(geolocateControl, 'top-left');
+
+  // Listen for geolocate events to enable/disable follow mode
+  geolocateControl.on('geolocate', () => {
+    enableFollowMode();
+  });
+
+  geolocateControl.on('trackuserlocationend', () => {
+    disableFollowMode();
+  });
+
   // Try to get user's location (only if no client filters specified in URL)
   // Client filters take priority - we'll zoom to those tracks instead
   if ('geolocation' in navigator && clientFilters.length === 0) {
@@ -97,6 +119,71 @@ function initMap(): void {
         enableHighAccuracy: false
       }
     );
+  }
+}
+
+// Enable follow mode with device orientation tracking
+function enableFollowMode(): void {
+  followMode = true;
+  
+  // Request permission for device orientation on iOS 13+
+  if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+    (DeviceOrientationEvent as any).requestPermission()
+      .then((permissionState: string) => {
+        if (permissionState === 'granted') {
+          startOrientationTracking();
+        }
+      })
+      .catch((error: Error) => {
+        console.error('Error requesting device orientation permission:', error);
+      });
+  } else {
+    // Non-iOS devices don't need permission
+    startOrientationTracking();
+  }
+}
+
+// Disable follow mode and stop orientation tracking
+function disableFollowMode(): void {
+  followMode = false;
+  stopOrientationTracking();
+  
+  // Reset map bearing to north
+  map.rotateTo(0, { duration: 500 });
+}
+
+// Start tracking device orientation
+function startOrientationTracking(): void {
+  if (deviceOrientationHandler) {
+    return; // Already tracking
+  }
+  
+  deviceOrientationHandler = (event: DeviceOrientationEvent) => {
+    if (!followMode) return;
+    
+    // Get the compass heading
+    // alpha is the rotation around the z-axis (compass direction)
+    // For iOS with webkitCompassHeading
+    let heading = event.alpha;
+    if (typeof (event as any).webkitCompassHeading !== 'undefined') {
+      heading = (event as any).webkitCompassHeading;
+    }
+    
+    if (heading !== null) {
+      // Rotate map to match device orientation
+      // MapLibre bearing is clockwise from north, so we need to negate
+      map.setBearing(-heading);
+    }
+  };
+  
+  window.addEventListener('deviceorientation', deviceOrientationHandler);
+}
+
+// Stop tracking device orientation
+function stopOrientationTracking(): void {
+  if (deviceOrientationHandler) {
+    window.removeEventListener('deviceorientation', deviceOrientationHandler);
+    deviceOrientationHandler = null;
   }
 }
 
@@ -256,6 +343,19 @@ function renderTrackItem(track: Track, isHistorical = false): string {
 // Select track
 function selectTrack(trackId: string): void {
   selectedTrackId = trackId;
+  
+  // Disable follow mode when viewing a track
+  if (followMode) {
+    disableFollowMode();
+    // Also stop the geolocate control tracking
+    if (geolocateControl) {
+      const activeState = (geolocateControl as any)._watchState;
+      if (activeState === 'ACTIVE_LOCK' || activeState === 'ACTIVE_ERROR') {
+        geolocateControl.trigger();
+      }
+    }
+  }
+  
   updateTracksList();
   updateMap();
 
