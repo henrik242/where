@@ -9,6 +9,12 @@ body {
     background: #f5f5f5;
 }
 
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #1a1a1a;
+    }
+}
+
 #map {
     position: absolute;
     top: 0;
@@ -32,6 +38,13 @@ body {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@media (prefers-color-scheme: dark) {
+    .info-panel {
+        background: #2a2a2a;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+}
+
 
 .info-panel.hidden {
     transform: translateX(calc(100% + 40px));
@@ -51,6 +64,12 @@ body {
     margin: 0;
     color: #333;
     font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+    .panel-header h2 {
+        color: #e0e0e0;
+    }
 }
 
 .close-btn {
@@ -73,6 +92,17 @@ body {
 .close-btn:hover {
     background: #f0f0f0;
     color: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+    .close-btn {
+        color: #888;
+    }
+    
+    .close-btn:hover {
+        background: #404040;
+        color: #e0e0e0;
+    }
 }
 
 .show-panel-btn {
@@ -101,6 +131,18 @@ body {
 .show-panel-btn:hover {
     background: #f8f8f8;
     box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+    .show-panel-btn {
+        background: #2a2a2a;
+        color: #e0e0e0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    
+    .show-panel-btn:hover {
+        background: #353535;
+    }
 }
 
 @media (max-width: 768px) {
@@ -152,6 +194,12 @@ body {
     color: #333;
 }
 
+@media (prefers-color-scheme: dark) {
+    .info-panel h2 {
+        color: #e0e0e0;
+    }
+}
+
 .client-filter {
     margin-bottom: 16px;
     padding: 12px;
@@ -159,10 +207,22 @@ body {
     border-radius: 6px;
 }
 
+@media (prefers-color-scheme: dark) {
+    .client-filter {
+        background: #1e1e1e;
+    }
+}
+
 .client-filter h3 {
     font-size: 14px;
     margin-bottom: 8px;
     color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+    .client-filter h3 {
+        color: #999;
+    }
 }
 
 .client-tags {
@@ -236,6 +296,18 @@ body {
     font-size: 12px;
 }
 
+@media (prefers-color-scheme: dark) {
+    .add-client-form input {
+        background: #1e1e1e;
+        border-color: #444;
+        color: #e0e0e0;
+    }
+    
+    .add-client-form input::placeholder {
+        color: #666;
+    }
+}
+
 .add-client-form button {
     padding: 6px 12px;
     background: #2196F3;
@@ -259,8 +331,20 @@ body {
     transition: background 0.2s;
 }
 
+@media (prefers-color-scheme: dark) {
+    .track-item {
+        background: #1e1e1e;
+    }
+}
+
 .track-item:hover {
     background: #e8e8e8;
+}
+
+@media (prefers-color-scheme: dark) {
+    .track-item:hover {
+        background: #2a2a2a;
+    }
 }
 
 .track-item.active {
@@ -274,9 +358,21 @@ body {
     margin-bottom: 4px;
 }
 
+@media (prefers-color-scheme: dark) {
+    .track-name {
+        color: #e0e0e0;
+    }
+}
+
 .track-info {
     font-size: 12px;
     color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+    .track-info {
+        color: #999;
+    }
 }
 
 .track-distance {
@@ -289,6 +385,12 @@ body {
     text-align: center;
     color: #999;
     padding: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .no-tracks {
+        color: #666;
+    }
 }
 
 .loading {
@@ -325,6 +427,13 @@ body {
     font-family: monospace;
 }
 
+@media (prefers-color-scheme: dark) {
+    .version-display {
+        color: rgba(255, 255, 255, 0.4);
+        background: rgba(0, 0, 0, 0.35);
+    }
+}
+
 @media (max-width: 768px) {
     .version-display {
         font-size: 10px;
@@ -343,4 +452,20 @@ details.maplibregl-ctrl-attrib {
     background-color: rgb(255,255,255,0.6);
     color: #333;
     font-size: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .maplibregl-ctrl-attrib.maplibregl-compact {
+        background-color: rgba(0, 0, 0, 0.6);
+        color: #e0e0e0;
+    }
+    
+    .maplibregl-ctrl-attrib-button {
+        opacity: 0.7;
+    }
+    
+    details.maplibregl-ctrl-attrib {
+        background-color: rgba(0, 0, 0, 0.6);
+        color: #e0e0e0;
+    }
 }
