@@ -144,6 +144,7 @@ fun MapScreen(
     var showLayerMenu by remember { mutableStateOf(false) }
     var showWaymarkedTrails by remember { mutableStateOf(false) }
     var hasLocationPermission by remember { mutableStateOf(false) }
+    var followModeEnabled by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -280,6 +281,11 @@ fun MapScreen(
 
             if (viewing != null && viewing.points.isNotEmpty()) {
                 hasZoomedToLocation = true  // Prevent auto-zoom to location
+                // Disable follow mode when viewing a track
+                if (followModeEnabled) {
+                    followModeEnabled = false
+                    map.locationComponent.cameraMode = org.maplibre.android.location.modes.CameraMode.NONE
+                }
                 kotlinx.coroutines.delay(100)
                 val points = viewing.points.map { it.latLng }
                 if (points.isNotEmpty()) {
@@ -477,6 +483,9 @@ fun MapScreen(
                             val locationComponent = map.locationComponent
                             if (locationComponent.isLocationComponentEnabled) {
                                 locationComponent.lastKnownLocation?.let { location ->
+                                    // Enable follow mode with compass tracking
+                                    followModeEnabled = true
+                                    locationComponent.cameraMode = org.maplibre.android.location.modes.CameraMode.TRACKING_COMPASS
                                     map.animateCamera(
                                         org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
                                             LatLng(location.latitude, location.longitude),
@@ -487,9 +496,14 @@ fun MapScreen(
                             }
                         }
                     },
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(48.dp),
+                    containerColor = if (followModeEnabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Icon(Icons.Filled.MyLocation, contentDescription = "My Location")
+                    Icon(
+                        Icons.Filled.MyLocation, 
+                        contentDescription = "My Location",
+                        tint = if (followModeEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 Spacer(modifier = Modifier.size(8.dp))
