@@ -109,10 +109,25 @@ class MapDownloadManager(private val context: Context) {
                                 }
 
                                 override fun onError(error: OfflineRegionError) {
-                                    Log.e("MapDownloadManager", "Download error: ${error.message}")
-                                    offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
-                                    activeDownloads.remove(regionName)
-                                    onComplete(false)
+                                    val errorMessage = error.message ?: "Unknown error"
+                                    val reason = error.reason ?: ""
+                                    
+                                    // Check if this is a temporary/retriable error
+                                    val isTemporaryError = errorMessage.contains("timeout", ignoreCase = true) ||
+                                                         errorMessage.contains("temporary", ignoreCase = true) ||
+                                                         reason.contains("CONNECTION", ignoreCase = true) ||
+                                                         reason.contains("TIMEOUT", ignoreCase = true)
+                                    
+                                    if (isTemporaryError) {
+                                        // Log but don't stop - MapLibre will retry
+                                        Log.w("MapDownloadManager", "Temporary download error for $regionName: $errorMessage (reason: $reason). Download will continue with retry.")
+                                    } else {
+                                        // Permanent error - stop the download
+                                        Log.e("MapDownloadManager", "Permanent download error for $regionName: $errorMessage (reason: $reason)")
+                                        offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                                        activeDownloads.remove(regionName)
+                                        onComplete(false)
+                                    }
                                 }
 
                                 override fun mapboxTileCountLimitExceeded(limit: Long) {
