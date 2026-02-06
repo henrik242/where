@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -40,7 +41,8 @@ object MapDialogs {
         onTrackNameChange: (String) -> Unit,
         onDiscard: () -> Unit,
         onSave: () -> Unit,
-        onDismiss: () -> Unit
+        onDismiss: () -> Unit,
+        isLoading: Boolean = false
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -57,7 +59,10 @@ object MapDialogs {
                         onValueChange = onTrackNameChange,
                         label = { Text("Track Name") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = if (isLoading) {
+                            { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+                        } else null
                     )
                 }
             },
@@ -93,7 +98,8 @@ object MapDialogs {
         onPointNameChange: (String) -> Unit,
         coordinates: String,
         onSave: () -> Unit,
-        onDismiss: () -> Unit
+        onDismiss: () -> Unit,
+        isLoading: Boolean = false
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -110,7 +116,10 @@ object MapDialogs {
                         onValueChange = onPointNameChange,
                         label = { Text("Location Name") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = if (isLoading) {
+                            { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+                        } else null
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -231,7 +240,8 @@ object MapDialogs {
         rulerState: RulerState,
         onTrackNameChange: (String) -> Unit,
         onSave: () -> Unit,
-        onDismiss: () -> Unit
+        onDismiss: () -> Unit,
+        isLoading: Boolean = false
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -248,7 +258,10 @@ object MapDialogs {
                         onValueChange = onTrackNameChange,
                         label = { Text("Track Name") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = if (isLoading) {
+                            { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
+                        } else null
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
