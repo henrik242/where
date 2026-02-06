@@ -109,8 +109,8 @@ class MapDownloadManager(private val context: Context) {
                                 }
 
                                 override fun onError(error: OfflineRegionError) {
-                                    val errorMessage = error.message ?: "Unknown error"
-                                    val reason = error.reason ?: ""
+                                    val errorMessage = error.message
+                                    val reason = error.reason
                                     
                                     // Check if this is a temporary/retriable error
                                     val isTemporaryError = errorMessage.contains("timeout", ignoreCase = true) ||
