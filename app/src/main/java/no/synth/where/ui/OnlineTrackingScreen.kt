@@ -42,12 +42,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.UserPreferences
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnlineTrackingScreen(
     onBackClick: () -> Unit
@@ -63,6 +63,50 @@ fun OnlineTrackingScreen(
         clientId = clientIdManager.getClientId()
     }
 
+    OnlineTrackingScreenContent(
+        isTrackingEnabled = userPreferences.onlineTrackingEnabled,
+        clientId = clientId,
+        showRegenerateDialog = showRegenerateDialog,
+        onBackClick = onBackClick,
+        onToggleTracking = { userPreferences.updateOnlineTrackingEnabled(it) },
+        onViewOnWeb = {
+            val url = "${userPreferences.trackingServerUrl}?clients=$clientId"
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+        },
+        onShare = {
+            val url = "${userPreferences.trackingServerUrl}?clients=$clientId"
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, "Track my location: $url")
+                putExtra(Intent.EXTRA_SUBJECT, "Live Location Tracking")
+            }
+            context.startActivity(Intent.createChooser(shareIntent, "Share tracking link"))
+        },
+        onRegenerateClick = { showRegenerateDialog = true },
+        onConfirmRegenerate = {
+            scope.launch {
+                clientId = clientIdManager.regenerateClientId()
+                showRegenerateDialog = false
+            }
+        },
+        onDismissRegenerate = { showRegenerateDialog = false }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OnlineTrackingScreenContent(
+    isTrackingEnabled: Boolean,
+    clientId: String,
+    showRegenerateDialog: Boolean,
+    onBackClick: () -> Unit,
+    onToggleTracking: (Boolean) -> Unit,
+    onViewOnWeb: () -> Unit,
+    onShare: () -> Unit,
+    onRegenerateClick: () -> Unit,
+    onConfirmRegenerate: () -> Unit,
+    onDismissRegenerate: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -86,7 +130,7 @@ fun OnlineTrackingScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (userPreferences.onlineTrackingEnabled) {
+                    containerColor = if (isTrackingEnabled) {
                         MaterialTheme.colorScheme.primaryContainer
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -107,14 +151,14 @@ fun OnlineTrackingScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (userPreferences.onlineTrackingEnabled) "Active" else "Disabled",
+                            text = if (isTrackingEnabled) "Active" else "Disabled",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Switch(
-                        checked = userPreferences.onlineTrackingEnabled,
-                        onCheckedChange = { userPreferences.updateOnlineTrackingEnabled(it) }
+                        checked = isTrackingEnabled,
+                        onCheckedChange = onToggleTracking
                     )
                 }
             }
@@ -158,11 +202,7 @@ fun OnlineTrackingScreen(
 
             // View on Web Button
             Button(
-                onClick = {
-                    val url = "${userPreferences.trackingServerUrl}?clients=$clientId"
-                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                    context.startActivity(intent)
-                },
+                onClick = onViewOnWeb,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
@@ -176,15 +216,7 @@ fun OnlineTrackingScreen(
 
             // Share Button
             OutlinedButton(
-                onClick = {
-                    val url = "${userPreferences.trackingServerUrl}?clients=$clientId"
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, "Track my location: $url")
-                        putExtra(Intent.EXTRA_SUBJECT, "Live Location Tracking")
-                    }
-                    context.startActivity(Intent.createChooser(shareIntent, "Share tracking link"))
-                },
+                onClick = onShare,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
@@ -198,7 +230,7 @@ fun OnlineTrackingScreen(
 
             // Regenerate ID Button
             OutlinedButton(
-                onClick = { showRegenerateDialog = true },
+                onClick = onRegenerateClick,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
@@ -241,29 +273,39 @@ fun OnlineTrackingScreen(
     // Regenerate Dialog
     if (showRegenerateDialog) {
         AlertDialog(
-            onDismissRequest = { showRegenerateDialog = false },
+            onDismissRequest = onDismissRegenerate,
             title = { Text("Regenerate Client ID?") },
             text = {
                 Text("This will create a new client ID. Your old ID ($clientId) will no longer be associated with your tracks on the server.")
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            clientId = clientIdManager.regenerateClientId()
-                            showRegenerateDialog = false
-                        }
-                    }
-                ) {
+                TextButton(onClick = onConfirmRegenerate) {
                     Text("Regenerate")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRegenerateDialog = false }) {
+                TextButton(onClick = onDismissRegenerate) {
                     Text("Cancel")
                 }
             }
         )
     }
+}
+
+@Preview(showSystemUi = true)
+@Composable
+private fun OnlineTrackingScreenPreview() {
+    OnlineTrackingScreenContent(
+        isTrackingEnabled = true,
+        clientId = "ABCD-1234",
+        showRegenerateDialog = false,
+        onBackClick = {},
+        onToggleTracking = {},
+        onViewOnWeb = {},
+        onShare = {},
+        onRegenerateClick = {},
+        onConfirmRegenerate = {},
+        onDismissRegenerate = {}
+    )
 }
 
