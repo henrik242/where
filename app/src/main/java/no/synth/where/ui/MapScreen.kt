@@ -385,61 +385,106 @@ fun MapScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            MapFabColumn(
-                isRecording = isRecording,
-                rulerActive = rulerState.isActive,
-                showLayerMenu = showLayerMenu,
-                selectedLayer = selectedLayer,
-                showWaymarkedTrails = showWaymarkedTrails,
-                showCountyBorders = showCountyBorders,
-                showSavedPoints = showSavedPoints,
-                onSearchClick = { showSearch = true },
-                onLayerMenuToggle = { showLayerMenu = it },
-                onLayerSelected = { selectedLayer = it; showLayerMenu = false },
-                onWaymarkedTrailsToggle = { showWaymarkedTrails = !showWaymarkedTrails; showLayerMenu = false },
-                onCountyBordersToggle = { onShowCountyBordersChange(!showCountyBorders); showLayerMenu = false },
-                onSavedPointsToggle = { onShowSavedPointsChange(!showSavedPoints); showLayerMenu = false },
-                onRecordStopClick = {
-                    if (isRecording) {
-                        trackNameInput = ""
-                        showStopTrackDialog = true
-                    } else {
-                        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                        val trackName = dateFormat.format(Date())
-                        trackRepository.startNewTrack(trackName)
-                        LocationTrackingService.start(context)
-                        scope.launch { snackbarHostState.showSnackbar("Recording...") }
+    MapScreenContent(
+        snackbarHostState = snackbarHostState,
+        isRecording = isRecording,
+        rulerState = rulerState,
+        showLayerMenu = showLayerMenu,
+        selectedLayer = selectedLayer,
+        showWaymarkedTrails = showWaymarkedTrails,
+        showCountyBorders = showCountyBorders,
+        showSavedPoints = showSavedPoints,
+        onlineTrackingEnabled = onlineTrackingEnabled,
+        recordingDistance = currentTrack?.getDistanceMeters(),
+        viewingTrackName = viewingTrack?.name,
+        viewingPointName = viewingPoint?.name,
+        viewingPointColor = viewingPoint?.color ?: "#FF5722",
+        showViewingPoint = viewingPoint != null,
+        showSearch = showSearch,
+        searchQuery = searchQuery,
+        searchResults = searchResults,
+        isSearching = isSearching,
+        onSearchClick = { showSearch = true },
+        onLayerMenuToggle = { showLayerMenu = it },
+        onLayerSelected = { selectedLayer = it; showLayerMenu = false },
+        onWaymarkedTrailsToggle = { showWaymarkedTrails = !showWaymarkedTrails; showLayerMenu = false },
+        onCountyBordersToggle = { onShowCountyBordersChange(!showCountyBorders); showLayerMenu = false },
+        onSavedPointsToggle = { onShowSavedPointsChange(!showSavedPoints); showLayerMenu = false },
+        onRecordStopClick = {
+            if (isRecording) {
+                trackNameInput = ""
+                showStopTrackDialog = true
+            } else {
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                val trackName = dateFormat.format(Date())
+                trackRepository.startNewTrack(trackName)
+                LocationTrackingService.start(context)
+                scope.launch { snackbarHostState.showSnackbar("Recording...") }
+            }
+        },
+        onMyLocationClick = {
+            mapInstance?.let { map ->
+                val locationComponent = map.locationComponent
+                if (locationComponent.isLocationComponentEnabled) {
+                    locationComponent.lastKnownLocation?.let { location ->
+                        map.animateCamera(
+                            org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                                LatLng(location.latitude, location.longitude), 15.0
+                            )
+                        )
                     }
-                },
-                onMyLocationClick = {
-                    mapInstance?.let { map ->
-                        val locationComponent = map.locationComponent
-                        if (locationComponent.isLocationComponentEnabled) {
-                            locationComponent.lastKnownLocation?.let { location ->
-                                map.animateCamera(
-                                    org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                                        LatLng(location.latitude, location.longitude), 15.0
-                                    )
-                                )
-                            }
-                        }
-                    }
-                },
-                onRulerToggle = {
-                    rulerState = if (rulerState.isActive) rulerState.clear() else rulerState.copy(isActive = true)
-                },
-                onSettingsClick = onSettingsClick
+                }
+            }
+        },
+        onRulerToggle = {
+            rulerState = if (rulerState.isActive) rulerState.clear() else rulerState.copy(isActive = true)
+        },
+        onSettingsClick = onSettingsClick,
+        onZoomIn = {
+            mapInstance?.let { map ->
+                map.animateCamera(
+                    org.maplibre.android.camera.CameraUpdateFactory.zoomTo(map.cameraPosition.zoom + 1)
+                )
+            }
+        },
+        onZoomOut = {
+            mapInstance?.let { map ->
+                map.animateCamera(
+                    org.maplibre.android.camera.CameraUpdateFactory.zoomTo(map.cameraPosition.zoom - 1)
+                )
+            }
+        },
+        onRulerUndo = { rulerState = rulerState.removeLastPoint() },
+        onRulerClear = { rulerState = rulerState.clear() },
+        onRulerSaveAsTrack = { showSaveRulerAsTrackDialog = true },
+        onOnlineTrackingChange = { newValue ->
+            userPreferences.updateOnlineTrackingEnabled(newValue)
+            onlineTrackingEnabled = newValue
+            if (newValue) {
+                LocationTrackingService.enableOnlineTracking(context)
+                scope.launch { snackbarHostState.showSnackbar("Online tracking enabled") }
+            } else {
+                LocationTrackingService.disableOnlineTracking(context)
+                scope.launch { snackbarHostState.showSnackbar("Online tracking disabled") }
+            }
+        },
+        onCloseViewingTrack = { trackRepository.clearViewingTrack() },
+        onCloseViewingPoint = onClearViewingPoint,
+        onSearchQueryChange = { searchQuery = it },
+        onSearchResultClick = { result ->
+            mapInstance?.animateCamera(
+                org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(result.latLng, 14.0)
             )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-        ) {
+            showSearch = false
+            searchQuery = ""
+            searchResults = emptyList()
+        },
+        onSearchClose = {
+            showSearch = false
+            searchQuery = ""
+            searchResults = emptyList()
+        },
+        mapContent = {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
                 selectedLayer = selectedLayer,
@@ -468,67 +513,8 @@ fun MapScreen(
                     showPointInfoDialog = true
                 }
             )
-
-            MapOverlays(
-                rulerState = rulerState,
-                isRecording = isRecording,
-                recordingDistance = currentTrack?.getDistanceMeters(),
-                onlineTrackingEnabled = onlineTrackingEnabled,
-                viewingTrackName = viewingTrack?.name,
-                viewingPointName = viewingPoint?.name,
-                viewingPointColor = viewingPoint?.color ?: "#FF5722",
-                showSearch = showSearch,
-                searchQuery = searchQuery,
-                searchResults = searchResults,
-                isSearching = isSearching,
-                showViewingPoint = viewingPoint != null,
-                onZoomIn = {
-                    mapInstance?.let { map ->
-                        map.animateCamera(
-                            org.maplibre.android.camera.CameraUpdateFactory.zoomTo(map.cameraPosition.zoom + 1)
-                        )
-                    }
-                },
-                onZoomOut = {
-                    mapInstance?.let { map ->
-                        map.animateCamera(
-                            org.maplibre.android.camera.CameraUpdateFactory.zoomTo(map.cameraPosition.zoom - 1)
-                        )
-                    }
-                },
-                onRulerUndo = { rulerState = rulerState.removeLastPoint() },
-                onRulerClear = { rulerState = rulerState.clear() },
-                onRulerSaveAsTrack = { showSaveRulerAsTrackDialog = true },
-                onOnlineTrackingChange = { newValue ->
-                    userPreferences.updateOnlineTrackingEnabled(newValue)
-                    onlineTrackingEnabled = newValue
-                    if (newValue) {
-                        LocationTrackingService.enableOnlineTracking(context)
-                        scope.launch { snackbarHostState.showSnackbar("Online tracking enabled") }
-                    } else {
-                        LocationTrackingService.disableOnlineTracking(context)
-                        scope.launch { snackbarHostState.showSnackbar("Online tracking disabled") }
-                    }
-                },
-                onCloseViewingTrack = { trackRepository.clearViewingTrack() },
-                onCloseViewingPoint = onClearViewingPoint,
-                onSearchQueryChange = { searchQuery = it },
-                onSearchResultClick = { result ->
-                    mapInstance?.animateCamera(
-                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(result.latLng, 14.0)
-                    )
-                    showSearch = false
-                    searchQuery = ""
-                    searchResults = emptyList()
-                },
-                onSearchClose = {
-                    showSearch = false
-                    searchQuery = ""
-                    searchResults = emptyList()
-                }
-            )
         }
-    }
+    )
 
     if (showStopTrackDialog) {
         MapDialogs.StopTrackDialog(
@@ -1354,6 +1340,114 @@ fun ViewingPointBanner(
 }
 
 @Composable
+fun MapScreenContent(
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    // FAB state
+    isRecording: Boolean,
+    rulerState: RulerState,
+    showLayerMenu: Boolean,
+    selectedLayer: MapLayer,
+    showWaymarkedTrails: Boolean,
+    showCountyBorders: Boolean,
+    showSavedPoints: Boolean,
+    // Overlay state
+    onlineTrackingEnabled: Boolean,
+    recordingDistance: Double?,
+    viewingTrackName: String?,
+    viewingPointName: String?,
+    viewingPointColor: String,
+    showViewingPoint: Boolean,
+    showSearch: Boolean,
+    searchQuery: String,
+    searchResults: List<PlaceSearchClient.SearchResult>,
+    isSearching: Boolean,
+    // FAB callbacks
+    onSearchClick: () -> Unit,
+    onLayerMenuToggle: (Boolean) -> Unit,
+    onLayerSelected: (MapLayer) -> Unit,
+    onWaymarkedTrailsToggle: () -> Unit,
+    onCountyBordersToggle: () -> Unit,
+    onSavedPointsToggle: () -> Unit,
+    onRecordStopClick: () -> Unit,
+    onMyLocationClick: () -> Unit,
+    onRulerToggle: () -> Unit,
+    onSettingsClick: () -> Unit,
+    // Overlay callbacks
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onRulerUndo: () -> Unit,
+    onRulerClear: () -> Unit,
+    onRulerSaveAsTrack: () -> Unit,
+    onOnlineTrackingChange: (Boolean) -> Unit,
+    onCloseViewingTrack: () -> Unit,
+    onCloseViewingPoint: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
+    onSearchClose: () -> Unit,
+    // Map slot
+    mapContent: @Composable () -> Unit
+) {
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            MapFabColumn(
+                isRecording = isRecording,
+                rulerActive = rulerState.isActive,
+                showLayerMenu = showLayerMenu,
+                selectedLayer = selectedLayer,
+                showWaymarkedTrails = showWaymarkedTrails,
+                showCountyBorders = showCountyBorders,
+                showSavedPoints = showSavedPoints,
+                onSearchClick = onSearchClick,
+                onLayerMenuToggle = onLayerMenuToggle,
+                onLayerSelected = onLayerSelected,
+                onWaymarkedTrailsToggle = onWaymarkedTrailsToggle,
+                onCountyBordersToggle = onCountyBordersToggle,
+                onSavedPointsToggle = onSavedPointsToggle,
+                onRecordStopClick = onRecordStopClick,
+                onMyLocationClick = onMyLocationClick,
+                onRulerToggle = onRulerToggle,
+                onSettingsClick = onSettingsClick
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
+            mapContent()
+
+            MapOverlays(
+                rulerState = rulerState,
+                isRecording = isRecording,
+                recordingDistance = recordingDistance,
+                onlineTrackingEnabled = onlineTrackingEnabled,
+                viewingTrackName = viewingTrackName,
+                viewingPointName = viewingPointName,
+                viewingPointColor = viewingPointColor,
+                showSearch = showSearch,
+                searchQuery = searchQuery,
+                searchResults = searchResults,
+                isSearching = isSearching,
+                showViewingPoint = showViewingPoint,
+                onZoomIn = onZoomIn,
+                onZoomOut = onZoomOut,
+                onRulerUndo = onRulerUndo,
+                onRulerClear = onRulerClear,
+                onRulerSaveAsTrack = onRulerSaveAsTrack,
+                onOnlineTrackingChange = onOnlineTrackingChange,
+                onCloseViewingTrack = onCloseViewingTrack,
+                onCloseViewingPoint = onCloseViewingPoint,
+                onSearchQueryChange = onSearchQueryChange,
+                onSearchResultClick = onSearchResultClick,
+                onSearchClose = onSearchClose
+            )
+        }
+    }
+}
+
+@Composable
 fun MapFabColumn(
     isRecording: Boolean,
     rulerActive: Boolean,
@@ -1651,68 +1745,59 @@ private fun ViewingPointBannerPreview() {
 @Composable
 private fun MapScreenFullPreview() {
     MaterialTheme {
-        Scaffold(
-            floatingActionButton = {
-                MapFabColumn(
-                    isRecording = true,
-                    rulerActive = true,
-                    showLayerMenu = false,
-                    selectedLayer = MapLayer.KARTVERKET,
-                    showWaymarkedTrails = false,
-                    showCountyBorders = false,
-                    showSavedPoints = true,
-                    onSearchClick = {},
-                    onLayerMenuToggle = {},
-                    onLayerSelected = {},
-                    onWaymarkedTrailsToggle = {},
-                    onCountyBordersToggle = {},
-                    onSavedPointsToggle = {},
-                    onRecordStopClick = {},
-                    onMyLocationClick = {},
-                    onRulerToggle = {},
-                    onSettingsClick = {}
-                )
+        MapScreenContent(
+            isRecording = true,
+            rulerState = sampleRulerState,
+            showLayerMenu = false,
+            selectedLayer = MapLayer.KARTVERKET,
+            showWaymarkedTrails = false,
+            showCountyBorders = false,
+            showSavedPoints = true,
+            onlineTrackingEnabled = false,
+            recordingDistance = 2450.0,
+            viewingTrackName = "Bymarka → Lian",
+            viewingPointName = null,
+            viewingPointColor = "#FF5722",
+            showViewingPoint = false,
+            showSearch = false,
+            searchQuery = "",
+            searchResults = emptyList(),
+            isSearching = false,
+            onSearchClick = {},
+            onLayerMenuToggle = {},
+            onLayerSelected = {},
+            onWaymarkedTrailsToggle = {},
+            onCountyBordersToggle = {},
+            onSavedPointsToggle = {},
+            onRecordStopClick = {},
+            onMyLocationClick = {},
+            onRulerToggle = {},
+            onSettingsClick = {},
+            onZoomIn = {},
+            onZoomOut = {},
+            onRulerUndo = {},
+            onRulerClear = {},
+            onRulerSaveAsTrack = {},
+            onOnlineTrackingChange = {},
+            onCloseViewingTrack = {},
+            onCloseViewingPoint = {},
+            onSearchQueryChange = {},
+            onSearchResultClick = {},
+            onSearchClose = {},
+            mapContent = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFE0E0E0))
+                ) {
+                    Text(
+                        text = "Map",
+                        modifier = Modifier.align(Alignment.Center),
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color.Gray
+                    )
+                }
             }
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize()
-                    .background(Color(0xFFE0E0E0))
-            ) {
-                Text(
-                    text = "Map",
-                    modifier = Modifier.align(Alignment.Center),
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.Gray
-                )
-
-                MapOverlays(
-                    rulerState = sampleRulerState,
-                    isRecording = true,
-                    recordingDistance = 2450.0,
-                    onlineTrackingEnabled = false,
-                    viewingTrackName = "Bymarka → Lian",
-                    viewingPointName = null,
-                    viewingPointColor = "#FF5722",
-                    showSearch = false,
-                    searchQuery = "",
-                    searchResults = emptyList(),
-                    isSearching = false,
-                    showViewingPoint = false,
-                    onZoomIn = {},
-                    onZoomOut = {},
-                    onRulerUndo = {},
-                    onRulerClear = {},
-                    onRulerSaveAsTrack = {},
-                    onOnlineTrackingChange = {},
-                    onCloseViewingTrack = {},
-                    onCloseViewingPoint = {},
-                    onSearchQueryChange = {},
-                    onSearchResultClick = {},
-                    onSearchClose = {}
-                )
-            }
-        }
+        )
     }
 }
