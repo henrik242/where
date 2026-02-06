@@ -39,7 +39,7 @@ android {
 
     defaultConfig {
         applicationId = "no.synth.where"
-        minSdk = 35
+        minSdk = 33
         targetSdk = 36
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -53,7 +53,7 @@ android {
 
         val trackingHmacSecret = System.getenv("TRACKING_HMAC_SECRET")
             ?: localProperties.getProperty("TRACKING_HMAC_SECRET")
-            ?: throw org.gradle.api.GradleException(
+            ?: throw GradleException(
                 "TRACKING_HMAC_SECRET is not set!\n" +
                         "Add it to local.properties:\n" +
                         "  TRACKING_HMAC_SECRET=your-secret-key\n" +
@@ -62,7 +62,7 @@ android {
             )
 
         if (trackingHmacSecret.isBlank()) {
-            throw org.gradle.api.GradleException("TRACKING_HMAC_SECRET cannot be empty!")
+            throw GradleException("TRACKING_HMAC_SECRET cannot be empty!")
         }
 
         buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
