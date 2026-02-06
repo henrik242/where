@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -74,6 +75,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.toColorInt
@@ -85,6 +87,7 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.MapStyle
 import no.synth.where.data.PlaceSearchClient
+import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
@@ -385,189 +388,51 @@ fun MapScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End) {
-                SmallFloatingActionButton(
-                    onClick = { showSearch = true },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Icon(Icons.Filled.Search, contentDescription = "Search Places")
-                }
-
-                Spacer(modifier = Modifier.size(8.dp))
-
-                SmallFloatingActionButton(
-                    onClick = { showLayerMenu = true },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Icon(Icons.Filled.Layers, contentDescription = "Layers & Overlays")
-                }
-
-                DropdownMenu(
-                    expanded = showLayerMenu,
-                    onDismissRequest = { showLayerMenu = false }
-                ) {
-                    MenuSection("Map Layers")
-
-                    LayerMenuItem(
-                        text = "Kartverket (Norway)",
-                        isSelected = selectedLayer == MapLayer.KARTVERKET,
-                        onClick = {
-                            selectedLayer = MapLayer.KARTVERKET
-                            showLayerMenu = false
-                        }
-                    )
-                    LayerMenuItem(
-                        text = "Kartverket toporaster",
-                        isSelected = selectedLayer == MapLayer.TOPORASTER,
-                        onClick = {
-                            selectedLayer = MapLayer.TOPORASTER
-                            showLayerMenu = false
-                        }
-                    )
-                    LayerMenuItem(
-                        text = "Kartverket sjøkart",
-                        isSelected = selectedLayer == MapLayer.SJOKARTRASTER,
-                        onClick = {
-                            selectedLayer = MapLayer.SJOKARTRASTER
-                            showLayerMenu = false
-                        }
-                    )
-                    LayerMenuItem(
-                        text = "OpenStreetMap",
-                        isSelected = selectedLayer == MapLayer.OSM,
-                        onClick = {
-                            selectedLayer = MapLayer.OSM
-                            showLayerMenu = false
-                        }
-                    )
-                    LayerMenuItem(
-                        text = "OpenTopoMap",
-                        isSelected = selectedLayer == MapLayer.OPENTOPOMAP,
-                        onClick = {
-                            selectedLayer = MapLayer.OPENTOPOMAP
-                            showLayerMenu = false
-                        }
-                    )
-
-                    HorizontalDivider()
-                    MenuSection("Overlays")
-
-                    LayerMenuItem(
-                        text = "Waymarked Trails (OSM)",
-                        isSelected = showWaymarkedTrails,
-                        onClick = {
-                            showWaymarkedTrails = !showWaymarkedTrails
-                            showLayerMenu = false
-                        }
-                    )
-                    LayerMenuItem(
-                        text = "County Borders (Norway)",
-                        isSelected = showCountyBorders,
-                        onClick = {
-                            onShowCountyBordersChange(!showCountyBorders)
-                            showLayerMenu = false
-                        }
-                    )
-                    LayerMenuItem(
-                        text = "Saved Points",
-                        isSelected = showSavedPoints,
-                        onClick = {
-                            onShowSavedPointsChange(!showSavedPoints)
-                            showLayerMenu = false
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.size(8.dp))
-
-
-                // Record/Stop button
-                SmallFloatingActionButton(
-                    onClick = {
-                        if (isRecording) {
-                            // Clear name input so geocoding can pre-fill it
-                            trackNameInput = ""
-                            showStopTrackDialog = true
-                        } else {
-                            val dateFormat =
-                                SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                            val trackName = dateFormat.format(Date())
-                            trackRepository.startNewTrack(trackName)
-                            LocationTrackingService.start(context)
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Recording...")
-                            }
-                        }
-                    },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Icon(
-                        if (isRecording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord,
-                        contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
-                        tint = if (isRecording) Color.White else Color.Red
-                    )
-                }
-
-
-                Spacer(modifier = Modifier.size(8.dp))
-
-                // Go to my location button
-                SmallFloatingActionButton(
-                    onClick = {
-                        mapInstance?.let { map ->
-                            val locationComponent = map.locationComponent
-                            if (locationComponent.isLocationComponentEnabled) {
-                                locationComponent.lastKnownLocation?.let { location ->
-                                    map.animateCamera(
-                                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                                            LatLng(location.latitude, location.longitude),
-                                            15.0
-                                        )
+            MapFabColumn(
+                isRecording = isRecording,
+                rulerActive = rulerState.isActive,
+                showLayerMenu = showLayerMenu,
+                selectedLayer = selectedLayer,
+                showWaymarkedTrails = showWaymarkedTrails,
+                showCountyBorders = showCountyBorders,
+                showSavedPoints = showSavedPoints,
+                onSearchClick = { showSearch = true },
+                onLayerMenuToggle = { showLayerMenu = it },
+                onLayerSelected = { selectedLayer = it; showLayerMenu = false },
+                onWaymarkedTrailsToggle = { showWaymarkedTrails = !showWaymarkedTrails; showLayerMenu = false },
+                onCountyBordersToggle = { onShowCountyBordersChange(!showCountyBorders); showLayerMenu = false },
+                onSavedPointsToggle = { onShowSavedPointsChange(!showSavedPoints); showLayerMenu = false },
+                onRecordStopClick = {
+                    if (isRecording) {
+                        trackNameInput = ""
+                        showStopTrackDialog = true
+                    } else {
+                        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                        val trackName = dateFormat.format(Date())
+                        trackRepository.startNewTrack(trackName)
+                        LocationTrackingService.start(context)
+                        scope.launch { snackbarHostState.showSnackbar("Recording...") }
+                    }
+                },
+                onMyLocationClick = {
+                    mapInstance?.let { map ->
+                        val locationComponent = map.locationComponent
+                        if (locationComponent.isLocationComponentEnabled) {
+                            locationComponent.lastKnownLocation?.let { location ->
+                                map.animateCamera(
+                                    org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                                        LatLng(location.latitude, location.longitude), 15.0
                                     )
-                                }
+                                )
                             }
                         }
-                    },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Icon(Icons.Filled.MyLocation, contentDescription = "My Location")
-                }
-
-                Spacer(modifier = Modifier.size(8.dp))
-
-                SmallFloatingActionButton(
-                    onClick = {
-                        rulerState = if (rulerState.isActive) {
-                            rulerState.clear()
-                        } else {
-                            rulerState.copy(isActive = true)
-                        }
-                    },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = if (rulerState.isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Icon(
-                        Icons.Filled.Straighten,
-                        contentDescription = "Ruler",
-                        tint = if (rulerState.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Spacer(modifier = Modifier.size(8.dp))
-
-
-                SmallFloatingActionButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                }
-            }
+                    }
+                },
+                onRulerToggle = {
+                    rulerState = if (rulerState.isActive) rulerState.clear() else rulerState.copy(isActive = true)
+                },
+                onSettingsClick = onSettingsClick
+            )
         }
     ) { paddingValues ->
         Box(
@@ -604,400 +469,64 @@ fun MapScreen(
                 }
             )
 
-            // Zoom controls in top-left corner
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SmallFloatingActionButton(
-                    onClick = {
-                        mapInstance?.let { map ->
-                            val currentZoom = map.cameraPosition.zoom
-                            map.animateCamera(
-                                org.maplibre.android.camera.CameraUpdateFactory.zoomTo(currentZoom + 1)
-                            )
-                        }
-                    },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Zoom In")
-                }
-
-                SmallFloatingActionButton(
-                    onClick = {
-                        mapInstance?.let { map ->
-                            val currentZoom = map.cameraPosition.zoom
-                            map.animateCamera(
-                                org.maplibre.android.camera.CameraUpdateFactory.zoomTo(currentZoom - 1)
-                            )
-                        }
-                    },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
-                }
-            }
-
-            // Stack ruler and tracking modals when both are active
-            if (rulerState.isActive || isRecording) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 16.dp, end = 80.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (rulerState.isActive) {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                            )
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        val totalDistance = rulerState.getTotalDistanceMeters()
-                                        Text(
-                                            text = if (rulerState.points.isEmpty()) "Tap to measure" else totalDistance.formatDistance(),
-                                            style = MaterialTheme.typography.titleLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        if (rulerState.points.size > 1) {
-                                            Text(
-                                                text = "${rulerState.points.size} points",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        if (rulerState.points.size > 1) {
-                                            SmallFloatingActionButton(
-                                                onClick = {
-                                                    rulerState = rulerState.removeLastPoint()
-                                                },
-                                                modifier = Modifier.size(32.dp),
-                                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                            ) {
-                                                Icon(
-                                                    Icons.AutoMirrored.Filled.Undo,
-                                                    contentDescription = "Remove Last Point",
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                        SmallFloatingActionButton(
-                                            onClick = { rulerState = rulerState.clear() },
-                                            modifier = Modifier.size(32.dp),
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.Clear,
-                                                contentDescription = "Clear All",
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                if (rulerState.points.size >= 2) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    OutlinedButton(
-                                        onClick = {
-                                            showSaveRulerAsTrackDialog = true
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Icon(
-                                            Icons.Filled.Save,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Save as Track")
-                                    }
-                                }
-                            }
-                        }
+            MapOverlays(
+                rulerState = rulerState,
+                isRecording = isRecording,
+                recordingDistance = currentTrack?.getDistanceMeters(),
+                onlineTrackingEnabled = onlineTrackingEnabled,
+                viewingTrackName = viewingTrack?.name,
+                viewingPointName = viewingPoint?.name,
+                viewingPointColor = viewingPoint?.color ?: "#FF5722",
+                showSearch = showSearch,
+                searchQuery = searchQuery,
+                searchResults = searchResults,
+                isSearching = isSearching,
+                showViewingPoint = viewingPoint != null,
+                onZoomIn = {
+                    mapInstance?.let { map ->
+                        map.animateCamera(
+                            org.maplibre.android.camera.CameraUpdateFactory.zoomTo(map.cameraPosition.zoom + 1)
+                        )
                     }
-
-                    currentTrack?.let { track ->
-                        if (isRecording) {
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(
-                                        alpha = 0.95f
-                                    )
-                                )
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Filled.FiberManualRecord,
-                                            contentDescription = null,
-                                            tint = Color.Red
-                                        )
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = "Recording",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.onErrorContainer
-                                            )
-                                            val distance = track.getDistanceMeters()
-                                            Text(
-                                                text = distance.formatDistance(),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.onErrorContainer
-                                            )
-                                        }
-                                    }
-
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(vertical = 8.dp),
-                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(
-                                            alpha = 0.2f
-                                        )
-                                    )
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Filled.CloudUpload,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onErrorContainer,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                            Text(
-                                                text = "Online Tracking",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onErrorContainer
-                                            )
-                                        }
-                                        Switch(
-                                            checked = onlineTrackingEnabled,
-                                            onCheckedChange = { newValue ->
-                                                userPreferences.updateOnlineTrackingEnabled(newValue)
-                                                onlineTrackingEnabled = newValue
-
-                                                if (newValue) {
-                                                    LocationTrackingService.enableOnlineTracking(
-                                                        context
-                                                    )
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar("Online tracking enabled")
-                                                    }
-                                                } else {
-                                                    LocationTrackingService.disableOnlineTracking(
-                                                        context
-                                                    )
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar("Online tracking disabled")
-                                                    }
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                },
+                onZoomOut = {
+                    mapInstance?.let { map ->
+                        map.animateCamera(
+                            org.maplibre.android.camera.CameraUpdateFactory.zoomTo(map.cameraPosition.zoom - 1)
+                        )
                     }
-                }
-            }
-
-            val viewing = viewingTrack
-            if (viewing != null) {
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp)
-                        .padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                },
+                onRulerUndo = { rulerState = rulerState.removeLastPoint() },
+                onRulerClear = { rulerState = rulerState.clear() },
+                onRulerSaveAsTrack = { showSaveRulerAsTrackDialog = true },
+                onOnlineTrackingChange = { newValue ->
+                    userPreferences.updateOnlineTrackingEnabled(newValue)
+                    onlineTrackingEnabled = newValue
+                    if (newValue) {
+                        LocationTrackingService.enableOnlineTracking(context)
+                        scope.launch { snackbarHostState.showSnackbar("Online tracking enabled") }
+                    } else {
+                        LocationTrackingService.disableOnlineTracking(context)
+                        scope.launch { snackbarHostState.showSnackbar("Online tracking disabled") }
+                    }
+                },
+                onCloseViewingTrack = { trackRepository.clearViewingTrack() },
+                onCloseViewingPoint = onClearViewingPoint,
+                onSearchQueryChange = { searchQuery = it },
+                onSearchResultClick = { result ->
+                    mapInstance?.animateCamera(
+                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(result.latLng, 14.0)
                     )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.Map,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = viewing.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = { trackRepository.clearViewingTrack() }
-                        ) {
-                            Icon(
-                                Icons.Filled.Close,
-                                contentDescription = "Close Track View"
-                            )
-                        }
-                    }
+                    showSearch = false
+                    searchQuery = ""
+                    searchResults = emptyList()
+                },
+                onSearchClose = {
+                    showSearch = false
+                    searchQuery = ""
+                    searchResults = emptyList()
                 }
-            }
-
-            viewingPoint?.let { point ->
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp)
-                        .padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(
-                                    color = Color((point.color ?: "#FF5722").toColorInt()),
-                                    shape = CircleShape
-                                )
-                        )
-                        Text(
-                            text = point.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = onClearViewingPoint
-                        ) {
-                            Icon(
-                                Icons.Filled.Close,
-                                contentDescription = "Close Point View"
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Search overlay
-            if (showSearch) {
-                val searchFocusRequester = remember { FocusRequester() }
-                LaunchedEffect(Unit) {
-                    searchFocusRequester.requestFocus()
-                }
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp)
-                        .padding(start = 16.dp, end = 16.dp)
-                        .fillMaxWidth()
-                ) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .focusRequester(searchFocusRequester),
-                                placeholder = { Text("Search places...") },
-                                singleLine = true,
-                                trailingIcon = {
-                                    if (isSearching) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(Icons.Filled.Clear, contentDescription = "Clear")
-                                        }
-                                    }
-                                }
-                            )
-                            IconButton(onClick = {
-                                showSearch = false
-                                searchQuery = ""
-                                searchResults = emptyList()
-                            }) {
-                                Icon(Icons.Filled.Close, contentDescription = "Close Search")
-                            }
-                        }
-                    }
-
-                    if (searchResults.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                            )
-                        ) {
-                            LazyColumn {
-                                items(searchResults) { result ->
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable {
-                                                mapInstance?.animateCamera(
-                                                    org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                                                        result.latLng, 14.0
-                                                    )
-                                                )
-                                                showSearch = false
-                                                searchQuery = ""
-                                                searchResults = emptyList()
-                                            }
-                                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                                    ) {
-                                        Text(
-                                            text = result.name,
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                        Text(
-                                            text = listOf(result.type, result.municipality)
-                                                .filter { it.isNotBlank() }
-                                                .joinToString(" · "),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    if (result != searchResults.last()) {
-                                        HorizontalDivider()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            )
         }
     }
 
@@ -1482,6 +1011,708 @@ fun MapLibreMapView(
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
             mapView?.onDestroy()
+        }
+    }
+}
+
+@Composable
+fun SearchOverlay(
+    modifier: Modifier = Modifier,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    isSearching: Boolean,
+    results: List<PlaceSearchClient.SearchResult>,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    onResultClick: (PlaceSearchClient.SearchResult) -> Unit,
+    onClose: () -> Unit
+) {
+    Column(modifier = modifier) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(focusRequester),
+                    placeholder = { Text("Search places...") },
+                    singleLine = true,
+                    trailingIcon = {
+                        if (isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else if (query.isNotEmpty()) {
+                            IconButton(onClick = { onQueryChange("") }) {
+                                Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    }
+                )
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Filled.Close, contentDescription = "Close Search")
+                }
+            }
+        }
+
+        if (results.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                )
+            ) {
+                LazyColumn {
+                    items(results) { result ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onResultClick(result) }
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            Text(
+                                text = result.name,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = listOf(result.type, result.municipality)
+                                    .filter { it.isNotBlank() }
+                                    .joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (result != results.last()) {
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ZoomControls(
+    modifier: Modifier = Modifier,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SmallFloatingActionButton(
+            onClick = onZoomIn,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Zoom In")
+        }
+        SmallFloatingActionButton(
+            onClick = onZoomOut,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
+        }
+    }
+}
+
+@Composable
+fun RulerCard(
+    modifier: Modifier = Modifier,
+    rulerState: RulerState,
+    onUndo: () -> Unit,
+    onClear: () -> Unit,
+    onSaveAsTrack: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    val totalDistance = rulerState.getTotalDistanceMeters()
+                    Text(
+                        text = if (rulerState.points.isEmpty()) "Tap to measure" else totalDistance.formatDistance(),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (rulerState.points.size > 1) {
+                        Text(
+                            text = "${rulerState.points.size} points",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (rulerState.points.size > 1) {
+                        SmallFloatingActionButton(
+                            onClick = onUndo,
+                            modifier = Modifier.size(32.dp),
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Undo,
+                                contentDescription = "Remove Last Point",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    SmallFloatingActionButton(
+                        onClick = onClear,
+                        modifier = Modifier.size(32.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Icon(
+                            Icons.Filled.Clear,
+                            contentDescription = "Clear All",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            if (rulerState.points.size >= 2) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onSaveAsTrack,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Filled.Save,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Save as Track")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RecordingCard(
+    modifier: Modifier = Modifier,
+    distance: Double,
+    onlineTrackingEnabled: Boolean,
+    onOnlineTrackingChange: (Boolean) -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Filled.FiberManualRecord,
+                    contentDescription = null,
+                    tint = Color.Red
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Recording",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        text = distance.formatDistance(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.CloudUpload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Online Tracking",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+                Switch(
+                    checked = onlineTrackingEnabled,
+                    onCheckedChange = onOnlineTrackingChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ViewingTrackBanner(
+    modifier: Modifier = Modifier,
+    trackName: String,
+    onClose: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Filled.Map,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = trackName,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.Filled.Close, contentDescription = "Close Track View")
+            }
+        }
+    }
+}
+
+@Composable
+fun ViewingPointBanner(
+    modifier: Modifier = Modifier,
+    pointName: String,
+    pointColor: String,
+    onClose: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(
+                        color = Color(pointColor.toColorInt()),
+                        shape = CircleShape
+                    )
+            )
+            Text(
+                text = pointName,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.Filled.Close, contentDescription = "Close Point View")
+            }
+        }
+    }
+}
+
+@Composable
+fun MapFabColumn(
+    isRecording: Boolean,
+    rulerActive: Boolean,
+    showLayerMenu: Boolean,
+    selectedLayer: MapLayer,
+    showWaymarkedTrails: Boolean,
+    showCountyBorders: Boolean,
+    showSavedPoints: Boolean,
+    onSearchClick: () -> Unit,
+    onLayerMenuToggle: (Boolean) -> Unit,
+    onLayerSelected: (MapLayer) -> Unit,
+    onWaymarkedTrailsToggle: () -> Unit,
+    onCountyBordersToggle: () -> Unit,
+    onSavedPointsToggle: () -> Unit,
+    onRecordStopClick: () -> Unit,
+    onMyLocationClick: () -> Unit,
+    onRulerToggle: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    Column(horizontalAlignment = Alignment.End) {
+        SmallFloatingActionButton(
+            onClick = onSearchClick,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(Icons.Filled.Search, contentDescription = "Search Places")
+        }
+
+        Spacer(modifier = Modifier.size(8.dp))
+
+        SmallFloatingActionButton(
+            onClick = { onLayerMenuToggle(true) },
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(Icons.Filled.Layers, contentDescription = "Layers & Overlays")
+        }
+
+        DropdownMenu(
+            expanded = showLayerMenu,
+            onDismissRequest = { onLayerMenuToggle(false) }
+        ) {
+            MenuSection("Map Layers")
+            LayerMenuItem("Kartverket (Norway)", selectedLayer == MapLayer.KARTVERKET) { onLayerSelected(MapLayer.KARTVERKET) }
+            LayerMenuItem("Kartverket toporaster", selectedLayer == MapLayer.TOPORASTER) { onLayerSelected(MapLayer.TOPORASTER) }
+            LayerMenuItem("Kartverket sjøkart", selectedLayer == MapLayer.SJOKARTRASTER) { onLayerSelected(MapLayer.SJOKARTRASTER) }
+            LayerMenuItem("OpenStreetMap", selectedLayer == MapLayer.OSM) { onLayerSelected(MapLayer.OSM) }
+            LayerMenuItem("OpenTopoMap", selectedLayer == MapLayer.OPENTOPOMAP) { onLayerSelected(MapLayer.OPENTOPOMAP) }
+            HorizontalDivider()
+            MenuSection("Overlays")
+            LayerMenuItem("Waymarked Trails (OSM)", showWaymarkedTrails) { onWaymarkedTrailsToggle() }
+            LayerMenuItem("County Borders (Norway)", showCountyBorders) { onCountyBordersToggle() }
+            LayerMenuItem("Saved Points", showSavedPoints) { onSavedPointsToggle() }
+        }
+
+        Spacer(modifier = Modifier.size(8.dp))
+
+        SmallFloatingActionButton(
+            onClick = onRecordStopClick,
+            modifier = Modifier.size(48.dp),
+            containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(
+                if (isRecording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord,
+                contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
+                tint = if (isRecording) Color.White else Color.Red
+            )
+        }
+
+        Spacer(modifier = Modifier.size(8.dp))
+
+        SmallFloatingActionButton(
+            onClick = onMyLocationClick,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(Icons.Filled.MyLocation, contentDescription = "My Location")
+        }
+
+        Spacer(modifier = Modifier.size(8.dp))
+
+        SmallFloatingActionButton(
+            onClick = onRulerToggle,
+            modifier = Modifier.size(48.dp),
+            containerColor = if (rulerActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(
+                Icons.Filled.Straighten,
+                contentDescription = "Ruler",
+                tint = if (rulerActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.size(8.dp))
+
+        SmallFloatingActionButton(
+            onClick = onSettingsClick,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+        }
+    }
+}
+
+@Composable
+fun BoxScope.MapOverlays(
+    rulerState: RulerState,
+    isRecording: Boolean,
+    recordingDistance: Double?,
+    onlineTrackingEnabled: Boolean,
+    viewingTrackName: String?,
+    viewingPointName: String?,
+    viewingPointColor: String,
+    showSearch: Boolean,
+    searchQuery: String,
+    searchResults: List<PlaceSearchClient.SearchResult>,
+    isSearching: Boolean,
+    showViewingPoint: Boolean,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onRulerUndo: () -> Unit,
+    onRulerClear: () -> Unit,
+    onRulerSaveAsTrack: () -> Unit,
+    onOnlineTrackingChange: (Boolean) -> Unit,
+    onCloseViewingTrack: () -> Unit,
+    onCloseViewingPoint: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
+    onSearchClose: () -> Unit
+) {
+    ZoomControls(
+        modifier = Modifier
+            .align(Alignment.TopStart)
+            .padding(16.dp),
+        onZoomIn = onZoomIn,
+        onZoomOut = onZoomOut
+    )
+
+    if (rulerState.isActive || isRecording) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 16.dp, end = 80.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (rulerState.isActive) {
+                RulerCard(
+                    rulerState = rulerState,
+                    onUndo = onRulerUndo,
+                    onClear = onRulerClear,
+                    onSaveAsTrack = onRulerSaveAsTrack
+                )
+            }
+            if (isRecording && recordingDistance != null) {
+                RecordingCard(
+                    distance = recordingDistance,
+                    onlineTrackingEnabled = onlineTrackingEnabled,
+                    onOnlineTrackingChange = onOnlineTrackingChange
+                )
+            }
+        }
+    }
+
+    if (viewingTrackName != null) {
+        ViewingTrackBanner(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .padding(horizontal = 16.dp),
+            trackName = viewingTrackName,
+            onClose = onCloseViewingTrack
+        )
+    }
+
+    if (showViewingPoint && viewingPointName != null) {
+        ViewingPointBanner(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .padding(horizontal = 16.dp),
+            pointName = viewingPointName,
+            pointColor = viewingPointColor,
+            onClose = onCloseViewingPoint
+        )
+    }
+
+    if (showSearch) {
+        val searchFocusRequester = remember { FocusRequester() }
+        LaunchedEffect(Unit) {
+            searchFocusRequester.requestFocus()
+        }
+        SearchOverlay(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .padding(start = 16.dp, end = 16.dp)
+                .fillMaxWidth(),
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            isSearching = isSearching,
+            results = searchResults,
+            focusRequester = searchFocusRequester,
+            onResultClick = onSearchResultClick,
+            onClose = onSearchClose
+        )
+    }
+}
+
+// --- Previews ---
+
+private val sampleRulerState = RulerState(
+    points = listOf(
+        RulerPoint(LatLng(63.43, 10.39)),
+        RulerPoint(LatLng(63.44, 10.40)),
+    ),
+    isActive = true
+)
+
+private val sampleSearchResults = listOf(
+    PlaceSearchClient.SearchResult("Trondheim", "By", "Trondheim", LatLng(63.43, 10.39)),
+    PlaceSearchClient.SearchResult("Trondheim lufthavn", "Flyplass", "Stjørdal", LatLng(63.46, 10.92)),
+    PlaceSearchClient.SearchResult("Trondheimsfjorden", "Fjord", "Trondheim", LatLng(63.50, 10.50)),
+)
+
+@Preview(showBackground = true)
+@Composable
+private fun SearchOverlayPreview() {
+    MaterialTheme {
+        SearchOverlay(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            query = "Trondheim",
+            onQueryChange = {},
+            isSearching = false,
+            results = sampleSearchResults,
+            onResultClick = {},
+            onClose = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RulerCardPreview() {
+    MaterialTheme {
+        RulerCard(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            rulerState = sampleRulerState,
+            onUndo = {},
+            onClear = {},
+            onSaveAsTrack = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RecordingCardPreview() {
+    MaterialTheme {
+        RecordingCard(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            distance = 2450.0,
+            onlineTrackingEnabled = true,
+            onOnlineTrackingChange = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ViewingTrackBannerPreview() {
+    MaterialTheme {
+        ViewingTrackBanner(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            trackName = "Bymarka → Lian",
+            onClose = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ViewingPointBannerPreview() {
+    MaterialTheme {
+        ViewingPointBanner(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            pointName = "Utsikten",
+            pointColor = "#4CAF50",
+            onClose = {}
+        )
+    }
+}
+
+@Preview(showSystemUi = true)
+@Composable
+private fun MapScreenFullPreview() {
+    MaterialTheme {
+        Scaffold(
+            floatingActionButton = {
+                MapFabColumn(
+                    isRecording = true,
+                    rulerActive = true,
+                    showLayerMenu = false,
+                    selectedLayer = MapLayer.KARTVERKET,
+                    showWaymarkedTrails = false,
+                    showCountyBorders = false,
+                    showSavedPoints = true,
+                    onSearchClick = {},
+                    onLayerMenuToggle = {},
+                    onLayerSelected = {},
+                    onWaymarkedTrailsToggle = {},
+                    onCountyBordersToggle = {},
+                    onSavedPointsToggle = {},
+                    onRecordStopClick = {},
+                    onMyLocationClick = {},
+                    onRulerToggle = {},
+                    onSettingsClick = {}
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+                    .background(Color(0xFFE0E0E0))
+            ) {
+                Text(
+                    text = "Map",
+                    modifier = Modifier.align(Alignment.Center),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.Gray
+                )
+
+                MapOverlays(
+                    rulerState = sampleRulerState,
+                    isRecording = true,
+                    recordingDistance = 2450.0,
+                    onlineTrackingEnabled = false,
+                    viewingTrackName = "Bymarka → Lian",
+                    viewingPointName = null,
+                    viewingPointColor = "#FF5722",
+                    showSearch = false,
+                    searchQuery = "",
+                    searchResults = emptyList(),
+                    isSearching = false,
+                    showViewingPoint = false,
+                    onZoomIn = {},
+                    onZoomOut = {},
+                    onRulerUndo = {},
+                    onRulerClear = {},
+                    onRulerSaveAsTrack = {},
+                    onOnlineTrackingChange = {},
+                    onCloseViewingTrack = {},
+                    onCloseViewingPoint = {},
+                    onSearchQueryChange = {},
+                    onSearchResultClick = {},
+                    onSearchClose = {}
+                )
+            }
         }
     }
 }
