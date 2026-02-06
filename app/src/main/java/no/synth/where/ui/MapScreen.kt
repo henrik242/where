@@ -162,12 +162,14 @@ fun MapScreen(
 
     var showStopTrackDialog by remember { mutableStateOf(false) }
     var trackNameInput by remember { mutableStateOf("") }
+    var isResolvingTrackName by remember { mutableStateOf(false) }
 
     // Geocode location when stop dialog opens
     LaunchedEffect(showStopTrackDialog) {
         if (showStopTrackDialog) {
             val track = currentTrack
             if (track != null && trackNameInput.isBlank() && track.points.isNotEmpty()) {
+                isResolvingTrackName = true
                 // Get start and end locations
                 val firstPoint = track.points.first()
                 val lastPoint = track.points.last()
@@ -197,6 +199,7 @@ fun MapScreen(
                     trackNameInput =
                         NamingUtils.makeUnique(baseName, trackRepository.tracks.map { it.name })
                 }
+                isResolvingTrackName = false
             }
         }
     }
@@ -205,15 +208,18 @@ fun MapScreen(
     var showSavePointDialog by remember { mutableStateOf(false) }
     var savePointLatLng by remember { mutableStateOf<LatLng?>(null) }
     var savePointName by remember { mutableStateOf("") }
+    var isResolvingPointName by remember { mutableStateOf(false) }
 
     LaunchedEffect(showSavePointDialog, savePointLatLng) {
         if (showSavePointDialog && savePointLatLng != null && savePointName.isBlank()) {
+            isResolvingPointName = true
             val locationName = savePointLatLng?.let { GeocodingHelper.reverseGeocode(it) }
             if (locationName != null) {
                 savePointName = NamingUtils.makeUnique(
                     locationName,
                     savedPointsRepository.savedPoints.map { it.name })
             }
+            isResolvingPointName = false
         }
     }
 
@@ -222,6 +228,7 @@ fun MapScreen(
 
     var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
     var rulerTrackName by remember { mutableStateOf("") }
+    var isResolvingRulerName by remember { mutableStateOf(false) }
 
     // Save camera position across navigation
     var savedCameraLat by rememberSaveable { mutableStateOf(65.0) }
@@ -251,6 +258,7 @@ fun MapScreen(
 
     LaunchedEffect(showSaveRulerAsTrackDialog) {
         if (showSaveRulerAsTrackDialog && rulerState.points.isNotEmpty()) {
+            isResolvingRulerName = true
             val firstPoint = rulerState.points.first()
             val lastPoint = rulerState.points.last()
 
@@ -282,6 +290,7 @@ fun MapScreen(
                 rulerTrackName =
                     NamingUtils.makeUnique(baseName, trackRepository.tracks.map { it.name })
             }
+            isResolvingRulerName = false
         }
     }
 
@@ -520,6 +529,7 @@ fun MapScreen(
         MapDialogs.StopTrackDialog(
             trackNameInput = trackNameInput,
             onTrackNameChange = { trackNameInput = it },
+            isLoading = isResolvingTrackName,
             onDiscard = {
                 trackRepository.discardRecording()
                 LocationTrackingService.stop(context)
@@ -554,6 +564,7 @@ fun MapScreen(
         MapDialogs.SavePointDialog(
             pointName = savePointName,
             onPointNameChange = { savePointName = it },
+            isLoading = isResolvingPointName,
             coordinates = "${latLng.latitude.toString().take(10)}, ${
                 latLng.longitude.toString().take(10)
             }",
@@ -647,6 +658,7 @@ fun MapScreen(
             trackName = rulerTrackName,
             rulerState = rulerState,
             onTrackNameChange = { rulerTrackName = it },
+            isLoading = isResolvingRulerName,
             onSave = {
                 if (rulerTrackName.isNotBlank()) {
                     trackRepository.createTrackFromPoints(rulerTrackName, rulerState.points)
