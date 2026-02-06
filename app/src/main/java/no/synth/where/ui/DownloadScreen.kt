@@ -1,25 +1,54 @@
 package no.synth.where.ui
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
 import no.synth.where.service.MapDownloadService
+import org.maplibre.android.geometry.LatLngBounds
 import java.io.File
 import java.util.Locale
 
@@ -29,7 +58,6 @@ data class LayerInfo(
     val description: String
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadScreen(
     onBackClick: () -> Unit,
@@ -66,16 +94,42 @@ fun DownloadScreen(
         }
     }
 
+    DownloadScreenContent(
+        layers = layers,
+        cacheSize = cacheSize,
+        isDownloading = downloadState.isDownloading,
+        downloadRegionName = downloadState.region?.name,
+        downloadLayerName = downloadState.layerName,
+        downloadProgress = downloadState.progress,
+        onBackClick = onBackClick,
+        onLayerClick = onLayerClick,
+        onStopDownload = { MapDownloadService.stopDownload(context) },
+        getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },
+        refreshTrigger = refreshTrigger
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DownloadScreenContent(
+    layers: List<LayerInfo>,
+    cacheSize: Long,
+    isDownloading: Boolean,
+    downloadRegionName: String?,
+    downloadLayerName: String?,
+    downloadProgress: Int,
+    onBackClick: () -> Unit,
+    onLayerClick: (String) -> Unit,
+    onStopDownload: () -> Unit,
+    getLayerStats: suspend (String) -> Pair<Long, Int>,
+    refreshTrigger: Int
+) {
     fun formatBytes(bytes: Long): String {
         return when {
             bytes < 1024 -> "$bytes B"
             bytes < 1024 * 1024 -> "${bytes / 1024} KB"
             else -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
         }
-    }
-
-    suspend fun getLayerStats(layerName: String): Pair<Long, Int> {
-        return downloadManager.getLayerStats(layerName)
     }
 
     Scaffold(
@@ -135,7 +189,7 @@ fun DownloadScreen(
             }
 
             // Active download progress card
-            if (downloadState.isDownloading && downloadState.region != null) {
+            if (isDownloading && downloadRegionName != null) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -151,29 +205,27 @@ fun DownloadScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "Downloading ${downloadState.region?.name}",
+                                        "Downloading $downloadRegionName",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        downloadState.layerName ?: "",
+                                        downloadLayerName ?: "",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                TextButton(onClick = {
-                                    MapDownloadService.stopDownload(context)
-                                }) {
+                                TextButton(onClick = onStopDownload) {
                                     Text("Stop")
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             LinearProgressIndicator(
-                                progress = { downloadState.progress / 100f },
+                                progress = { downloadProgress / 100f },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("${downloadState.progress}%", style = MaterialTheme.typography.bodySmall)
+                            Text("$downloadProgress%", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -230,7 +282,6 @@ fun DownloadScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LayerRegionsScreen(
     layerId: String,
@@ -264,6 +315,60 @@ fun LayerRegionsScreen(
         }
     }
 
+    LayerRegionsScreenContent(
+        layerDisplayName = layerDisplayName,
+        layerId = layerId,
+        regions = regions,
+        isDownloading = downloadState.isDownloading,
+        downloadRegionName = downloadState.region?.name,
+        downloadLayerName = downloadState.layerName,
+        downloadProgress = downloadState.progress,
+        showDeleteDialog = showDeleteDialog,
+        onBackClick = onBackClick,
+        onStopDownload = { MapDownloadService.stopDownload(context) },
+        onStartDownload = { region ->
+            MapDownloadService.startDownload(
+                context = context,
+                region = region,
+                layerName = layerId,
+                minZoom = 5,
+                maxZoom = 12
+            )
+        },
+        onDeleteRequest = { region -> showDeleteDialog = region },
+        onConfirmDelete = { region ->
+            scope.launch {
+                downloadManager.deleteRegionTiles(region, layerId)
+                showDeleteDialog = null
+                refreshTrigger++
+            }
+        },
+        onDismissDelete = { showDeleteDialog = null },
+        getRegionTileInfo = { region -> downloadManager.getRegionTileInfo(region, layerId) },
+        refreshTrigger = refreshTrigger
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LayerRegionsScreenContent(
+    layerDisplayName: String,
+    layerId: String,
+    regions: List<Region>,
+    isDownloading: Boolean,
+    downloadRegionName: String?,
+    downloadLayerName: String?,
+    downloadProgress: Int,
+    showDeleteDialog: Region?,
+    onBackClick: () -> Unit,
+    onStopDownload: () -> Unit,
+    onStartDownload: (Region) -> Unit,
+    onDeleteRequest: (Region) -> Unit,
+    onConfirmDelete: (Region) -> Unit,
+    onDismissDelete: () -> Unit,
+    getRegionTileInfo: suspend (Region) -> MapDownloadManager.RegionTileInfo?,
+    refreshTrigger: Int
+) {
     fun formatBytes(bytes: Long): String {
         return when {
             bytes < 1024 -> "$bytes B"
@@ -303,7 +408,7 @@ fun LayerRegionsScreen(
             }
 
             // Show downloading progress if active
-            if (downloadState.isDownloading && downloadState.region != null && downloadState.layerName == layerId) {
+            if (isDownloading && downloadRegionName != null && downloadLayerName == layerId) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -313,10 +418,10 @@ fun LayerRegionsScreen(
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Downloading ${cleanRegionName(downloadState.region?.name ?: "")}...")
+                            Text("Downloading ${cleanRegionName(downloadRegionName)}...")
                             Spacer(modifier = Modifier.height(8.dp))
                             LinearProgressIndicator(
-                                progress = { downloadState.progress / 100f },
+                                progress = { downloadProgress / 100f },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Spacer(modifier = Modifier.height(4.dp))
@@ -325,10 +430,11 @@ fun LayerRegionsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("${downloadState.progress}%", style = MaterialTheme.typography.bodySmall)
-                                TextButton(onClick = {
-                                    MapDownloadService.stopDownload(context)
-                                }) {
+                                Text(
+                                    "$downloadProgress%",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                TextButton(onClick = onStopDownload) {
                                     Text("Stop")
                                 }
                             }
@@ -345,7 +451,7 @@ fun LayerRegionsScreen(
                 var tileInfo by remember { mutableStateOf<MapDownloadManager.RegionTileInfo?>(null) }
 
                 LaunchedEffect(region, layerId) {
-                    tileInfo = downloadManager.getRegionTileInfo(region, layerId)
+                    tileInfo = getRegionTileInfo(region)
                 }
 
                 val info = tileInfo
@@ -361,7 +467,13 @@ fun LayerRegionsScreen(
                             if (isDownloaded) {
                                 Text("✓ ${info.downloadedTiles} tiles • ${formatBytes(info.downloadedSize)}")
                             } else if (hasPartialDownload) {
-                                Text("${info?.downloadedTiles ?: 0}/${info?.totalTiles ?: 0} tiles • ${formatBytes(info?.downloadedSize ?: 0)}")
+                                Text(
+                                    "${info?.downloadedTiles ?: 0}/${info?.totalTiles ?: 0} tiles • ${
+                                        formatBytes(
+                                            info?.downloadedSize ?: 0
+                                        )
+                                    }"
+                                )
                             } else {
                                 Text("${info?.totalTiles ?: 0} tiles needed")
                             }
@@ -372,21 +484,13 @@ fun LayerRegionsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (hasPartialDownload || isDownloaded) {
-                                    IconButton(onClick = { showDeleteDialog = region }) {
+                                    IconButton(onClick = { onDeleteRequest(region) }) {
                                         Icon(Icons.Filled.Delete, contentDescription = "Delete")
                                     }
                                 }
                                 Button(
-                                    onClick = {
-                                        MapDownloadService.startDownload(
-                                            context = context,
-                                            region = region,
-                                            layerName = layerId,
-                                            minZoom = 5,
-                                            maxZoom = 12
-                                        )
-                                    },
-                                    enabled = !downloadState.isDownloading
+                                    onClick = { onStartDownload(region) },
+                                    enabled = !isDownloading
                                 ) {
                                     Text(
                                         when {
@@ -407,24 +511,16 @@ fun LayerRegionsScreen(
     // Delete confirmation dialog
     showDeleteDialog?.let { region ->
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
+            onDismissRequest = onDismissDelete,
             title = { Text("Delete ${cleanRegionName(region.name)}?") },
             text = { Text("This will delete all $layerDisplayName tiles for ${cleanRegionName(region.name)}. You can re-download them later.") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            downloadManager.deleteRegionTiles(region, layerId)
-                            showDeleteDialog = null
-                            refreshTrigger++
-                        }
-                    }
-                ) {
+                TextButton(onClick = { onConfirmDelete(region) }) {
                     Text("Delete")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
+                TextButton(onClick = onDismissDelete) {
                     Text("Cancel")
                 }
             }
@@ -432,3 +528,53 @@ fun LayerRegionsScreen(
     }
 }
 
+@Preview(showSystemUi = true)
+@Composable
+private fun DownloadScreenPreview() {
+    val sampleLayers = listOf(
+        LayerInfo("kartverket", "Kartverket", "Topographic maps from Kartverket"),
+        LayerInfo("osm", "OpenStreetMap", "Community-sourced street maps"),
+        LayerInfo("opentopomap", "OpenTopoMap", "Topographic maps with hiking trails")
+    )
+    DownloadScreenContent(
+        layers = sampleLayers,
+        cacheSize = 52_428_800L, // 50 MB
+        isDownloading = false,
+        downloadRegionName = null,
+        downloadLayerName = null,
+        downloadProgress = 0,
+        onBackClick = {},
+        onLayerClick = {},
+        onStopDownload = {},
+        getLayerStats = { 0L to 0 },
+        refreshTrigger = 0
+    )
+}
+
+@Preview(showSystemUi = true)
+@Composable
+private fun LayerRegionsScreenPreview() {
+    val sampleRegions = listOf(
+        Region("Oslo", LatLngBounds.from(60.0, 11.0, 59.7, 10.5)),
+        Region("Bergen", LatLngBounds.from(60.5, 5.5, 60.2, 5.2)),
+        Region("Trondheim", LatLngBounds.from(63.5, 10.6, 63.3, 10.2))
+    )
+    LayerRegionsScreenContent(
+        layerDisplayName = "Kartverket",
+        layerId = "kartverket",
+        regions = sampleRegions,
+        isDownloading = false,
+        downloadRegionName = null,
+        downloadLayerName = null,
+        downloadProgress = 0,
+        showDeleteDialog = null,
+        onBackClick = {},
+        onStopDownload = {},
+        onStartDownload = {},
+        onDeleteRequest = {},
+        onConfirmDelete = {},
+        onDismissDelete = {},
+        getRegionTileInfo = { null },
+        refreshTrigger = 0
+    )
+}

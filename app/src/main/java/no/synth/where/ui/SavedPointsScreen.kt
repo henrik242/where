@@ -20,11 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
+import org.maplibre.android.geometry.LatLng
 import androidx.core.graphics.toColorInt
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedPointsScreen(
     onBackClick: () -> Unit,
@@ -37,6 +38,42 @@ fun SavedPointsScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var editingPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
+    SavedPointsScreenContent(
+        savedPoints = savedPoints,
+        showEditDialog = showEditDialog,
+        editingPoint = editingPoint,
+        onBackClick = onBackClick,
+        onEdit = { point ->
+            editingPoint = point
+            showEditDialog = true
+        },
+        onDelete = { point -> repository.deletePoint(point.id) },
+        onShowOnMap = onShowOnMap,
+        onDismissEdit = {
+            showEditDialog = false
+            editingPoint = null
+        },
+        onSaveEdit = { name, description, color ->
+            repository.updatePoint(editingPoint!!.id, name, description, color)
+            showEditDialog = false
+            editingPoint = null
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SavedPointsScreenContent(
+    savedPoints: List<SavedPoint>,
+    showEditDialog: Boolean,
+    editingPoint: SavedPoint?,
+    onBackClick: () -> Unit,
+    onEdit: (SavedPoint) -> Unit,
+    onDelete: (SavedPoint) -> Unit,
+    onShowOnMap: (SavedPoint) -> Unit,
+    onDismissEdit: () -> Unit,
+    onSaveEdit: (String, String, String) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -71,16 +108,9 @@ fun SavedPointsScreen(
                 items(savedPoints, key = { it.id }) { point ->
                     SavedPointItem(
                         point = point,
-                        onEdit = {
-                            editingPoint = point
-                            showEditDialog = true
-                        },
-                        onDelete = {
-                            repository.deletePoint(point.id)
-                        },
-                        onShowOnMap = {
-                            onShowOnMap(point)
-                        }
+                        onEdit = { onEdit(point) },
+                        onDelete = { onDelete(point) },
+                        onShowOnMap = { onShowOnMap(point) }
                     )
                     HorizontalDivider()
                 }
@@ -90,16 +120,9 @@ fun SavedPointsScreen(
 
     if (showEditDialog && editingPoint != null) {
         EditPointDialog(
-            point = editingPoint!!,
-            onDismiss = {
-                showEditDialog = false
-                editingPoint = null
-            },
-            onSave = { name, description, color ->
-                repository.updatePoint(editingPoint!!.id, name, description, color)
-                showEditDialog = false
-                editingPoint = null
-            }
+            point = editingPoint,
+            onDismiss = onDismissEdit,
+            onSave = onSaveEdit
         )
     }
 }
@@ -308,6 +331,27 @@ fun EditPointDialog(
                 Text("Cancel")
             }
         }
+    )
+}
+
+@Preview(showSystemUi = true)
+@Composable
+private fun SavedPointsScreenPreview() {
+    val samplePoints = listOf(
+        SavedPoint("1", "Cabin", LatLng(59.9139, 10.7522), "Summer cabin", color = "#4CAF50"),
+        SavedPoint("2", "Fishing spot", LatLng(60.3913, 5.3221), null, color = "#2196F3"),
+        SavedPoint("3", "Viewpoint", LatLng(61.2275, 7.0940), "Great view", color = "#FF5722")
+    )
+    SavedPointsScreenContent(
+        savedPoints = samplePoints,
+        showEditDialog = false,
+        editingPoint = null,
+        onBackClick = {},
+        onEdit = {},
+        onDelete = {},
+        onShowOnMap = {},
+        onDismissEdit = {},
+        onSaveEdit = { _, _, _ -> }
     )
 }
 

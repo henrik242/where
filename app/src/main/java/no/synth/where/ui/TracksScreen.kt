@@ -19,13 +19,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.compose.ui.tooling.preview.Preview
 import no.synth.where.data.Track
+import no.synth.where.data.TrackPoint
 import no.synth.where.data.TrackRepository
+import org.maplibre.android.geometry.LatLng
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TracksScreen(
     onBackClick: () -> Unit,
@@ -68,6 +70,67 @@ fun TracksScreen(
         }
     }
 
+    TracksScreenContent(
+        tracks = tracks,
+        trackToDelete = trackToDelete,
+        trackToRename = trackToRename,
+        newTrackName = newTrackName,
+        showImportError = showImportError,
+        importErrorMessage = importErrorMessage,
+        onBackClick = onBackClick,
+        onImport = { filePickerLauncher.launch("*/*") },
+        onExport = { track -> shareTrack(context, track) },
+        onSave = { track -> saveTrackToDownloads(context, track) },
+        onOpen = { track -> openTrack(context, track) },
+        onDeleteRequest = { track -> trackToDelete = track },
+        onConfirmDelete = {
+            trackToDelete?.let { trackRepository.deleteTrack(it) }
+            trackToDelete = null
+        },
+        onDismissDelete = { trackToDelete = null },
+        onRenameRequest = { track ->
+            trackToRename = track
+            newTrackName = track.name
+        },
+        onNewTrackNameChange = { newTrackName = it },
+        onConfirmRename = {
+            if (newTrackName.isNotBlank()) {
+                trackToRename?.let { trackRepository.renameTrack(it, newTrackName) }
+            }
+            trackToRename = null
+        },
+        onDismissRename = { trackToRename = null },
+        onDismissImportError = { showImportError = false },
+        onContinue = onContinueTrack,
+        onShowOnMap = onShowTrackOnMap
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TracksScreenContent(
+    tracks: List<Track>,
+    trackToDelete: Track?,
+    trackToRename: Track?,
+    newTrackName: String,
+    showImportError: Boolean,
+    importErrorMessage: String,
+    onBackClick: () -> Unit,
+    onImport: () -> Unit,
+    onExport: (Track) -> Unit,
+    onSave: (Track) -> Unit,
+    onOpen: (Track) -> Unit,
+    onDeleteRequest: (Track) -> Unit,
+    onConfirmDelete: () -> Unit,
+    onDismissDelete: () -> Unit,
+    onRenameRequest: (Track) -> Unit,
+    onNewTrackNameChange: (String) -> Unit,
+    onConfirmRename: () -> Unit,
+    onDismissRename: () -> Unit,
+    onDismissImportError: () -> Unit,
+    onContinue: (Track) -> Unit,
+    onShowOnMap: (Track) -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -78,7 +141,7 @@ fun TracksScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
+                    IconButton(onClick = onImport) {
                         Icon(Icons.Filled.FileUpload, contentDescription = "Import GPX")
                     }
                 }
@@ -107,16 +170,13 @@ fun TracksScreen(
                 items(tracks, key = { it.id }) { track ->
                     TrackItem(
                         track = track,
-                        onExport = { shareTrack(context, track) },
-                        onSave = { saveTrackToDownloads(context, track) },
-                        onOpen = { openTrack(context, track) },
-                        onDelete = { trackToDelete = track },
-                        onRename = {
-                            trackToRename = track
-                            newTrackName = track.name
-                        },
-                        onContinue = { onContinueTrack(track) },
-                        onShowOnMap = { onShowTrackOnMap(track) }
+                        onExport = { onExport(track) },
+                        onSave = { onSave(track) },
+                        onOpen = { onOpen(track) },
+                        onDelete = { onDeleteRequest(track) },
+                        onRename = { onRenameRequest(track) },
+                        onContinue = { onContinue(track) },
+                        onShowOnMap = { onShowOnMap(track) }
                     )
                     HorizontalDivider()
                 }
@@ -127,21 +187,16 @@ fun TracksScreen(
     // Delete confirmation dialog
     trackToDelete?.let { track ->
         AlertDialog(
-            onDismissRequest = { trackToDelete = null },
+            onDismissRequest = onDismissDelete,
             title = { Text("Delete Track?") },
             text = { Text("Are you sure you want to delete '${track.name}'?") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        trackRepository.deleteTrack(track)
-                        trackToDelete = null
-                    }
-                ) {
+                TextButton(onClick = onConfirmDelete) {
                     Text("Delete")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { trackToDelete = null }) {
+                TextButton(onClick = onDismissDelete) {
                     Text("Cancel")
                 }
             }
@@ -150,43 +205,36 @@ fun TracksScreen(
 
     if (showImportError) {
         AlertDialog(
-            onDismissRequest = { showImportError = false },
+            onDismissRequest = onDismissImportError,
             title = { Text("Import Failed") },
             text = { Text(importErrorMessage) },
             confirmButton = {
-                TextButton(onClick = { showImportError = false }) {
+                TextButton(onClick = onDismissImportError) {
                     Text("OK")
                 }
             }
         )
     }
 
-    trackToRename?.let { track ->
+    trackToRename?.let {
         AlertDialog(
-            onDismissRequest = { trackToRename = null },
+            onDismissRequest = onDismissRename,
             title = { Text("Rename Track") },
             text = {
                 OutlinedTextField(
                     value = newTrackName,
-                    onValueChange = { newTrackName = it },
+                    onValueChange = onNewTrackNameChange,
                     label = { Text("Track Name") },
                     singleLine = true
                 )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (newTrackName.isNotBlank()) {
-                            trackRepository.renameTrack(track, newTrackName)
-                        }
-                        trackToRename = null
-                    }
-                ) {
+                TextButton(onClick = onConfirmRename) {
                     Text("Rename")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { trackToRename = null }) {
+                TextButton(onClick = onDismissRename) {
                     Text("Cancel")
                 }
             }
@@ -442,12 +490,64 @@ private fun openTrack(context: android.content.Context, track: Track) {
 
         try {
             context.startActivity(Intent.createChooser(openIntent, "Open Track With"))
-        } catch (e: android.content.ActivityNotFoundException) {
+        } catch (_: android.content.ActivityNotFoundException) {
             // If no app can open GPX, fall back to share
             shareTrack(context, track)
         }
     } catch (e: Exception) {
         e.printStackTrace()
     }
+}
+
+@Preview(showSystemUi = true)
+@Composable
+private fun TracksScreenPreview() {
+    val now = System.currentTimeMillis()
+    val sampleTracks = listOf(
+        Track(
+            id = "1",
+            name = "Morning Hike",
+            points = listOf(
+                TrackPoint(LatLng(59.9139, 10.7522), now - 3600000),
+                TrackPoint(LatLng(59.9200, 10.7600), now - 1800000),
+                TrackPoint(LatLng(59.9250, 10.7700), now)
+            ),
+            startTime = now - 3600000,
+            endTime = now
+        ),
+        Track(
+            id = "2",
+            name = "Evening Run",
+            points = listOf(
+                TrackPoint(LatLng(60.3913, 5.3221), now - 7200000),
+                TrackPoint(LatLng(60.3950, 5.3300), now - 5400000)
+            ),
+            startTime = now - 7200000,
+            endTime = now - 5400000
+        )
+    )
+    TracksScreenContent(
+        tracks = sampleTracks,
+        trackToDelete = null,
+        trackToRename = null,
+        newTrackName = "",
+        showImportError = false,
+        importErrorMessage = "",
+        onBackClick = {},
+        onImport = {},
+        onExport = {},
+        onSave = {},
+        onOpen = {},
+        onDeleteRequest = {},
+        onConfirmDelete = {},
+        onDismissDelete = {},
+        onRenameRequest = {},
+        onNewTrackNameChange = {},
+        onConfirmRename = {},
+        onDismissRename = {},
+        onDismissImportError = {},
+        onContinue = {},
+        onShowOnMap = {}
+    )
 }
 

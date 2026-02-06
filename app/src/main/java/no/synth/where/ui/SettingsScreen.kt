@@ -22,11 +22,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import no.synth.where.BuildConfig
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
@@ -35,8 +34,26 @@ fun SettingsScreen(
     onSavedPointsClick: () -> Unit,
     onOnlineTrackingClick: () -> Unit
 ) {
-    val context = LocalContext.current
+    SettingsScreenContent(
+        versionInfo = "${BuildConfig.GIT_COMMIT_COUNT}.${BuildConfig.GIT_SHORT_SHA} ${BuildConfig.BUILD_DATE}",
+        onBackClick = onBackClick,
+        onDownloadClick = onDownloadClick,
+        onTracksClick = onTracksClick,
+        onSavedPointsClick = onSavedPointsClick,
+        onOnlineTrackingClick = onOnlineTrackingClick
+    )
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreenContent(
+    versionInfo: String,
+    onBackClick: () -> Unit,
+    onDownloadClick: () -> Unit,
+    onTracksClick: () -> Unit,
+    onSavedPointsClick: () -> Unit,
+    onOnlineTrackingClick: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -142,7 +159,7 @@ fun SettingsScreen(
 
             // Version number at the bottom
             Text(
-                text = "${BuildConfig.GIT_COMMIT_COUNT}.${BuildConfig.GIT_SHORT_SHA} ${BuildConfig.BUILD_DATE}",
+                text = versionInfo,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -153,3 +170,15 @@ fun SettingsScreen(
     }
 }
 
+@Preview(showSystemUi = true)
+@Composable
+private fun SettingsScreenPreview() {
+    SettingsScreenContent(
+        versionInfo = "42.abc1234 2026-02-06",
+        onBackClick = {},
+        onDownloadClick = {},
+        onTracksClick = {},
+        onSavedPointsClick = {},
+        onOnlineTrackingClick = {}
+    )
+}
