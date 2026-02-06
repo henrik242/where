@@ -1579,13 +1579,17 @@ fun BoxScope.MapOverlays(
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchClose: () -> Unit
 ) {
-    ZoomControls(
-        modifier = Modifier
-            .align(Alignment.TopStart)
-            .padding(16.dp),
-        onZoomIn = onZoomIn,
-        onZoomOut = onZoomOut
-    )
+    val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null)
+
+    if (!hasTopOverlay) {
+        ZoomControls(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp),
+            onZoomIn = onZoomIn,
+            onZoomOut = onZoomOut
+        )
+    }
 
     if (rulerState.isActive || isRecording) {
         Column(
