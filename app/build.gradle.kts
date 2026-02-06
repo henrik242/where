@@ -3,13 +3,12 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "no.synth.where"
-    compileSdkVersion("android-36.1")
+    compileSdk = 36
     compileSdkMinor = 1
 
     signingConfigs {
