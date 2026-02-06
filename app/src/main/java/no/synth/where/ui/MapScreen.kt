@@ -10,6 +10,7 @@ import android.net.NetworkRequest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -34,11 +37,13 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -46,6 +51,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
@@ -64,6 +70,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -72,9 +80,11 @@ import androidx.core.graphics.toColorInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.MapStyle
+import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
@@ -217,6 +227,25 @@ fun MapScreen(
 
     var rulerState by remember { mutableStateOf(RulerState()) }
 
+    // Place search state
+    var showSearch by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<PlaceSearchClient.SearchResult>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+
+    // Debounced search
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.length < 2) {
+            searchResults = emptyList()
+            isSearching = false
+            return@LaunchedEffect
+        }
+        isSearching = true
+        delay(300)
+        searchResults = PlaceSearchClient.search(searchQuery)
+        isSearching = false
+    }
+
     LaunchedEffect(showSaveRulerAsTrackDialog) {
         if (showSaveRulerAsTrackDialog && rulerState.points.isNotEmpty()) {
             val firstPoint = rulerState.points.first()
@@ -276,11 +305,15 @@ fun MapScreen(
         val map = mapInstance
 
         map?.style?.let { style ->
-            MapRenderUtils.updateTrackOnMap(style, trackToShow, isCurrentTrack = currentTrack != null)
+            MapRenderUtils.updateTrackOnMap(
+                style,
+                trackToShow,
+                isCurrentTrack = currentTrack != null
+            )
 
             if (viewing != null && viewing.points.isNotEmpty()) {
                 hasZoomedToLocation = true  // Prevent auto-zoom to location
-                kotlinx.coroutines.delay(100)
+                delay(100)
                 val points = viewing.points.map { it.latLng }
                 if (points.isNotEmpty()) {
                     val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
@@ -320,7 +353,7 @@ fun MapScreen(
                 }
 
                 lastKnownLocation?.let { location ->
-                    kotlinx.coroutines.delay(500)
+                    delay(500)
                     map.animateCamera(
                         org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
                             LatLng(location.latitude, location.longitude),
@@ -339,7 +372,7 @@ fun MapScreen(
         val point = viewingPoint
         val map = mapInstance
         if (point != null && map != null) {
-            kotlinx.coroutines.delay(100)
+            delay(100)
             map.animateCamera(
                 org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
                     point.latLng,
@@ -353,6 +386,16 @@ fun MapScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(
+                    onClick = { showSearch = true },
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Icon(Icons.Filled.Search, contentDescription = "Search Places")
+                }
+
+                Spacer(modifier = Modifier.size(8.dp))
+
                 SmallFloatingActionButton(
                     onClick = { showLayerMenu = true },
                     modifier = Modifier.size(48.dp),
@@ -527,9 +570,11 @@ fun MapScreen(
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier
-            .padding(paddingValues)
-            .fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
                 selectedLayer = selectedLayer,
@@ -635,7 +680,9 @@ fun MapScreen(
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         if (rulerState.points.size > 1) {
                                             SmallFloatingActionButton(
-                                                onClick = { rulerState = rulerState.removeLastPoint() },
+                                                onClick = {
+                                                    rulerState = rulerState.removeLastPoint()
+                                                },
                                                 modifier = Modifier.size(32.dp),
                                                 containerColor = MaterialTheme.colorScheme.surfaceVariant
                                             ) {
@@ -685,7 +732,9 @@ fun MapScreen(
                         if (isRecording) {
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
+                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(
+                                        alpha = 0.95f
+                                    )
                                 )
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
@@ -715,7 +764,9 @@ fun MapScreen(
 
                                     HorizontalDivider(
                                         modifier = Modifier.padding(vertical = 8.dp),
-                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
+                                        color = MaterialTheme.colorScheme.onErrorContainer.copy(
+                                            alpha = 0.2f
+                                        )
                                     )
 
                                     Row(
@@ -746,12 +797,16 @@ fun MapScreen(
                                                 onlineTrackingEnabled = newValue
 
                                                 if (newValue) {
-                                                    LocationTrackingService.enableOnlineTracking(context)
+                                                    LocationTrackingService.enableOnlineTracking(
+                                                        context
+                                                    )
                                                     scope.launch {
                                                         snackbarHostState.showSnackbar("Online tracking enabled")
                                                     }
                                                 } else {
-                                                    LocationTrackingService.disableOnlineTracking(context)
+                                                    LocationTrackingService.disableOnlineTracking(
+                                                        context
+                                                    )
                                                     scope.launch {
                                                         snackbarHostState.showSnackbar("Online tracking disabled")
                                                     }
@@ -843,6 +898,106 @@ fun MapScreen(
                     }
                 }
             }
+
+            // Search overlay
+            if (showSearch) {
+                val searchFocusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    searchFocusRequester.requestFocus()
+                }
+
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                        .padding(start = 16.dp, end = 16.dp)
+                        .fillMaxWidth()
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .focusRequester(searchFocusRequester),
+                                placeholder = { Text("Search places...") },
+                                singleLine = true,
+                                trailingIcon = {
+                                    if (isSearching) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                                        }
+                                    }
+                                }
+                            )
+                            IconButton(onClick = {
+                                showSearch = false
+                                searchQuery = ""
+                                searchResults = emptyList()
+                            }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Close Search")
+                            }
+                        }
+                    }
+
+                    if (searchResults.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                            )
+                        ) {
+                            LazyColumn {
+                                items(searchResults) { result ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                mapInstance?.animateCamera(
+                                                    org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                                                        result.latLng, 14.0
+                                                    )
+                                                )
+                                                showSearch = false
+                                                searchQuery = ""
+                                                searchResults = emptyList()
+                                            }
+                                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    ) {
+                                        Text(
+                                            text = result.name,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        Text(
+                                            text = listOf(result.type, result.municipality)
+                                                .filter { it.isNotBlank() }
+                                                .joinToString(" · "),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (result != searchResults.last()) {
+                                        HorizontalDivider()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -884,7 +1039,9 @@ fun MapScreen(
         MapDialogs.SavePointDialog(
             pointName = savePointName,
             onPointNameChange = { savePointName = it },
-            coordinates = "${latLng.latitude.toString().take(10)}, ${latLng.longitude.toString().take(10)}",
+            coordinates = "${latLng.latitude.toString().take(10)}, ${
+                latLng.longitude.toString().take(10)
+            }",
             onSave = {
                 if (savePointName.isNotBlank()) {
                     savePointLatLng?.let {
@@ -929,7 +1086,9 @@ fun MapScreen(
             pointName = editName,
             pointDescription = editDescription,
             pointColor = editColor,
-            coordinates = "${clickedPoint!!.latLng.latitude.toString().take(10)}, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
+            coordinates = "${
+                clickedPoint!!.latLng.latitude.toString().take(10)
+            }, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
             availableColors = colors,
             onNameChange = { editName = it },
             onDescriptionChange = { editDescription = it },
@@ -1085,7 +1244,11 @@ fun MapLibreMapView(
                                 hasLocationPermission
                             )
                             val trackToShow = current ?: viewing
-                            MapRenderUtils.updateTrackOnMap(style, trackToShow, isCurrentTrack = current != null)
+                            MapRenderUtils.updateTrackOnMap(
+                                style,
+                                trackToShow,
+                                isCurrentTrack = current != null
+                            )
                             MapRenderUtils.updateRulerOnMap(style, rulerState)
 
                             if (showSavedPoints && savedPoints.isNotEmpty()) {
@@ -1110,7 +1273,12 @@ fun MapLibreMapView(
         val mapInstance = map
         if (hasLocationPermission && mapInstance != null) {
             mapInstance.style?.let { style ->
-                MapRenderUtils.enableLocationComponent(mapInstance, style, context, hasLocationPermission)
+                MapRenderUtils.enableLocationComponent(
+                    mapInstance,
+                    style,
+                    context,
+                    hasLocationPermission
+                )
             }
         }
     }
@@ -1138,25 +1306,25 @@ fun MapLibreMapView(
                     mapInstance.setStyle(
                         Style.Builder().fromJson(styleJson),
                         object : Style.OnStyleLoaded {
-                        override fun onStyleLoaded(style: Style) {
-                            MapRenderUtils.enableLocationComponent(
-                                mapInstance,
-                                style,
-                                context,
-                                hasLocationPermission
-                            )
-                            val trackToShow = current ?: viewing
-                            MapRenderUtils.updateTrackOnMap(
-                                style,
-                                trackToShow,
-                                isCurrentTrack = current != null
-                            )
-                            MapRenderUtils.updateRulerOnMap(style, rulerState)
+                            override fun onStyleLoaded(style: Style) {
+                                MapRenderUtils.enableLocationComponent(
+                                    mapInstance,
+                                    style,
+                                    context,
+                                    hasLocationPermission
+                                )
+                                val trackToShow = current ?: viewing
+                                MapRenderUtils.updateTrackOnMap(
+                                    style,
+                                    trackToShow,
+                                    isCurrentTrack = current != null
+                                )
+                                MapRenderUtils.updateRulerOnMap(style, rulerState)
 
-                            if (showSavedPoints && savedPoints.isNotEmpty()) {
-                                MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
+                                if (showSavedPoints && savedPoints.isNotEmpty()) {
+                                    MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
+                                }
                             }
-                        }
                         })
                 } catch (e: Exception) {
                     e.printStackTrace()
