@@ -1,12 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <lint>
-    <!-- Background location access is core to GPS tracking app functionality.
-         Users explicitly enable tracking to record routes during outdoor activities.
-         Tracking continues in background so users can lock screen/use other apps. -->
-    <issue id="BackgroundLocationPermissionUsage" severity="ignore">
-        <ignore path="src/main/AndroidManifest.xml" />
-    </issue>
-
     <!-- Foreground service with location type is properly declared with required permissions
          and service type. Service shows persistent notification for transparency. -->
     <issue id="ForegroundServicePermission" severity="ignore">

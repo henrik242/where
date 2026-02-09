@@ -1,15 +1,14 @@
 package no.synth.where.data
 
 import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
+import timber.log.Timber
 import java.util.zip.ZipInputStream
 
 object FylkeDownloader {
-    private const val TAG = "FylkeDownloader"
     private const val GEOJSON_URL = "https://nedlasting.geonorge.no/geonorge/Basisdata/Fylker/GeoJSON/Basisdata_0000_Norge_4258_Fylker_GeoJSON.zip"
     private const val CACHE_FILENAME = "norske_fylker_cached.json"
 
@@ -47,13 +46,13 @@ object FylkeDownloader {
             }
 
             if (!cacheFile.exists() || cacheFile.length() == 0L) {
-                Log.e(TAG, "No GeoJSON file found in ZIP or extraction failed")
+                Timber.e("No GeoJSON file found in ZIP or extraction failed")
                 return@withContext false
             }
 
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to download counties: $e", e)
+            Timber.e(e, "Failed to download counties")
             false
         }
     }

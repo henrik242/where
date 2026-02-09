@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -98,9 +99,9 @@ fun MapScreen(
     var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
 
     // Save camera position across navigation
-    var savedCameraLat by rememberSaveable { mutableStateOf(65.0) }
-    var savedCameraLon by rememberSaveable { mutableStateOf(10.0) }
-    var savedCameraZoom by rememberSaveable { mutableStateOf(5.0) }
+    var savedCameraLat by rememberSaveable { mutableDoubleStateOf(65.0) }
+    var savedCameraLon by rememberSaveable { mutableDoubleStateOf(10.0) }
+    var savedCameraZoom by rememberSaveable { mutableDoubleStateOf(5.0) }
 
 
     val permissionLauncher = rememberLauncherForActivityResult(
