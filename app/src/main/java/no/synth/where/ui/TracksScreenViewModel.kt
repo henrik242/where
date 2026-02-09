@@ -24,12 +24,4 @@ class TracksScreenViewModel @Inject constructor(
     fun importTrack(gpxContent: String): Track? {
         return trackRepository.importTrack(gpxContent)
     }
-
-    fun continueTrack(track: Track) {
-        trackRepository.continueTrack(track)
-    }
-
-    fun setViewingTrack(track: Track) {
-        trackRepository.setViewingTrack(track)
-    }
 }
