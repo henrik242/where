@@ -7,11 +7,6 @@ import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
-data class TrackWithPoints(
-    val track: TrackEntity,
-    val points: List<TrackPointEntity>
-)
-
 @Dao
 interface TrackDao {
     @Query("SELECT * FROM tracks WHERE isRecording = 0 ORDER BY startTime DESC")

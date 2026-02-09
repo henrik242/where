@@ -50,11 +50,6 @@ class StyleServer private constructor(private val port: Int) {
         }
     }
 
-    fun stop() {
-        isRunning = false
-        serverSocket?.close()
-    }
-
     private fun handleClient(socket: Socket) {
         thread(start = true, isDaemon = true) {
             try {
