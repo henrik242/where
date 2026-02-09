@@ -54,13 +54,6 @@ class UserPreferences(context: Context) {
         }
     }
 
-    fun updateTrackingServerUrl(value: String) {
-        _trackingServerUrl.value = value
-        scope.launch {
-            dataStore.edit { it[TRACKING_SERVER_URL] = value }
-        }
-    }
-
     companion object {
         private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")

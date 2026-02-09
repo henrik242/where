@@ -347,11 +347,6 @@ class MapDownloadManager(private val context: Context) {
                                     continuation.resume(Pair(totalSize, totalTiles))
                                 }
                             }
-
-                            @JvmName("onErrorNonNull")
-                            fun onError(error: String) {
-                                onError(error as String?)
-                            }
                         })
                     }
                 }
