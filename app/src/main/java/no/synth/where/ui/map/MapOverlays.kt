@@ -1,0 +1,408 @@
+package no.synth.where.ui.map
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
+import no.synth.where.data.PlaceSearchClient
+import no.synth.where.data.RulerState
+import no.synth.where.util.formatDistance
+
+@Composable
+fun ZoomControls(
+    modifier: Modifier = Modifier,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        SmallFloatingActionButton(
+            onClick = onZoomIn,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Zoom In")
+        }
+        SmallFloatingActionButton(
+            onClick = onZoomOut,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
+        }
+    }
+}
+
+@Composable
+fun RulerCard(
+    modifier: Modifier = Modifier,
+    rulerState: RulerState,
+    onUndo: () -> Unit,
+    onClear: () -> Unit,
+    onSaveAsTrack: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    val totalDistance = rulerState.getTotalDistanceMeters()
+                    Text(
+                        text = if (rulerState.points.isEmpty()) "Tap to measure" else totalDistance.formatDistance(),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    if (rulerState.points.size > 1) {
+                        Text(
+                            text = "${rulerState.points.size} points",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (rulerState.points.size > 1) {
+                        SmallFloatingActionButton(
+                            onClick = onUndo,
+                            modifier = Modifier.size(32.dp),
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Undo,
+                                contentDescription = "Remove Last Point",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    SmallFloatingActionButton(
+                        onClick = onClear,
+                        modifier = Modifier.size(32.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Icon(
+                            Icons.Filled.Clear,
+                            contentDescription = "Clear All",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            if (rulerState.points.size >= 2) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onSaveAsTrack,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Filled.Save,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Save as Track")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RecordingCard(
+    modifier: Modifier = Modifier,
+    distance: Double,
+    onlineTrackingEnabled: Boolean,
+    onOnlineTrackingChange: (Boolean) -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Filled.FiberManualRecord,
+                    contentDescription = null,
+                    tint = Color.Red
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Recording",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        text = distance.formatDistance(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.CloudUpload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Online Tracking",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+                Switch(
+                    checked = onlineTrackingEnabled,
+                    onCheckedChange = onOnlineTrackingChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ViewingTrackBanner(
+    modifier: Modifier = Modifier,
+    trackName: String,
+    onClose: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Filled.Map,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = trackName,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.Filled.Close, contentDescription = "Close Track View")
+            }
+        }
+    }
+}
+
+@Composable
+fun ViewingPointBanner(
+    modifier: Modifier = Modifier,
+    pointName: String,
+    pointColor: String,
+    onClose: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(
+                        color = Color(pointColor.toColorInt()),
+                        shape = CircleShape
+                    )
+            )
+            Text(
+                text = pointName,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onClose) {
+                Icon(Icons.Filled.Close, contentDescription = "Close Point View")
+            }
+        }
+    }
+}
+
+@Composable
+fun BoxScope.MapOverlays(
+    rulerState: RulerState,
+    isRecording: Boolean,
+    recordingDistance: Double?,
+    onlineTrackingEnabled: Boolean,
+    viewingTrackName: String?,
+    viewingPointName: String?,
+    viewingPointColor: String,
+    showSearch: Boolean,
+    searchQuery: String,
+    searchResults: List<PlaceSearchClient.SearchResult>,
+    isSearching: Boolean,
+    showViewingPoint: Boolean,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onRulerUndo: () -> Unit,
+    onRulerClear: () -> Unit,
+    onRulerSaveAsTrack: () -> Unit,
+    onOnlineTrackingChange: (Boolean) -> Unit,
+    onCloseViewingTrack: () -> Unit,
+    onCloseViewingPoint: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
+    onSearchClose: () -> Unit
+) {
+    val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null)
+
+    if (!hasTopOverlay) {
+        ZoomControls(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp),
+            onZoomIn = onZoomIn,
+            onZoomOut = onZoomOut
+        )
+    }
+
+    if (rulerState.isActive || isRecording) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 16.dp, end = 80.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (rulerState.isActive) {
+                RulerCard(
+                    rulerState = rulerState,
+                    onUndo = onRulerUndo,
+                    onClear = onRulerClear,
+                    onSaveAsTrack = onRulerSaveAsTrack
+                )
+            }
+            if (isRecording && recordingDistance != null) {
+                RecordingCard(
+                    distance = recordingDistance,
+                    onlineTrackingEnabled = onlineTrackingEnabled,
+                    onOnlineTrackingChange = onOnlineTrackingChange
+                )
+            }
+        }
+    }
+
+    if (viewingTrackName != null) {
+        ViewingTrackBanner(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .padding(horizontal = 16.dp),
+            trackName = viewingTrackName,
+            onClose = onCloseViewingTrack
+        )
+    }
+
+    if (showViewingPoint && viewingPointName != null) {
+        ViewingPointBanner(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .padding(horizontal = 16.dp),
+            pointName = viewingPointName,
+            pointColor = viewingPointColor,
+            onClose = onCloseViewingPoint
+        )
+    }
+
+    if (showSearch) {
+        val searchFocusRequester = remember { FocusRequester() }
+        LaunchedEffect(Unit) {
+            searchFocusRequester.requestFocus()
+        }
+        SearchOverlay(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .padding(start = 16.dp, end = 16.dp)
+                .fillMaxWidth(),
+            query = searchQuery,
+            onQueryChange = onSearchQueryChange,
+            isSearching = isSearching,
+            results = searchResults,
+            focusRequester = searchFocusRequester,
+            onResultClick = onSearchResultClick,
+            onClose = onSearchClose
+        )
+    }
+}

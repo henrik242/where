@@ -14,16 +14,18 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
-import no.synth.where.data.TrackRepository
 import org.maplibre.android.geometry.LatLng
+import timber.log.Timber
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,8 +37,8 @@ fun TracksScreen(
     onShowTrackOnMap: (Track) -> Unit
 ) {
     val context = LocalContext.current
-    val trackRepository = remember { TrackRepository.getInstance(context) }
-    val tracks = trackRepository.tracks
+    val viewModel: TracksScreenViewModel = hiltViewModel()
+    val tracks by viewModel.tracks.collectAsState()
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var trackToRename by remember { mutableStateOf<Track?>(null) }
@@ -54,7 +56,7 @@ fun TracksScreen(
                 inputStream?.close()
 
                 if (gpxContent != null) {
-                    val importedTrack = trackRepository.importTrack(gpxContent)
+                    val importedTrack = viewModel.importTrack(gpxContent)
                     if (importedTrack == null) {
                         importErrorMessage = "Failed to import GPX file. The file may be corrupted or in an unsupported format."
                         showImportError = true
@@ -84,7 +86,7 @@ fun TracksScreen(
         onOpen = { track -> openTrack(context, track) },
         onDeleteRequest = { track -> trackToDelete = track },
         onConfirmDelete = {
-            trackToDelete?.let { trackRepository.deleteTrack(it) }
+            trackToDelete?.let { viewModel.deleteTrack(it) }
             trackToDelete = null
         },
         onDismissDelete = { trackToDelete = null },
@@ -95,7 +97,7 @@ fun TracksScreen(
         onNewTrackNameChange = { newTrackName = it },
         onConfirmRename = {
             if (newTrackName.isNotBlank()) {
-                trackToRename?.let { trackRepository.renameTrack(it, newTrackName) }
+                trackToRename?.let { viewModel.renameTrack(it, newTrackName) }
             }
             trackToRename = null
         },
@@ -435,7 +437,7 @@ private fun shareTrack(context: android.content.Context, track: Track) {
 
         context.startActivity(Intent.createChooser(shareIntent, "Share Track"))
     } catch (e: Exception) {
-        e.printStackTrace()
+        Timber.e(e, "Track operation error")
     }
 }
 
@@ -460,7 +462,7 @@ private fun saveTrackToDownloads(context: android.content.Context, track: Track)
             android.widget.Toast.LENGTH_LONG
         ).show()
     } catch (e: Exception) {
-        e.printStackTrace()
+        Timber.e(e, "Track operation error")
         android.widget.Toast.makeText(
             context,
             "Failed to save track: ${e.message}",
@@ -495,7 +497,7 @@ private fun openTrack(context: android.content.Context, track: Track) {
             shareTrack(context, track)
         }
     } catch (e: Exception) {
-        e.printStackTrace()
+        Timber.e(e, "Track operation error")
     }
 }
 

@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
 import no.synth.where.MainActivity
 import no.synth.where.R
 import no.synth.where.data.ClientIdManager
@@ -27,11 +28,17 @@ import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import org.maplibre.android.geometry.LatLng
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class LocationTrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var trackRepository: TrackRepository
+
+    @Inject lateinit var trackRepository: TrackRepository
+    @Inject lateinit var userPreferences: UserPreferences
+    @Inject lateinit var clientIdManager: ClientIdManager
+
     private var onlineTrackingClient: OnlineTrackingClient? = null
 
     private val locationCallback = object : LocationCallback() {
@@ -54,13 +61,10 @@ class LocationTrackingService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        trackRepository = TrackRepository.getInstance(this)
 
         serviceScope.launch {
-            val userPreferences = UserPreferences.getInstance(this@LocationTrackingService)
-            if (userPreferences.onlineTrackingEnabled) {
+            if (userPreferences.onlineTrackingEnabled.value) {
                 enableOnlineTracking()
             }
         }
@@ -68,13 +72,11 @@ class LocationTrackingService : Service() {
         createNotificationChannel()
     }
 
-    fun enableOnlineTracking() {
+    private fun enableOnlineTracking() {
         serviceScope.launch {
-            val userPreferences = UserPreferences.getInstance(this@LocationTrackingService)
-            val clientIdManager = ClientIdManager.getInstance(this@LocationTrackingService)
             val clientId = clientIdManager.getClientId()
             onlineTrackingClient = OnlineTrackingClient(
-                serverUrl = userPreferences.trackingServerUrl,
+                serverUrl = userPreferences.trackingServerUrl.value,
                 clientId = clientId
             )
 
@@ -89,14 +91,20 @@ class LocationTrackingService : Service() {
         }
     }
 
-    fun disableOnlineTracking() {
+    private fun disableOnlineTracking() {
         onlineTrackingClient?.stopTrack()
         onlineTrackingClient = null
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, createNotification())
-        startLocationUpdates()
+        when (intent?.action) {
+            ACTION_ENABLE_ONLINE -> enableOnlineTracking()
+            ACTION_DISABLE_ONLINE -> disableOnlineTracking()
+            else -> {
+                startForeground(NOTIFICATION_ID, createNotification())
+                startLocationUpdates()
+            }
+        }
         return START_STICKY
     }
 
@@ -175,7 +183,6 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        instance = null
         fusedLocationClient.removeLocationUpdates(locationCallback)
         onlineTrackingClient?.stopTrack()
         serviceScope.cancel()
@@ -188,8 +195,8 @@ class LocationTrackingService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val LOCATION_UPDATE_INTERVAL = 5000L // 5 seconds
         private const val FASTEST_UPDATE_INTERVAL = 2000L // 2 seconds
-
-        private var instance: LocationTrackingService? = null
+        private const val ACTION_ENABLE_ONLINE = "no.synth.where.action.ENABLE_ONLINE"
+        private const val ACTION_DISABLE_ONLINE = "no.synth.where.action.DISABLE_ONLINE"
 
         fun start(context: Context) {
             val intent = Intent(context, LocationTrackingService::class.java)
@@ -202,11 +209,17 @@ class LocationTrackingService : Service() {
         }
 
         fun enableOnlineTracking(context: Context) {
-            instance?.enableOnlineTracking()
+            val intent = Intent(context, LocationTrackingService::class.java).apply {
+                action = ACTION_ENABLE_ONLINE
+            }
+            context.startService(intent)
         }
 
         fun disableOnlineTracking(context: Context) {
-            instance?.disableOnlineTracking()
+            val intent = Intent(context, LocationTrackingService::class.java).apply {
+                action = ACTION_DISABLE_ONLINE
+            }
+            context.startService(intent)
         }
     }
 }

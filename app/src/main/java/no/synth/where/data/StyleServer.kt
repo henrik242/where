@@ -1,6 +1,6 @@
 package no.synth.where.data
 
-import android.util.Log
+import timber.log.Timber
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
@@ -22,7 +22,7 @@ class StyleServer private constructor(private val port: Int) {
 
     fun start() {
         if (isRunning) {
-            Log.d(TAG, "Server already running on port $port")
+            Timber.d("Server already running on port %d", port)
             return
         }
 
@@ -30,7 +30,7 @@ class StyleServer private constructor(private val port: Int) {
         thread(start = true, isDaemon = true, name = "StyleServer") {
             try {
                 serverSocket = ServerSocket(port)
-                Log.d(TAG, "Server started on port $port")
+                Timber.d("Server started on port %d", port)
 
                 while (isRunning) {
                     try {
@@ -38,12 +38,12 @@ class StyleServer private constructor(private val port: Int) {
                         handleClient(clientSocket)
                     } catch (e: Exception) {
                         if (isRunning) {
-                            Log.e(TAG, "Error accepting connection: $e")
+                            Timber.e(e, "Error accepting connection")
                         }
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Server error: $e", e)
+                Timber.e(e, "Server error")
             } finally {
                 serverSocket?.close()
             }
@@ -62,16 +62,13 @@ class StyleServer private constructor(private val port: Int) {
                     val reader = BufferedReader(InputStreamReader(client.getInputStream()))
                     val writer = PrintWriter(client.getOutputStream(), true)
 
-                    // Read the HTTP request line
                     val requestLine = reader.readLine() ?: return@use
 
-                    // Skip remaining headers
                     while (true) {
                         val line = reader.readLine()
                         if (line.isNullOrBlank()) break
                     }
 
-                    // Parse request: "GET /styles/kartverket-style.json HTTP/1.1"
                     val parts = requestLine.split(" ")
                     if (parts.size >= 2) {
                         val uri = parts[1]
@@ -81,13 +78,12 @@ class StyleServer private constructor(private val port: Int) {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error handling client: $e")
+                Timber.e(e, "Error handling client")
             }
         }
     }
 
     private fun serveStyleJson(uri: String): String {
-        // Extract layer name from URI like /styles/kartverket-style.json
         val layerName = uri.substringAfter("/styles/").substringBefore("-style.json")
 
         val tileUrl = when (layerName) {
@@ -131,12 +127,11 @@ $styleJson"""
     }
 
     companion object {
-        private const val TAG = "StyleServer"
         private const val DEFAULT_PORT = 8765
-        
+
         @Volatile
         private var instance: StyleServer? = null
-        
+
         fun getInstance(): StyleServer {
             return instance ?: synchronized(this) {
                 instance ?: StyleServer(DEFAULT_PORT).also { instance = it }

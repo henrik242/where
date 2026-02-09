@@ -1,25 +1,41 @@
 package no.synth.where.data
 
 import android.content.Context
-import android.util.Log
-import com.google.gson.Gson
+import kotlinx.serialization.json.*
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
+import timber.log.Timber
 
 data class FylkeGeoJSON(
     val type: String,
     val features: List<FylkeFeature>
 ) {
     companion object {
-        fun fromGeonorge(json: String): FylkeGeoJSON {
-            val gson = Gson()
-            val root = gson.fromJson(json, com.google.gson.JsonObject::class.java)
-            val fylkeObj = root.getAsJsonObject("Fylke")
-            return if (fylkeObj != null) {
-                gson.fromJson(fylkeObj, FylkeGeoJSON::class.java)
-            } else {
-                gson.fromJson(json, FylkeGeoJSON::class.java)
-            }
+        private val json = Json { ignoreUnknownKeys = true }
+
+        fun fromGeonorge(text: String): FylkeGeoJSON {
+            val root = json.parseToJsonElement(text).jsonObject
+            val fylkeObj = root["Fylke"]?.jsonObject
+            val geoJsonObj = fylkeObj ?: root
+
+            val type = geoJsonObj["type"]?.jsonPrimitive?.content ?: "FeatureCollection"
+            val features = geoJsonObj["features"]?.jsonArray?.map { featureElement ->
+                val featureObj = featureElement.jsonObject
+                val featureType = featureObj["type"]?.jsonPrimitive?.content ?: "Feature"
+                val properties = featureObj["properties"]?.jsonObject?.let { props ->
+                    props.entries.associate { (key, value) ->
+                        key to ((value as? JsonPrimitive)?.contentOrNull ?: value.toString())
+                    }
+                } ?: emptyMap()
+                val geometry = featureObj["geometry"]?.jsonObject?.let { geom ->
+                    val geomType = geom["type"]?.jsonPrimitive?.content ?: ""
+                    val coordinates = geom["coordinates"] ?: JsonNull
+                    FylkeGeometry(type = geomType, coordinates = coordinates)
+                } ?: FylkeGeometry("", JsonNull)
+                FylkeFeature(type = featureType, properties = properties, geometry = geometry)
+            } ?: emptyList()
+
+            return FylkeGeoJSON(type = type, features = features)
         }
     }
 }
@@ -32,7 +48,7 @@ data class FylkeFeature(
 
 data class FylkeGeometry(
     val type: String,
-    val coordinates: Any
+    val coordinates: JsonElement
 )
 
 object FylkeDataLoader {
@@ -45,7 +61,7 @@ object FylkeDataLoader {
                 return emptyList()
             }
         } catch (e: Exception) {
-            Log.e("FylkeDataLoader", "Error loading counties: $e")
+            Timber.e(e, "Error loading counties")
             return emptyList()
         }
 
@@ -58,17 +74,8 @@ object FylkeDataLoader {
             }
 
             val rings = when (feature.geometry.type) {
-                "Polygon" -> {
-                    @Suppress("UNCHECKED_CAST")
-                    feature.geometry.coordinates as List<List<List<Double>>>
-                }
-
-                "MultiPolygon" -> {
-                    @Suppress("UNCHECKED_CAST")
-                    val coords = feature.geometry.coordinates as List<List<List<List<Double>>>>
-                    coords.flatMap { it }
-                }
-
+                "Polygon" -> parsePolygonCoordinates(feature.geometry.coordinates)
+                "MultiPolygon" -> parseMultiPolygonCoordinates(feature.geometry.coordinates)
                 else -> emptyList()
             }
 
@@ -92,5 +99,22 @@ object FylkeDataLoader {
             )
         }
     }
-}
 
+    private fun parsePolygonCoordinates(coordinates: JsonElement): List<List<List<Double>>> {
+        return coordinates.jsonArray.map { ring ->
+            ring.jsonArray.map { coord ->
+                coord.jsonArray.map { it.jsonPrimitive.double }
+            }
+        }
+    }
+
+    private fun parseMultiPolygonCoordinates(coordinates: JsonElement): List<List<List<Double>>> {
+        return coordinates.jsonArray.flatMap { polygon ->
+            polygon.jsonArray.map { ring ->
+                ring.jsonArray.map { coord ->
+                    coord.jsonArray.map { it.jsonPrimitive.double }
+                }
+            }
+        }
+    }
+}
