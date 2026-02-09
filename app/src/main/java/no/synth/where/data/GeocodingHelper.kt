@@ -1,9 +1,9 @@
 package no.synth.where.data
 
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import timber.log.Timber
 import okhttp3.Request
 import org.json.JSONObject
 import org.maplibre.android.geometry.LatLng
@@ -54,7 +54,7 @@ object GeocodingHelper {
 
             null
         } catch (e: Exception) {
-            Log.e("GeocodingHelper", "Error reverse geocoding: $e", e)
+            Timber.e(e, "Error reverse geocoding")
             null
         }
     }

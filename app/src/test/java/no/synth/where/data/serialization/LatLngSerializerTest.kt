@@ -1,11 +1,12 @@
 package no.synth.where.data.serialization
 
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.TrackPoint
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.Assert.*
 import org.maplibre.android.geometry.LatLng
 
 class LatLngSerializerTest {
