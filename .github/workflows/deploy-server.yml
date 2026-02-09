@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'server/**'
-      - '.github/workflows/deploy-server.yml'
+      - 'web/**'
+      - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
 jobs:
@@ -26,12 +26,12 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd server
+        cd web
         bun install
 
     - name: Generate version info
       run: |
-        cd server
+        cd web
         GIT_COMMIT_COUNT=$(git rev-list --count HEAD)
         GIT_SHORT_SHA=$(git rev-parse --short HEAD)
         BUILD_DATE=$(date +%Y-%m-%d)
@@ -41,26 +41,26 @@ jobs:
 
     - name: Build client TypeScript
       run: |
-        cd server
+        cd web
         bun run build
 
     - name: Inject version into HTML
       run: |
-        cd server
+        cd web
         sed -i "s|<!-- VERSION_PLACEHOLDER -->|<div id=\"version-info\" style=\"display:none;\">${VERSION_STRING}</div>|g" src/public/index.html
 
     - name: Run unit tests
       run: |
-        cd server
+        cd web
         bun run test:unit
 
-    - name: Deploy to server
+    - name: Deploy to web
       uses: easingthemes/ssh-deploy@main
       with:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
         REMOTE_USER: ${{ secrets.REMOTE_USER }}
-        SOURCE: "server/"
+        SOURCE: "web/"
         TARGET: ${{ secrets.REMOTE_TARGET }}
         EXCLUDE: "/node_modules/, /bun.lockb, /.env, *.log, *.pid"
 

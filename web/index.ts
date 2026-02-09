@@ -63,7 +63,7 @@ setServerInstance(server);
 startStaleTrackChecker();
 
 // Log server info
-console.log(`🚀 Where Server running at http://localhost:${server.port}`);
+console.log(`🚀 Where Web running at http://localhost:${server.port}`);
 console.log(`📡 WebSocket available at ws://localhost:${server.port}/ws`);
 console.log(`🌐 Web interface at http://localhost:${server.port}`);
 console.log(`🔑 Admin: ${CONFIG.ADMIN_KEY ? 'ENABLED' : 'DISABLED'}`);
