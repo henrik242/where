@@ -12,5 +12,5 @@ local.properties
 
 # Environment files with secrets
 .env
-server/.env
+web/.env
 /app/release/app-release.aab
