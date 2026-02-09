@@ -15,14 +15,14 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import no.synth.where.data.SavedPoint
-import no.synth.where.data.SavedPointsRepository
 import org.maplibre.android.geometry.LatLng
 import androidx.core.graphics.toColorInt
 
@@ -31,9 +31,8 @@ fun SavedPointsScreen(
     onBackClick: () -> Unit,
     onShowOnMap: (SavedPoint) -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val repository = remember { SavedPointsRepository.getInstance(context) }
-    val savedPoints = repository.savedPoints
+    val viewModel: SavedPointsScreenViewModel = hiltViewModel()
+    val savedPoints by viewModel.savedPoints.collectAsState()
 
     var showEditDialog by remember { mutableStateOf(false) }
     var editingPoint by remember { mutableStateOf<SavedPoint?>(null) }
@@ -47,14 +46,14 @@ fun SavedPointsScreen(
             editingPoint = point
             showEditDialog = true
         },
-        onDelete = { point -> repository.deletePoint(point.id) },
+        onDelete = { point -> viewModel.deletePoint(point.id) },
         onShowOnMap = onShowOnMap,
         onDismissEdit = {
             showEditDialog = false
             editingPoint = null
         },
         onSaveEdit = { name, description, color ->
-            repository.updatePoint(editingPoint!!.id, name, description, color)
+            viewModel.updatePoint(editingPoint!!.id, name, description, color)
             showEditDialog = false
             editingPoint = null
         }
