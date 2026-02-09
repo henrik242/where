@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "server",
+      "name": "web",
       "devDependencies": {
         "@types/bun": "latest",
         "@types/jest": "^30.0.0",

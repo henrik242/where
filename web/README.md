@@ -81,10 +81,10 @@ The same secret must be configured in the Android app build.
 # Install dependencies
 bun install
 
-# Run server
+# Run web
 bun run dev
 
-# The server will start on http://localhost:3000
+# The web will start on http://localhost:3000
 ```
 
 **Note:** All POST/PUT requests require HMAC-SHA256 signatures in the `X-Signature` header. See `.env.example` for setup.

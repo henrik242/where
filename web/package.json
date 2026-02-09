@@ -1,5 +1,5 @@
 {
-  "name": "where-server",
+  "name": "where-web",
   "version": "1.0.0",
   "description": "Backend server for Where Android app - live tracking visualization",
   "main": "index.ts",
