@@ -1,6 +1,5 @@
 package no.synth.where.data
 
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -8,6 +7,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import org.maplibre.android.geometry.LatLng
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 object PlaceSearchClient {
@@ -69,7 +69,7 @@ object PlaceSearchClient {
             }
             results
         } catch (e: Exception) {
-            Log.e("PlaceSearchClient", "Error searching places: $e", e)
+            Timber.e(e, "Error searching places")
             emptyList()
         }
     }

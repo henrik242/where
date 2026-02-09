@@ -31,11 +31,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,37 +43,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
-import kotlinx.coroutines.launch
-import no.synth.where.data.ClientIdManager
-import no.synth.where.data.UserPreferences
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 @Composable
 fun OnlineTrackingScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val userPreferences = remember { UserPreferences.getInstance(context) }
-    val scope = rememberCoroutineScope()
-    var clientId by remember { mutableStateOf("") }
+    val viewModel: OnlineTrackingScreenViewModel = hiltViewModel()
+    val isTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
+    val clientId by viewModel.clientId.collectAsState()
+    val trackingServerUrl by viewModel.trackingServerUrl.collectAsState()
     var showRegenerateDialog by remember { mutableStateOf(false) }
-    val clientIdManager = remember { ClientIdManager.getInstance(context) }
-
-    LaunchedEffect(Unit) {
-        clientId = clientIdManager.getClientId()
-    }
 
     OnlineTrackingScreenContent(
-        isTrackingEnabled = userPreferences.onlineTrackingEnabled,
+        isTrackingEnabled = isTrackingEnabled,
         clientId = clientId,
         showRegenerateDialog = showRegenerateDialog,
         onBackClick = onBackClick,
-        onToggleTracking = { userPreferences.updateOnlineTrackingEnabled(it) },
+        onToggleTracking = { viewModel.toggleTracking(it) },
         onViewOnWeb = {
-            val url = "${userPreferences.trackingServerUrl}?clients=$clientId"
+            val url = "${trackingServerUrl}?clients=$clientId"
             context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         },
         onShare = {
-            val url = "${userPreferences.trackingServerUrl}?clients=$clientId"
+            val url = "${trackingServerUrl}?clients=$clientId"
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, "Track my location: $url")
@@ -84,10 +77,8 @@ fun OnlineTrackingScreen(
         },
         onRegenerateClick = { showRegenerateDialog = true },
         onConfirmRegenerate = {
-            scope.launch {
-                clientId = clientIdManager.regenerateClientId()
-                showRegenerateDialog = false
-            }
+            viewModel.regenerateClientId()
+            showRegenerateDialog = false
         },
         onDismissRegenerate = { showRegenerateDialog = false }
     )

@@ -20,12 +20,23 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# Gson rules
--keepattributes Signature,InnerClasses,EnclosingMethod
--keep class com.google.gson.** { *; }
+# kotlinx.serialization rules
+-keepattributes *Annotation*, InnerClasses
+-keep,includedescriptorclasses class no.synth.where.**$$serializer { *; }
+-keepclassmembers class no.synth.where.** {
+    *** Companion;
+}
+-keepclasseswithmembers class no.synth.where.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
 
 # Data model rules
 -keep class no.synth.where.data.** { *; }
+
+# Hilt rules
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
 
 # OkHttp rules
 -keep class okhttp3.** { *; }
