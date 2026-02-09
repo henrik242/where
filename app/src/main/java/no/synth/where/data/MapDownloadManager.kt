@@ -1,13 +1,13 @@
 package no.synth.where.data
 
 import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.offline.*
+import timber.log.Timber
 import kotlin.coroutines.resume
 
 class MapDownloadManager(private val context: Context) {
@@ -21,7 +21,6 @@ class MapDownloadManager(private val context: Context) {
     private val activeDownloads = mutableMapOf<String, OfflineRegion>()
 
     init {
-        // Start the local HTTP server for serving style JSON files
         startStyleServer()
     }
 
@@ -29,15 +28,12 @@ class MapDownloadManager(private val context: Context) {
         try {
             styleServer = StyleServer.getInstance()
             styleServer?.start()
-            Log.d("MapDownloadManager", "Style server started on port $STYLE_SERVER_PORT")
+            Timber.d("Style server started on port %d", STYLE_SERVER_PORT)
         } catch (e: Exception) {
-            Log.e("MapDownloadManager", "Failed to start style server: $e", e)
+            Timber.e(e, "Failed to start style server")
         }
     }
 
-    /**
-     * Download map tiles for a region using MapLibre's OfflineManager
-     */
     suspend fun downloadRegion(
         region: Region,
         layerName: String = "kartverket",
@@ -48,27 +44,25 @@ class MapDownloadManager(private val context: Context) {
     ) {
         withContext(Dispatchers.Main) {
             try {
-                Log.d("MapDownloadManager", "Starting offline download for: ${region.name} on layer $layerName")
+                Timber.d("Starting offline download for: %s on layer %s", region.name, layerName)
 
                 val styleUrl = getStyleUrlForLayer(layerName)
                 val regionName = "${region.name}-$layerName"
 
-                // Check if region already exists
                 val existingRegion = findOfflineRegion(regionName)
                 if (existingRegion != null) {
-                    Log.d("MapDownloadManager", "Region $regionName already exists, updating...")
+                    Timber.d("Region %s already exists, updating...", regionName)
                     existingRegion.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
                         override fun onDelete() {
-                            Log.d("MapDownloadManager", "Deleted existing region")
+                            Timber.d("Deleted existing region")
                         }
 
                         override fun onError(error: String) {
-                            Log.w("MapDownloadManager", "Error deleting existing region: $error")
+                            Timber.w("Error deleting existing region: %s", error)
                         }
                     })
                 }
 
-                // Create offline region definition
                 val definition = OfflineTilePyramidRegionDefinition(
                     styleUrl,
                     region.boundingBox,
@@ -83,7 +77,6 @@ class MapDownloadManager(private val context: Context) {
                     put("region", region.name)
                 }.toString().toByteArray()
 
-                // Create the offline region
                 offlineManager.createOfflineRegion(
                     definition,
                     metadata,
@@ -103,7 +96,7 @@ class MapDownloadManager(private val context: Context) {
                                     if (status.isComplete) {
                                         offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
                                         activeDownloads.remove(regionName)
-                                        Log.d("MapDownloadManager", "Download complete for $regionName")
+                                        Timber.d("Download complete for %s", regionName)
                                         onComplete(true)
                                     }
                                 }
@@ -111,19 +104,16 @@ class MapDownloadManager(private val context: Context) {
                                 override fun onError(error: OfflineRegionError) {
                                     val errorMessage = error.message
                                     val reason = error.reason
-                                    
-                                    // Check if this is a temporary/retriable error
+
                                     val isTemporaryError = errorMessage.contains("timeout", ignoreCase = true) ||
                                                          errorMessage.contains("temporary", ignoreCase = true) ||
                                                          reason.contains("CONNECTION", ignoreCase = true) ||
                                                          reason.contains("TIMEOUT", ignoreCase = true)
-                                    
+
                                     if (isTemporaryError) {
-                                        // Log but don't stop - MapLibre will retry
-                                        Log.w("MapDownloadManager", "Temporary download error for $regionName: $errorMessage (reason: $reason). Download will continue with retry.")
+                                        Timber.w("Temporary download error for %s: %s (reason: %s). Download will continue with retry.", regionName, errorMessage, reason)
                                     } else {
-                                        // Permanent error - stop the download
-                                        Log.e("MapDownloadManager", "Permanent download error for $regionName: $errorMessage (reason: $reason)")
+                                        Timber.e("Permanent download error for %s: %s (reason: %s)", regionName, errorMessage, reason)
                                         offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
                                         activeDownloads.remove(regionName)
                                         onComplete(false)
@@ -131,19 +121,19 @@ class MapDownloadManager(private val context: Context) {
                                 }
 
                                 override fun mapboxTileCountLimitExceeded(limit: Long) {
-                                    Log.w("MapDownloadManager", "Tile count limit exceeded: $limit")
+                                    Timber.w("Tile count limit exceeded: %d", limit)
                                 }
                             })
                         }
 
                         override fun onError(error: String) {
-                            Log.e("MapDownloadManager", "Error creating offline region: $error")
+                            Timber.e("Error creating offline region: %s", error)
                             onComplete(false)
                         }
                     })
 
             } catch (e: Exception) {
-                Log.e("MapDownloadManager", "Download error: $e", e)
+                Timber.e(e, "Download error")
                 onComplete(false)
             }
         }
@@ -165,31 +155,24 @@ class MapDownloadManager(private val context: Context) {
             }
 
             override fun onError(error: String) {
-                Log.e("MapDownloadManager", "Error listing regions: $error")
+                Timber.e("Error listing regions: %s", error)
                 continuation.resume(null)
             }
         })
     }
 
     private fun getStyleUrlForLayer(layerName: String): String {
-        // Return the localhost URL for the style JSON served by our local HTTP server
         return "http://127.0.0.1:$STYLE_SERVER_PORT/styles/$layerName-style.json"
     }
 
-    /**
-     * Stop an ongoing download for a region
-     */
     fun stopDownload(regionName: String) {
         activeDownloads[regionName]?.let { offlineRegion ->
             offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
             activeDownloads.remove(regionName)
-            Log.d("MapDownloadManager", "Stopped download for $regionName")
+            Timber.d("Stopped download for %s", regionName)
         }
     }
 
-    /**
-     * Get info about downloaded regions
-     */
     suspend fun getRegionTileInfo(
         region: Region,
         layerName: String = "kartverket",
@@ -198,7 +181,6 @@ class MapDownloadManager(private val context: Context) {
     ): RegionTileInfo = suspendCancellableCoroutine { continuation ->
         val regionName = "${region.name}-$layerName"
 
-        // Calculate estimated tile count for this region
         val estimatedTileCount = estimateTileCount(region.boundingBox, minZoom, maxZoom)
 
         offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
@@ -240,7 +222,6 @@ class MapDownloadManager(private val context: Context) {
                         }
                     })
                 } else {
-                    // Region not downloaded yet, return estimated tile count
                     continuation.resume(RegionTileInfo(estimatedTileCount, 0, 0, false))
                 }
             }
@@ -251,26 +232,19 @@ class MapDownloadManager(private val context: Context) {
         })
     }
 
-    /**
-     * Estimate the number of tiles needed for a bounding box across zoom levels
-     */
     private fun estimateTileCount(bounds: LatLngBounds, minZoom: Int, maxZoom: Int): Int {
         var totalTiles = 0
         for (zoom in minZoom..maxZoom) {
-            val tilesPerSide = 1 shl zoom // 2^zoom
+            val tilesPerSide = 1 shl zoom
             val latSpan = bounds.latitudeSpan
             val lonSpan = bounds.longitudeSpan
 
-            // Rough estimate: tiles = (latSpan/180) * (lonSpan/360) * tilesPerSide^2
             val tilesAtZoom = ((latSpan / 180.0) * (lonSpan / 360.0) * tilesPerSide * tilesPerSide).toInt()
             totalTiles += tilesAtZoom
         }
         return totalTiles.coerceAtLeast(1)
     }
 
-    /**
-     * Delete all tiles for a specific region
-     */
     suspend fun deleteRegionTiles(region: Region, layerName: String = "kartverket"): Boolean =
         suspendCancellableCoroutine { continuation ->
             val regionName = "${region.name}-$layerName"
@@ -290,12 +264,12 @@ class MapDownloadManager(private val context: Context) {
                     if (offlineRegion != null) {
                         offlineRegion.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
                             override fun onDelete() {
-                                Log.d("MapDownloadManager", "Deleted region: $regionName")
+                                Timber.d("Deleted region: %s", regionName)
                                 continuation.resume(true)
                             }
 
                             override fun onError(error: String) {
-                                Log.e("MapDownloadManager", "Error deleting region: $error")
+                                Timber.e("Error deleting region: %s", error)
                                 continuation.resume(false)
                             }
                         })
@@ -310,9 +284,6 @@ class MapDownloadManager(private val context: Context) {
             })
         }
 
-    /**
-     * Get statistics for a specific layer
-     */
     suspend fun getLayerStats(layerName: String): Pair<Long, Int> = suspendCancellableCoroutine { continuation ->
         offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
             override fun onList(offlineRegions: Array<OfflineRegion>?) {
@@ -325,7 +296,6 @@ class MapDownloadManager(private val context: Context) {
                     return
                 }
 
-                // Filter regions for this specific layer
                 val layerRegions = offlineRegions.filter { r ->
                     try {
                         val metadata = String(r.metadata)

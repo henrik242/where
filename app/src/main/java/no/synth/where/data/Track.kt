@@ -1,16 +1,22 @@
 package no.synth.where.data
 
+import kotlinx.serialization.Serializable
+import no.synth.where.data.serialization.LatLngSerializer
 import org.maplibre.android.geometry.LatLng
+import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.*
 
+@Serializable
 data class TrackPoint(
+    @Serializable(with = LatLngSerializer::class)
     val latLng: LatLng,
     val timestamp: Long,
     val altitude: Double? = null,
     val accuracy: Float? = null
 )
 
+@Serializable
 data class Track(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
@@ -113,7 +119,7 @@ $trackPointsXml
                     isRecording = false
                 )
             } catch (e: Exception) {
-                e.printStackTrace()
+                Timber.e(e, "Error parsing GPX")
                 return null
             }
         }

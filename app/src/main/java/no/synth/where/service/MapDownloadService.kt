@@ -19,10 +19,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import no.synth.where.MainActivity
 import no.synth.where.R
+import dagger.hilt.android.AndroidEntryPoint
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
 
+@AndroidEntryPoint
 class MapDownloadService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var downloadManager: MapDownloadManager
@@ -40,7 +42,6 @@ class MapDownloadService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
         downloadManager = MapDownloadManager(this)
         createNotificationChannel()
         
@@ -189,7 +190,6 @@ class MapDownloadService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        instance = null
         serviceScope.cancel()
     }
 
@@ -205,7 +205,6 @@ class MapDownloadService : Service() {
         private const val EXTRA_MIN_ZOOM = "extra_min_zoom"
         private const val EXTRA_MAX_ZOOM = "extra_max_zoom"
 
-        private var instance: MapDownloadService? = null
         private val _downloadState = MutableStateFlow(DownloadState())
         val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
 

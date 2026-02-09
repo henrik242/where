@@ -11,9 +11,11 @@ import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
+import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import no.synth.where.util.DeviceUtils
+import timber.log.Timber
 
 /**
  * Utilities for managing map layers and rendering.
@@ -50,7 +52,7 @@ object MapRenderUtils {
                 style.addLayer(lineLayer)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Map render error")
         }
     }
 
@@ -99,9 +101,7 @@ object MapRenderUtils {
                 }
                 val pointSource = GeoJsonSource(
                     pointSourceId,
-                    com.google.gson.Gson().toJson(
-                        mapOf("type" to "FeatureCollection", "features" to pointFeatures)
-                    )
+                    FeatureCollection.fromFeatures(pointFeatures)
                 )
                 style.addSource(pointSource)
 
@@ -114,7 +114,7 @@ object MapRenderUtils {
                 style.addLayer(pointLayer)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Map render error")
         }
     }
 
@@ -144,9 +144,7 @@ object MapRenderUtils {
 
                 val source = GeoJsonSource(
                     sourceId,
-                    com.google.gson.Gson().toJson(
-                        mapOf("type" to "FeatureCollection", "features" to features)
-                    )
+                    FeatureCollection.fromFeatures(features)
                 )
                 style.addSource(source)
 
@@ -162,7 +160,7 @@ object MapRenderUtils {
                 style.addLayer(circleLayer)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Map render error")
         }
     }
 
@@ -203,7 +201,7 @@ object MapRenderUtils {
                 forceLocationOnEmulator(locationComponent)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Map render error")
         }
     }
 
@@ -222,7 +220,7 @@ object MapRenderUtils {
             }
             locationComponent.forceLocationUpdate(mockLocation)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Timber.e(e, "Map render error")
         }
     }
 }

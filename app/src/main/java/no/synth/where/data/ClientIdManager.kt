@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
 
 private val Context.clientDataStore: DataStore<Preferences> by preferencesDataStore(name = "client_prefs")
 
-class ClientIdManager private constructor(private val context: Context) {
+class ClientIdManager(private val context: Context) {
 
     suspend fun getClientId(): String {
         return context.clientDataStore.data.map { preferences ->
@@ -44,15 +44,6 @@ class ClientIdManager private constructor(private val context: Context) {
 
     companion object {
         private val CLIENT_ID_KEY = stringPreferencesKey("client_id")
-
-        @Volatile
-        private var instance: ClientIdManager? = null
-
-        fun getInstance(context: Context): ClientIdManager {
-            return instance ?: synchronized(this) {
-                instance ?: ClientIdManager(context.applicationContext).also { instance = it }
-            }
-        }
     }
 }
 

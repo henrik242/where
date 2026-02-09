@@ -1,6 +1,5 @@
 package no.synth.where.data
 
-import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -13,6 +12,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import org.maplibre.android.geometry.LatLng
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 class OnlineTrackingClient(
@@ -60,12 +60,12 @@ class OnlineTrackingClient(
                     val responseBody = response.body.string()
                     val trackId = JSONObject(responseBody).getString("id")
                     currentTrackId = trackId
-                    Log.d("OnlineTracking", "Track started: $trackId")
+                    Timber.d("Track started: %s", trackId)
                 } else {
-                    Log.e("OnlineTracking", "Failed to start track: ${response.code}")
+                    Timber.e("Failed to start track: %d", response.code)
                 }
             } catch (e: Exception) {
-                Log.e("OnlineTracking", "Error starting track: $e", e)
+                Timber.e(e, "Error starting track")
             }
         }
     }
@@ -97,16 +97,16 @@ class OnlineTrackingClient(
                     val responseBody = response.body.string()
                     val trackId = JSONObject(responseBody).getString("id")
                     currentTrackId = trackId
-                    Log.d("OnlineTracking", "Track synced: $trackId")
+                    Timber.d("Track synced: %s", trackId)
 
                     track.points.drop(1).forEach { point ->
                         sendPointSync(trackId, point.latLng, point.altitude, point.accuracy)
                     }
                 } else {
-                    Log.e("OnlineTracking", "Failed to sync track: ${response.code}")
+                    Timber.e("Failed to sync track: %d", response.code)
                 }
             } catch (e: Exception) {
-                Log.e("OnlineTracking", "Error syncing track: $e", e)
+                Timber.e(e, "Error syncing track")
             }
         }
     }
@@ -124,7 +124,7 @@ class OnlineTrackingClient(
             val request = createSignedRequest("$serverUrl/api/tracks/$trackId/points", json.toString())
             client.newCall(request).execute()
         } catch (e: Exception) {
-            Log.e("OnlineTracking", "Error sending sync point: $e", e)
+            Timber.e(e, "Error sending sync point")
         }
     }
 
@@ -145,12 +145,12 @@ class OnlineTrackingClient(
 
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
-                    Log.d("OnlineTracking", "Point sent: ${latLng.latitude}, ${latLng.longitude}")
+                    Timber.d("Point sent: %f, %f", latLng.latitude, latLng.longitude)
                 } else {
-                    Log.e("OnlineTracking", "Failed to send point: ${response.code}")
+                    Timber.e("Failed to send point: %d", response.code)
                 }
             } catch (e: Exception) {
-                Log.e("OnlineTracking", "Error sending point: $e", e)
+                Timber.e(e, "Error sending point")
             }
         }
     }
@@ -164,15 +164,14 @@ class OnlineTrackingClient(
 
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
-                    Log.d("OnlineTracking", "Track stopped: $trackId")
+                    Timber.d("Track stopped: %s", trackId)
                     currentTrackId = null
                 } else {
-                    Log.e("OnlineTracking", "Failed to stop track: ${response.code}")
+                    Timber.e("Failed to stop track: %d", response.code)
                 }
             } catch (e: Exception) {
-                Log.e("OnlineTracking", "Error stopping track: $e", e)
+                Timber.e(e, "Error stopping track")
             }
         }
     }
 }
-

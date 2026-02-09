@@ -1,117 +1,116 @@
 package no.synth.where.data
 
 import android.content.Context
-import androidx.compose.runtime.mutableStateListOf
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
-import com.google.gson.JsonSerializationContext
-import com.google.gson.JsonSerializer
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import no.synth.where.data.db.SavedPointDao
+import no.synth.where.data.db.SavedPointEntity
 import no.synth.where.util.NamingUtils
 import org.maplibre.android.geometry.LatLng
+import timber.log.Timber
 import java.io.File
-import java.lang.reflect.Type
 
-private class LatLngSerializer : JsonSerializer<LatLng> {
-    override fun serialize(src: LatLng, typeOfSrc: Type, context: JsonSerializationContext) =
-        JsonObject().apply {
-            addProperty("latitude", src.latitude)
-            addProperty("longitude", src.longitude)
-        }
-}
-
-private class LatLngDeserializer : JsonDeserializer<LatLng> {
-    override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext) =
-        json.asJsonObject.let {
-            LatLng(it.get("latitude").asDouble, it.get("longitude").asDouble)
-        }
-}
-
-class SavedPointsRepository private constructor(context: Context) {
+class SavedPointsRepository(context: Context, private val savedPointDao: SavedPointDao) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val gson: Gson = GsonBuilder()
-        .registerTypeAdapter(LatLng::class.java, LatLngSerializer())
-        .registerTypeAdapter(LatLng::class.java, LatLngDeserializer())
-        .create()
+    private val json = Json { ignoreUnknownKeys = true }
     private val pointsFile: File = File(context.filesDir, "saved_points.json")
+    private val migratedFile: File = File(context.filesDir, "saved_points.json.migrated")
 
-    val savedPoints = mutableStateListOf<SavedPoint>()
+    private val _savedPoints = MutableStateFlow<List<SavedPoint>>(emptyList())
+    val savedPoints: StateFlow<List<SavedPoint>> = _savedPoints.asStateFlow()
 
     init {
-        try {
-            if (pointsFile.exists()) {
-                val json = pointsFile.readText()
-                val type = object : TypeToken<List<SavedPoint>>() {}.type
-                val points: List<SavedPoint> = gson.fromJson(json, type)
-                savedPoints.addAll(points)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+        scope.launch {
+            migrateJsonToRoom()
+            collectPoints()
         }
     }
 
-    private fun savePoints() {
-        scope.launch {
+    private suspend fun migrateJsonToRoom() {
+        if (pointsFile.exists() && !migratedFile.exists()) {
             try {
-                val json = gson.toJson(savedPoints)
-                pointsFile.writeText(json)
+                val text = pointsFile.readText()
+                val points: List<SavedPoint> = json.decodeFromString(text)
+                for (point in points) {
+                    val entity = SavedPointEntity(
+                        id = point.id,
+                        name = point.name,
+                        latitude = point.latLng.latitude,
+                        longitude = point.latLng.longitude,
+                        description = point.description,
+                        timestamp = point.timestamp,
+                        color = point.color
+                    )
+                    savedPointDao.insertPoint(entity)
+                }
+                pointsFile.renameTo(migratedFile)
+                Timber.d("Migrated ${points.size} saved points from JSON to Room")
             } catch (e: Exception) {
-                e.printStackTrace()
+                Timber.e(e, "Saved points JSON to Room migration error")
+            }
+        }
+    }
+
+    private suspend fun collectPoints() {
+        savedPointDao.getAllPoints().collect { entities ->
+            _savedPoints.value = entities.map { entity ->
+                SavedPoint(
+                    id = entity.id,
+                    name = entity.name,
+                    latLng = LatLng(entity.latitude, entity.longitude),
+                    description = entity.description,
+                    timestamp = entity.timestamp,
+                    color = entity.color
+                )
             }
         }
     }
 
     fun addPoint(name: String, latLng: LatLng, description: String = "", color: String = "#FF5722") {
-        val uniqueName = NamingUtils.makeUnique(name, savedPoints.map { it.name })
-        val point = SavedPoint(
+        val uniqueName = NamingUtils.makeUnique(name, _savedPoints.value.map { it.name })
+        val point = SavedPointEntity(
             id = java.util.UUID.randomUUID().toString(),
             name = uniqueName,
-            latLng = latLng,
+            latitude = latLng.latitude,
+            longitude = latLng.longitude,
             description = description,
             color = color
         )
-        savedPoints.add(point)
-        savePoints()
-    }
-
-    fun deletePoint(pointId: String) {
-        savedPoints.removeAll { it.id == pointId }
-        savePoints()
-    }
-
-    fun updatePoint(pointId: String, name: String, description: String, color: String) {
-        val index = savedPoints.indexOfFirst { it.id == pointId }
-        if (index != -1) {
-            val point = savedPoints[index]
-            val otherNames = savedPoints.filter { it.id != pointId }.map { it.name }
-            val uniqueName = NamingUtils.makeUnique(name, otherNames)
-
-            savedPoints[index] = point.copy(
-                name = uniqueName,
-                description = description,
-                color = color
-            )
-            savePoints()
+        scope.launch {
+            try {
+                savedPointDao.insertPoint(point)
+            } catch (e: Exception) {
+                Timber.e(e, "Saved points repository error")
+            }
         }
     }
 
-    companion object {
-        @Volatile
-        private var instance: SavedPointsRepository? = null
+    fun deletePoint(pointId: String) {
+        scope.launch {
+            try {
+                savedPointDao.deletePointById(pointId)
+            } catch (e: Exception) {
+                Timber.e(e, "Saved points repository error")
+            }
+        }
+    }
 
-        fun getInstance(context: Context): SavedPointsRepository {
-            return instance ?: synchronized(this) {
-                instance ?: SavedPointsRepository(context.applicationContext).also { instance = it }
+    fun updatePoint(pointId: String, name: String, description: String, color: String) {
+        val otherNames = _savedPoints.value.filter { it.id != pointId }.map { it.name }
+        val uniqueName = NamingUtils.makeUnique(name, otherNames)
+
+        scope.launch {
+            try {
+                savedPointDao.updatePoint(pointId, uniqueName, description, color)
+            } catch (e: Exception) {
+                Timber.e(e, "Saved points repository error")
             }
         }
     }
 }
-

@@ -7,12 +7,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.RegionsRepository
-import no.synth.where.data.TrackRepository
-import no.synth.where.data.UserPreferences
+import no.synth.where.data.SavedPoint
+import no.synth.where.navigation.*
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
+import timber.log.Timber
 
 @Composable
 fun WhereApp(
@@ -23,10 +26,12 @@ fun WhereApp(
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val userPreferences = remember { UserPreferences.getInstance(context) }
-    val trackRepository = remember { TrackRepository.getInstance(context) }
+    val viewModel: WhereAppViewModel = hiltViewModel()
+    val userPreferences = viewModel.userPreferences
+    val trackRepository = viewModel.trackRepository
+    val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
     var showSavedPoints by remember { mutableStateOf(true) }
-    var viewingPoint by remember { mutableStateOf<no.synth.where.data.SavedPoint?>(null) }
+    var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
     var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(context)) }
     var isOnline by remember { mutableStateOf(false) }
 
@@ -82,17 +87,17 @@ fun WhereApp(
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Timber.e(e, "GPX import error")
             }
             onGpxHandled()
         }
     }
 
-    NavHost(navController = navController, startDestination = "map") {
-        composable("map") {
+    NavHost(navController = navController, startDestination = MapRoute) {
+        composable<MapRoute> {
             MapScreen(
-                onSettingsClick = { navController.navigate("settings") },
-                showCountyBorders = userPreferences.showCountyBorders,
+                onSettingsClick = { navController.navigate(SettingsRoute) },
+                showCountyBorders = showCountyBorders,
                 onShowCountyBordersChange = { userPreferences.updateShowCountyBorders(it) },
                 showSavedPoints = showSavedPoints,
                 onShowSavedPointsChange = { showSavedPoints = it },
@@ -101,55 +106,55 @@ fun WhereApp(
                 regionsLoadedTrigger = regionsLoadedTrigger
             )
         }
-        composable("settings") {
+        composable<SettingsRoute> {
             SettingsScreen(
                 onBackClick = { navController.popBackStack() },
-                onDownloadClick = { navController.navigate("download") },
-                onTracksClick = { navController.navigate("tracks") },
-                onSavedPointsClick = { navController.navigate("savedpoints") },
-                onOnlineTrackingClick = { navController.navigate("onlinetracking") }
+                onDownloadClick = { navController.navigate(DownloadRoute) },
+                onTracksClick = { navController.navigate(TracksRoute) },
+                onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
+                onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) }
             )
         }
-        composable("onlinetracking") {
+        composable<OnlineTrackingRoute> {
             OnlineTrackingScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }
-        composable("savedpoints") {
+        composable<SavedPointsRoute> {
             SavedPointsScreen(
                 onBackClick = { navController.popBackStack() },
                 onShowOnMap = { point ->
                     viewingPoint = point
-                    navController.popBackStack("map", false)
+                    navController.popBackStack<MapRoute>(false)
                 }
             )
         }
-        composable("tracks") {
+        composable<TracksRoute> {
             TracksScreen(
                 onBackClick = { navController.popBackStack() },
                 onContinueTrack = { track ->
                     trackRepository.continueTrack(track)
                     LocationTrackingService.start(context)
-                    navController.popBackStack("map", false)
+                    navController.popBackStack<MapRoute>(false)
                 },
                 onShowTrackOnMap = { track ->
                     trackRepository.setViewingTrack(track)
-                    navController.popBackStack("map", false)
+                    navController.popBackStack<MapRoute>(false)
                 }
             )
         }
-        composable("download") {
+        composable<DownloadRoute> {
             DownloadScreen(
                 onBackClick = { navController.popBackStack() },
                 onLayerClick = { layerId ->
-                    navController.navigate("download/$layerId")
+                    navController.navigate(LayerRegionsRoute(layerId))
                 }
             )
         }
-        composable("download/{layerId}") { backStackEntry ->
-            val layerId = backStackEntry.arguments?.getString("layerId") ?: "kartverket"
+        composable<LayerRegionsRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<LayerRegionsRoute>()
             LayerRegionsScreen(
-                layerId = layerId,
+                layerId = route.layerId,
                 onBackClick = { navController.popBackStack() }
             )
         }
