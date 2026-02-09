@@ -6,7 +6,11 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.maplibre.android.geometry.LatLngBounds
-import org.maplibre.android.offline.*
+import org.maplibre.android.offline.OfflineManager
+import org.maplibre.android.offline.OfflineRegion
+import org.maplibre.android.offline.OfflineRegionError
+import org.maplibre.android.offline.OfflineRegionStatus
+import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
 import timber.log.Timber
 import kotlin.coroutines.resume
 
@@ -105,15 +109,29 @@ class MapDownloadManager(private val context: Context) {
                                     val errorMessage = error.message
                                     val reason = error.reason
 
-                                    val isTemporaryError = errorMessage.contains("timeout", ignoreCase = true) ||
-                                                         errorMessage.contains("temporary", ignoreCase = true) ||
-                                                         reason.contains("CONNECTION", ignoreCase = true) ||
-                                                         reason.contains("TIMEOUT", ignoreCase = true)
+                                    val isTemporaryError =
+                                        errorMessage.contains("timeout", ignoreCase = true) ||
+                                                errorMessage.contains(
+                                                    "temporary",
+                                                    ignoreCase = true
+                                                ) ||
+                                                reason.contains("CONNECTION", ignoreCase = true) ||
+                                                reason.contains("TIMEOUT", ignoreCase = true)
 
                                     if (isTemporaryError) {
-                                        Timber.w("Temporary download error for %s: %s (reason: %s). Download will continue with retry.", regionName, errorMessage, reason)
+                                        Timber.w(
+                                            "Temporary download error for %s: %s (reason: %s). Download will continue with retry.",
+                                            regionName,
+                                            errorMessage,
+                                            reason
+                                        )
                                     } else {
-                                        Timber.e("Permanent download error for %s: %s (reason: %s)", regionName, errorMessage, reason)
+                                        Timber.e(
+                                            "Permanent download error for %s: %s (reason: %s)",
+                                            regionName,
+                                            errorMessage,
+                                            reason
+                                        )
                                         offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
                                         activeDownloads.remove(regionName)
                                         onComplete(false)
@@ -139,27 +157,28 @@ class MapDownloadManager(private val context: Context) {
         }
     }
 
-    private suspend fun findOfflineRegion(name: String): OfflineRegion? = suspendCancellableCoroutine { continuation ->
-        offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
-            override fun onList(offlineRegions: Array<OfflineRegion>?) {
-                val region = offlineRegions?.find { region ->
-                    try {
-                        val metadata = String(region.metadata)
-                        val json = JSONObject(metadata)
-                        json.getString("name") == name
-                    } catch (_: Exception) {
-                        false
+    private suspend fun findOfflineRegion(name: String): OfflineRegion? =
+        suspendCancellableCoroutine { continuation ->
+            offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+                override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                    val region = offlineRegions?.find { region ->
+                        try {
+                            val metadata = String(region.metadata)
+                            val json = JSONObject(metadata)
+                            json.getString("name") == name
+                        } catch (_: Exception) {
+                            false
+                        }
                     }
+                    continuation.resume(region)
                 }
-                continuation.resume(region)
-            }
 
-            override fun onError(error: String) {
-                Timber.e("Error listing regions: %s", error)
-                continuation.resume(null)
-            }
-        })
-    }
+                override fun onError(error: String) {
+                    Timber.e("Error listing regions: %s", error)
+                    continuation.resume(null)
+                }
+            })
+        }
 
     private fun getStyleUrlForLayer(layerName: String): String {
         return "http://127.0.0.1:$STYLE_SERVER_PORT/styles/$layerName-style.json"
@@ -215,11 +234,6 @@ class MapDownloadManager(private val context: Context) {
                         override fun onError(error: String?) {
                             continuation.resume(RegionTileInfo(estimatedTileCount, 0, 0, false))
                         }
-
-                        @JvmName("onErrorNonNull")
-                        fun onError(error: String) {
-                            onError(error as String?)
-                        }
                     })
                 } else {
                     continuation.resume(RegionTileInfo(estimatedTileCount, 0, 0, false))
@@ -239,7 +253,8 @@ class MapDownloadManager(private val context: Context) {
             val latSpan = bounds.latitudeSpan
             val lonSpan = bounds.longitudeSpan
 
-            val tilesAtZoom = ((latSpan / 180.0) * (lonSpan / 360.0) * tilesPerSide * tilesPerSide).toInt()
+            val tilesAtZoom =
+                ((latSpan / 180.0) * (lonSpan / 360.0) * tilesPerSide * tilesPerSide).toInt()
             totalTiles += tilesAtZoom
         }
         return totalTiles.coerceAtLeast(1)
@@ -284,67 +299,68 @@ class MapDownloadManager(private val context: Context) {
             })
         }
 
-    suspend fun getLayerStats(layerName: String): Pair<Long, Int> = suspendCancellableCoroutine { continuation ->
-        offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
-            override fun onList(offlineRegions: Array<OfflineRegion>?) {
-                var totalSize = 0L
-                var totalTiles = 0
-                var processed = 0
+    suspend fun getLayerStats(layerName: String): Pair<Long, Int> =
+        suspendCancellableCoroutine { continuation ->
+            offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+                override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                    var totalSize = 0L
+                    var totalTiles = 0
+                    var processed = 0
 
-                if (offlineRegions.isNullOrEmpty()) {
-                    continuation.resume(Pair(0L, 0))
-                    return
-                }
+                    if (offlineRegions.isNullOrEmpty()) {
+                        continuation.resume(Pair(0L, 0))
+                        return
+                    }
 
-                val layerRegions = offlineRegions.filter { r ->
-                    try {
-                        val metadata = String(r.metadata)
-                        val json = JSONObject(metadata)
-                        json.getString("layer") == layerName
-                    } catch (_: Exception) {
-                        false
+                    val layerRegions = offlineRegions.filter { r ->
+                        try {
+                            val metadata = String(r.metadata)
+                            val json = JSONObject(metadata)
+                            json.getString("layer") == layerName
+                        } catch (_: Exception) {
+                            false
+                        }
+                    }
+
+                    if (layerRegions.isEmpty()) {
+                        continuation.resume(Pair(0L, 0))
+                        return
+                    }
+
+                    layerRegions.forEach { region ->
+                        region.getStatus(object : OfflineRegion.OfflineRegionStatusCallback {
+                            override fun onStatus(status: OfflineRegionStatus?) {
+                                if (status != null) {
+                                    totalSize += status.completedResourceSize
+                                    totalTiles += status.completedResourceCount.toInt()
+                                }
+                                processed++
+
+                                if (processed == layerRegions.size) {
+                                    continuation.resume(Pair(totalSize, totalTiles))
+                                }
+                            }
+
+                            override fun onError(error: String?) {
+                                processed++
+                                if (processed == layerRegions.size) {
+                                    continuation.resume(Pair(totalSize, totalTiles))
+                                }
+                            }
+
+                            @JvmName("onErrorNonNull")
+                            fun onError(error: String) {
+                                onError(error as String?)
+                            }
+                        })
                     }
                 }
 
-                if (layerRegions.isEmpty()) {
+                override fun onError(error: String) {
                     continuation.resume(Pair(0L, 0))
-                    return
                 }
-
-                layerRegions.forEach { region ->
-                    region.getStatus(object : OfflineRegion.OfflineRegionStatusCallback {
-                        override fun onStatus(status: OfflineRegionStatus?) {
-                            if (status != null) {
-                                totalSize += status.completedResourceSize
-                                totalTiles += status.completedResourceCount.toInt()
-                            }
-                            processed++
-
-                            if (processed == layerRegions.size) {
-                                continuation.resume(Pair(totalSize, totalTiles))
-                            }
-                        }
-
-                        override fun onError(error: String?) {
-                            processed++
-                            if (processed == layerRegions.size) {
-                                continuation.resume(Pair(totalSize, totalTiles))
-                            }
-                        }
-
-                        @JvmName("onErrorNonNull")
-                        fun onError(error: String) {
-                            onError(error as String?)
-                        }
-                    })
-                }
-            }
-
-            override fun onError(error: String) {
-                continuation.resume(Pair(0L, 0))
-            }
-        })
-    }
+            })
+        }
 
     data class RegionTileInfo(
         val totalTiles: Int,

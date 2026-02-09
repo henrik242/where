@@ -298,7 +298,7 @@ fun EditPointDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    colors.forEach { (colorHex, colorName) ->
+                    colors.forEach { (colorHex, _) ->
                         Box(
                             modifier = Modifier
                                 .size(40.dp)

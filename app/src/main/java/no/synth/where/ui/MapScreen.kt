@@ -37,7 +37,6 @@ import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.map.MapDialogs
 import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.MapLibreMapView
-import no.synth.where.ui.map.MapOverlays
 import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.ui.map.MapScreenContent
 import no.synth.where.ui.map.RecordingCard
@@ -225,8 +224,12 @@ fun MapScreen(
         onSearchClick = { viewModel.openSearch() },
         onLayerMenuToggle = { showLayerMenu = it },
         onLayerSelected = { selectedLayer = it; showLayerMenu = false },
-        onWaymarkedTrailsToggle = { showWaymarkedTrails = !showWaymarkedTrails; showLayerMenu = false },
-        onCountyBordersToggle = { onShowCountyBordersChange(!showCountyBorders); showLayerMenu = false },
+        onWaymarkedTrailsToggle = {
+            showWaymarkedTrails = !showWaymarkedTrails; showLayerMenu = false
+        },
+        onCountyBordersToggle = {
+            onShowCountyBordersChange(!showCountyBorders); showLayerMenu = false
+        },
         onSavedPointsToggle = { onShowSavedPointsChange(!showSavedPoints); showLayerMenu = false },
         onRecordStopClick = {
             if (isRecording) {
@@ -432,7 +435,12 @@ private val sampleRulerState = RulerState(
 
 private val sampleSearchResults = listOf(
     PlaceSearchClient.SearchResult("Trondheim", "By", "Trondheim", LatLng(63.43, 10.39)),
-    PlaceSearchClient.SearchResult("Trondheim lufthavn", "Flyplass", "Stjørdal", LatLng(63.46, 10.92)),
+    PlaceSearchClient.SearchResult(
+        "Trondheim lufthavn",
+        "Flyplass",
+        "Stjørdal",
+        LatLng(63.46, 10.92)
+    ),
     PlaceSearchClient.SearchResult("Trondheimsfjorden", "Fjord", "Trondheim", LatLng(63.50, 10.50)),
 )
 
@@ -441,7 +449,9 @@ private val sampleSearchResults = listOf(
 private fun SearchOverlayPreview() {
     MaterialTheme {
         SearchOverlay(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             query = "Trondheim",
             onQueryChange = {},
             isSearching = false,
@@ -457,7 +467,9 @@ private fun SearchOverlayPreview() {
 private fun RulerCardPreview() {
     MaterialTheme {
         RulerCard(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             rulerState = sampleRulerState,
             onUndo = {},
             onClear = {},
@@ -471,7 +483,9 @@ private fun RulerCardPreview() {
 private fun RecordingCardPreview() {
     MaterialTheme {
         RecordingCard(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             distance = 2450.0,
             onlineTrackingEnabled = true,
             onOnlineTrackingChange = {}
@@ -484,7 +498,9 @@ private fun RecordingCardPreview() {
 private fun ViewingTrackBannerPreview() {
     MaterialTheme {
         ViewingTrackBanner(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             trackName = "Bymarka → Lian",
             onClose = {}
         )
@@ -496,7 +512,9 @@ private fun ViewingTrackBannerPreview() {
 private fun ViewingPointBannerPreview() {
     MaterialTheme {
         ViewingPointBanner(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             pointName = "Utsikten",
             pointColor = "#4CAF50",
             onClose = {}

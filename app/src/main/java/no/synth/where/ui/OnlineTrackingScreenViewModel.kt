@@ -33,10 +33,6 @@ class OnlineTrackingScreenViewModel @Inject constructor(
         userPreferences.updateOnlineTrackingEnabled(enabled)
     }
 
-    fun updateServerUrl(url: String) {
-        userPreferences.updateTrackingServerUrl(url)
-    }
-
     fun regenerateClientId() {
         viewModelScope.launch {
             _clientId.value = clientIdManager.regenerateClientId()

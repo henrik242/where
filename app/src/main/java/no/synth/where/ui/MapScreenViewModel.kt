@@ -9,15 +9,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.PlaceSearchClient
-import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
-import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.util.NamingUtils
@@ -50,7 +47,8 @@ class MapScreenViewModel @Inject constructor(
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     private val _searchResults = MutableStateFlow<List<PlaceSearchClient.SearchResult>>(emptyList())
-    val searchResults: StateFlow<List<PlaceSearchClient.SearchResult>> = _searchResults.asStateFlow()
+    val searchResults: StateFlow<List<PlaceSearchClient.SearchResult>> =
+        _searchResults.asStateFlow()
 
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
@@ -115,13 +113,20 @@ class MapScreenViewModel @Inject constructor(
     }
 
     // Search actions
-    fun openSearch() { _showSearch.value = true }
+    fun openSearch() {
+        _showSearch.value = true
+    }
+
     fun closeSearch() {
         _showSearch.value = false
         _searchQuery.value = ""
         _searchResults.value = emptyList()
     }
-    fun updateSearchQuery(query: String) { _searchQuery.value = query }
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     fun onSearchResultClicked() {
         _showSearch.value = false
         _searchQuery.value = ""
@@ -139,7 +144,9 @@ class MapScreenViewModel @Inject constructor(
         resolveTrackName()
     }
 
-    fun updateTrackNameInput(name: String) { _trackNameInput.value = name }
+    fun updateTrackNameInput(name: String) {
+        _trackNameInput.value = name
+    }
 
     fun dismissStopTrackDialog() {
         _showStopTrackDialog.value = false
@@ -189,7 +196,9 @@ class MapScreenViewModel @Inject constructor(
                 }
                 if (baseName != null) {
                     _trackNameInput.value =
-                        NamingUtils.makeUnique(baseName, trackRepository.tracks.value.map { it.name })
+                        NamingUtils.makeUnique(
+                            baseName,
+                            trackRepository.tracks.value.map { it.name })
                 }
                 _isResolvingTrackName.value = false
             }
@@ -204,7 +213,9 @@ class MapScreenViewModel @Inject constructor(
         resolvePointName(latLng)
     }
 
-    fun updateSavePointName(name: String) { _savePointName.value = name }
+    fun updateSavePointName(name: String) {
+        _savePointName.value = name
+    }
 
     fun dismissSavePointDialog() {
         _showSavePointDialog.value = false
@@ -260,7 +271,10 @@ class MapScreenViewModel @Inject constructor(
 
     // Ruler actions
     fun toggleRuler() {
-        _rulerState.value = if (_rulerState.value.isActive) _rulerState.value.clear() else _rulerState.value.copy(isActive = true)
+        _rulerState.value =
+            if (_rulerState.value.isActive) _rulerState.value.clear() else _rulerState.value.copy(
+                isActive = true
+            )
     }
 
     fun addRulerPoint(latLng: LatLng) {
@@ -281,7 +295,9 @@ class MapScreenViewModel @Inject constructor(
         resolveRulerName()
     }
 
-    fun updateRulerTrackName(name: String) { _rulerTrackName.value = name }
+    fun updateRulerTrackName(name: String) {
+        _rulerTrackName.value = name
+    }
 
     fun dismissSaveRulerAsTrackDialog() {
         _showSaveRulerAsTrackDialog.value = false
@@ -329,7 +345,9 @@ class MapScreenViewModel @Inject constructor(
 
                 if (baseName != null) {
                     _rulerTrackName.value =
-                        NamingUtils.makeUnique(baseName, trackRepository.tracks.value.map { it.name })
+                        NamingUtils.makeUnique(
+                            baseName,
+                            trackRepository.tracks.value.map { it.name })
                 }
                 _isResolvingRulerName.value = false
             }
