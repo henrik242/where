@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -19,7 +20,7 @@ import no.synth.where.ui.theme.WhereTheme
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
-    private var regionsLoaded by mutableStateOf(0)
+    private var regionsLoaded by mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Enable edge-to-edge display
