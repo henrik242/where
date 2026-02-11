@@ -17,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -32,7 +33,9 @@ fun SettingsScreen(
     onDownloadClick: () -> Unit,
     onTracksClick: () -> Unit,
     onSavedPointsClick: () -> Unit,
-    onOnlineTrackingClick: () -> Unit
+    onOnlineTrackingClick: () -> Unit,
+    crashReportingEnabled: Boolean,
+    onCrashReportingChange: (Boolean) -> Unit
 ) {
     SettingsScreenContent(
         versionInfo = "${BuildConfig.GIT_COMMIT_COUNT}.${BuildConfig.GIT_SHORT_SHA} ${BuildConfig.BUILD_DATE}",
@@ -40,7 +43,9 @@ fun SettingsScreen(
         onDownloadClick = onDownloadClick,
         onTracksClick = onTracksClick,
         onSavedPointsClick = onSavedPointsClick,
-        onOnlineTrackingClick = onOnlineTrackingClick
+        onOnlineTrackingClick = onOnlineTrackingClick,
+        crashReportingEnabled = crashReportingEnabled,
+        onCrashReportingChange = onCrashReportingChange
     )
 }
 
@@ -52,7 +57,9 @@ fun SettingsScreenContent(
     onDownloadClick: () -> Unit,
     onTracksClick: () -> Unit,
     onSavedPointsClick: () -> Unit,
-    onOnlineTrackingClick: () -> Unit
+    onOnlineTrackingClick: () -> Unit,
+    crashReportingEnabled: Boolean = false,
+    onCrashReportingChange: (Boolean) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -151,6 +158,34 @@ fun SettingsScreenContent(
                     Icon(
                         Icons.Filled.ChevronRight,
                         contentDescription = "Go to Download Manager"
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onCrashReportingChange(!crashReportingEnabled) }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Crash Reporting",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Send anonymous crash reports to help improve the app",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        modifier = Modifier.padding(start = 16.dp),
+                        checked = crashReportingEnabled,
+                        onCheckedChange = onCrashReportingChange
                     )
                 }
 
