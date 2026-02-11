@@ -33,6 +33,56 @@ import no.synth.where.util.formatDistance
 object MapDialogs {
 
     /**
+     * Prominent disclosure dialog for background location access,
+     * required by Google Play's User Data policy.
+     */
+    @Composable
+    fun BackgroundLocationDisclosureDialog(
+        onAllow: () -> Unit,
+        onDeny: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDeny,
+            title = { Text("Background Location Access") },
+            text = {
+                Column {
+                    Text(
+                        text = "This app collects your location in the background to enable:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "\u2022 GPS track recording while the screen is locked or other apps are in use\n\u2022 Real-time location sharing when online tracking is enabled",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Your location is only tracked while you have an active recording session. You can stop tracking at any time using the stop button or the notification.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "On the next screen, select \"Allow all the time\" to enable background tracking.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onAllow) {
+                    Text("Allow")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDeny) {
+                    Text("Deny")
+                }
+            }
+        )
+    }
+
+
+    /**
      * Dialog for stopping and saving a track.
      */
     @Composable
