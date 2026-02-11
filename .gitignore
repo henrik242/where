@@ -14,4 +14,4 @@ local.properties
 .env
 web/.env
 /app/release/app-release.aab
-app/google-services.json
+google-services.json

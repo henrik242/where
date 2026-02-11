@@ -24,6 +24,9 @@ class UserPreferences(context: Context) {
     private val _showCountyBorders = MutableStateFlow(true)
     val showCountyBorders: StateFlow<Boolean> = _showCountyBorders.asStateFlow()
 
+    private val _crashReportingEnabled = MutableStateFlow(true)
+    val crashReportingEnabled: StateFlow<Boolean> = _crashReportingEnabled.asStateFlow()
+
     private val _onlineTrackingEnabled = MutableStateFlow(false)
     val onlineTrackingEnabled: StateFlow<Boolean> = _onlineTrackingEnabled.asStateFlow()
 
@@ -34,6 +37,7 @@ class UserPreferences(context: Context) {
         scope.launch {
             dataStore.data.collect { prefs ->
                 _showCountyBorders.value = prefs[SHOW_COUNTY_BORDERS] ?: true
+                _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
             }
@@ -47,6 +51,13 @@ class UserPreferences(context: Context) {
         }
     }
 
+    fun updateCrashReportingEnabled(value: Boolean) {
+        _crashReportingEnabled.value = value
+        scope.launch {
+            dataStore.edit { it[CRASH_REPORTING_ENABLED] = value }
+        }
+    }
+
     fun updateOnlineTrackingEnabled(value: Boolean) {
         _onlineTrackingEnabled.value = value
         scope.launch {
@@ -55,6 +66,7 @@ class UserPreferences(context: Context) {
     }
 
     companion object {
+        private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
         private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")

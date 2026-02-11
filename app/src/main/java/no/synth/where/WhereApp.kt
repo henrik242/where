@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.SavedPoint
@@ -30,6 +31,7 @@ fun WhereApp(
     val userPreferences = viewModel.userPreferences
     val trackRepository = viewModel.trackRepository
     val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
+    val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     var showSavedPoints by remember { mutableStateOf(true) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
     var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(context)) }
@@ -112,7 +114,12 @@ fun WhereApp(
                 onDownloadClick = { navController.navigate(DownloadRoute) },
                 onTracksClick = { navController.navigate(TracksRoute) },
                 onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
-                onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) }
+                onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
+                crashReportingEnabled = crashReportingEnabled,
+                onCrashReportingChange = { enabled ->
+                    userPreferences.updateCrashReportingEnabled(enabled)
+                    FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = enabled
+                }
             )
         }
         composable<OnlineTrackingRoute> {
