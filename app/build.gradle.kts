@@ -3,6 +3,8 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.dagger.hilt)
@@ -148,6 +150,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
     implementation(libs.timber)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
