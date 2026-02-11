@@ -2,8 +2,10 @@ package no.synth.where.ui
 
 import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -93,6 +95,15 @@ fun MapScreen(
     var showLayerMenu by remember { mutableStateOf(false) }
     var showWaymarkedTrails by remember { mutableStateOf(false) }
     var hasLocationPermission by remember { mutableStateOf(false) }
+    var hasBackgroundLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var showBackgroundLocationDisclosure by remember { mutableStateOf(false) }
+    var pendingRecordStart by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -103,6 +114,21 @@ fun MapScreen(
     var savedCameraLon by rememberSaveable { mutableDoubleStateOf(10.0) }
     var savedCameraZoom by rememberSaveable { mutableDoubleStateOf(5.0) }
 
+    val backgroundLocationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasBackgroundLocationPermission = granted
+        if (granted && pendingRecordStart) {
+            pendingRecordStart = false
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            val trackName = dateFormat.format(Date())
+            viewModel.startRecording(trackName)
+            LocationTrackingService.start(context)
+            scope.launch { snackbarHostState.showSnackbar("Recording...") }
+        } else {
+            pendingRecordStart = false
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -235,6 +261,8 @@ fun MapScreen(
         onRecordStopClick = {
             if (isRecording) {
                 viewModel.openStopTrackDialog()
+            } else if (!hasBackgroundLocationPermission) {
+                showBackgroundLocationDisclosure = true
             } else {
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                 val trackName = dateFormat.format(Date())
@@ -403,6 +431,19 @@ fun MapScreen(
                 }
             },
             onDismiss = { viewModel.dismissPointInfoDialog() }
+        )
+    }
+
+    if (showBackgroundLocationDisclosure) {
+        MapDialogs.BackgroundLocationDisclosureDialog(
+            onAllow = {
+                showBackgroundLocationDisclosure = false
+                pendingRecordStart = true
+                backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            },
+            onDeny = {
+                showBackgroundLocationDisclosure = false
+            }
         )
     }
 
