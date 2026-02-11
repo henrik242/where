@@ -30,9 +30,6 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
-# Data model rules
--keep class no.synth.where.data.** { *; }
-
 # Hilt rules
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }
