@@ -1,0 +1,66 @@
+<resources>
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="ok">OK</string>
+    <string name="discard">Discard</string>
+    <string name="allow">Allow</string>
+    <string name="deny">Deny</string>
+    <string name="name_label">Name</string>
+    <string name="description_optional">Description (optional)</string>
+    <string name="color">Color</string>
+
+    <!-- Map Dialogs -->
+    <string name="background_location_access">Background Location Access</string>
+    <string name="background_location_intro">This app collects your location in the background to enable:</string>
+    <string name="background_location_features">\u2022 GPS track recording while the screen is locked or other apps are in use\n\u2022 Real-time location sharing when online tracking is enabled</string>
+    <string name="background_location_privacy">Your location is only tracked while you have an active recording session. You can stop tracking at any time using the stop button or the notification.</string>
+    <string name="background_location_instruction">On the next screen, select "Allow all the time" to enable background tracking.</string>
+    <string name="save_track">Save Track</string>
+    <string name="enter_track_name">Enter a name for your track:</string>
+    <string name="track_name">Track Name</string>
+    <string name="save_location">Save Location</string>
+    <string name="enter_location_name">Enter a name for this location:</string>
+    <string name="location_name">Location Name</string>
+    <string name="edit_location">Edit Location</string>
+    <string name="save_route_as_track">Save Route as Track</string>
+    <string name="enter_route_name">Enter a name for this route:</string>
+    <string name="ruler_points_distance">%1$d points \u2022 %2$s</string>
+
+    <!-- Map FAB Column -->
+    <string name="search_places">Search Places</string>
+    <string name="layers_and_overlays">Layers &amp; Overlays</string>
+    <string name="map_layers">Map Layers</string>
+    <string name="kartverket_norway">Kartverket (Norway)</string>
+    <string name="kartverket_toporaster">Kartverket toporaster</string>
+    <string name="kartverket_sjokart">Kartverket sj\u00f8kart</string>
+    <string name="overlays">Overlays</string>
+    <string name="waymarked_trails_osm">Waymarked Trails (OSM)</string>
+    <string name="county_borders_norway">County Borders (Norway)</string>
+    <string name="saved_points">Saved Points</string>
+    <string name="stop_recording">Stop Recording</string>
+    <string name="start_recording">Start Recording</string>
+    <string name="my_location">My Location</string>
+    <string name="ruler">Ruler</string>
+    <string name="settings">Settings</string>
+
+    <!-- Map Overlays -->
+    <string name="zoom_in">Zoom In</string>
+    <string name="zoom_out">Zoom Out</string>
+    <string name="tap_to_measure">Tap to measure</string>
+    <string name="n_points">%1$d points</string>
+    <string name="remove_last_point">Remove Last Point</string>
+    <string name="clear_all">Clear All</string>
+    <string name="save_as_track">Save as Track</string>
+    <string name="recording">Recording</string>
+    <string name="online_tracking">Online Tracking</string>
+    <string name="close_track_view">Close Track View</string>
+    <string name="close_point_view">Close Point View</string>
+
+    <!-- Search Overlay -->
+    <string name="search_places_hint">Search places\u2026</string>
+    <string name="clear">Clear</string>
+    <string name="close_search">Close Search</string>
+</resources>

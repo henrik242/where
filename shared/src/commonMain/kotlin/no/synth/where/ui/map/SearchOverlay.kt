@@ -28,10 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import no.synth.where.R
 import no.synth.where.data.PlaceSearchClient
+import no.synth.where.resources.Res
+import no.synth.where.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SearchOverlay(
@@ -60,7 +61,7 @@ fun SearchOverlay(
                     modifier = Modifier
                         .weight(1f)
                         .focusRequester(focusRequester),
-                    placeholder = { Text(stringResource(R.string.search_places_hint)) },
+                    placeholder = { Text(stringResource(Res.string.search_places_hint)) },
                     singleLine = true,
                     trailingIcon = {
                         if (isSearching) {
@@ -70,13 +71,13 @@ fun SearchOverlay(
                             )
                         } else if (query.isNotEmpty()) {
                             IconButton(onClick = { onQueryChange("") }) {
-                                Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.clear))
+                                Icon(Icons.Filled.Clear, contentDescription = stringResource(Res.string.clear))
                             }
                         }
                     }
                 )
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close_search))
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.close_search))
                 }
             }
         }
@@ -103,7 +104,7 @@ fun SearchOverlay(
                             Text(
                                 text = listOf(result.type, result.municipality)
                                     .filter { it.isNotBlank() }
-                                    .joinToString(" · "),
+                                    .joinToString(" \u00b7 "),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
