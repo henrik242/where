@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.room)
@@ -19,6 +21,10 @@ kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         }
+
+        androidResources {
+            enable = true
+        }
     }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
@@ -34,6 +40,12 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.room.runtime)
             implementation(libs.androidx.datastore.preferences)
+            @Suppress("DEPRECATION")
+            implementation(compose.material3)
+            @Suppress("DEPRECATION")
+            implementation(compose.materialIconsExtended)
+            @Suppress("DEPRECATION")
+            implementation(compose.components.resources)
         }
         androidMain.dependencies {
             implementation(libs.ktor.client.android)
@@ -44,6 +56,11 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
     }
+}
+
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "no.synth.where.resources"
 }
 
 room {
