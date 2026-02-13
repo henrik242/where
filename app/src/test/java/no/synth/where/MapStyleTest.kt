@@ -4,6 +4,7 @@ import no.synth.where.data.MapStyle
 import no.synth.where.data.Region
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.ui.map.MapLayer
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -57,5 +58,25 @@ class MapStyleTest {
         assertTrue("Should contain Trøndelag", styleJson.contains("\"Trøndelag\""))
 
         assertTrue("Should contain coordinates array", styleJson.contains("\"coordinates\""))
+    }
+
+    @Test
+    fun testOnlySelectedSourceIncluded() {
+        val styleJson = MapStyle.getStyle(selectedLayer = MapLayer.OSM, regions = regions)
+
+        assertTrue("Should contain osm source", styleJson.contains("\"osm\""))
+        assertFalse("Should not contain kartverket source", styleJson.contains("\"kartverket\""))
+        assertFalse("Should not contain toporaster source", styleJson.contains("\"toporaster\""))
+        assertFalse("Should not contain opentopomap source", styleJson.contains("\"opentopomap\""))
+        assertFalse("Should not contain sjokartraster source", styleJson.contains("\"sjokartraster\""))
+    }
+
+    @Test
+    fun testWaymarkedTrailsIncludedWhenEnabled() {
+        val withTrails = MapStyle.getStyle(showWaymarkedTrails = true)
+        assertTrue("Should contain waymarkedtrails", withTrails.contains("\"waymarkedtrails\""))
+
+        val withoutTrails = MapStyle.getStyle(showWaymarkedTrails = false)
+        assertFalse("Should not contain waymarkedtrails", withoutTrails.contains("\"waymarkedtrails\""))
     }
 }
