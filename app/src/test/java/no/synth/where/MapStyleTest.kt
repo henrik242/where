@@ -5,8 +5,8 @@ import java.io.File
 import no.synth.where.data.MapStyle
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
+import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.LatLngBounds
 import org.junit.After
 import org.junit.Before
 import org.junit.Test

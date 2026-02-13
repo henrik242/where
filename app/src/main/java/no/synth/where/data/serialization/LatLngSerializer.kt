@@ -9,7 +9,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 
 object LatLngSerializer : KSerializer<LatLng> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("LatLng") {

@@ -2,7 +2,7 @@ package no.synth.where.data
 
 import kotlinx.serialization.Serializable
 import no.synth.where.data.serialization.LatLngSerializer
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.*

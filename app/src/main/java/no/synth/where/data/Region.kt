@@ -1,7 +1,7 @@
 package no.synth.where.data
 
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
+import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.LatLngBounds
 
 data class Region(
     val name: String,

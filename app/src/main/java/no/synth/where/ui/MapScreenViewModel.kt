@@ -1,6 +1,5 @@
 package no.synth.where.ui
 
-import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +17,7 @@ import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.util.NamingUtils
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import javax.inject.Inject
 
 @HiltViewModel
@@ -178,13 +177,8 @@ class MapScreenViewModel @Inject constructor(
                 val firstPoint = track.points.first()
                 val lastPoint = track.points.last()
                 val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
-                val distance = FloatArray(1)
-                Location.distanceBetween(
-                    firstPoint.latLng.latitude, firstPoint.latLng.longitude,
-                    lastPoint.latLng.latitude, lastPoint.latLng.longitude,
-                    distance
-                )
-                val baseName = if (distance[0] > 100 && startName != null) {
+                val distance = firstPoint.latLng.distanceTo(lastPoint.latLng)
+                val baseName = if (distance > 100 && startName != null) {
                     val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
                     if (endName != null && startName != endName) {
                         "$startName → $endName"
@@ -323,13 +317,8 @@ class MapScreenViewModel @Inject constructor(
                 val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
 
                 val baseName = if (points.size > 1) {
-                    val distance = FloatArray(1)
-                    Location.distanceBetween(
-                        firstPoint.latLng.latitude, firstPoint.latLng.longitude,
-                        lastPoint.latLng.latitude, lastPoint.latLng.longitude,
-                        distance
-                    )
-                    if (distance[0] > 100 && startName != null) {
+                    val distance = firstPoint.latLng.distanceTo(lastPoint.latLng)
+                    if (distance > 100 && startName != null) {
                         val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
                         if (endName != null && startName != endName) {
                             "$startName → $endName"

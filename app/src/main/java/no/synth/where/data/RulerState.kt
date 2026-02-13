@@ -1,6 +1,6 @@
 package no.synth.where.data
 
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 
 data class RulerPoint(
     val latLng: LatLng,

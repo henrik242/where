@@ -2,8 +2,8 @@ package no.synth.where.data
 
 import android.content.Context
 import kotlinx.serialization.json.*
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
+import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.LatLngBounds
 import timber.log.Timber
 
 data class FylkeGeoJSON(
