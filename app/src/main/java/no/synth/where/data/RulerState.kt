@@ -1,10 +1,12 @@
 package no.synth.where.data
 
 import no.synth.where.data.geo.LatLng
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
-data class RulerPoint(
+data class RulerPoint @OptIn(ExperimentalUuidApi::class) constructor(
     val latLng: LatLng,
-    val id: String = java.util.UUID.randomUUID().toString()
+    val id: String = Uuid.random().toString()
 )
 
 data class RulerState(

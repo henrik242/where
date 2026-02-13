@@ -188,6 +188,45 @@ class TrackTest {
     }
 
     @Test
+    fun fromGPX_parsesFractionalSeconds() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx><trk><name>Test</name><trkseg>
+            <trkpt lat="59.9" lon="10.7"><time>2025-01-01T12:00:00.500Z</time></trkpt>
+            </trkseg></trk></gpx>"""
+
+        val track = Track.fromGPX(gpx)!!
+        assertEquals(1735732800500L, track.points[0].timestamp)
+    }
+
+    @Test
+    fun fromGPX_parsesTimezoneOffset() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx><trk><name>Test</name><trkseg>
+            <trkpt lat="59.9" lon="10.7"><time>2025-01-01T13:00:00+01:00</time></trkpt>
+            </trkseg></trk></gpx>"""
+
+        val track = Track.fromGPX(gpx)!!
+        assertEquals(1735732800000L, track.points[0].timestamp)
+    }
+
+    @Test
+    fun toGPX_fromGPX_roundTrip_withFractionalSeconds() {
+        val original = Track(
+            name = "Fractional",
+            points = listOf(
+                TrackPoint(latLng = LatLng(59.9, 10.7), timestamp = 1704110400123L)
+            ),
+            startTime = 1704110400123L,
+            endTime = 1704110400123L
+        )
+
+        val gpx = original.toGPX()
+        val parsed = Track.fromGPX(gpx)!!
+
+        assertEquals(original.points[0].timestamp, parsed.points[0].timestamp)
+    }
+
+    @Test
     fun getDurationMillis_calculatesCorrectly() {
         val track = Track(
             name = "Test",
