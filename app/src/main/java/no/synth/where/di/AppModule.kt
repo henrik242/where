@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import no.synth.where.WhereAppViewModel
 import no.synth.where.data.ClientIdManager
+import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
@@ -26,8 +27,8 @@ val appModule = module {
     single { Room.databaseBuilder(androidContext(), WhereDatabase::class.java, "where_database").build() }
     single { get<WhereDatabase>().trackDao() }
     single { get<WhereDatabase>().savedPointDao() }
-    single { TrackRepository(androidContext().filesDir, get()) }
-    single { SavedPointsRepository(androidContext().filesDir, get()) }
+    single { TrackRepository(PlatformFile(androidContext().filesDir), get()) }
+    single { SavedPointsRepository(PlatformFile(androidContext().filesDir), get()) }
     single { UserPreferences(androidContext().userPrefsDataStore) }
     single { ClientIdManager(androidContext().clientPrefsDataStore) }
     viewModel { WhereAppViewModel(get(), get()) }

@@ -14,12 +14,12 @@ import no.synth.where.data.db.TrackPointEntity
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
-import java.io.File
+import no.synth.where.util.currentTimeMillis
 
-class TrackRepository(filesDir: File, private val trackDao: TrackDao) {
+class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val json = Json { ignoreUnknownKeys = true }
-    private val tracksFile = File(filesDir, "tracks.json")
-    private val migratedFile = File(filesDir, "tracks.json.migrated")
+    private val tracksFile = filesDir.resolve("tracks.json")
+    private val migratedFile = filesDir.resolve("tracks.json.migrated")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())
@@ -128,11 +128,11 @@ class TrackRepository(filesDir: File, private val trackDao: TrackDao) {
         }
     }
 
-    fun startNewTrack(name: String = "Track ${System.currentTimeMillis()}") {
+    fun startNewTrack(name: String = "Track ${currentTimeMillis()}") {
         val track = Track(
             name = name,
             points = emptyList(),
-            startTime = System.currentTimeMillis(),
+            startTime = currentTimeMillis(),
             isRecording = true
         )
         _currentTrack.value = track
@@ -151,7 +151,7 @@ class TrackRepository(filesDir: File, private val trackDao: TrackDao) {
         val current = _currentTrack.value ?: return
         val point = TrackPoint(
             latLng = latLng,
-            timestamp = System.currentTimeMillis(),
+            timestamp = currentTimeMillis(),
             altitude = altitude,
             accuracy = accuracy
         )
@@ -163,7 +163,7 @@ class TrackRepository(filesDir: File, private val trackDao: TrackDao) {
         val uniqueName = NamingUtils.makeUnique(current.name, _tracks.value.map { it.name })
         val finishedTrack = current.copy(
             name = uniqueName,
-            endTime = System.currentTimeMillis(),
+            endTime = currentTimeMillis(),
             isRecording = false
         )
         _currentTrack.value = null
@@ -213,7 +213,7 @@ class TrackRepository(filesDir: File, private val trackDao: TrackDao) {
         val trackPoints = rulerPoints.map { rulerPoint ->
             TrackPoint(
                 latLng = rulerPoint.latLng,
-                timestamp = System.currentTimeMillis(),
+                timestamp = currentTimeMillis(),
                 altitude = null,
                 accuracy = null
             )
@@ -221,8 +221,8 @@ class TrackRepository(filesDir: File, private val trackDao: TrackDao) {
         val track = Track(
             name = uniqueName,
             points = trackPoints,
-            startTime = System.currentTimeMillis(),
-            endTime = System.currentTimeMillis(),
+            startTime = currentTimeMillis(),
+            endTime = currentTimeMillis(),
             isRecording = false
         )
         saveTrack(track)
