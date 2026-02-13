@@ -1,6 +1,9 @@
 package no.synth.where.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import dagger.Module
 import dagger.Provides
@@ -15,6 +18,9 @@ import no.synth.where.data.db.SavedPointDao
 import no.synth.where.data.db.TrackDao
 import no.synth.where.data.db.WhereDatabase
 import javax.inject.Singleton
+
+internal val Context.userPrefsDataStore: DataStore<Preferences> by preferencesDataStore(name = "user_prefs")
+internal val Context.clientPrefsDataStore: DataStore<Preferences> by preferencesDataStore(name = "client_prefs")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -43,24 +49,24 @@ object AppModule {
     @Provides
     @Singleton
     fun provideTrackRepository(@ApplicationContext context: Context, trackDao: TrackDao): TrackRepository {
-        return TrackRepository(context, trackDao)
+        return TrackRepository(context.filesDir, trackDao)
     }
 
     @Provides
     @Singleton
     fun provideSavedPointsRepository(@ApplicationContext context: Context, savedPointDao: SavedPointDao): SavedPointsRepository {
-        return SavedPointsRepository(context, savedPointDao)
+        return SavedPointsRepository(context.filesDir, savedPointDao)
     }
 
     @Provides
     @Singleton
     fun provideUserPreferences(@ApplicationContext context: Context): UserPreferences {
-        return UserPreferences(context)
+        return UserPreferences(context.userPrefsDataStore)
     }
 
     @Provides
     @Singleton
     fun provideClientIdManager(@ApplicationContext context: Context): ClientIdManager {
-        return ClientIdManager(context)
+        return ClientIdManager(context.clientPrefsDataStore)
     }
 }

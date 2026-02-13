@@ -1,6 +1,5 @@
 package no.synth.where.data
 
-import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,11 +15,11 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 import java.io.File
 
-class SavedPointsRepository(context: Context, private val savedPointDao: SavedPointDao) {
+class SavedPointsRepository(filesDir: File, private val savedPointDao: SavedPointDao) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val json = Json { ignoreUnknownKeys = true }
-    private val pointsFile: File = File(context.filesDir, "saved_points.json")
-    private val migratedFile: File = File(context.filesDir, "saved_points.json.migrated")
+    private val pointsFile: File = File(filesDir, "saved_points.json")
+    private val migratedFile: File = File(filesDir, "saved_points.json.migrated")
 
     private val _savedPoints = MutableStateFlow<List<SavedPoint>>(emptyList())
     val savedPoints: StateFlow<List<SavedPoint>> = _savedPoints.asStateFlow()

@@ -1,17 +1,16 @@
 package no.synth.where.data
 
-import android.content.Context
 import no.synth.where.ui.map.MapLayer
 
 object MapStyle {
     fun getStyle(
-        context: Context,
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
         showCountyBorders: Boolean = true,
-        showWaymarkedTrails: Boolean = false
+        showWaymarkedTrails: Boolean = false,
+        regions: List<Region> = emptyList()
     ): String {
-        val regions = if (showCountyBorders) RegionsRepository.getRegions(context) else emptyList()
-        val regionsGeoJson = regions.joinToString(",") { region ->
+        val activeRegions = if (showCountyBorders) regions else emptyList()
+        val regionsGeoJson = activeRegions.joinToString(",") { region ->
             val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
                 region.polygon.first().joinToString(",") { latLng ->
                     "[${latLng.longitude}, ${latLng.latitude}]"

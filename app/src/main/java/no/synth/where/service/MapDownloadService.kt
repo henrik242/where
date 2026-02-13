@@ -61,7 +61,7 @@ class MapDownloadService : Service() {
                 val maxZoom = intent.getIntExtra(EXTRA_MAX_ZOOM, 12)
 
                 if (regionName != null && layerName != null) {
-                    val regions = RegionsRepository.getRegions(this)
+                    val regions = RegionsRepository.getRegions(cacheDir)
                     val region = regions.find { it.name == regionName }
                     if (region != null) {
                         startDownload(region, layerName, minZoom, maxZoom)

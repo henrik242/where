@@ -1,6 +1,5 @@
 package no.synth.where.data
 
-import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -17,10 +16,10 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 import java.io.File
 
-class TrackRepository(context: Context, private val trackDao: TrackDao) {
+class TrackRepository(filesDir: File, private val trackDao: TrackDao) {
     private val json = Json { ignoreUnknownKeys = true }
-    private val tracksFile = File(context.filesDir, "tracks.json")
-    private val migratedFile = File(context.filesDir, "tracks.json.migrated")
+    private val tracksFile = File(filesDir, "tracks.json")
+    private val migratedFile = File(filesDir, "tracks.json.migrated")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())

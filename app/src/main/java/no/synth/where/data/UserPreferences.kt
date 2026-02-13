@@ -1,12 +1,10 @@
 package no.synth.where.data
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,10 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_prefs")
-
-class UserPreferences(context: Context) {
-    private val dataStore = context.dataStore
+class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _showCountyBorders = MutableStateFlow(false)

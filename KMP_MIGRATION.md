@@ -85,18 +85,28 @@ Timber is Android-only. Introduced a thin `Logger` object that wraps Timber, so 
 
 ---
 
-## Phase 4 — Remove Context from data layer (medium effort)
+## Phase 4 — Remove Context from data layer (medium effort) ✅ DONE
 
-Many data classes take `android.content.Context` just for file access or DataStore. Abstract this away.
+Removed `android.content.Context` from all data-layer classes. Context remains in DI wiring (`AppModule.kt`) and Android-specific callers.
 
-### Steps
+### What was done
 
-1. **RegionsRepository / FylkeDataLoader** — instead of passing Context, pass a `cacheDir: File` or a `FileSystem` interface
-2. **FylkeDownloader** — extract a `DownloadCache` interface: `fun getCachedFile(): ByteArray?`, `fun save(data: ByteArray)`, `fun hasCachedData(): Boolean`
-3. **MapStyle** — pass `regions: List<Region>` directly instead of calling `RegionsRepository.getRegions(context)` internally
-4. **ClientIdManager / UserPreferences** — DataStore supports KMP since 1.1.0, but the `Context.dataStore` delegate is Android-only. Create the DataStore with `PreferenceDataStoreFactory.createWithPath()` and pass the path from platform code.
+1. **FylkeDownloader / FylkeDataLoader / RegionsRepository** — replaced `context: Context` parameter with `cacheDir: File` throughout the chain. Callers pass `context.cacheDir` at the call site.
+2. **MapStyle** — removed Context entirely. Now accepts `regions: List<Region> = emptyList()` as a parameter instead of calling `RegionsRepository.getRegions(context)` internally. Pure function, no dependencies.
+3. **TrackRepository / SavedPointsRepository** — replaced `context: Context` with `filesDir: File`. Uses `File(filesDir, ...)` instead of `File(context.filesDir, ...)`.
+4. **UserPreferences / ClientIdManager** — removed file-level `Context.dataStore` delegates and `context: Context` constructor params. Now accept `DataStore<Preferences>` directly. DataStore delegates moved to `AppModule.kt`.
+5. **AppModule.kt** — DataStore delegates (`userPrefsDataStore`, `clientPrefsDataStore`) now live here. All providers pass concrete types: `context.filesDir`, `context.cacheDir`, `context.userPrefsDataStore`, `context.clientPrefsDataStore`.
+6. **Callers updated** — `WhereApp.kt`, `MapLibreMapView.kt`, `DownloadScreen.kt`, `MapDownloadService.kt` all pass concrete types instead of Context.
+7. **MapStyleTest** — removed fake `ContextWrapper`, `setUp`/`tearDown`. Now passes regions directly — pure unit test with zero Android deps.
+8. **New tests** — `FylkeDownloaderTest` (TemporaryFolder-based file system test), `UserPreferencesTest` (DataStore defaults and updates), `ClientIdManagerTest` (ID generation, persistence, regeneration).
 
-**Files touched:** `RegionsRepository.kt`, `FylkeDataLoader.kt`, `FylkeDownloader.kt`, `MapStyle.kt`, `UserPreferences.kt`, `ClientIdManager.kt`, `AppModule.kt`
+**Files unchanged:** `MapDownloadManager.kt` (keeps Context — MapLibre SDK requirement), `WhereApplication.kt` (Android Application class)
+
+**Files created:** `FylkeDownloaderTest.kt`, `UserPreferencesTest.kt`, `ClientIdManagerTest.kt`
+
+**Files changed:** `FylkeDownloader.kt`, `FylkeDataLoader.kt`, `RegionsRepository.kt`, `MapStyle.kt`, `TrackRepository.kt`, `SavedPointsRepository.kt`, `UserPreferences.kt`, `ClientIdManager.kt`, `AppModule.kt`, `WhereApp.kt`, `MapLibreMapView.kt`, `DownloadScreen.kt`, `MapDownloadService.kt`, `MapStyleTest.kt`
+
+**Result:** No `android.content.Context` imports remain in the data layer. All data classes accept concrete types (`File`, `DataStore<Preferences>`) making them testable without Android framework and ready for KMP `commonMain`.
 
 ---
 

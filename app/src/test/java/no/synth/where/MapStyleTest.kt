@@ -1,44 +1,19 @@
 package no.synth.where
 
-import android.content.ContextWrapper
-import java.io.File
 import no.synth.where.data.MapStyle
 import no.synth.where.data.Region
-import no.synth.where.data.RegionsRepository
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
-import org.junit.After
-import org.junit.Before
 import org.junit.Test
 import org.junit.Assert.*
 
 class MapStyleTest {
-    private val context = object : ContextWrapper(null) {
-        private val baseDir = File("build/test-ext")
 
-        override fun getExternalFilesDir(type: String?): File {
-            val target = if (type == null) baseDir else File(baseDir, type)
-            if (!target.exists()) {
-                target.mkdirs()
-            }
-            return target
-        }
-    }
-
-    @Before
-    fun setUp() {
-        val regions = listOf(
-            sampleRegion("Oslo", 60.0, 59.8, 11.0, 10.4),
-            sampleRegion("Vestland", 61.0, 60.6, 5.5, 4.7),
-            sampleRegion("Trøndelag", 64.3, 63.5, 11.0, 8.4)
-        )
-        RegionsRepository.setRegionsForTest(regions)
-    }
-
-    @After
-    fun tearDown() {
-        RegionsRepository.setRegionsForTest(null)
-    }
+    private val regions = listOf(
+        sampleRegion("Oslo", 60.0, 59.8, 11.0, 10.4),
+        sampleRegion("Vestland", 61.0, 60.6, 5.5, 4.7),
+        sampleRegion("Trøndelag", 64.3, 63.5, 11.0, 8.4)
+    )
 
     private fun sampleRegion(
         name: String,
@@ -62,7 +37,7 @@ class MapStyleTest {
 
     @Test
     fun testStyleJsonIsValid() {
-        val styleJson = MapStyle.getStyle(context)
+        val styleJson = MapStyle.getStyle(regions = regions)
 
         assertTrue("Style should start with {", styleJson.trim().startsWith("{"))
         assertTrue("Style should end with }", styleJson.trim().endsWith("}"))
@@ -75,7 +50,7 @@ class MapStyleTest {
 
     @Test
     fun testRegionsGeoJson() {
-        val styleJson = MapStyle.getStyle(context)
+        val styleJson = MapStyle.getStyle(regions = regions)
 
         assertTrue("Should contain Oslo", styleJson.contains("\"Oslo\""))
         assertTrue("Should contain Vestland", styleJson.contains("\"Vestland\""))
