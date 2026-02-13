@@ -1,53 +1,53 @@
 package no.synth.where.data
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import timber.log.Timber
-import okhttp3.Request
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.data.geo.LatLng
-import java.util.concurrent.TimeUnit
+import timber.log.Timber
 
 object GeocodingHelper {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val client = HttpClient(CIO) {
+        engine {
+            requestTimeout = 10_000
+        }
+    }
 
     suspend fun reverseGeocode(latLng: LatLng): String? = withContext(Dispatchers.IO) {
         try {
             val url = "https://nominatim.openstreetmap.org/reverse?lat=${latLng.latitude}&lon=${latLng.longitude}&format=json&addressdetails=1"
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Where-App/1.0")
-                .build()
+            val response = client.get(url) {
+                header("User-Agent", "Where-App/1.0")
+            }
+            if (response.status.value !in 200..299) return@withContext null
 
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return@withContext null
+            val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val address = json["address"]?.jsonObject ?: return@withContext null
 
-            val json = JSONObject(response.body.string())
-            val address = json.optJSONObject("address") ?: return@withContext null
+            val road = address["road"]?.jsonPrimitive?.content
+            if (!road.isNullOrEmpty()) return@withContext road
 
-            // Try to build a nice name from available data
-            val road = address.optString("road")
-            if (road.isNotEmpty()) return@withContext road
+            val village = address["village"]?.jsonPrimitive?.content
+            if (!village.isNullOrEmpty()) return@withContext village
 
-            val village = address.optString("village")
-            if (village.isNotEmpty()) return@withContext village
+            val town = address["town"]?.jsonPrimitive?.content
+            if (!town.isNullOrEmpty()) return@withContext town
 
-            val town = address.optString("town")
-            if (town.isNotEmpty()) return@withContext town
+            val city = address["city"]?.jsonPrimitive?.content
+            if (!city.isNullOrEmpty()) return@withContext city
 
-            val city = address.optString("city")
-            if (city.isNotEmpty()) return@withContext city
+            val county = address["county"]?.jsonPrimitive?.content
+            if (!county.isNullOrEmpty()) return@withContext county
 
-            val county = address.optString("county")
-            if (county.isNotEmpty()) return@withContext county
-
-            val displayName = json.optString("display_name")
-            if (displayName.isNotEmpty()) {
-                // Extract first meaningful part
+            val displayName = json["display_name"]?.jsonPrimitive?.content
+            if (!displayName.isNullOrEmpty()) {
                 val parts = displayName.split(",")
                 return@withContext parts.firstOrNull()?.trim()
             }
@@ -59,4 +59,3 @@ object GeocodingHelper {
         }
     }
 }
-
