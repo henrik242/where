@@ -2,17 +2,14 @@ package no.synth.where.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.UserPreferences
-import javax.inject.Inject
 
-@HiltViewModel
-class OnlineTrackingScreenViewModel @Inject constructor(
+class OnlineTrackingScreenViewModel(
     private val userPreferences: UserPreferences,
     private val clientIdManager: ClientIdManager
 ) : ViewModel() {

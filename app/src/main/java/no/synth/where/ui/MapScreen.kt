@@ -31,7 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.synth.where.R
@@ -70,7 +70,7 @@ fun MapScreen(
     regionsLoadedTrigger: Int = 0
 ) {
     val context = LocalContext.current
-    val viewModel: MapScreenViewModel = hiltViewModel()
+    val viewModel: MapScreenViewModel = koinViewModel()
     val savedPoints by viewModel.savedPoints.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
     val currentTrack by viewModel.currentTrack.collectAsState()

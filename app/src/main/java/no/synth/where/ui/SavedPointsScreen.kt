@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import no.synth.where.R
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.geo.LatLng
@@ -33,7 +33,7 @@ fun SavedPointsScreen(
     onBackClick: () -> Unit,
     onShowOnMap: (SavedPoint) -> Unit = {}
 ) {
-    val viewModel: SavedPointsScreenViewModel = hiltViewModel()
+    val viewModel: SavedPointsScreenViewModel = koinViewModel()
     val savedPoints by viewModel.savedPoints.collectAsState()
 
     var showEditDialog by remember { mutableStateOf(false) }
