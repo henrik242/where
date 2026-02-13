@@ -15,12 +15,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
-@Config(application = android.app.Application::class)
 class OnlineTrackingClientTest {
 
     @Test
@@ -32,6 +27,7 @@ class OnlineTrackingClientTest {
         val client = OnlineTrackingClient(
             serverUrl = "https://example.com",
             clientId = "test-client",
+            hmacSecret = "test-secret",
             client = HttpClient(MockEngine { request ->
                 capturedBody = String(request.body.toByteArray())
                 capturedMethod = request.method
@@ -62,6 +58,7 @@ class OnlineTrackingClientTest {
         val client = OnlineTrackingClient(
             serverUrl = "https://example.com",
             clientId = "test-client",
+            hmacSecret = "test-secret",
             client = HttpClient(MockEngine { request ->
                 capturedSignature = request.headers["X-Signature"]
                 respond(
@@ -88,6 +85,7 @@ class OnlineTrackingClientTest {
         val client = OnlineTrackingClient(
             serverUrl = "https://example.com",
             clientId = "test-client",
+            hmacSecret = "test-secret",
             client = HttpClient(MockEngine { request ->
                 if (!startCalled) {
                     startCalled = true

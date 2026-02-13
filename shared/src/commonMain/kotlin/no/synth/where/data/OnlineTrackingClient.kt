@@ -1,7 +1,6 @@
 package no.synth.where.data
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.android.Android
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -19,25 +18,20 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import no.synth.where.BuildConfig
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.HmacUtils
 import no.synth.where.util.Logger
+import no.synth.where.util.currentTimeMillis
 
 class OnlineTrackingClient(
     private val serverUrl: String,
     private val clientId: String,
-    internal val client: HttpClient = HttpClient(Android) {
-        engine {
-            connectTimeout = 30_000
-            socketTimeout = 30_000
-        }
-    }
+    private val hmacSecret: String,
+    val client: HttpClient = createDefaultHttpClient()
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var currentTrackId: String? = null
-    private val hmacSecret = BuildConfig.TRACKING_HMAC_SECRET
 
     fun startTrack(trackName: String) {
         scope.launch {
@@ -119,7 +113,7 @@ class OnlineTrackingClient(
             val jsonBody = buildJsonObject {
                 put("lat", latLng.latitude)
                 put("lon", latLng.longitude)
-                put("timestamp", System.currentTimeMillis())
+                put("timestamp", currentTimeMillis())
                 altitude?.let { put("altitude", it) }
                 accuracy?.let { put("accuracy", it.toDouble()) }
             }.toString()
@@ -145,7 +139,7 @@ class OnlineTrackingClient(
                 val jsonBody = buildJsonObject {
                     put("lat", latLng.latitude)
                     put("lon", latLng.longitude)
-                    put("timestamp", System.currentTimeMillis())
+                    put("timestamp", currentTimeMillis())
                     altitude?.let { put("altitude", it) }
                     accuracy?.let { put("accuracy", it.toDouble()) }
                 }.toString()

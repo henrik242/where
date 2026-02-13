@@ -2,8 +2,8 @@ package no.synth.where.util
 
 import android.os.Build
 
-object DeviceUtils {
-    fun isEmulator(): Boolean {
+actual object DeviceUtils {
+    actual fun isEmulator(): Boolean {
         return (Build.FINGERPRINT.startsWith("google/sdk_gphone")
                 || Build.FINGERPRINT.startsWith("generic")
                 || Build.FINGERPRINT.contains("unknown")
@@ -15,4 +15,3 @@ object DeviceUtils {
                 || "google_sdk" == Build.PRODUCT)
     }
 }
-

@@ -156,31 +156,26 @@ Hilt is Android-only. Koin has full KMP support and uses pure Kotlin DSL instead
 
 ---
 
-## Phase 7 — Set up KMP project structure (medium effort)
+## Phase 7 — Set up shared KMP module & move data layer (medium effort) ✅ DONE
 
-At this point the codebase is ready for multiplatform. No iOS code yet, just the project restructure.
+Created the `shared/` KMP module and moved the prepared data layer into it.
 
-### Steps
+### What was done
 
-1. Create `shared/` module with `build.gradle.kts`:
-   ```kotlin
-   kotlin {
-       androidTarget()
-       listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach {
-           it.binaries.framework { baseName = "Shared" }
-       }
-       sourceSets {
-           commonMain.dependencies { /* ktor, koin, room, kotlinx libs */ }
-           androidMain.dependencies { /* ktor-android, timber, etc */ }
-           iosMain.dependencies { /* ktor-darwin */ }
-       }
-   }
-   ```
-2. Move all prepared code into `shared/src/commonMain/`
-3. Move Android `actual` implementations into `shared/src/androidMain/`
-4. Create stub `actual` implementations in `shared/src/iosMain/` (can throw `TODO()` initially)
-5. Update `app/build.gradle.kts` to depend on `shared` module
-6. Verify Android app still builds and runs
+1. **Gradle configuration** — Added `kotlin-multiplatform`, `android-kotlin-multiplatform-library` (AGP 9 requires this instead of `android-library`), and `room` plugins to version catalog. Created `shared/build.gradle.kts` with `androidLibrary {}` block (AGP 9 KMP DSL), iOS targets (`iosX64`, `iosArm64`, `iosSimulatorArm64`), and `commonMain`/`androidMain`/`iosMain` source sets. Added `ktor-client-darwin` dependency for iOS. Added `implementation(project(":shared"))` to app module.
+2. **Expect/actual declarations** — Created 6 expect declarations in `commonMain` (`Platform.kt`, `Logger.kt`, `HmacUtils.kt`, `DeviceUtils.kt`, `PlatformFile.kt`, `HttpClientFactory.kt`) with matching actual implementations in `androidMain` and TODO stubs in `iosMain`.
+3. **Moved 22 files to commonMain** — Pure data types (LatLng, Region, RulerState, etc.), Room entities/DAOs/database, repositories, HTTP clients, DataStore files, MapStyle, and utilities. Applied modifications: `System.currentTimeMillis()` → `currentTimeMillis()`, `java.io.File` → `PlatformFile`, `HttpClient(Android)` → `createDefaultHttpClient()`, `BuildConfig.TRACKING_HMAC_SECRET` → constructor parameter.
+4. **Moved 6 files to androidMain** — FylkeDownloader, FylkeDataLoader, RegionsRepository, StyleServer, MapDownloadManager, MapLibreConversions (heavy JVM/Android deps).
+5. **Updated app module** — `AppModule.kt` wraps `filesDir` in `PlatformFile()`. `LocationTrackingService.kt` passes `BuildConfig.TRACKING_HMAC_SECRET` to `OnlineTrackingClient`.
+6. **Updated tests** — `OnlineTrackingClientTest.kt` adds `hmacSecret` param, removes Robolectric. `KoinModuleCheckTest.kt` uses `PlatformFile::class` instead of `java.io.File::class`.
+
+**Files created:** `shared/build.gradle.kts`, 18 expect/actual/stub files
+
+**Files moved to commonMain:** `LatLng.kt`, `Region.kt`, `RulerState.kt`, `LatLngSerializer.kt`, `MapState.kt`, `Track.kt`, `SavedPoint.kt`, `SavedPointEntity.kt`, `TrackEntity.kt`, `TrackPointEntity.kt`, `TrackDao.kt`, `SavedPointDao.kt`, `WhereDatabase.kt`, `TrackRepository.kt`, `SavedPointsRepository.kt`, `OnlineTrackingClient.kt`, `GeocodingHelper.kt`, `PlaceSearchClient.kt`, `UserPreferences.kt`, `ClientIdManager.kt`, `MapStyle.kt`, `NamingUtils.kt`, `GeoExtensions.kt`
+
+**Files moved to androidMain:** `FylkeDownloader.kt`, `FylkeDataLoader.kt`, `RegionsRepository.kt`, `StyleServer.kt`, `MapDownloadManager.kt`, `MapLibreConversions.kt`
+
+**Files changed:** `libs.versions.toml`, root `build.gradle.kts`, `settings.gradle.kts`, `app/build.gradle.kts`, `AppModule.kt`, `LocationTrackingService.kt`, `OnlineTrackingClientTest.kt`, `KoinModuleCheckTest.kt`
 
 ---
 

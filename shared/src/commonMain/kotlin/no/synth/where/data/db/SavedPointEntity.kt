@@ -2,6 +2,7 @@ package no.synth.where.data.db
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import no.synth.where.util.currentTimeMillis
 
 @Entity(tableName = "saved_points")
 data class SavedPointEntity(
@@ -10,6 +11,6 @@ data class SavedPointEntity(
     val latitude: Double,
     val longitude: Double,
     val description: String? = "",
-    val timestamp: Long = System.currentTimeMillis(),
+    val timestamp: Long = currentTimeMillis(),
     val color: String? = "#FF5722"
 )

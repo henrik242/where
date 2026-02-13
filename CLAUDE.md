@@ -6,6 +6,7 @@
 - Test: `cd app && ../gradlew testDebugUnitTest`
 - Lint: `cd app && ../gradlew lint`
 - Single test: `cd app && ../gradlew testDebugUnitTest --tests "no.synth.where.ClassName"`
+- Build shared module: `./gradlew :shared:assembleDebug`
 - Web server: `cd web && bun run dev`
 - Web tests: `cd web && bun test`
 

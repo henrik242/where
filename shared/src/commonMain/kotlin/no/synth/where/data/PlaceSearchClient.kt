@@ -1,7 +1,6 @@
 package no.synth.where.data
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.android.Android
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
@@ -15,12 +14,7 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 
 object PlaceSearchClient {
-    internal var client: HttpClient = HttpClient(Android) {
-        engine {
-            connectTimeout = 10_000
-            socketTimeout = 10_000
-        }
-    }
+    var client: HttpClient = createDefaultHttpClient()
 
     data class SearchResult(
         val name: String,
