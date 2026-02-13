@@ -1,7 +1,7 @@
 package no.synth.where.data
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.android.Android
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
@@ -14,9 +14,10 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 
 object GeocodingHelper {
-    internal var client: HttpClient = HttpClient(CIO) {
+    internal var client: HttpClient = HttpClient(Android) {
         engine {
-            requestTimeout = 10_000
+            connectTimeout = 10_000
+            socketTimeout = 10_000
         }
     }
 

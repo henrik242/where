@@ -41,11 +41,11 @@ Almost every data file imports `org.maplibre.android.geometry.LatLng`. Replacing
 
 ## Phase 2 — Replace OkHttp and org.json with multiplatform libraries (medium effort) ✅ DONE
 
-OkHttp and `org.json` are JVM-only. Replaced with Ktor HTTP client (CIO engine) and `kotlinx.serialization.json` tree API.
+OkHttp and `org.json` are JVM-only. Replaced with Ktor HTTP client and `kotlinx.serialization.json` tree API.
 
 ### What was done
 
-1. Added Ktor client dependencies (`ktor-client-core`, `ktor-client-cio` 3.1.1) to version catalog
+1. Added Ktor client dependencies (`ktor-client-core`, `ktor-client-android`) to version catalog (originally CIO, switched to Android engine to fix TLS certificate errors with Android's network security config)
 2. Migrated `GeocodingHelper.kt` — OkHttp GET → Ktor `client.get()`, `JSONObject` parsing → `Json.parseToJsonElement().jsonObject`
 3. Migrated `PlaceSearchClient.kt` — OkHttp URL builder → Ktor `url { parameters.append() }`, `JSONObject`/`JSONArray` → `jsonObject`/`jsonArray` tree API
 4. Migrated `OnlineTrackingClient.kt` — OkHttp POST/PUT with custom headers → Ktor `client.post()`/`client.put()`, `JSONObject().apply { put() }` → `buildJsonObject { put() }`, `JSONArray` → `buildJsonArray { }`. HMAC signing unchanged.
