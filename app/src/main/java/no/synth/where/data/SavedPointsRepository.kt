@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
 import no.synth.where.data.db.SavedPointDao
 import no.synth.where.data.db.SavedPointEntity
 import no.synth.where.util.NamingUtils
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import timber.log.Timber
 import java.io.File
 

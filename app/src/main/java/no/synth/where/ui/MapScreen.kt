@@ -49,7 +49,9 @@ import no.synth.where.ui.map.RulerCard
 import no.synth.where.ui.map.SearchOverlay
 import no.synth.where.ui.map.ViewingPointBanner
 import no.synth.where.ui.map.ViewingTrackBanner
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.toCommon
+import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.maps.MapLibreMap
 import timber.log.Timber
 import java.text.SimpleDateFormat
@@ -176,7 +178,7 @@ fun MapScreen(
                 val points = viewing.points.map { it.latLng }
                 if (points.isNotEmpty()) {
                     val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
-                        .includes(points)
+                        .includes(points.map { it.toMapLibre() })
                         .build()
                     map.animateCamera(
                         org.maplibre.android.camera.CameraUpdateFactory.newLatLngBounds(bounds, 100)
@@ -215,7 +217,7 @@ fun MapScreen(
                     delay(500)
                     map.animateCamera(
                         org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                            LatLng(location.latitude, location.longitude),
+                            LatLng(location.latitude, location.longitude).toMapLibre(),
                             12.0
                         )
                     )
@@ -234,7 +236,7 @@ fun MapScreen(
             delay(100)
             map.animateCamera(
                 org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                    point.latLng,
+                    point.latLng.toMapLibre(),
                     15.0
                 )
             )
@@ -290,7 +292,7 @@ fun MapScreen(
                     locationComponent.lastKnownLocation?.let { location ->
                         map.animateCamera(
                             org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                                LatLng(location.latitude, location.longitude), 15.0
+                                LatLng(location.latitude, location.longitude).toMapLibre(), 15.0
                             )
                         )
                     }
@@ -331,7 +333,7 @@ fun MapScreen(
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
         onSearchResultClick = { result ->
             mapInstance?.animateCamera(
-                org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(result.latLng, 14.0)
+                org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(result.latLng.toMapLibre(), 14.0)
             )
             viewModel.onSearchResultClicked()
         },

@@ -5,7 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import org.maplibre.android.geometry.LatLngBounds
+import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.offline.OfflineManager
 import org.maplibre.android.offline.OfflineRegion
 import org.maplibre.android.offline.OfflineRegionError
@@ -69,7 +70,7 @@ class MapDownloadManager(private val context: Context) {
 
                 val definition = OfflineTilePyramidRegionDefinition(
                     styleUrl,
-                    region.boundingBox,
+                    region.boundingBox.toMapLibre(),
                     minZoom.toDouble(),
                     maxZoom.toDouble(),
                     context.resources.displayMetrics.density

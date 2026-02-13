@@ -27,7 +27,7 @@ import no.synth.where.data.ClientIdManager
 import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import javax.inject.Inject
 
 @AndroidEntryPoint

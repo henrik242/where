@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import no.synth.where.data.SavedPoint
 import org.junit.Test
 import org.junit.Assert.*
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 
 /**
  * Unit tests for MapScreen functionality.

@@ -1,7 +1,6 @@
 package no.synth.where.ui.map
 
 import android.content.Context
-import android.location.Location
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -23,8 +22,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import no.synth.where.data.MapStyle
 import no.synth.where.data.RulerState
 import no.synth.where.data.Track
+import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.toCommon
+import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -135,7 +136,7 @@ fun MapLibreMapView(
 
                             if (viewing == null && current == null) {
                                 mapInstance.cameraPosition = CameraPosition.Builder()
-                                    .target(LatLng(savedCameraLat, savedCameraLon))
+                                    .target(LatLng(savedCameraLat, savedCameraLon).toMapLibre())
                                     .zoom(savedCameraZoom)
                                     .build()
                             }
@@ -240,28 +241,15 @@ fun MapLibreMapView(
 
             // Create and add new click listener
             val newClickListener = MapLibreMap.OnMapClickListener { point ->
+                val commonPoint = point.toCommon()
                 if (rulerState.isActive) {
-                    // When ruler is active, add ruler points and ignore saved point clicks
-                    onRulerPointAdded(point)
+                    onRulerPointAdded(commonPoint)
                     true
                 } else {
-                    // Check if a saved point was clicked (only when ruler is NOT active)
                     val clickedSavedPoint = savedPoints.minByOrNull { savedPoint ->
-                        val distance = FloatArray(1)
-                        Location.distanceBetween(
-                            point.latitude, point.longitude,
-                            savedPoint.latLng.latitude, savedPoint.latLng.longitude,
-                            distance
-                        )
-                        distance[0]
+                        commonPoint.distanceTo(savedPoint.latLng)
                     }?.let { closestPoint ->
-                        val distance = FloatArray(1)
-                        Location.distanceBetween(
-                            point.latitude, point.longitude,
-                            closestPoint.latLng.latitude, closestPoint.latLng.longitude,
-                            distance
-                        )
-                        if (distance[0] < 500) closestPoint else null
+                        if (commonPoint.distanceTo(closestPoint.latLng) < 500) closestPoint else null
                     }
 
                     if (clickedSavedPoint != null) {
@@ -278,7 +266,7 @@ fun MapLibreMapView(
             // Create and add new long click listener
             val newLongClickListener = MapLibreMap.OnMapLongClickListener { point ->
                 if (!rulerState.isActive) {
-                    onLongPress(point)
+                    onLongPress(point.toCommon())
                     true
                 } else {
                     false
@@ -298,7 +286,7 @@ fun MapLibreMapView(
                     onMapReady(mapInstance)
 
                     mapInstance.cameraPosition = CameraPosition.Builder()
-                        .target(LatLng(savedCameraLat, savedCameraLon))
+                        .target(LatLng(savedCameraLat, savedCameraLon).toMapLibre())
                         .zoom(savedCameraZoom)
                         .build()
 

@@ -18,10 +18,10 @@ object MapStyle {
                 }
             } else {
                 val b = region.boundingBox
-                val north = b.northEast.latitude
-                val south = b.southWest.latitude
-                val east = b.northEast.longitude
-                val west = b.southWest.longitude
+                val north = b.north
+                val south = b.south
+                val east = b.east
+                val west = b.west
                 "[$west, $north],[$west, $south],[$east, $south],[$east, $north],[$west, $north]"
             }
 

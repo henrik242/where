@@ -26,7 +26,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import no.synth.where.R
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import timber.log.Timber
 import java.io.File
 import java.text.SimpleDateFormat

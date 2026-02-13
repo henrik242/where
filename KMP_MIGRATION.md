@@ -18,29 +18,24 @@ Prepare the codebase incrementally *before* adding iOS. Each phase keeps the And
 
 ---
 
-## Phase 1 — Extract common geo types (low effort, high impact)
+## Phase 1 — Extract common geo types (low effort, high impact) ✅ DONE
 
 Almost every data file imports `org.maplibre.android.geometry.LatLng`. Replacing this with our own type unblocks the entire data layer.
 
-### Steps
+### What was done
 
-1. Create `data/LatLng.kt` with a simple data class:
-   ```kotlin
-   data class LatLng(val latitude: Double, val longitude: Double) {
-       fun distanceTo(other: LatLng): Double { /* haversine */ }
-   }
-   data class LatLngBounds(val south: Double, val west: Double, val north: Double, val east: Double) {
-       val latitudeSpan get() = north - south
-       val longitudeSpan get() = east - west
-   }
-   ```
-2. Replace all `org.maplibre.android.geometry.LatLng` imports with the new type
-3. Add conversion extensions in the map layer: `fun LatLng.toMapLibre()` and `fun MLLatLng.toCommon()`
-4. Update `LatLngSerializer.kt` to serialize the new type
+1. Created `data/geo/LatLng.kt` with common `LatLng` (haversine `distanceTo()`) and `LatLngBounds` (with `latitudeSpan`/`longitudeSpan`)
+2. Created `data/geo/MapLibreConversions.kt` with `toMapLibre()`/`toCommon()` extension functions for both types
+3. Replaced all `org.maplibre.android.geometry.LatLng` and `LatLngBounds` imports across the entire codebase (data, UI, service, test files)
+4. MapLibre conversion happens at boundaries only: `MapLibreMapView.kt` (click events, camera positions), `MapScreen.kt` (camera operations), `MapDownloadManager.kt` (offline region definition)
+5. `MapRenderUtils.kt` needed no changes — it reads lat/lon doubles from common types via property access
+6. Removed unused `android.location.Location` import from `MapLibreMapView.kt` (replaced `Location.distanceBetween` with `LatLng.distanceTo`)
 
-**Files touched:** `Region.kt`, `SavedPoint.kt`, `Track.kt`, `RulerState.kt`, `LatLngSerializer.kt`, `FylkeDataLoader.kt`, `MapStyle.kt`, `PlaceSearchClient.kt`, `GeocodingHelper.kt`, `OnlineTrackingClient.kt`, `MapRenderUtils.kt`, `MapLibreMapView.kt`, `MapScreenViewModel.kt`
+**Files created:** `data/geo/LatLng.kt`, `data/geo/MapLibreConversions.kt`
 
-**Why first:** This is the single highest-impact change. It decouples the data layer from MapLibre Android and is straightforward find-and-replace with conversion functions at the boundaries.
+**Files changed:** `Region.kt`, `SavedPoint.kt`, `Track.kt`, `RulerState.kt`, `LatLngSerializer.kt`, `FylkeDataLoader.kt`, `MapStyle.kt`, `PlaceSearchClient.kt`, `GeocodingHelper.kt`, `OnlineTrackingClient.kt`, `SavedPointsRepository.kt`, `TrackRepository.kt`, `MapDownloadManager.kt`, `MapLibreMapView.kt`, `MapScreen.kt`, `MapScreenViewModel.kt`, `LocationTrackingService.kt`, `DownloadScreen.kt`, `SavedPointsScreen.kt`, `TracksScreen.kt`, plus 7 test files
+
+**Result:** The entire data layer and business logic is now free of MapLibre Android imports. Only 3 files in `ui/map/` plus `MapDownloadManager.kt` and `MapLibreConversions.kt` still reference `org.maplibre.android.geometry`.
 
 ---
 

@@ -52,7 +52,7 @@ import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
 import no.synth.where.service.MapDownloadService
-import org.maplibre.android.geometry.LatLngBounds
+import no.synth.where.data.geo.LatLngBounds
 import java.io.File
 import java.util.Locale
 
