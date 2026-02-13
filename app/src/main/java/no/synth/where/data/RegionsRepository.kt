@@ -1,19 +1,19 @@
 package no.synth.where.data
 
-import android.content.Context
+import java.io.File
 
 object RegionsRepository {
     private var _regions: List<Region>? = null
 
-    fun getRegions(context: Context): List<Region> {
+    fun getRegions(cacheDir: File): List<Region> {
         if (_regions == null) {
-            _regions = FylkeDataLoader.loadFylker(context)
+            _regions = FylkeDataLoader.loadFylker(cacheDir)
         }
         return _regions ?: emptyList()
     }
 
-    fun reloadRegions(context: Context) {
-        _regions = FylkeDataLoader.loadFylker(context)
+    fun reloadRegions(cacheDir: File) {
+        _regions = FylkeDataLoader.loadFylker(cacheDir)
     }
 
     fun setRegionsForTest(regions: List<Region>?) {

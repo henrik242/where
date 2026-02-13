@@ -34,7 +34,7 @@ fun WhereApp(
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     var showSavedPoints by remember { mutableStateOf(true) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
-    var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(context)) }
+    var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(context.cacheDir)) }
     var isOnline by remember { mutableStateOf(false) }
 
     DisposableEffect(context) {
@@ -67,10 +67,10 @@ fun WhereApp(
 
     LaunchedEffect(isOnline, showCountyBorders) {
         if (isOnline && showCountyBorders && !hasDownloadedCounties) {
-            val success = FylkeDownloader.downloadAndCacheFylker(context)
+            val success = FylkeDownloader.downloadAndCacheFylker(context.cacheDir)
             if (success) {
                 hasDownloadedCounties = true
-                RegionsRepository.reloadRegions(context)
+                RegionsRepository.reloadRegions(context.cacheDir)
                 onRegionsLoaded()
             }
         }

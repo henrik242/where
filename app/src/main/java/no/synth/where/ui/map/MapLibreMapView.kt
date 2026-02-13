@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import no.synth.where.data.MapStyle
+import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
 import no.synth.where.data.Track
 import no.synth.where.data.geo.LatLng
@@ -104,11 +105,12 @@ fun MapLibreMapView(
     ) {
         map?.let { mapInstance ->
             try {
+                val regions = RegionsRepository.getRegions(context.cacheDir)
                 val styleJson = MapStyle.getStyle(
-                    context,
                     selectedLayer,
                     showCountyBorders,
-                    showWaymarkedTrails
+                    showWaymarkedTrails,
+                    regions = regions
                 )
                 val viewing = viewingTrack
                 val current = currentTrack
@@ -172,11 +174,12 @@ fun MapLibreMapView(
         if (wasInitialized && isOnline && map != null) {
 
             map?.let { mapInstance ->
+                val regions = RegionsRepository.getRegions(context.cacheDir)
                 val styleJson = MapStyle.getStyle(
-                    context,
                     selectedLayer,
                     showCountyBorders,
-                    showWaymarkedTrails
+                    showWaymarkedTrails,
+                    regions = regions
                 )
                 val viewing = viewingTrack
                 val current = currentTrack
@@ -294,11 +297,12 @@ fun MapLibreMapView(
                     // Don't add any click listeners here to avoid conflicts
 
                     try {
+                        val regions = RegionsRepository.getRegions(ctx.cacheDir)
                         val styleJson = MapStyle.getStyle(
-                            ctx,
                             selectedLayer,
                             showCountyBorders,
-                            showWaymarkedTrails
+                            showWaymarkedTrails,
+                            regions = regions
                         )
                         val viewing = viewingTrack
                         val current = currentTrack
