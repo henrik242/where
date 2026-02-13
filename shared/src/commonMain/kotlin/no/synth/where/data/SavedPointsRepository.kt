@@ -13,15 +13,14 @@ import no.synth.where.data.db.SavedPointEntity
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
-import java.io.File
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-class SavedPointsRepository(filesDir: File, private val savedPointDao: SavedPointDao) {
+class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: SavedPointDao) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val json = Json { ignoreUnknownKeys = true }
-    private val pointsFile: File = File(filesDir, "saved_points.json")
-    private val migratedFile: File = File(filesDir, "saved_points.json.migrated")
+    private val pointsFile: PlatformFile = filesDir.resolve("saved_points.json")
+    private val migratedFile: PlatformFile = filesDir.resolve("saved_points.json.migrated")
 
     private val _savedPoints = MutableStateFlow<List<SavedPoint>>(emptyList())
     val savedPoints: StateFlow<List<SavedPoint>> = _savedPoints.asStateFlow()

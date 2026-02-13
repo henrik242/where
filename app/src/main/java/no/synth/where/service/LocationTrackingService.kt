@@ -22,6 +22,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import no.synth.where.MainActivity
 import no.synth.where.R
+import no.synth.where.BuildConfig
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
@@ -76,7 +77,8 @@ class LocationTrackingService : Service(), KoinComponent {
             val clientId = clientIdManager.getClientId()
             onlineTrackingClient = OnlineTrackingClient(
                 serverUrl = userPreferences.trackingServerUrl.value,
-                clientId = clientId
+                clientId = clientId,
+                hmacSecret = BuildConfig.TRACKING_HMAC_SECRET
             )
 
             // Sync existing track if already recording

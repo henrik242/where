@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import no.synth.where.data.serialization.LatLngSerializer
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
+import no.synth.where.util.currentTimeMillis
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -63,7 +64,7 @@ $trackPointsXml
     }
 
     fun getDurationMillis(): Long {
-        return (endTime ?: System.currentTimeMillis()) - startTime
+        return (endTime ?: currentTimeMillis()) - startTime
     }
 
     companion object {
@@ -87,7 +88,7 @@ $trackPointsXml
                     val timestamp = try {
                         Instant.parse(timeStr).toEpochMilliseconds()
                     } catch (_: Exception) {
-                        System.currentTimeMillis()
+                        currentTimeMillis()
                     }
 
                     trackPoints.add(
