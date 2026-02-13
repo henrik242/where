@@ -13,7 +13,7 @@ import no.synth.where.data.db.TrackDao
 import no.synth.where.data.db.TrackEntity
 import no.synth.where.data.db.TrackPointEntity
 import no.synth.where.util.NamingUtils
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import timber.log.Timber
 import java.io.File
 

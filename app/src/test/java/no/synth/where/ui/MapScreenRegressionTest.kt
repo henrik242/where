@@ -3,7 +3,7 @@ package no.synth.where.ui
 import no.synth.where.data.SavedPoint
 import org.junit.Test
 import org.junit.Assert.*
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 
 /**
  * Regression tests to ensure specific bugs don't happen again.

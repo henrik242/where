@@ -25,7 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import no.synth.where.R
 import no.synth.where.data.SavedPoint
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import androidx.core.graphics.toColorInt
 
 @Composable
