@@ -39,20 +39,24 @@ Almost every data file imports `org.maplibre.android.geometry.LatLng`. Replacing
 
 ---
 
-## Phase 2 — Replace OkHttp and org.json with multiplatform libraries (medium effort)
+## Phase 2 — Replace OkHttp and org.json with multiplatform libraries (medium effort) ✅ DONE
 
-OkHttp and `org.json` are JVM-only. Replace with Ktor and `kotlinx.serialization.json`.
+OkHttp and `org.json` are JVM-only. Replaced with Ktor HTTP client (CIO engine) and `kotlinx.serialization.json` tree API.
 
-### Steps
+### What was done
 
-1. Add Ktor client dependency (CIO engine for now, swap to Darwin engine later for iOS)
-2. Migrate `PlaceSearchClient.kt` — replace OkHttp calls with Ktor, `JSONObject` parsing with `kotlinx.serialization.json`
-3. Migrate `GeocodingHelper.kt` — same pattern
-4. Migrate `OnlineTrackingClient.kt` — same pattern, keep HMAC signing separate
-5. Migrate `FylkeDownloader.kt` — replace `java.net.URL` with Ktor for download, keep ZIP extraction for now
-6. Remove OkHttp and org.json dependencies
+1. Added Ktor client dependencies (`ktor-client-core`, `ktor-client-cio` 3.1.1) to version catalog
+2. Migrated `GeocodingHelper.kt` — OkHttp GET → Ktor `client.get()`, `JSONObject` parsing → `Json.parseToJsonElement().jsonObject`
+3. Migrated `PlaceSearchClient.kt` — OkHttp URL builder → Ktor `url { parameters.append() }`, `JSONObject`/`JSONArray` → `jsonObject`/`jsonArray` tree API
+4. Migrated `OnlineTrackingClient.kt` — OkHttp POST/PUT with custom headers → Ktor `client.post()`/`client.put()`, `JSONObject().apply { put() }` → `buildJsonObject { put() }`, `JSONArray` → `buildJsonArray { }`. HMAC signing unchanged.
+5. Migrated `MapDownloadManager.kt` — `JSONObject` for metadata building/parsing → `buildJsonObject`/`Json.parseToJsonElement()` (no HTTP changes, JSON-only)
+6. Removed OkHttp dependency from `libs.versions.toml` and `build.gradle.kts`
 
-**Files touched:** `PlaceSearchClient.kt`, `GeocodingHelper.kt`, `OnlineTrackingClient.kt`, `FylkeDownloader.kt`, `build.gradle.kts`
+**Not migrated (out of scope):** `FylkeDownloader.kt` uses `java.net.URL` (not OkHttp), will be handled separately.
+
+**Files changed:** `libs.versions.toml`, `build.gradle.kts`, `GeocodingHelper.kt`, `PlaceSearchClient.kt`, `OnlineTrackingClient.kt`, `MapDownloadManager.kt`
+
+**Result:** No `org.json` or `okhttp3` imports remain in the codebase. All HTTP and JSON operations use KMP-compatible libraries.
 
 ---
 
@@ -244,6 +248,6 @@ Phase 9 is where the real iOS work begins, but by then ~80% of the code is alrea
 
 | Library | Replaced by |
 |---|---|
-| `com.squareup.okhttp3:okhttp` | Ktor |
+| `com.squareup.okhttp3:okhttp` | Ktor (done in Phase 2) |
 | `com.google.dagger:hilt-*` | Koin |
 | `com.jakewharton.timber:timber` | Common Logger |
