@@ -16,7 +16,7 @@ import org.maplibre.android.offline.OfflineRegion
 import org.maplibre.android.offline.OfflineRegionError
 import org.maplibre.android.offline.OfflineRegionStatus
 import org.maplibre.android.offline.OfflineTilePyramidRegionDefinition
-import timber.log.Timber
+import no.synth.where.util.Logger
 import kotlin.coroutines.resume
 
 class MapDownloadManager(private val context: Context) {
@@ -37,9 +37,9 @@ class MapDownloadManager(private val context: Context) {
         try {
             styleServer = StyleServer.getInstance()
             styleServer?.start()
-            Timber.d("Style server started on port %d", STYLE_SERVER_PORT)
+            Logger.d("Style server started on port %d", STYLE_SERVER_PORT)
         } catch (e: Exception) {
-            Timber.e(e, "Failed to start style server")
+            Logger.e(e, "Failed to start style server")
         }
     }
 
@@ -53,21 +53,21 @@ class MapDownloadManager(private val context: Context) {
     ) {
         withContext(Dispatchers.Main) {
             try {
-                Timber.d("Starting offline download for: %s on layer %s", region.name, layerName)
+                Logger.d("Starting offline download for: %s on layer %s", region.name, layerName)
 
                 val styleUrl = getStyleUrlForLayer(layerName)
                 val regionName = "${region.name}-$layerName"
 
                 val existingRegion = findOfflineRegion(regionName)
                 if (existingRegion != null) {
-                    Timber.d("Region %s already exists, updating...", regionName)
+                    Logger.d("Region %s already exists, updating...", regionName)
                     existingRegion.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
                         override fun onDelete() {
-                            Timber.d("Deleted existing region")
+                            Logger.d("Deleted existing region")
                         }
 
                         override fun onError(error: String) {
-                            Timber.w("Error deleting existing region: %s", error)
+                            Logger.w("Error deleting existing region: %s", error)
                         }
                     })
                 }
@@ -105,7 +105,7 @@ class MapDownloadManager(private val context: Context) {
                                     if (status.isComplete) {
                                         offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
                                         activeDownloads.remove(regionName)
-                                        Timber.d("Download complete for %s", regionName)
+                                        Logger.d("Download complete for %s", regionName)
                                         onComplete(true)
                                     }
                                 }
@@ -124,14 +124,14 @@ class MapDownloadManager(private val context: Context) {
                                                 reason.contains("TIMEOUT", ignoreCase = true)
 
                                     if (isTemporaryError) {
-                                        Timber.w(
+                                        Logger.w(
                                             "Temporary download error for %s: %s (reason: %s). Download will continue with retry.",
                                             regionName,
                                             errorMessage,
                                             reason
                                         )
                                     } else {
-                                        Timber.e(
+                                        Logger.e(
                                             "Permanent download error for %s: %s (reason: %s)",
                                             regionName,
                                             errorMessage,
@@ -144,19 +144,19 @@ class MapDownloadManager(private val context: Context) {
                                 }
 
                                 override fun mapboxTileCountLimitExceeded(limit: Long) {
-                                    Timber.w("Tile count limit exceeded: %d", limit)
+                                    Logger.w("Tile count limit exceeded: %d", limit)
                                 }
                             })
                         }
 
                         override fun onError(error: String) {
-                            Timber.e("Error creating offline region: %s", error)
+                            Logger.e("Error creating offline region: %s", error)
                             onComplete(false)
                         }
                     })
 
             } catch (e: Exception) {
-                Timber.e(e, "Download error")
+                Logger.e(e, "Download error")
                 onComplete(false)
             }
         }
@@ -179,7 +179,7 @@ class MapDownloadManager(private val context: Context) {
                 }
 
                 override fun onError(error: String) {
-                    Timber.e("Error listing regions: %s", error)
+                    Logger.e("Error listing regions: %s", error)
                     continuation.resume(null)
                 }
             })
@@ -193,7 +193,7 @@ class MapDownloadManager(private val context: Context) {
         activeDownloads[regionName]?.let { offlineRegion ->
             offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
             activeDownloads.remove(regionName)
-            Timber.d("Stopped download for %s", regionName)
+            Logger.d("Stopped download for %s", regionName)
         }
     }
 
@@ -284,12 +284,12 @@ class MapDownloadManager(private val context: Context) {
                     if (offlineRegion != null) {
                         offlineRegion.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
                             override fun onDelete() {
-                                Timber.d("Deleted region: %s", regionName)
+                                Logger.d("Deleted region: %s", regionName)
                                 continuation.resume(true)
                             }
 
                             override fun onError(error: String) {
-                                Timber.e("Error deleting region: %s", error)
+                                Logger.e("Error deleting region: %s", error)
                                 continuation.resume(false)
                             }
                         })

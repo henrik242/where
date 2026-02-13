@@ -4,7 +4,7 @@ import android.content.Context
 import kotlinx.serialization.json.*
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
-import timber.log.Timber
+import no.synth.where.util.Logger
 
 data class FylkeGeoJSON(
     val type: String,
@@ -61,7 +61,7 @@ object FylkeDataLoader {
                 return emptyList()
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error loading counties")
+            Logger.e(e, "Error loading counties")
             return emptyList()
         }
 

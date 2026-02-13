@@ -53,7 +53,7 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.toCommon
 import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.maps.MapLibreMap
-import timber.log.Timber
+import no.synth.where.util.Logger
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -224,7 +224,7 @@ fun MapScreen(
                     hasZoomedToLocation = true
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Map screen error")
+                Logger.e(e, "Map screen error")
             }
         }
     }
