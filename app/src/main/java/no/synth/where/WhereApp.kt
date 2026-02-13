@@ -65,8 +65,8 @@ fun WhereApp(
         }
     }
 
-    LaunchedEffect(isOnline) {
-        if (isOnline && !hasDownloadedCounties) {
+    LaunchedEffect(isOnline, showCountyBorders) {
+        if (isOnline && showCountyBorders && !hasDownloadedCounties) {
             val success = FylkeDownloader.downloadAndCacheFylker(context)
             if (success) {
                 hasDownloadedCounties = true

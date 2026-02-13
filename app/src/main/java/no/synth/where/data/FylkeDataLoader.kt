@@ -11,7 +11,7 @@ data class FylkeGeoJSON(
     val features: List<FylkeFeature>
 ) {
     companion object {
-        private val json = Json { ignoreUnknownKeys = true }
+        private val json = Json { ignoreUnknownKeys = true; allowTrailingComma = true }
 
         fun fromGeonorge(text: String): FylkeGeoJSON {
             val root = json.parseToJsonElement(text).jsonObject
