@@ -4,8 +4,9 @@ import kotlinx.serialization.Serializable
 import no.synth.where.data.serialization.LatLngSerializer
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlin.time.Instant
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @Serializable
 data class TrackPoint(
@@ -17,8 +18,8 @@ data class TrackPoint(
 )
 
 @Serializable
-data class Track(
-    val id: String = UUID.randomUUID().toString(),
+data class Track @OptIn(ExperimentalUuidApi::class) constructor(
+    val id: String = Uuid.random().toString(),
     val name: String,
     val points: List<TrackPoint>,
     val startTime: Long,
@@ -26,12 +27,8 @@ data class Track(
     val isRecording: Boolean = false
 ) {
     fun toGPX(): String {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }
-
         val trackPointsXml = points.joinToString("\n") { point ->
-            val timestamp = dateFormat.format(Date(point.timestamp))
+            val timestamp = Instant.fromEpochMilliseconds(point.timestamp).toString()
             val elevation = point.altitude?.let { "\n        <ele>$it</ele>" } ?: ""
             """      <trkpt lat="${point.latLng.latitude}" lon="${point.latLng.longitude}">$elevation
         <time>$timestamp</time>
@@ -45,7 +42,7 @@ data class Track(
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
     <name>$name</name>
-    <time>${dateFormat.format(Date(startTime))}</time>
+    <time>${Instant.fromEpochMilliseconds(startTime)}</time>
   </metadata>
   <trk>
     <name>$name</name>
@@ -78,9 +75,6 @@ $trackPointsXml
                     .trim()
 
                 val trackPoints = mutableListOf<TrackPoint>()
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("UTC")
-                }
 
                 val trkptPattern = Regex("""<trkpt lat="([^"]+)" lon="([^"]+)">(.*?)</trkpt>""", RegexOption.DOT_MATCHES_ALL)
                 trkptPattern.findAll(gpxContent).forEach { match ->
@@ -91,7 +85,7 @@ $trackPointsXml
                     val ele = content.substringAfter("<ele>", "").substringBefore("</ele>", "").toDoubleOrNull()
                     val timeStr = content.substringAfter("<time>", "").substringBefore("</time>", "")
                     val timestamp = try {
-                        dateFormat.parse(timeStr)?.time ?: System.currentTimeMillis()
+                        Instant.parse(timeStr).toEpochMilliseconds()
                     } catch (_: Exception) {
                         System.currentTimeMillis()
                     }
