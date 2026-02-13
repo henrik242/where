@@ -14,6 +14,8 @@ import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 import java.io.File
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class SavedPointsRepository(filesDir: File, private val savedPointDao: SavedPointDao) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -71,10 +73,11 @@ class SavedPointsRepository(filesDir: File, private val savedPointDao: SavedPoin
         }
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     fun addPoint(name: String, latLng: LatLng, description: String = "", color: String = "#FF5722") {
         val uniqueName = NamingUtils.makeUnique(name, _savedPoints.value.map { it.name })
         val point = SavedPointEntity(
-            id = java.util.UUID.randomUUID().toString(),
+            id = Uuid.random().toString(),
             name = uniqueName,
             latitude = latLng.latitude,
             longitude = latLng.longitude,

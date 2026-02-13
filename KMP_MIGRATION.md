@@ -110,16 +110,25 @@ Removed `android.content.Context` from all data-layer classes. Context remains i
 
 ---
 
-## Phase 5 — Replace java.* APIs with Kotlin/multiplatform equivalents (low effort)
+## Phase 5 — Replace java.* APIs with Kotlin/multiplatform equivalents (low effort) ✅ DONE
 
-### Steps
+Replaced JVM-only APIs with Kotlin stdlib equivalents. No new dependencies needed — Kotlin 2.3 provides everything natively.
 
-1. `java.text.SimpleDateFormat` / `java.util.Date` in `Track.kt` → `kotlinx.datetime`
-2. `java.util.UUID` in `Track.kt`, `RulerState.kt` → `kotlin.uuid.Uuid` (Kotlin 2.0+) or a simple `expect fun randomUuid(): String`
-3. `java.util.zip.ZipInputStream` in `FylkeDownloader.kt` → keep as `actual` on Android, implement with Foundation on iOS later
-4. `android.util.Base64` / `javax.crypto.*` in `HmacUtils.kt` → `expect`/`actual` (CommonCrypto on iOS)
+### What was done
 
-**Files touched:** `Track.kt`, `RulerState.kt`, `FylkeDownloader.kt`, `HmacUtils.kt`
+1. **`Track.kt`** — `java.text.SimpleDateFormat`/`java.util.Date` → `kotlin.time.Instant` for ISO 8601 formatting/parsing. `java.util.UUID` → `kotlin.uuid.Uuid`. `Instant` is strictly better: handles fractional seconds and timezone offsets in GPX input, preserves millisecond precision in output.
+2. **`RulerState.kt`** — `java.util.UUID.randomUUID()` → `kotlin.uuid.Uuid.random()` with `@OptIn(ExperimentalUuidApi::class)`
+3. **`SavedPointsRepository.kt`** — same UUID replacement as above
+4. **`HmacUtils.kt`** — `android.util.Base64` → `kotlin.io.encoding.Base64.Default.encode()`. `javax.crypto.Mac`/`SecretKeySpec` stay — they're JVM standard library (not Android-specific), will become expect/actual in Phase 7.
+5. **`FylkeDownloader.kt`** — no changes. `java.net.URL` and `java.util.zip.ZipInputStream` stay as-is, will become `actual` implementations in Phase 7.
+
+**New tests:** `HmacUtilsTest.kt` (pins HMAC output with known value — previously impossible due to android.util.Base64 requiring Robolectric), 3 new tests in `TrackTest.kt` (fractional-second parsing, timezone offset parsing, fractional-second roundtrip).
+
+**Files created:** `HmacUtilsTest.kt`
+
+**Files changed:** `Track.kt`, `RulerState.kt`, `SavedPointsRepository.kt`, `HmacUtils.kt`, `TrackTest.kt`
+
+**Result:** No `android.util.Base64`, `java.text.SimpleDateFormat`, `java.util.Date`, or `java.util.UUID` imports remain in the data layer. Only `java.io.File` (Phase 7), `java.net.URL`/`java.util.zip` (Phase 7), and `javax.crypto` (Phase 7) remain.
 
 ---
 
@@ -253,7 +262,7 @@ Phase 9 is where the real iOS work begins, but by then ~80% of the code is alrea
 |---|---|---|
 | `io.ktor:ktor-client-*` | OkHttp | Yes |
 | `io.insert-koin:koin-*` | Hilt | Yes |
-| `org.jetbrains.kotlinx:kotlinx-datetime` | `java.text.SimpleDateFormat`, `java.util.Date` | Yes |
+| `org.jetbrains.kotlinx:kotlinx-datetime` | `java.text.SimpleDateFormat`, `java.util.Date` | Yes (not needed — using `kotlin.time.Instant` from stdlib) |
 | `org.jetbrains.compose:compose-*` | Jetpack Compose (for shared UI) | Yes |
 | `androidx.room:room-*` | (keep) | Yes (since 2.7.0) |
 | `androidx.datastore:datastore-*` | (keep) | Yes (since 1.1.0) |
