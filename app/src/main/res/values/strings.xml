@@ -1,3 +1,170 @@
 <resources>
     <string name="app_name">Where?</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="ok">OK</string>
+    <string name="collapse">Collapse</string>
+    <string name="expand">Expand</string>
+    <string name="stop">Stop</string>
+    <string name="share">Share</string>
+    <string name="edit">Edit</string>
+    <string name="rename">Rename</string>
+    <string name="open">Open</string>
+    <string name="allow">Allow</string>
+    <string name="deny">Deny</string>
+    <string name="discard">Discard</string>
+    <string name="download">Download</string>
+    <string name="name_label">Name</string>
+    <string name="description_optional">Description (optional)</string>
+    <string name="color">Color</string>
+    <string name="show_on_map">Show on Map</string>
+    <string name="continue_label">Continue</string>
+
+    <!-- Settings Screen -->
+    <string name="settings">Settings</string>
+    <string name="online_tracking">Online Tracking</string>
+    <string name="go_to_online_tracking">Go to Online Tracking</string>
+    <string name="saved_tracks">Saved Tracks</string>
+    <string name="go_to_saved_tracks">Go to Saved Tracks</string>
+    <string name="saved_points">Saved Points</string>
+    <string name="go_to_saved_points">Go to Saved Points</string>
+    <string name="offline_maps">Offline Maps</string>
+    <string name="go_to_download_manager">Go to Download Manager</string>
+    <string name="language">Language</string>
+    <string name="system_default">System Default</string>
+    <string name="crash_reporting">Crash Reporting</string>
+    <string name="crash_reporting_description">Send anonymous crash reports to help improve the app</string>
+
+    <!-- Tracks Screen -->
+    <string name="import_gpx">Import GPX</string>
+    <string name="no_saved_tracks">No saved tracks yet</string>
+    <string name="delete_track_title">Delete Track?</string>
+    <string name="delete_track_confirm">Are you sure you want to delete \'%1$s\'?</string>
+    <string name="import_failed">Import Failed</string>
+    <string name="rename_track">Rename Track</string>
+    <string name="track_name">Track Name</string>
+    <string name="share_track_chooser">Share Track</string>
+    <string name="saved_to_path">Saved to %1$s</string>
+    <string name="failed_to_save_track">Failed to save track: %1$s</string>
+    <string name="open_track_chooser">Open Track With</string>
+    <string name="import_gpx_corrupted">Failed to import GPX file. The file may be corrupted or in an unsupported format.</string>
+    <string name="import_gpx_read_failed">Failed to read GPX file.</string>
+    <string name="import_gpx_error">Error importing GPX file: %1$s</string>
+    <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d points</string>
+    <string name="duration_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_minutes">%1$dm</string>
+
+    <!-- Saved Points Screen -->
+    <string name="no_saved_points">No saved points yet.\nLong press on the map to save a point.</string>
+    <string name="edit_point">Edit Point</string>
+
+    <!-- Online Tracking Screen -->
+    <string name="enable_online_tracking">Enable Online Tracking</string>
+    <string name="tracking_active">Active</string>
+    <string name="tracking_disabled">Disabled</string>
+    <string name="your_client_id">Your Client ID</string>
+    <string name="client_id_description">Share this ID with others to let them view your live location</string>
+    <string name="actions">Actions</string>
+    <string name="open_in_browser">Open in Browser</string>
+    <string name="view_on_web">View on Web</string>
+    <string name="share_tracking_link">Share Tracking Link</string>
+    <string name="regenerate_id">Regenerate ID</string>
+    <string name="regenerate_client_id">Regenerate Client ID</string>
+    <string name="how_it_works">\u2139\uFE0F How it works</string>
+    <string name="how_it_works_description">When you press record in map view and online tracking is enabled, your location is shared in real-time with anyone who has your Client ID. They can view your track on the web interface.</string>
+    <string name="regenerate_client_id_title">Regenerate Client ID?</string>
+    <string name="regenerate_client_id_message">This will create a new client ID. Your old ID (%1$s) will no longer be associated with your tracks on the server.</string>
+    <string name="regenerate">Regenerate</string>
+    <string name="share_tracking_message">Track my location: %1$s</string>
+    <string name="live_location_tracking">Live Location Tracking</string>
+    <string name="share_tracking_chooser">Share tracking link</string>
+
+    <!-- Download Screen -->
+    <string name="automatic_cache">Automatic Cache</string>
+    <string name="tiles_loaded_automatically">Tiles loaded automatically while browsing</string>
+    <string name="downloading_region">Downloading %1$s</string>
+    <string name="downloading_region_ellipsis">Downloading %1$s\u2026</string>
+    <string name="view_regions">View regions</string>
+    <string name="download_regions">Download Regions</string>
+    <string name="delete_region_title">Delete %1$s?</string>
+    <string name="delete_region_message">This will delete all %1$s tiles for %2$s. You can re-download them later.</string>
+    <string name="tiles_needed">%1$d tiles needed</string>
+    <string name="tiles_stats">%1$d tiles \u2022 %2$s</string>
+    <string name="tiles_downloaded">\u2713 %1$d tiles \u2022 %2$s</string>
+    <string name="tiles_partial">%1$d/%2$d tiles \u2022 %3$s</string>
+    <string name="layer_kartverket_desc">Topographic maps from Kartverket</string>
+    <string name="layer_toporaster_desc">Topographic raster maps</string>
+    <string name="layer_sjokartraster_desc">Nautical charts</string>
+    <string name="layer_osm_desc">Community-sourced street maps</string>
+    <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
+    <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
+
+    <!-- Map Screen snackbars -->
+    <string name="recording_snackbar">Recording\u2026</string>
+    <string name="track_discarded">Track discarded</string>
+    <string name="track_saved">Track saved</string>
+    <string name="point_saved">Point saved</string>
+    <string name="point_deleted">Point deleted</string>
+    <string name="point_updated">Point updated</string>
+    <string name="online_tracking_enabled">Online tracking enabled</string>
+    <string name="online_tracking_disabled">Online tracking disabled</string>
+    <string name="saved_as_track">Saved as track: %1$s</string>
+
+    <!-- Map Dialogs -->
+    <string name="background_location_access">Background Location Access</string>
+    <string name="background_location_intro">This app collects your location in the background to enable:</string>
+    <string name="background_location_features">\u2022 GPS track recording while the screen is locked or other apps are in use\n\u2022 Real-time location sharing when online tracking is enabled</string>
+    <string name="background_location_privacy">Your location is only tracked while you have an active recording session. You can stop tracking at any time using the stop button or the notification.</string>
+    <string name="background_location_instruction">On the next screen, select \"Allow all the time\" to enable background tracking.</string>
+    <string name="save_track">Save Track</string>
+    <string name="enter_track_name">Enter a name for your track:</string>
+    <string name="save_location">Save Location</string>
+    <string name="enter_location_name">Enter a name for this location:</string>
+    <string name="location_name">Location Name</string>
+    <string name="edit_location">Edit Location</string>
+    <string name="save_route_as_track">Save Route as Track</string>
+    <string name="enter_route_name">Enter a name for this route:</string>
+    <string name="ruler_points_distance">%1$d points \u2022 %2$s</string>
+
+    <!-- Map Overlays -->
+    <string name="zoom_in">Zoom In</string>
+    <string name="zoom_out">Zoom Out</string>
+    <string name="tap_to_measure">Tap to measure</string>
+    <string name="n_points">%1$d points</string>
+    <string name="remove_last_point">Remove Last Point</string>
+    <string name="clear_all">Clear All</string>
+    <string name="save_as_track">Save as Track</string>
+    <string name="recording">Recording</string>
+    <string name="close_track_view">Close Track View</string>
+    <string name="close_point_view">Close Point View</string>
+
+    <!-- Map FAB Column -->
+    <string name="search_places">Search Places</string>
+    <string name="layers_and_overlays">Layers &amp; Overlays</string>
+    <string name="map_layers">Map Layers</string>
+    <string name="kartverket_norway">Kartverket (Norway)</string>
+    <string name="kartverket_toporaster">Kartverket toporaster</string>
+    <string name="kartverket_sjokart">Kartverket sj\u00f8kart</string>
+    <string name="overlays">Overlays</string>
+    <string name="waymarked_trails_osm">Waymarked Trails (OSM)</string>
+    <string name="county_borders_norway">County Borders (Norway)</string>
+    <string name="stop_recording">Stop Recording</string>
+    <string name="start_recording">Start Recording</string>
+    <string name="my_location">My Location</string>
+    <string name="ruler">Ruler</string>
+
+    <!-- Search Overlay -->
+    <string name="search_places_hint">Search places\u2026</string>
+    <string name="clear">Clear</string>
+    <string name="close_search">Close Search</string>
+
+    <!-- Location Tracking Service -->
+    <string name="notification_channel_name">Track Recording</string>
+    <string name="notification_channel_description">Ongoing track recording notifications</string>
+    <string name="notification_recording_title">Recording Track</string>
+    <string name="notification_recording_text">Location tracking is active</string>
 </resources>
