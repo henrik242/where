@@ -1,20 +1,25 @@
 package no.synth.where.data
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.data.geo.LatLng
 import timber.log.Timber
-import java.util.concurrent.TimeUnit
 
 object PlaceSearchClient {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val client = HttpClient(CIO) {
+        engine {
+            requestTimeout = 10_000
+        }
+    }
 
     data class SearchResult(
         val name: String,
@@ -25,45 +30,37 @@ object PlaceSearchClient {
 
     suspend fun search(query: String): List<SearchResult> = withContext(Dispatchers.IO) {
         try {
-            val url = "https://ws.geonorge.no/stedsnavn/v1/sted".toHttpUrl().newBuilder()
-                .addQueryParameter("sok", query)
-                .addQueryParameter("treffPerSide", "10")
-                .build()
+            val response = client.get("https://ws.geonorge.no/stedsnavn/v1/sted") {
+                url {
+                    parameters.append("sok", query)
+                    parameters.append("treffPerSide", "10")
+                }
+            }
+            if (response.status.value !in 200..299) return@withContext emptyList()
 
-            val request = Request.Builder()
-                .url(url)
-                .build()
-
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return@withContext emptyList()
-
-            val json = JSONObject(response.body.string())
-            val navn = json.optJSONArray("navn") ?: return@withContext emptyList()
+            val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val navn = json["navn"]?.jsonArray ?: return@withContext emptyList()
 
             val results = mutableListOf<SearchResult>()
-            for (i in 0 until navn.length()) {
-                val item = navn.getJSONObject(i)
+            for (item in navn) {
+                val itemObj = item.jsonObject
 
-                val stedsnavnArr = item.optJSONArray("stedsnavn")
-                val name = stedsnavnArr
-                    ?.optJSONObject(0)
-                    ?.optString("skrivemåte", "")
+                val name = itemObj["stedsnavn"]?.jsonArray
+                    ?.firstOrNull()?.jsonObject
+                    ?.get("skrivemåte")?.jsonPrimitive?.content
                     ?: ""
                 if (name.isBlank()) continue
 
-                val type = item.optString("navneobjekttype", "")
+                val type = itemObj["navneobjekttype"]?.jsonPrimitive?.content ?: ""
 
-                val kommunerArr = item.optJSONArray("kommuner")
-                val municipality = kommunerArr
-                    ?.optJSONObject(0)
-                    ?.optString("kommunenavn", "")
+                val municipality = itemObj["kommuner"]?.jsonArray
+                    ?.firstOrNull()?.jsonObject
+                    ?.get("kommunenavn")?.jsonPrimitive?.content
                     ?: ""
 
-                val reprPunkt = item.optJSONObject("representasjonspunkt")
-                    ?: continue
-                val lon = reprPunkt.optDouble("øst", Double.NaN)
-                val lat = reprPunkt.optDouble("nord", Double.NaN)
-                if (lon.isNaN() || lat.isNaN()) continue
+                val reprPunkt = itemObj["representasjonspunkt"]?.jsonObject ?: continue
+                val lon = reprPunkt["øst"]?.jsonPrimitive?.double ?: continue
+                val lat = reprPunkt["nord"]?.jsonPrimitive?.double ?: continue
 
                 results.add(SearchResult(name, type, municipality, LatLng(lat, lon)))
             }

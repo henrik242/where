@@ -4,7 +4,11 @@ import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.offline.OfflineManager
@@ -76,7 +80,7 @@ class MapDownloadManager(private val context: Context) {
                     context.resources.displayMetrics.density
                 )
 
-                val metadata = JSONObject().apply {
+                val metadata = buildJsonObject {
                     put("name", regionName)
                     put("layer", layerName)
                     put("region", region.name)
@@ -165,8 +169,8 @@ class MapDownloadManager(private val context: Context) {
                     val region = offlineRegions?.find { region ->
                         try {
                             val metadata = String(region.metadata)
-                            val json = JSONObject(metadata)
-                            json.getString("name") == name
+                            val json = Json.parseToJsonElement(metadata).jsonObject
+                            json["name"]?.jsonPrimitive?.content == name
                         } catch (_: Exception) {
                             false
                         }
@@ -208,8 +212,8 @@ class MapDownloadManager(private val context: Context) {
                 val offlineRegion = offlineRegions?.find { r ->
                     try {
                         val metadata = String(r.metadata)
-                        val json = JSONObject(metadata)
-                        json.getString("name") == regionName
+                        val json = Json.parseToJsonElement(metadata).jsonObject
+                        json["name"]?.jsonPrimitive?.content == regionName
                     } catch (_: Exception) {
                         false
                     }
@@ -270,8 +274,8 @@ class MapDownloadManager(private val context: Context) {
                     val offlineRegion = offlineRegions?.find { r ->
                         try {
                             val metadata = String(r.metadata)
-                            val json = JSONObject(metadata)
-                            json.getString("name") == regionName
+                            val json = Json.parseToJsonElement(metadata).jsonObject
+                            json["name"]?.jsonPrimitive?.content == regionName
                         } catch (_: Exception) {
                             false
                         }
@@ -316,8 +320,8 @@ class MapDownloadManager(private val context: Context) {
                     val layerRegions = offlineRegions.filter { r ->
                         try {
                             val metadata = String(r.metadata)
-                            val json = JSONObject(metadata)
-                            json.getString("layer") == layerName
+                            val json = Json.parseToJsonElement(metadata).jsonObject
+                            json["layer"]?.jsonPrimitive?.content == layerName
                         } catch (_: Exception) {
                             false
                         }
