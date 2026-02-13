@@ -1,7 +1,7 @@
 package no.synth.where.data
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.android.Android
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -27,9 +27,10 @@ import no.synth.where.util.Logger
 class OnlineTrackingClient(
     private val serverUrl: String,
     private val clientId: String,
-    internal val client: HttpClient = HttpClient(CIO) {
+    internal val client: HttpClient = HttpClient(Android) {
         engine {
-            requestTimeout = 30_000
+            connectTimeout = 30_000
+            socketTimeout = 30_000
         }
     }
 ) {
