@@ -301,7 +301,7 @@ fun LayerRegionsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val downloadManager = remember { MapDownloadManager(context) }
-    val regions = remember { RegionsRepository.getRegions(context) }
+    val regions = remember { RegionsRepository.getRegions(context.cacheDir) }
 
     val downloadState by MapDownloadService.downloadState.collectAsState()
     var refreshTrigger by remember { mutableIntStateOf(0) }

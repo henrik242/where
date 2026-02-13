@@ -1,6 +1,5 @@
 package no.synth.where.data
 
-import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -12,9 +11,9 @@ object FylkeDownloader {
     private const val GEOJSON_URL = "https://nedlasting.geonorge.no/geonorge/Basisdata/Fylker/GeoJSON/Basisdata_0000_Norge_4258_Fylker_GeoJSON.zip"
     private const val CACHE_FILENAME = "norske_fylker_cached.json"
 
-    suspend fun downloadAndCacheFylker(context: Context): Boolean = withContext(Dispatchers.IO) {
+    suspend fun downloadAndCacheFylker(cacheDir: File): Boolean = withContext(Dispatchers.IO) {
         try {
-            val cacheFile = File(context.cacheDir, CACHE_FILENAME)
+            val cacheFile = File(cacheDir, CACHE_FILENAME)
 
             // Check if cache exists and is recent (less than 7 days old)
             if (cacheFile.exists()) {
@@ -57,13 +56,13 @@ object FylkeDownloader {
         }
     }
 
-    fun getCachedFile(context: Context): File? {
-        val cacheFile = File(context.cacheDir, CACHE_FILENAME)
+    fun getCachedFile(cacheDir: File): File? {
+        val cacheFile = File(cacheDir, CACHE_FILENAME)
         return if (cacheFile.exists()) cacheFile else null
     }
 
-    fun hasCachedData(context: Context): Boolean {
-        return File(context.cacheDir, CACHE_FILENAME).exists()
+    fun hasCachedData(cacheDir: File): Boolean {
+        return File(cacheDir, CACHE_FILENAME).exists()
     }
 }
 
