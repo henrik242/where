@@ -38,14 +38,75 @@ object MapStyle {
             """
         }
 
-        val osmOpacity = if (selectedLayer == MapLayer.OSM) 1.0 else 0.01
-        val kartverketOpacity = if (selectedLayer == MapLayer.KARTVERKET) 1.0 else 0.01
-        val toporasterOpacity = if (selectedLayer == MapLayer.TOPORASTER) 1.0 else 0.01
-        val sjokartrasterOpacity = if (selectedLayer == MapLayer.SJOKARTRASTER) 1.0 else 0.01
-        val openTopoMapOpacity = if (selectedLayer == MapLayer.OPENTOPOMAP) 1.0 else 0.01
-        val waymarkedTrailsOpacity = if (showWaymarkedTrails) 1.0 else 0.0
+        data class TileSource(val id: String, val tiles: String, val attribution: String)
 
-        val countyBordersLayers = if (showCountyBorders) """
+        val baseSource = when (selectedLayer) {
+            MapLayer.OSM -> TileSource("osm", "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors")
+            MapLayer.KARTVERKET -> TileSource("kartverket", "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", "Kartverket")
+            MapLayer.TOPORASTER -> TileSource("toporaster", "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png", "Kartverket Toporaster")
+            MapLayer.SJOKARTRASTER -> TileSource("sjokartraster", "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png", "Kartverket Sjøkartraster")
+            MapLayer.OPENTOPOMAP -> TileSource("opentopomap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", "© OpenTopoMap (CC-BY-SA)")
+        }
+
+        val sources = buildString {
+            append("""
+    "${baseSource.id}": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": ["${baseSource.tiles}"],
+      "tileSize": 256,
+      "attribution": "${baseSource.attribution}"
+    }""")
+            if (showWaymarkedTrails) {
+                append(""",
+    "waymarkedtrails": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "attribution": "© Waymarked Trails, OSM"
+    }""")
+            }
+            append(""",
+    "regions": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [$regionsGeoJson]
+      }
+    }""")
+        }
+
+        val layers = buildString {
+            append("""
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f0f0f0"
+      }
+    },
+    {
+      "id": "base-layer",
+      "type": "raster",
+      "source": "${baseSource.id}",
+      "paint": {
+        "raster-opacity": 1.0
+      }
+    }""")
+            if (showWaymarkedTrails) {
+                append(""",
+    {
+      "id": "waymarkedtrails-layer",
+      "type": "raster",
+      "source": "waymarkedtrails",
+      "paint": {
+        "raster-opacity": 1.0
+      }
+    }""")
+            }
+            if (showCountyBorders) {
+                append(""",
     {
       "id": "regions-fill",
       "type": "fill",
@@ -79,121 +140,17 @@ object MapStyle {
         "text-halo-color": "#ffffff",
         "text-halo-width": 2
       }
-    }
-""" else ""
+    }""")
+            }
+        }
 
         return """
 {
   "version": 8,
   "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-  "sources": {
-    "osm": {
-      "type": "raster",
-      "scheme": "xyz",
-      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      "tileSize": 256,
-      "attribution": "© OpenStreetMap contributors"
-    },
-    "kartverket": {
-      "type": "raster",
-      "scheme": "xyz",
-      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"],
-      "tileSize": 256,
-      "attribution": "Kartverket"
-    },
-    "toporaster": {
-      "type": "raster",
-      "scheme": "xyz",
-      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"],
-      "tileSize": 256,
-      "attribution": "Kartverket Toporaster"
-    },
-    "sjokartraster": {
-      "type": "raster",
-      "scheme": "xyz",
-      "tiles": ["https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"],
-      "tileSize": 256,
-      "attribution": "Kartverket Sjøkartraster"
-    },
-    "opentopomap": {
-      "type": "raster",
-      "scheme": "xyz",
-      "tiles": ["https://tile.opentopomap.org/{z}/{x}/{y}.png"],
-      "tileSize": 256,
-      "attribution": "© OpenTopoMap (CC-BY-SA)"
-    },
-    "waymarkedtrails": {
-      "type": "raster",
-      "scheme": "xyz",
-      "tiles": ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
-      "tileSize": 256,
-      "attribution": "© Waymarked Trails, OSM"
-    },
-    "regions": {
-      "type": "geojson",
-      "data": {
-        "type": "FeatureCollection",
-        "features": [$regionsGeoJson]
-      }
-    }
+  "sources": {$sources
   },
-  "layers": [
-    {
-      "id": "background",
-      "type": "background",
-      "paint": {
-        "background-color": "#f0f0f0"
-      }
-    },
-    {
-      "id": "osm-layer",
-      "type": "raster",
-      "source": "osm",
-      "paint": {
-        "raster-opacity": $osmOpacity
-      }
-    },
-    {
-      "id": "kartverket-layer",
-      "type": "raster",
-      "source": "kartverket",
-      "paint": {
-        "raster-opacity": $kartverketOpacity
-      }
-    },
-    {
-      "id": "toporaster-layer",
-      "type": "raster",
-      "source": "toporaster",
-      "paint": {
-        "raster-opacity": $toporasterOpacity
-      }
-    },
-    {
-      "id": "sjokartraster-layer",
-      "type": "raster",
-      "source": "sjokartraster",
-      "paint": {
-        "raster-opacity": $sjokartrasterOpacity
-      }
-    },
-    {
-      "id": "opentopomap-layer",
-      "type": "raster",
-      "source": "opentopomap",
-      "paint": {
-        "raster-opacity": $openTopoMapOpacity
-      }
-    },
-    {
-      "id": "waymarkedtrails-layer",
-      "type": "raster",
-      "source": "waymarkedtrails",
-      "paint": {
-        "raster-opacity": $waymarkedTrailsOpacity
-      }
-    }${if (showCountyBorders) "," else ""}
-    $countyBordersLayers
+  "layers": [$layers
   ]
 }
 """
