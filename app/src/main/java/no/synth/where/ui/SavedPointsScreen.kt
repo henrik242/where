@@ -157,13 +157,14 @@ fun SavedPointItem(
                         .size(40.dp)
                         .background(
                             color = try {
-                                if (!point.color.isNullOrBlank()) {
-                                    Color(point.color.toColorInt())
+                                val c = point.color
+                                if (!c.isNullOrBlank()) {
+                                    Color(c.toColorInt())
                                 } else {
-                                    Color(0xFFFF5722) // Default red color
+                                    Color(0xFFFF5722)
                                 }
                             } catch (_: Exception) {
-                                Color(0xFFFF5722) // Fallback to default red color
+                                Color(0xFFFF5722)
                             },
                             shape = CircleShape
                         )
@@ -176,9 +177,10 @@ fun SavedPointItem(
                         text = point.name,
                         style = MaterialTheme.typography.titleMedium
                     )
-                    if (!point.description.isNullOrBlank()) {
+                    val desc = point.description
+                    if (!desc.isNullOrBlank()) {
                         Text(
-                            text = point.description,
+                            text = desc,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
