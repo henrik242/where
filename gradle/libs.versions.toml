@@ -1,8 +1,8 @@
 [versions]
-activityCompose = "1.12.3"
+activityCompose = "1.12.4"
 agp = "9.0.0"
 appcompat = "1.7.1"
-composeBom = "2026.01.01"
+composeBom = "2026.02.00"
 core = "1.7.0"
 coreKtx = "1.17.0"
 datastorePreferences = "1.2.0"
@@ -28,7 +28,7 @@ playServicesLocation = "21.3.0"
 robolectric = "4.16.1"
 room = "2.8.4"
 timber = "5.0.1"
-uiTestJunit4 = "1.10.2"
+uiTestJunit4 = "1.10.3"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
