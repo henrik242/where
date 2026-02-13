@@ -42,10 +42,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import no.synth.where.R
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
@@ -71,14 +73,21 @@ fun DownloadScreen(
     var cacheSize by remember { mutableLongStateOf(0L) }
     val downloadState by MapDownloadService.downloadState.collectAsState()
 
-    val layers = remember {
+    val kartverketDesc = stringResource(R.string.layer_kartverket_desc)
+    val toporasterDesc = stringResource(R.string.layer_toporaster_desc)
+    val sjokartrasterDesc = stringResource(R.string.layer_sjokartraster_desc)
+    val osmDesc = stringResource(R.string.layer_osm_desc)
+    val opentopomapDesc = stringResource(R.string.layer_opentopomap_desc)
+    val waymarkedtrailsDesc = stringResource(R.string.layer_waymarkedtrails_desc)
+
+    val layers = remember(kartverketDesc) {
         listOf(
-            LayerInfo("kartverket", "Kartverket", "Topographic maps from Kartverket"),
-            LayerInfo("toporaster", "Kartverket Toporaster", "Topographic raster maps"),
-            LayerInfo("sjokartraster", "Kartverket Sjøkart", "Nautical charts"),
-            LayerInfo("osm", "OpenStreetMap", "Community-sourced street maps"),
-            LayerInfo("opentopomap", "OpenTopoMap", "Topographic maps with hiking trails"),
-            LayerInfo("waymarkedtrails", "Waymarked Trails", "Hiking trail overlay")
+            LayerInfo("kartverket", "Kartverket", kartverketDesc),
+            LayerInfo("toporaster", "Kartverket Toporaster", toporasterDesc),
+            LayerInfo("sjokartraster", "Kartverket Sjøkart", sjokartrasterDesc),
+            LayerInfo("osm", "OpenStreetMap", osmDesc),
+            LayerInfo("opentopomap", "OpenTopoMap", opentopomapDesc),
+            LayerInfo("waymarkedtrails", "Waymarked Trails", waymarkedtrailsDesc)
         )
     }
 
@@ -137,10 +146,10 @@ fun DownloadScreenContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Offline Maps") },
+                title = { Text(stringResource(R.string.offline_maps)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -167,12 +176,12 @@ fun DownloadScreenContent(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Automatic Cache",
+                                    stringResource(R.string.automatic_cache),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    "Tiles loaded automatically while browsing",
+                                    stringResource(R.string.tiles_loaded_automatically),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -207,7 +216,7 @@ fun DownloadScreenContent(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "Downloading $downloadRegionName",
+                                        stringResource(R.string.downloading_region, downloadRegionName),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -218,7 +227,7 @@ fun DownloadScreenContent(
                                     )
                                 }
                                 TextButton(onClick = onStopDownload) {
-                                    Text("Stop")
+                                    Text(stringResource(R.string.stop))
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
@@ -265,7 +274,7 @@ fun DownloadScreenContent(
                             if (stats.second > 0) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    "${stats.second} tiles • ${formatBytes(stats.first)}",
+                                    stringResource(R.string.tiles_stats, stats.second, formatBytes(stats.first)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium
@@ -274,7 +283,7 @@ fun DownloadScreenContent(
                         }
                         Icon(
                             Icons.Default.ChevronRight,
-                            contentDescription = "View regions",
+                            contentDescription = stringResource(R.string.view_regions),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -387,7 +396,7 @@ fun LayerRegionsScreenContent(
                 title = { Text(layerDisplayName) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -402,7 +411,7 @@ fun LayerRegionsScreenContent(
         ) {
             item {
                 Text(
-                    "Download Regions",
+                    stringResource(R.string.download_regions),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -420,7 +429,7 @@ fun LayerRegionsScreenContent(
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Downloading ${cleanRegionName(downloadRegionName)}...")
+                            Text(stringResource(R.string.downloading_region_ellipsis, cleanRegionName(downloadRegionName)))
                             Spacer(modifier = Modifier.height(8.dp))
                             LinearProgressIndicator(
                                 progress = { downloadProgress / 100f },
@@ -437,7 +446,7 @@ fun LayerRegionsScreenContent(
                                     style = MaterialTheme.typography.bodySmall
                                 )
                                 TextButton(onClick = onStopDownload) {
-                                    Text("Stop")
+                                    Text(stringResource(R.string.stop))
                                 }
                             }
                         }
@@ -467,17 +476,13 @@ fun LayerRegionsScreenContent(
                         headlineContent = { Text(cleanRegionName(region.name)) },
                         supportingContent = {
                             if (isDownloaded) {
-                                Text("✓ ${info.downloadedTiles} tiles • ${formatBytes(info.downloadedSize)}")
+                                Text(stringResource(R.string.tiles_downloaded, info.downloadedTiles, formatBytes(info.downloadedSize)))
                             } else if (hasPartialDownload) {
                                 Text(
-                                    "${info?.downloadedTiles ?: 0}/${info?.totalTiles ?: 0} tiles • ${
-                                        formatBytes(
-                                            info?.downloadedSize ?: 0
-                                        )
-                                    }"
+                                    stringResource(R.string.tiles_partial, info?.downloadedTiles ?: 0, info?.totalTiles ?: 0, formatBytes(info?.downloadedSize ?: 0))
                                 )
                             } else {
-                                Text("${info?.totalTiles ?: 0} tiles needed")
+                                Text(stringResource(R.string.tiles_needed, info?.totalTiles ?: 0))
                             }
                         },
                         trailingContent = {
@@ -487,7 +492,7 @@ fun LayerRegionsScreenContent(
                             ) {
                                 if (hasPartialDownload || isDownloaded) {
                                     IconButton(onClick = { onDeleteRequest(region) }) {
-                                        Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete))
                                     }
                                 }
                                 Button(
@@ -497,8 +502,8 @@ fun LayerRegionsScreenContent(
                                     Text(
                                         when {
                                             isDownloaded -> "✓"
-                                            hasPartialDownload -> "Continue"
-                                            else -> "Download"
+                                            hasPartialDownload -> stringResource(R.string.continue_label)
+                                            else -> stringResource(R.string.download)
                                         }
                                     )
                                 }
@@ -514,16 +519,16 @@ fun LayerRegionsScreenContent(
     showDeleteDialog?.let { region ->
         AlertDialog(
             onDismissRequest = onDismissDelete,
-            title = { Text("Delete ${cleanRegionName(region.name)}?") },
-            text = { Text("This will delete all $layerDisplayName tiles for ${cleanRegionName(region.name)}. You can re-download them later.") },
+            title = { Text(stringResource(R.string.delete_region_title, cleanRegionName(region.name))) },
+            text = { Text(stringResource(R.string.delete_region_message, layerDisplayName, cleanRegionName(region.name))) },
             confirmButton = {
                 TextButton(onClick = { onConfirmDelete(region) }) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismissDelete) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

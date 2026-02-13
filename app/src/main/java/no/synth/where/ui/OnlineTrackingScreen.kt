@@ -39,17 +39,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import no.synth.where.R
 
 @Composable
 fun OnlineTrackingScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val resources = context.resources
     val viewModel: OnlineTrackingScreenViewModel = hiltViewModel()
     val isTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val clientId by viewModel.clientId.collectAsState()
@@ -70,10 +73,10 @@ fun OnlineTrackingScreen(
             val url = "${trackingServerUrl}?clients=$clientId"
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, "Track my location: $url")
-                putExtra(Intent.EXTRA_SUBJECT, "Live Location Tracking")
+                putExtra(Intent.EXTRA_TEXT, resources.getString(R.string.share_tracking_message, url))
+                putExtra(Intent.EXTRA_SUBJECT, resources.getString(R.string.live_location_tracking))
             }
-            context.startActivity(Intent.createChooser(shareIntent, "Share tracking link"))
+            context.startActivity(Intent.createChooser(shareIntent, resources.getString(R.string.share_tracking_chooser)))
         },
         onRegenerateClick = { showRegenerateDialog = true },
         onConfirmRegenerate = {
@@ -101,10 +104,10 @@ fun OnlineTrackingScreenContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Online Tracking") },
+                title = { Text(stringResource(R.string.online_tracking)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -137,12 +140,12 @@ fun OnlineTrackingScreenContent(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Enable Online Tracking",
+                            text = stringResource(R.string.enable_online_tracking),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (isTrackingEnabled) "Active" else "Disabled",
+                            text = if (isTrackingEnabled) stringResource(R.string.tracking_active) else stringResource(R.string.tracking_disabled),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -164,7 +167,7 @@ fun OnlineTrackingScreenContent(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "Your Client ID",
+                        text = stringResource(R.string.your_client_id),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -177,7 +180,7 @@ fun OnlineTrackingScreenContent(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Share this ID with others to let them view your live location",
+                        text = stringResource(R.string.client_id_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -186,7 +189,7 @@ fun OnlineTrackingScreenContent(
 
             // Actions Section
             Text(
-                text = "Actions",
+                text = stringResource(R.string.actions),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -198,11 +201,11 @@ fun OnlineTrackingScreenContent(
             ) {
                 Icon(
                     Icons.Filled.OpenInBrowser,
-                    contentDescription = "Open in Browser",
+                    contentDescription = stringResource(R.string.open_in_browser),
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("View on Web")
+                Text(stringResource(R.string.view_on_web))
             }
 
             // Share Button
@@ -212,11 +215,11 @@ fun OnlineTrackingScreenContent(
             ) {
                 Icon(
                     Icons.Filled.Share,
-                    contentDescription = "Share",
+                    contentDescription = stringResource(R.string.share),
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Share Tracking Link")
+                Text(stringResource(R.string.share_tracking_link))
             }
 
             // Regenerate ID Button
@@ -226,11 +229,11 @@ fun OnlineTrackingScreenContent(
             ) {
                 Icon(
                     Icons.Filled.Refresh,
-                    contentDescription = "Regenerate ID",
+                    contentDescription = stringResource(R.string.regenerate_id),
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Regenerate Client ID")
+                Text(stringResource(R.string.regenerate_client_id))
             }
 
             // Info Card
@@ -246,13 +249,13 @@ fun OnlineTrackingScreenContent(
                         .padding(16.dp)
                 ) {
                     Text(
-                        text = "ℹ️ How it works",
+                        text = stringResource(R.string.how_it_works),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "When you press record in map view and online tracking is enabled, your location is shared in real-time with anyone who has your Client ID. They can view your track on the web interface.",
+                        text = stringResource(R.string.how_it_works_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer
                     )
@@ -265,18 +268,18 @@ fun OnlineTrackingScreenContent(
     if (showRegenerateDialog) {
         AlertDialog(
             onDismissRequest = onDismissRegenerate,
-            title = { Text("Regenerate Client ID?") },
+            title = { Text(stringResource(R.string.regenerate_client_id_title)) },
             text = {
-                Text("This will create a new client ID. Your old ID ($clientId) will no longer be associated with your tracks on the server.")
+                Text(stringResource(R.string.regenerate_client_id_message, clientId))
             },
             confirmButton = {
                 TextButton(onClick = onConfirmRegenerate) {
-                    Text("Regenerate")
+                    Text(stringResource(R.string.regenerate))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismissRegenerate) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -299,4 +302,3 @@ private fun OnlineTrackingScreenPreview() {
         onDismissRegenerate = {}
     )
 }
-

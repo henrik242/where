@@ -21,7 +21,7 @@ class UserPreferences(context: Context) {
     private val dataStore = context.dataStore
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val _showCountyBorders = MutableStateFlow(true)
+    private val _showCountyBorders = MutableStateFlow(false)
     val showCountyBorders: StateFlow<Boolean> = _showCountyBorders.asStateFlow()
 
     private val _crashReportingEnabled = MutableStateFlow(true)
@@ -36,7 +36,7 @@ class UserPreferences(context: Context) {
     init {
         scope.launch {
             dataStore.data.collect { prefs ->
-                _showCountyBorders.value = prefs[SHOW_COUNTY_BORDERS] ?: true
+                _showCountyBorders.value = prefs[SHOW_COUNTY_BORDERS] ?: false
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
