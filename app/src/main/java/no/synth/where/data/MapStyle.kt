@@ -10,7 +10,7 @@ object MapStyle {
         showCountyBorders: Boolean = true,
         showWaymarkedTrails: Boolean = false
     ): String {
-        val regions = RegionsRepository.getRegions(context)
+        val regions = if (showCountyBorders) RegionsRepository.getRegions(context) else emptyList()
         val regionsGeoJson = regions.joinToString(",") { region ->
             val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
                 region.polygon.first().joinToString(",") { latLng ->
