@@ -17,5 +17,5 @@
 ## Android App Code Guidelines
 
 - Follow Android design guidelines and Material 3 best practices
-- Kotlin with Jetpack Compose, Hilt for DI, Room for local storage
+- Kotlin with Jetpack Compose, Koin for DI, Room for local storage
 - Use Timber for logging, never `println` or `Log.*`

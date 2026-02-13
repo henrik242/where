@@ -7,7 +7,7 @@ Migrate the Android app to Kotlin Multiplatform (KMP) with Compose Multiplatform
 ## Current state
 
 - 54 Kotlin files, single Android target
-- Jetpack Compose UI, Room database, Hilt DI, OkHttp networking
+- Jetpack Compose UI, Room database, Koin DI, Ktor networking
 - MapLibre Android for map rendering and offline tiles
 - Play Services for fused location
 - Firebase Crashlytics
@@ -132,20 +132,27 @@ Replaced JVM-only APIs with Kotlin stdlib equivalents. No new dependencies neede
 
 ---
 
-## Phase 6 — Replace Hilt with Koin (medium effort)
+## Phase 6 — Replace Hilt with Koin (medium effort) ✅ DONE
 
-Hilt is Android-only. Koin has full KMP support.
+Hilt is Android-only. Koin has full KMP support and uses pure Kotlin DSL instead of annotation processing.
 
-### Steps
+### What was done
 
-1. Add Koin dependencies
-2. Convert `AppModule.kt` from Hilt `@Module` to Koin `module { }` DSL
-3. Remove `@HiltViewModel` from all ViewModels, use Koin's `koinViewModel()`
-4. Remove `@AndroidEntryPoint` from `MainActivity`, `@HiltAndroidApp` from `WhereApplication`
-5. Initialize Koin in `WhereApplication.onCreate()`
-6. Remove Hilt dependencies
+1. **Dependencies** — Removed Hilt version, plugin, and 3 library entries (`hilt-android`, `hilt-compiler`, `hilt-navigation-compose`). Added Koin BOM 4.1.1 + 3 library entries (`koin-android`, `koin-androidx-compose`, `koin-test-junit4`). KSP plugin stays for Room.
+2. **`di/AppModule.kt`** — Full rewrite from Hilt `@Module`/`@Provides`/`@Singleton` object to Koin `module { }` val with `single { }` and `viewModel { }` DSL. DataStore delegate extensions unchanged.
+3. **`WhereApplication.kt`** — Removed `@HiltAndroidApp`, added `startKoin { androidContext(); modules(appModule) }` in `onCreate()`.
+4. **`MainActivity.kt`** — Removed `@AndroidEntryPoint` annotation and import.
+5. **5 ViewModels** — Removed `@HiltViewModel` and `@Inject` annotations/imports from `WhereAppViewModel`, `MapScreenViewModel`, `TracksScreenViewModel`, `SavedPointsScreenViewModel`, `OnlineTrackingScreenViewModel`.
+6. **`LocationTrackingService.kt`** — Replaced `@AndroidEntryPoint` + `@Inject lateinit var` with `KoinComponent` interface + `by inject()` lazy delegates.
+7. **`MapDownloadService.kt`** — Removed `@AndroidEntryPoint` (had no injected fields).
+8. **5 Composable screens** — Swapped `hiltViewModel()` → `koinViewModel()` import and call in `WhereApp`, `MapScreen`, `TracksScreen`, `SavedPointsScreen`, `OnlineTrackingScreen`.
+9. **New test** — `KoinModuleCheckTest.kt` verifies all Koin definitions resolve correctly using `verify()`.
 
-**Files touched:** `AppModule.kt`, `WhereApplication.kt`, `MainActivity.kt`, all 5 ViewModels, all screens that call `hiltViewModel()`
+**Files created:** `di/KoinModuleCheckTest.kt`
+
+**Files changed:** `libs.versions.toml`, `build.gradle.kts` (root), `app/build.gradle.kts`, `di/AppModule.kt`, `WhereApplication.kt`, `MainActivity.kt`, `WhereAppViewModel.kt`, `ui/MapScreenViewModel.kt`, `ui/TracksScreenViewModel.kt`, `ui/SavedPointsScreenViewModel.kt`, `ui/OnlineTrackingScreenViewModel.kt`, `service/LocationTrackingService.kt`, `service/MapDownloadService.kt`, `WhereApp.kt`, `ui/MapScreen.kt`, `ui/TracksScreen.kt`, `ui/SavedPointsScreen.kt`, `ui/OnlineTrackingScreen.kt`
+
+**Result:** No Hilt/Dagger imports remain in the codebase. All DI uses Koin, which is fully KMP-compatible.
 
 ---
 

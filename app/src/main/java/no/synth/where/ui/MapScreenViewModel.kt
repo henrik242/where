@@ -2,7 +2,6 @@ package no.synth.where.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,10 +17,8 @@ import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
-import javax.inject.Inject
 
-@HiltViewModel
-class MapScreenViewModel @Inject constructor(
+class MapScreenViewModel(
     val trackRepository: TrackRepository,
     val savedPointsRepository: SavedPointsRepository,
     val userPreferences: UserPreferences

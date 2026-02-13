@@ -14,10 +14,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import dagger.hilt.android.AndroidEntryPoint
 import no.synth.where.ui.theme.WhereTheme
 
-@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
     private var regionsLoaded by mutableIntStateOf(0)

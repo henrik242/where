@@ -8,7 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.RegionsRepository
@@ -27,7 +27,7 @@ fun WhereApp(
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val viewModel: WhereAppViewModel = hiltViewModel()
+    val viewModel: WhereAppViewModel = koinViewModel()
     val userPreferences = viewModel.userPreferences
     val trackRepository = viewModel.trackRepository
     val showCountyBorders by userPreferences.showCountyBorders.collectAsState()

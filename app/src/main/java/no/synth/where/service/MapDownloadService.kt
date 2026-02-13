@@ -19,12 +19,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import no.synth.where.MainActivity
 import no.synth.where.R
-import dagger.hilt.android.AndroidEntryPoint
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
 
-@AndroidEntryPoint
 class MapDownloadService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var downloadManager: MapDownloadManager

@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import no.synth.where.R
 
 @Composable
@@ -53,7 +53,7 @@ fun OnlineTrackingScreen(
 ) {
     val context = LocalContext.current
     val resources = context.resources
-    val viewModel: OnlineTrackingScreenViewModel = hiltViewModel()
+    val viewModel: OnlineTrackingScreenViewModel = koinViewModel()
     val isTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val clientId by viewModel.clientId.collectAsState()
     val trackingServerUrl by viewModel.trackingServerUrl.collectAsState()

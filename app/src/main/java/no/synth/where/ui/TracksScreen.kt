@@ -22,7 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import org.koin.androidx.compose.koinViewModel
 import no.synth.where.R
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
@@ -39,7 +39,7 @@ fun TracksScreen(
     onShowTrackOnMap: (Track) -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: TracksScreenViewModel = hiltViewModel()
+    val viewModel: TracksScreenViewModel = koinViewModel()
     val tracks by viewModel.tracks.collectAsState()
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
