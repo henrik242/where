@@ -1,6 +1,6 @@
 package no.synth.where.data
 
-import timber.log.Timber
+import no.synth.where.util.Logger
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
@@ -22,7 +22,7 @@ class StyleServer private constructor(private val port: Int) {
 
     fun start() {
         if (isRunning) {
-            Timber.d("Server already running on port %d", port)
+            Logger.d("Server already running on port %d", port)
             return
         }
 
@@ -30,7 +30,7 @@ class StyleServer private constructor(private val port: Int) {
         thread(start = true, isDaemon = true, name = "StyleServer") {
             try {
                 serverSocket = ServerSocket(port)
-                Timber.d("Server started on port %d", port)
+                Logger.d("Server started on port %d", port)
 
                 while (isRunning) {
                     try {
@@ -38,12 +38,12 @@ class StyleServer private constructor(private val port: Int) {
                         handleClient(clientSocket)
                     } catch (e: Exception) {
                         if (isRunning) {
-                            Timber.e(e, "Error accepting connection")
+                            Logger.e(e, "Error accepting connection")
                         }
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Server error")
+                Logger.e(e, "Server error")
             } finally {
                 serverSocket?.close()
             }
@@ -73,7 +73,7 @@ class StyleServer private constructor(private val port: Int) {
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "Error handling client")
+                Logger.e(e, "Error handling client")
             }
         }
     }

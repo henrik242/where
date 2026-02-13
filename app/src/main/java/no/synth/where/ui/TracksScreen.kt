@@ -27,7 +27,7 @@ import no.synth.where.R
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
 import no.synth.where.data.geo.LatLng
-import timber.log.Timber
+import no.synth.where.util.Logger
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -442,7 +442,7 @@ private fun shareTrack(context: android.content.Context, track: Track) {
 
         context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_track_chooser)))
     } catch (e: Exception) {
-        Timber.e(e, "Track operation error")
+        Logger.e(e, "Track operation error")
     }
 }
 
@@ -466,7 +466,7 @@ private fun saveTrackToDownloads(context: android.content.Context, track: Track)
             android.widget.Toast.LENGTH_LONG
         ).show()
     } catch (e: Exception) {
-        Timber.e(e, "Track operation error")
+        Logger.e(e, "Track operation error")
         android.widget.Toast.makeText(
             context,
             context.getString(R.string.failed_to_save_track, e.message),
@@ -501,7 +501,7 @@ private fun openTrack(context: android.content.Context, track: Track) {
             shareTrack(context, track)
         }
     } catch (e: Exception) {
-        Timber.e(e, "Track operation error")
+        Logger.e(e, "Track operation error")
     }
 }
 

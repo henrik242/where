@@ -60,23 +60,28 @@ OkHttp and `org.json` are JVM-only. Replaced with Ktor HTTP client (CIO engine) 
 
 ---
 
-## Phase 3 — Remove Timber, add a common logger (low effort)
+## Phase 3 — Remove Timber, add a common logger (low effort) ✅ DONE
 
-Timber is Android-only. Introduce a thin logging interface.
+Timber is Android-only. Introduced a thin `Logger` object that wraps Timber, so when KMP is added later it becomes `expect/actual`.
 
-### Steps
+### What was done
 
-1. Create `util/Logger.kt`:
-   ```kotlin
-   expect object Logger {
-       fun d(tag: String, message: String)
-       fun e(tag: String, message: String, throwable: Throwable? = null)
-   }
-   ```
-   For now, the single Android `actual` just delegates to Timber.
-2. Replace all `Timber.d(...)` / `Timber.e(...)` calls
+1. Created `util/Logger.kt` — `object Logger` with `d()`, `w()`, `e()` methods matching Timber's API signatures, delegating to Timber internally
+2. Replaced `import timber.log.Timber` → `import no.synth.where.util.Logger` and `Timber.` → `Logger.` in 15 files
+3. Made `HttpClient` injectable (internal) in `GeocodingHelper`, `PlaceSearchClient`, and `OnlineTrackingClient` for testability
+4. Added `ktor-client-mock` test dependency
+5. Added backwards-compatibility tests for Phase 2 (Ktor/JSON) and Phase 3 (Logger):
+   - `GeocodingHelperTest.kt` — Ktor mock engine, JSON response parsing, error handling
+   - `PlaceSearchClientTest.kt` — Geonorge response parsing, empty/missing fields
+   - `OnlineTrackingClientTest.kt` — JSON body building, HMAC signature headers, request methods
+   - `MapDownloadManagerMetadataTest.kt` — pure JSON metadata roundtrip
+   - `LoggerTest.kt` — verifies Logger delegates to Timber via planted test Tree
 
-**Files touched:** ~15 files that import Timber
+**Only file still importing Timber directly:** `WhereApplication.kt` (for `Timber.plant()` — Android-only forever)
+
+**Files created:** `util/Logger.kt`, 5 test files
+
+**Files changed:** `libs.versions.toml`, `build.gradle.kts`, 15 source files (Timber → Logger), 3 HTTP client files (injectable HttpClient)
 
 ---
 

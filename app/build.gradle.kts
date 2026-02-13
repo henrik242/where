@@ -161,6 +161,7 @@ dependencies {
     ksp(libs.room.compiler)
     debugImplementation(libs.androidx.ui.tooling)
     testImplementation(libs.junit)
+    testImplementation(libs.ktor.client.mock)
     testImplementation(libs.androidx.ui.test.junit4)
     testImplementation(libs.mockk)
     testImplementation(libs.mockk.android)

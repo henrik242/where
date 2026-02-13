@@ -3,7 +3,7 @@ package no.synth.where.data
 import kotlinx.serialization.Serializable
 import no.synth.where.data.serialization.LatLngSerializer
 import no.synth.where.data.geo.LatLng
-import timber.log.Timber
+import no.synth.where.util.Logger
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -119,7 +119,7 @@ $trackPointsXml
                     isRecording = false
                 )
             } catch (e: Exception) {
-                Timber.e(e, "Error parsing GPX")
+                Logger.e(e, "Error parsing GPX")
                 return null
             }
         }

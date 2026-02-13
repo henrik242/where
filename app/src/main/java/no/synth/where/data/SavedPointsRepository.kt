@@ -13,7 +13,7 @@ import no.synth.where.data.db.SavedPointDao
 import no.synth.where.data.db.SavedPointEntity
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
-import timber.log.Timber
+import no.synth.where.util.Logger
 import java.io.File
 
 class SavedPointsRepository(context: Context, private val savedPointDao: SavedPointDao) {
@@ -50,9 +50,9 @@ class SavedPointsRepository(context: Context, private val savedPointDao: SavedPo
                     savedPointDao.insertPoint(entity)
                 }
                 pointsFile.renameTo(migratedFile)
-                Timber.d("Migrated ${points.size} saved points from JSON to Room")
+                Logger.d("Migrated ${points.size} saved points from JSON to Room")
             } catch (e: Exception) {
-                Timber.e(e, "Saved points JSON to Room migration error")
+                Logger.e(e, "Saved points JSON to Room migration error")
             }
         }
     }
@@ -86,7 +86,7 @@ class SavedPointsRepository(context: Context, private val savedPointDao: SavedPo
             try {
                 savedPointDao.insertPoint(point)
             } catch (e: Exception) {
-                Timber.e(e, "Saved points repository error")
+                Logger.e(e, "Saved points repository error")
             }
         }
     }
@@ -96,7 +96,7 @@ class SavedPointsRepository(context: Context, private val savedPointDao: SavedPo
             try {
                 savedPointDao.deletePointById(pointId)
             } catch (e: Exception) {
-                Timber.e(e, "Saved points repository error")
+                Logger.e(e, "Saved points repository error")
             }
         }
     }
@@ -109,7 +109,7 @@ class SavedPointsRepository(context: Context, private val savedPointDao: SavedPo
             try {
                 savedPointDao.updatePoint(pointId, uniqueName, description, color)
             } catch (e: Exception) {
-                Timber.e(e, "Saved points repository error")
+                Logger.e(e, "Saved points repository error")
             }
         }
     }

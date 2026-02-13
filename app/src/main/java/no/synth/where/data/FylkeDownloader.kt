@@ -5,7 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URL
-import timber.log.Timber
+import no.synth.where.util.Logger
 import java.util.zip.ZipInputStream
 
 object FylkeDownloader {
@@ -46,13 +46,13 @@ object FylkeDownloader {
             }
 
             if (!cacheFile.exists() || cacheFile.length() == 0L) {
-                Timber.e("No GeoJSON file found in ZIP or extraction failed")
+                Logger.e("No GeoJSON file found in ZIP or extraction failed")
                 return@withContext false
             }
 
             true
         } catch (e: Exception) {
-            Timber.e(e, "Failed to download counties")
+            Logger.e(e, "Failed to download counties")
             false
         }
     }

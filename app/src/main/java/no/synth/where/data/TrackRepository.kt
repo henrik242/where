@@ -14,7 +14,7 @@ import no.synth.where.data.db.TrackEntity
 import no.synth.where.data.db.TrackPointEntity
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
-import timber.log.Timber
+import no.synth.where.util.Logger
 import java.io.File
 
 class TrackRepository(context: Context, private val trackDao: TrackDao) {
@@ -70,9 +70,9 @@ class TrackRepository(context: Context, private val trackDao: TrackDao) {
                     trackDao.insertTrackWithPoints(entity, pointEntities)
                 }
                 tracksFile.renameTo(migratedFile)
-                Timber.d("Migrated ${tracksToMigrate.size} tracks from JSON to Room")
+                Logger.d("Migrated ${tracksToMigrate.size} tracks from JSON to Room")
             } catch (e: Exception) {
-                Timber.e(e, "Track JSON to Room migration error")
+                Logger.e(e, "Track JSON to Room migration error")
             }
         }
     }
@@ -124,7 +124,7 @@ class TrackRepository(context: Context, private val trackDao: TrackDao) {
                 }
                 trackDao.insertTrackWithPoints(entity, pointEntities)
             } catch (e: Exception) {
-                Timber.e(e, "Track repository error")
+                Logger.e(e, "Track repository error")
             }
         }
     }
