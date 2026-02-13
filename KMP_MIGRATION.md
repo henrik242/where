@@ -179,25 +179,34 @@ Created the `shared/` KMP module and moved the prepared data layer into it.
 
 ---
 
-## Phase 8 — Move Compose UI to shared (medium effort)
+## Phase 8 — Move Compose UI to shared (medium effort) ✅ DONE (part 1)
 
-Compose Multiplatform supports iOS. Most UI screens can move to commonMain.
+Added Compose Multiplatform to the shared module and moved the pure-Compose UI files.
 
-### Shared directly (pure Compose, no platform APIs)
+### What was done
 
-- `ui/map/MapDialogs.kt`
-- `ui/map/MapFabColumn.kt`
-- `ui/map/MapOverlays.kt`
-- `ui/map/SearchOverlay.kt`
-- `ui/map/MapScreenContent.kt`
-- `ui/theme/Theme.kt`
+1. **Compose Multiplatform plugin** — Added `org.jetbrains.compose` (1.10.1) and `org.jetbrains.kotlin.plugin.compose` plugins to the shared module. Added `compose.material3`, `compose.materialIconsExtended`, and `compose.components.resources` dependencies to `commonMain`.
+2. **Compose Multiplatform resources** — Created `shared/src/commonMain/composeResources/values/strings.xml` with all string resources used by the moved UI files. Configured `publicResClass = true` with package `no.synth.where.resources`.
+3. **Color utility** — Created `util/ColorUtils.kt` with `parseHexColor(hex: String): Color` to replace Android-only `toColorInt()` from `androidx.core.graphics`.
+4. **Moved 6 files to commonMain** — `Theme.kt`, `MapDialogs.kt`, `MapFabColumn.kt`, `MapOverlays.kt`, `SearchOverlay.kt`, `MapScreenContent.kt`. Updated all to use Compose MP `stringResource(Res.string.xxx)` instead of Android `stringResource(R.string.xxx)`, and `parseHexColor()` instead of `toColorInt()`.
+5. **New test** — `ColorUtilsTest.kt` covering 6-digit, 8-digit, with/without hash, black/white, and invalid input.
 
-### Shared with expect/actual for platform actions
+**Files created:** `shared/build.gradle.kts` (updated), `shared/src/commonMain/composeResources/values/strings.xml`, `shared/src/commonMain/kotlin/no/synth/where/util/ColorUtils.kt`, `ColorUtilsTest.kt`
+
+**Files moved to shared commonMain:** `ui/theme/Theme.kt`, `ui/map/MapDialogs.kt`, `ui/map/MapFabColumn.kt`, `ui/map/MapOverlays.kt`, `ui/map/SearchOverlay.kt`, `ui/map/MapScreenContent.kt`
+
+**Files changed:** `libs.versions.toml` (added `composeMultiplatform` version and plugin), root `build.gradle.kts` (added compose plugins), `shared/build.gradle.kts` (added Compose MP plugins and dependencies)
+
+**Result:** 6 Compose UI files are now in `commonMain` and will work on both Android and iOS. String resources use Compose Multiplatform's resource system. The app module's `strings.xml` retains all strings for backward compatibility with app-level files that still use `R.string.*`.
+
+### Remaining (Phase 8 part 2)
+
+Screens with platform-specific dependencies that need expect/actual:
 
 | Screen | Platform APIs needed |
 |---|---|
 | `SettingsScreen.kt` | `expect fun setAppLocale(tag: String?)` |
-| `SavedPointsScreen.kt` | Color parsing (`expect fun parseColorInt(hex: String): Int`) |
+| `SavedPointsScreen.kt` | `parseHexColor` (now available — can move) |
 | `OnlineTrackingScreen.kt` | `expect fun shareText(...)`, `expect fun openUrl(...)` |
 | `TracksScreen.kt` | `expect fun shareFile(...)`, `expect fun pickFile(...)`, `expect fun saveToDownloads(...)` |
 | `DownloadScreen.kt` | Download service trigger |
@@ -265,7 +274,7 @@ Phase 9 is where the real iOS work begins, but by then ~80% of the code is alrea
 | `io.ktor:ktor-client-*` | OkHttp | Yes |
 | `io.insert-koin:koin-*` | Hilt | Yes |
 | `org.jetbrains.kotlinx:kotlinx-datetime` | `java.text.SimpleDateFormat`, `java.util.Date` | Yes (not needed — using `kotlin.time.Instant` from stdlib) |
-| `org.jetbrains.compose:compose-*` | Jetpack Compose (for shared UI) | Yes |
+| `org.jetbrains.compose:compose-*` | Jetpack Compose (for shared UI) | Yes (added in Phase 8) |
 | `androidx.room:room-*` | (keep) | Yes (since 2.7.0) |
 | `androidx.datastore:datastore-*` | (keep) | Yes (since 1.1.0) |
 | `org.maplibre.gl:android-sdk` | (keep, androidMain only) | No — platform-specific |

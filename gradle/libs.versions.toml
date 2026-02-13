@@ -1,6 +1,7 @@
 [versions]
 activityCompose = "1.12.4"
 agp = "9.0.0"
+composeMultiplatform = "1.10.1"
 appcompat = "1.7.1"
 composeBom = "2026.02.00"
 core = "1.7.0"
@@ -80,4 +81,5 @@ firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServicesPlugin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

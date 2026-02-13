@@ -42,7 +42,7 @@ fun WhereTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-    
+
     MaterialTheme(
         colorScheme = colorScheme,
         content = content
