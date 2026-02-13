@@ -15,7 +15,7 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import no.synth.where.util.DeviceUtils
-import timber.log.Timber
+import no.synth.where.util.Logger
 
 /**
  * Utilities for managing map layers and rendering.
@@ -52,7 +52,7 @@ object MapRenderUtils {
                 style.addLayer(lineLayer)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Map render error")
+            Logger.e(e, "Map render error")
         }
     }
 
@@ -114,7 +114,7 @@ object MapRenderUtils {
                 style.addLayer(pointLayer)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Map render error")
+            Logger.e(e, "Map render error")
         }
     }
 
@@ -160,7 +160,7 @@ object MapRenderUtils {
                 style.addLayer(circleLayer)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Map render error")
+            Logger.e(e, "Map render error")
         }
     }
 
@@ -201,7 +201,7 @@ object MapRenderUtils {
                 forceLocationOnEmulator(locationComponent)
             }
         } catch (e: Exception) {
-            Timber.e(e, "Map render error")
+            Logger.e(e, "Map render error")
         }
     }
 
@@ -220,7 +220,7 @@ object MapRenderUtils {
             }
             locationComponent.forceLocationUpdate(mockLocation)
         } catch (e: Exception) {
-            Timber.e(e, "Map render error")
+            Logger.e(e, "Map render error")
         }
     }
 }

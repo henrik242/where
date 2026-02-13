@@ -16,7 +16,7 @@ import no.synth.where.data.SavedPoint
 import no.synth.where.navigation.*
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
-import timber.log.Timber
+import no.synth.where.util.Logger
 
 @Composable
 fun WhereApp(
@@ -89,7 +89,7 @@ fun WhereApp(
                     }
                 }
             } catch (e: Exception) {
-                Timber.e(e, "GPX import error")
+                Logger.e(e, "GPX import error")
             }
             onGpxHandled()
         }
