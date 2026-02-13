@@ -20,7 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import dagger.hilt.android.AndroidEntryPoint
 import no.synth.where.MainActivity
 import no.synth.where.R
 import no.synth.where.data.ClientIdManager
@@ -28,16 +27,16 @@ import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLng
-import javax.inject.Inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
-@AndroidEntryPoint
-class LocationTrackingService : Service() {
+class LocationTrackingService : Service(), KoinComponent {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    @Inject lateinit var trackRepository: TrackRepository
-    @Inject lateinit var userPreferences: UserPreferences
-    @Inject lateinit var clientIdManager: ClientIdManager
+    private val trackRepository: TrackRepository by inject()
+    private val userPreferences: UserPreferences by inject()
+    private val clientIdManager: ClientIdManager by inject()
 
     private var onlineTrackingClient: OnlineTrackingClient? = null
 
