@@ -1,10 +1,10 @@
 package no.synth.where.data
 
-import android.content.Context
 import kotlinx.serialization.json.*
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.util.Logger
+import java.io.File
 
 data class FylkeGeoJSON(
     val type: String,
@@ -52,9 +52,9 @@ data class FylkeGeometry(
 )
 
 object FylkeDataLoader {
-    fun loadFylker(context: Context): List<Region> {
+    fun loadFylker(cacheDir: File): List<Region> {
         val json = try {
-            val cachedFile = FylkeDownloader.getCachedFile(context)
+            val cachedFile = FylkeDownloader.getCachedFile(cacheDir)
             if (cachedFile != null) {
                 cachedFile.readText()
             } else {

@@ -4,6 +4,7 @@ import android.app.Application
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.hilt.android.HiltAndroidApp
 import no.synth.where.data.UserPreferences
+import no.synth.where.di.userPrefsDataStore
 import org.maplibre.android.MapLibre
 import org.maplibre.android.storage.FileSource
 import timber.log.Timber
@@ -18,7 +19,7 @@ class WhereApplication : Application() {
             Timber.plant(Timber.DebugTree())
         }
 
-        val prefs = UserPreferences(this)
+        val prefs = UserPreferences(userPrefsDataStore)
         FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = prefs.crashReportingEnabled.value
 
         MapLibre.getInstance(this)
