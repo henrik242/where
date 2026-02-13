@@ -22,8 +22,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import no.synth.where.R
 import no.synth.where.data.RulerState
 import no.synth.where.util.formatDistance
 
@@ -43,26 +45,26 @@ object MapDialogs {
     ) {
         AlertDialog(
             onDismissRequest = onDeny,
-            title = { Text("Background Location Access") },
+            title = { Text(stringResource(R.string.background_location_access)) },
             text = {
                 Column {
                     Text(
-                        text = "This app collects your location in the background to enable:",
+                        text = stringResource(R.string.background_location_intro),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "\u2022 GPS track recording while the screen is locked or other apps are in use\n\u2022 Real-time location sharing when online tracking is enabled",
+                        text = stringResource(R.string.background_location_features),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Your location is only tracked while you have an active recording session. You can stop tracking at any time using the stop button or the notification.",
+                        text = stringResource(R.string.background_location_privacy),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "On the next screen, select \"Allow all the time\" to enable background tracking.",
+                        text = stringResource(R.string.background_location_instruction),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                     )
@@ -70,12 +72,12 @@ object MapDialogs {
             },
             confirmButton = {
                 TextButton(onClick = onAllow) {
-                    Text("Allow")
+                    Text(stringResource(R.string.allow))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDeny) {
-                    Text("Deny")
+                    Text(stringResource(R.string.deny))
                 }
             }
         )
@@ -96,18 +98,18 @@ object MapDialogs {
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Save Track") },
+            title = { Text(stringResource(R.string.save_track)) },
             text = {
                 Column {
                     Text(
-                        text = "Enter a name for your track:",
+                        text = stringResource(R.string.enter_track_name),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = trackNameInput,
                         onValueChange = onTrackNameChange,
-                        label = { Text("Track Name") },
+                        label = { Text(stringResource(R.string.track_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = if (isLoading) {
@@ -124,16 +126,16 @@ object MapDialogs {
                             contentColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Discard")
+                        Text(stringResource(R.string.discard))
                     }
                     TextButton(onClick = onSave) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -153,18 +155,18 @@ object MapDialogs {
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Save Location") },
+            title = { Text(stringResource(R.string.save_location)) },
             text = {
                 Column {
                     Text(
-                        text = "Enter a name for this location:",
+                        text = stringResource(R.string.enter_location_name),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = pointName,
                         onValueChange = onPointNameChange,
-                        label = { Text("Location Name") },
+                        label = { Text(stringResource(R.string.location_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = if (isLoading) {
@@ -181,12 +183,12 @@ object MapDialogs {
             },
             confirmButton = {
                 TextButton(onClick = onSave) {
-                    Text("Save")
+                    Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -211,24 +213,24 @@ object MapDialogs {
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Edit Location") },
+            title = { Text(stringResource(R.string.edit_location)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
                         value = pointName,
                         onValueChange = onNameChange,
-                        label = { Text("Name") },
+                        label = { Text(stringResource(R.string.name_label)) },
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     OutlinedTextField(
                         value = pointDescription,
                         onValueChange = onDescriptionChange,
-                        label = { Text("Description (optional)") },
+                        label = { Text(stringResource(R.string.description_optional)) },
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Text("Color", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.color), style = MaterialTheme.typography.labelMedium)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -266,16 +268,16 @@ object MapDialogs {
                             contentColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Delete")
+                        Text(stringResource(R.string.delete))
                     }
                     TextButton(onClick = onSave) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -295,18 +297,18 @@ object MapDialogs {
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Save Route as Track") },
+            title = { Text(stringResource(R.string.save_route_as_track)) },
             text = {
                 Column {
                     Text(
-                        text = "Enter a name for this route:",
+                        text = stringResource(R.string.enter_route_name),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = trackName,
                         onValueChange = onTrackNameChange,
-                        label = { Text("Track Name") },
+                        label = { Text(stringResource(R.string.track_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = if (isLoading) {
@@ -315,9 +317,7 @@ object MapDialogs {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${rulerState.points.size} points • ${
-                            rulerState.getTotalDistanceMeters().formatDistance()
-                        }",
+                        text = stringResource(R.string.ruler_points_distance, rulerState.points.size, rulerState.getTotalDistanceMeters().formatDistance()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -325,15 +325,14 @@ object MapDialogs {
             },
             confirmButton = {
                 TextButton(onClick = onSave) {
-                    Text("Save")
+                    Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
     }
 }
-

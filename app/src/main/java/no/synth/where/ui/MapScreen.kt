@@ -28,11 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import no.synth.where.R
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
@@ -114,6 +116,16 @@ fun MapScreen(
     var savedCameraLon by rememberSaveable { mutableDoubleStateOf(10.0) }
     var savedCameraZoom by rememberSaveable { mutableDoubleStateOf(5.0) }
 
+    // Pre-resolve string resources for use in lambdas
+    val recordingMsg = stringResource(R.string.recording_snackbar)
+    val trackDiscardedMsg = stringResource(R.string.track_discarded)
+    val trackSavedMsg = stringResource(R.string.track_saved)
+    val pointSavedMsg = stringResource(R.string.point_saved)
+    val pointDeletedMsg = stringResource(R.string.point_deleted)
+    val pointUpdatedMsg = stringResource(R.string.point_updated)
+    val onlineEnabledMsg = stringResource(R.string.online_tracking_enabled)
+    val onlineDisabledMsg = stringResource(R.string.online_tracking_disabled)
+
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -124,7 +136,7 @@ fun MapScreen(
             val trackName = dateFormat.format(Date())
             viewModel.startRecording(trackName)
             LocationTrackingService.start(context)
-            scope.launch { snackbarHostState.showSnackbar("Recording...") }
+            scope.launch { snackbarHostState.showSnackbar(recordingMsg) }
         } else {
             pendingRecordStart = false
         }
@@ -268,7 +280,7 @@ fun MapScreen(
                 val trackName = dateFormat.format(Date())
                 viewModel.startRecording(trackName)
                 LocationTrackingService.start(context)
-                scope.launch { snackbarHostState.showSnackbar("Recording...") }
+                scope.launch { snackbarHostState.showSnackbar(recordingMsg) }
             }
         },
         onMyLocationClick = {
@@ -308,10 +320,10 @@ fun MapScreen(
             viewModel.updateOnlineTracking(newValue)
             if (newValue) {
                 LocationTrackingService.enableOnlineTracking(context)
-                scope.launch { snackbarHostState.showSnackbar("Online tracking enabled") }
+                scope.launch { snackbarHostState.showSnackbar(onlineEnabledMsg) }
             } else {
                 LocationTrackingService.disableOnlineTracking(context)
-                scope.launch { snackbarHostState.showSnackbar("Online tracking disabled") }
+                scope.launch { snackbarHostState.showSnackbar(onlineDisabledMsg) }
             }
         },
         onCloseViewingTrack = { viewModel.clearViewingTrack() },
@@ -356,14 +368,14 @@ fun MapScreen(
                 viewModel.discardRecording()
                 LocationTrackingService.stop(context)
                 scope.launch {
-                    snackbarHostState.showSnackbar("Track discarded")
+                    snackbarHostState.showSnackbar(trackDiscardedMsg)
                 }
             },
             onSave = {
                 viewModel.saveRecording()
                 LocationTrackingService.stop(context)
                 scope.launch {
-                    snackbarHostState.showSnackbar("Track saved")
+                    snackbarHostState.showSnackbar(trackSavedMsg)
                 }
             },
             onDismiss = { viewModel.dismissStopTrackDialog() }
@@ -382,7 +394,7 @@ fun MapScreen(
             onSave = {
                 viewModel.savePoint()
                 scope.launch {
-                    snackbarHostState.showSnackbar("Point saved")
+                    snackbarHostState.showSnackbar(pointSavedMsg)
                 }
             },
             onDismiss = { viewModel.dismissSavePointDialog() }
@@ -419,7 +431,7 @@ fun MapScreen(
             onDelete = {
                 clickedPoint?.let { viewModel.deletePoint(it.id) }
                 scope.launch {
-                    snackbarHostState.showSnackbar("Point deleted")
+                    snackbarHostState.showSnackbar(pointDeletedMsg)
                 }
             },
             onSave = {
@@ -427,7 +439,7 @@ fun MapScreen(
                     viewModel.updatePoint(it.id, editName, editDescription, editColor)
                 }
                 scope.launch {
-                    snackbarHostState.showSnackbar("Point updated")
+                    snackbarHostState.showSnackbar(pointUpdatedMsg)
                 }
             },
             onDismiss = { viewModel.dismissPointInfoDialog() }
@@ -448,16 +460,16 @@ fun MapScreen(
     }
 
     if (showSaveRulerAsTrackDialog) {
+        val savedAsTrackMsg = stringResource(R.string.saved_as_track, rulerTrackName)
         MapDialogs.SaveRulerAsTrackDialog(
             trackName = rulerTrackName,
             rulerState = rulerState,
             onTrackNameChange = { viewModel.updateRulerTrackName(it) },
             isLoading = isResolvingRulerName,
             onSave = {
-                val name = rulerTrackName
                 viewModel.saveRulerAsTrack()
                 scope.launch {
-                    snackbarHostState.showSnackbar("Saved as track: $name")
+                    snackbarHostState.showSnackbar(savedAsTrackMsg)
                 }
             },
             onDismiss = { viewModel.dismissSaveRulerAsTrackDialog() }
