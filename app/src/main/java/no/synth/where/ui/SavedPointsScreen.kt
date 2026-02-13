@@ -19,9 +19,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import no.synth.where.R
 import no.synth.where.data.SavedPoint
 import org.maplibre.android.geometry.LatLng
 import androidx.core.graphics.toColorInt
@@ -76,10 +78,10 @@ fun SavedPointsScreenContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Saved Points") },
+                title = { Text(stringResource(R.string.saved_points)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -93,7 +95,7 @@ fun SavedPointsScreenContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No saved points yet.\nLong press on the map to save a point.",
+                    text = stringResource(R.string.no_saved_points),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -191,7 +193,7 @@ fun SavedPointItem(
 
             Icon(
                 imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = if (expanded) "Collapse" else "Expand"
+                contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand)
             )
         }
 
@@ -211,7 +213,7 @@ fun SavedPointItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Show on Map")
+                    Text(stringResource(R.string.show_on_map))
                 }
             }
             Row(
@@ -228,7 +230,7 @@ fun SavedPointItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Edit")
+                    Text(stringResource(R.string.edit))
                 }
                 OutlinedButton(
                     onClick = onDelete,
@@ -243,7 +245,7 @@ fun SavedPointItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             }
         }
@@ -274,7 +276,7 @@ fun EditPointDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Point") },
+        title = { Text(stringResource(R.string.edit_point)) },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -282,18 +284,18 @@ fun EditPointDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.name_label)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description (optional)") },
+                    label = { Text(stringResource(R.string.description_optional)) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Color", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.color), style = MaterialTheme.typography.labelMedium)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -322,12 +324,12 @@ fun EditPointDialog(
                 onClick = { onSave(name, description, selectedColor) },
                 enabled = name.isNotBlank()
             ) {
-                Text("Save")
+                Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -353,4 +355,3 @@ private fun SavedPointsScreenPreview() {
         onSaveEdit = { _, _, _ -> }
     )
 }
-

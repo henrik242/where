@@ -1,5 +1,6 @@
 package no.synth.where.ui
 
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -21,11 +24,18 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.os.LocaleListCompat
 import no.synth.where.BuildConfig
+import no.synth.where.R
 
 @Composable
 fun SettingsScreen(
@@ -64,10 +74,10 @@ fun SettingsScreenContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -91,12 +101,12 @@ fun SettingsScreenContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Online Tracking",
+                        text = stringResource(R.string.online_tracking),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Icon(
                         Icons.Filled.ChevronRight,
-                        contentDescription = "Go to Online Tracking"
+                        contentDescription = stringResource(R.string.go_to_online_tracking)
                     )
                 }
 
@@ -111,12 +121,12 @@ fun SettingsScreenContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Saved Tracks",
+                        text = stringResource(R.string.saved_tracks),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Icon(
                         Icons.Filled.ChevronRight,
-                        contentDescription = "Go to Saved Tracks"
+                        contentDescription = stringResource(R.string.go_to_saved_tracks)
                     )
                 }
 
@@ -131,12 +141,12 @@ fun SettingsScreenContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Saved Points",
+                        text = stringResource(R.string.saved_points),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Icon(
                         Icons.Filled.ChevronRight,
-                        contentDescription = "Go to Saved Points"
+                        contentDescription = stringResource(R.string.go_to_saved_points)
                     )
                 }
 
@@ -152,12 +162,12 @@ fun SettingsScreenContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Offline Maps",
+                        text = stringResource(R.string.offline_maps),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Icon(
                         Icons.Filled.ChevronRight,
-                        contentDescription = "Go to Download Manager"
+                        contentDescription = stringResource(R.string.go_to_download_manager)
                     )
                 }
 
@@ -173,11 +183,11 @@ fun SettingsScreenContent(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Crash Reporting",
+                            text = stringResource(R.string.crash_reporting),
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            text = "Send anonymous crash reports to help improve the app",
+                            text = stringResource(R.string.crash_reporting_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -188,6 +198,10 @@ fun SettingsScreenContent(
                         onCheckedChange = onCrashReportingChange
                     )
                 }
+
+                HorizontalDivider()
+
+                LanguageSelector()
 
                 HorizontalDivider()
             }
@@ -201,6 +215,64 @@ fun SettingsScreenContent(
                     .align(Alignment.BottomCenter)
                     .padding(16.dp)
             )
+        }
+    }
+}
+
+private data class LanguageOption(val tag: String?, val displayName: String)
+
+@Composable
+private fun LanguageSelector() {
+    val languages = listOf(
+        LanguageOption(null, stringResource(R.string.system_default)),
+        LanguageOption("en", "English"),
+        LanguageOption("nb", "Norsk bokmål")
+    )
+
+    val currentLocale = AppCompatDelegate.getApplicationLocales()
+    val currentTag = if (currentLocale.isEmpty) null else currentLocale.toLanguageTags()
+    val currentLabel = languages.find { it.tag == currentTag }?.displayName
+        ?: languages.first().displayName
+
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true }
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.language),
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = currentLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            languages.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option.displayName) },
+                    onClick = {
+                        expanded = false
+                        val locales = if (option.tag == null) {
+                            LocaleListCompat.getEmptyLocaleList()
+                        } else {
+                            LocaleListCompat.forLanguageTags(option.tag)
+                        }
+                        AppCompatDelegate.setApplicationLocales(locales)
+                    }
+                )
+            }
         }
     }
 }

@@ -18,10 +18,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import no.synth.where.R
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
 import org.maplibre.android.geometry.LatLng
@@ -46,6 +48,8 @@ fun TracksScreen(
     var showImportError by remember { mutableStateOf(false) }
     var importErrorMessage by remember { mutableStateOf("") }
 
+    val resources = context.resources
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -58,15 +62,15 @@ fun TracksScreen(
                 if (gpxContent != null) {
                     val importedTrack = viewModel.importTrack(gpxContent)
                     if (importedTrack == null) {
-                        importErrorMessage = "Failed to import GPX file. The file may be corrupted or in an unsupported format."
+                        importErrorMessage = resources.getString(R.string.import_gpx_corrupted)
                         showImportError = true
                     }
                 } else {
-                    importErrorMessage = "Failed to read GPX file."
+                    importErrorMessage = resources.getString(R.string.import_gpx_read_failed)
                     showImportError = true
                 }
             } catch (e: Exception) {
-                importErrorMessage = "Error importing GPX file: ${e.message}"
+                importErrorMessage = resources.getString(R.string.import_gpx_error, e.message)
                 showImportError = true
             }
         }
@@ -136,15 +140,15 @@ fun TracksScreenContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Saved Tracks") },
+                title = { Text(stringResource(R.string.saved_tracks)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onImport) {
-                        Icon(Icons.Filled.FileUpload, contentDescription = "Import GPX")
+                        Icon(Icons.Filled.FileUpload, contentDescription = stringResource(R.string.import_gpx))
                     }
                 }
             )
@@ -158,7 +162,7 @@ fun TracksScreenContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No saved tracks yet",
+                    text = stringResource(R.string.no_saved_tracks),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -190,16 +194,16 @@ fun TracksScreenContent(
     trackToDelete?.let { track ->
         AlertDialog(
             onDismissRequest = onDismissDelete,
-            title = { Text("Delete Track?") },
-            text = { Text("Are you sure you want to delete '${track.name}'?") },
+            title = { Text(stringResource(R.string.delete_track_title)) },
+            text = { Text(stringResource(R.string.delete_track_confirm, track.name)) },
             confirmButton = {
                 TextButton(onClick = onConfirmDelete) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismissDelete) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -208,11 +212,11 @@ fun TracksScreenContent(
     if (showImportError) {
         AlertDialog(
             onDismissRequest = onDismissImportError,
-            title = { Text("Import Failed") },
+            title = { Text(stringResource(R.string.import_failed)) },
             text = { Text(importErrorMessage) },
             confirmButton = {
                 TextButton(onClick = onDismissImportError) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
@@ -221,23 +225,23 @@ fun TracksScreenContent(
     trackToRename?.let {
         AlertDialog(
             onDismissRequest = onDismissRename,
-            title = { Text("Rename Track") },
+            title = { Text(stringResource(R.string.rename_track)) },
             text = {
                 OutlinedTextField(
                     value = newTrackName,
                     onValueChange = onNewTrackNameChange,
-                    label = { Text("Track Name") },
+                    label = { Text(stringResource(R.string.track_name)) },
                     singleLine = true
                 )
             },
             confirmButton = {
                 TextButton(onClick = onConfirmRename) {
-                    Text("Rename")
+                    Text(stringResource(R.string.rename))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismissRename) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -282,7 +286,7 @@ fun TrackItem(
             }
             Icon(
                 imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = if (expanded) "Collapse" else "Expand"
+                contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand)
             )
         }
 
@@ -302,7 +306,7 @@ fun TrackItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Show on Map")
+                    Text(stringResource(R.string.show_on_map))
                 }
             }
             Row(
@@ -319,7 +323,7 @@ fun TrackItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Continue")
+                    Text(stringResource(R.string.continue_label))
                 }
                 OutlinedButton(
                     onClick = onSave,
@@ -331,7 +335,7 @@ fun TrackItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Save")
+                    Text(stringResource(R.string.save))
                 }
             }
             Row(
@@ -348,7 +352,7 @@ fun TrackItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Open")
+                    Text(stringResource(R.string.open))
                 }
                 OutlinedButton(
                     onClick = onExport,
@@ -360,7 +364,7 @@ fun TrackItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Share")
+                    Text(stringResource(R.string.share))
                 }
             }
             Row(
@@ -377,7 +381,7 @@ fun TrackItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Rename")
+                    Text(stringResource(R.string.rename))
                 }
                 OutlinedButton(
                     onClick = onDelete,
@@ -392,27 +396,28 @@ fun TrackItem(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             }
         }
     }
 }
 
+@Composable
 private fun formatTrackInfo(track: Track): String {
     val dateFormat = SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault())
     val date = dateFormat.format(Date(track.startTime))
-    val distance = track.getDistanceMeters() / 1000.0
+    val distance = "%.2f".format(track.getDistanceMeters() / 1000.0)
     val duration = track.getDurationMillis()
     val hours = duration / (1000 * 60 * 60)
     val minutes = (duration / (1000 * 60)) % 60
 
     val durationStr = when {
-        hours > 0 -> "${hours}h ${minutes}m"
-        else -> "${minutes}m"
+        hours > 0 -> stringResource(R.string.duration_hours_minutes, hours, minutes)
+        else -> stringResource(R.string.duration_minutes, minutes)
     }
 
-    return "$date • %.2f km • $durationStr • ${track.points.size} points".format(distance)
+    return stringResource(R.string.track_info_format, date, distance, durationStr, track.points.size)
 }
 
 private fun shareTrack(context: android.content.Context, track: Track) {
@@ -435,7 +440,7 @@ private fun shareTrack(context: android.content.Context, track: Track) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        context.startActivity(Intent.createChooser(shareIntent, "Share Track"))
+        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_track_chooser)))
     } catch (e: Exception) {
         Timber.e(e, "Track operation error")
     }
@@ -455,17 +460,16 @@ private fun saveTrackToDownloads(context: android.content.Context, track: Track)
         val file = File(downloadsDir, fileName)
         file.writeText(gpxContent)
 
-        // Show a toast or snackbar
         android.widget.Toast.makeText(
             context,
-            "Saved to ${file.absolutePath}",
+            context.getString(R.string.saved_to_path, file.absolutePath),
             android.widget.Toast.LENGTH_LONG
         ).show()
     } catch (e: Exception) {
         Timber.e(e, "Track operation error")
         android.widget.Toast.makeText(
             context,
-            "Failed to save track: ${e.message}",
+            context.getString(R.string.failed_to_save_track, e.message),
             android.widget.Toast.LENGTH_SHORT
         ).show()
     }
@@ -491,7 +495,7 @@ private fun openTrack(context: android.content.Context, track: Track) {
         }
 
         try {
-            context.startActivity(Intent.createChooser(openIntent, "Open Track With"))
+            context.startActivity(Intent.createChooser(openIntent, context.getString(R.string.open_track_chooser)))
         } catch (_: android.content.ActivityNotFoundException) {
             // If no app can open GPX, fall back to share
             shareTrack(context, track)
@@ -552,4 +556,3 @@ private fun TracksScreenPreview() {
         onShowOnMap = {}
     )
 }
-

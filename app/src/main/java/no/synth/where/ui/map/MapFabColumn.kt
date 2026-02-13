@@ -23,7 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import no.synth.where.R
 
 @Composable
 internal fun LayerMenuItem(
@@ -73,7 +75,7 @@ fun MapFabColumn(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Search, contentDescription = "Search Places")
+            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_places))
         }
 
         Spacer(modifier = Modifier.size(8.dp))
@@ -83,24 +85,24 @@ fun MapFabColumn(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Layers, contentDescription = "Layers & Overlays")
+            Icon(Icons.Filled.Layers, contentDescription = stringResource(R.string.layers_and_overlays))
         }
 
         DropdownMenu(
             expanded = showLayerMenu,
             onDismissRequest = { onLayerMenuToggle(false) }
         ) {
-            MenuSection("Map Layers")
-            LayerMenuItem("Kartverket (Norway)", selectedLayer == MapLayer.KARTVERKET) { onLayerSelected(MapLayer.KARTVERKET) }
-            LayerMenuItem("Kartverket toporaster", selectedLayer == MapLayer.TOPORASTER) { onLayerSelected(MapLayer.TOPORASTER) }
-            LayerMenuItem("Kartverket sjøkart", selectedLayer == MapLayer.SJOKARTRASTER) { onLayerSelected(MapLayer.SJOKARTRASTER) }
+            MenuSection(stringResource(R.string.map_layers))
+            LayerMenuItem(stringResource(R.string.kartverket_norway), selectedLayer == MapLayer.KARTVERKET) { onLayerSelected(MapLayer.KARTVERKET) }
+            LayerMenuItem(stringResource(R.string.kartverket_toporaster), selectedLayer == MapLayer.TOPORASTER) { onLayerSelected(MapLayer.TOPORASTER) }
+            LayerMenuItem(stringResource(R.string.kartverket_sjokart), selectedLayer == MapLayer.SJOKARTRASTER) { onLayerSelected(MapLayer.SJOKARTRASTER) }
             LayerMenuItem("OpenStreetMap", selectedLayer == MapLayer.OSM) { onLayerSelected(MapLayer.OSM) }
             LayerMenuItem("OpenTopoMap", selectedLayer == MapLayer.OPENTOPOMAP) { onLayerSelected(MapLayer.OPENTOPOMAP) }
             HorizontalDivider()
-            MenuSection("Overlays")
-            LayerMenuItem("Waymarked Trails (OSM)", showWaymarkedTrails) { onWaymarkedTrailsToggle() }
-            LayerMenuItem("County Borders (Norway)", showCountyBorders) { onCountyBordersToggle() }
-            LayerMenuItem("Saved Points", showSavedPoints) { onSavedPointsToggle() }
+            MenuSection(stringResource(R.string.overlays))
+            LayerMenuItem(stringResource(R.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
+            LayerMenuItem(stringResource(R.string.county_borders_norway), showCountyBorders) { onCountyBordersToggle() }
+            LayerMenuItem(stringResource(R.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
         }
 
         Spacer(modifier = Modifier.size(8.dp))
@@ -112,7 +114,7 @@ fun MapFabColumn(
         ) {
             Icon(
                 if (isRecording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord,
-                contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
+                contentDescription = if (isRecording) stringResource(R.string.stop_recording) else stringResource(R.string.start_recording),
                 tint = if (isRecording) Color.White else Color.Red
             )
         }
@@ -124,7 +126,7 @@ fun MapFabColumn(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.MyLocation, contentDescription = "My Location")
+            Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.my_location))
         }
 
         Spacer(modifier = Modifier.size(8.dp))
@@ -136,7 +138,7 @@ fun MapFabColumn(
         ) {
             Icon(
                 Icons.Filled.Straighten,
-                contentDescription = "Ruler",
+                contentDescription = stringResource(R.string.ruler),
                 tint = if (rulerActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -148,7 +150,7 @@ fun MapFabColumn(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
         }
     }
 }

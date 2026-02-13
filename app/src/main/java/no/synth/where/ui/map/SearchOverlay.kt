@@ -28,7 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import no.synth.where.R
 import no.synth.where.data.PlaceSearchClient
 
 @Composable
@@ -58,7 +60,7 @@ fun SearchOverlay(
                     modifier = Modifier
                         .weight(1f)
                         .focusRequester(focusRequester),
-                    placeholder = { Text("Search places...") },
+                    placeholder = { Text(stringResource(R.string.search_places_hint)) },
                     singleLine = true,
                     trailingIcon = {
                         if (isSearching) {
@@ -68,13 +70,13 @@ fun SearchOverlay(
                             )
                         } else if (query.isNotEmpty()) {
                             IconButton(onClick = { onQueryChange("") }) {
-                                Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                                Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.clear))
                             }
                         }
                     }
                 )
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close Search")
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close_search))
                 }
             }
         }

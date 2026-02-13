@@ -40,8 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import no.synth.where.R
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.util.formatDistance
@@ -61,14 +63,14 @@ fun ZoomControls(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Zoom In")
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.zoom_in))
         }
         SmallFloatingActionButton(
             onClick = onZoomOut,
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Remove, contentDescription = "Zoom Out")
+            Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.zoom_out))
         }
     }
 }
@@ -95,13 +97,13 @@ fun RulerCard(
                 Column(modifier = Modifier.weight(1f)) {
                     val totalDistance = rulerState.getTotalDistanceMeters()
                     Text(
-                        text = if (rulerState.points.isEmpty()) "Tap to measure" else totalDistance.formatDistance(),
+                        text = if (rulerState.points.isEmpty()) stringResource(R.string.tap_to_measure) else totalDistance.formatDistance(),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
                     if (rulerState.points.size > 1) {
                         Text(
-                            text = "${rulerState.points.size} points",
+                            text = stringResource(R.string.n_points, rulerState.points.size),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -117,7 +119,7 @@ fun RulerCard(
                         ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Undo,
-                                contentDescription = "Remove Last Point",
+                                contentDescription = stringResource(R.string.remove_last_point),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -129,7 +131,7 @@ fun RulerCard(
                     ) {
                         Icon(
                             Icons.Filled.Clear,
-                            contentDescription = "Clear All",
+                            contentDescription = stringResource(R.string.clear_all),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -148,7 +150,7 @@ fun RulerCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Save as Track")
+                    Text(stringResource(R.string.save_as_track))
                 }
             }
         }
@@ -180,7 +182,7 @@ fun RecordingCard(
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Recording",
+                        text = stringResource(R.string.recording),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -213,7 +215,7 @@ fun RecordingCard(
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = "Online Tracking",
+                        text = stringResource(R.string.online_tracking),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -255,7 +257,7 @@ fun ViewingTrackBanner(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close Track View")
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close_track_view))
             }
         }
     }
@@ -293,7 +295,7 @@ fun ViewingPointBanner(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close Point View")
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close_point_view))
             }
         }
     }

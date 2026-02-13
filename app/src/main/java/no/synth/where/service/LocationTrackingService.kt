@@ -139,10 +139,10 @@ class LocationTrackingService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Track Recording",
+            getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Ongoing track recording notifications"
+            description = getString(R.string.notification_channel_description)
         }
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.createNotificationChannel(channel)
@@ -166,13 +166,13 @@ class LocationTrackingService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Recording Track")
-            .setContentText("Location tracking is active")
+            .setContentTitle(getString(R.string.notification_recording_title))
+            .setContentText(getString(R.string.notification_recording_text))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .addAction(
                 R.drawable.ic_launcher_foreground,
-                "Stop",
+                getString(R.string.stop),
                 stopPendingIntent
             )
             .setOngoing(true)
@@ -223,4 +223,3 @@ class LocationTrackingService : Service() {
         }
     }
 }
-
