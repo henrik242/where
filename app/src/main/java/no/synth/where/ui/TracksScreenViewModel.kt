@@ -1,13 +1,10 @@
 package no.synth.where.ui
 
 import androidx.lifecycle.ViewModel
-import dagger.hilt.android.lifecycle.HiltViewModel
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
-import javax.inject.Inject
 
-@HiltViewModel
-class TracksScreenViewModel @Inject constructor(
+class TracksScreenViewModel(
     private val trackRepository: TrackRepository
 ) : ViewModel() {
 
