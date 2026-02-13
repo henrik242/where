@@ -5,7 +5,7 @@ import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
 import org.junit.Test
 import org.junit.Assert.*
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 
 /**
  * Tests for the mapping logic between Room entities and domain models,

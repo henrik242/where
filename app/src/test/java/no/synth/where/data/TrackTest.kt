@@ -2,7 +2,7 @@ package no.synth.where.data
 
 import org.junit.Test
 import org.junit.Assert.*
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 
 class TrackTest {
 

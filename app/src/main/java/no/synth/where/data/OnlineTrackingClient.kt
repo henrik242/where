@@ -11,7 +11,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 

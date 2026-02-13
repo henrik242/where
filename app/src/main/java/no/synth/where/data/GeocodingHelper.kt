@@ -6,7 +6,7 @@ import okhttp3.OkHttpClient
 import timber.log.Timber
 import okhttp3.Request
 import org.json.JSONObject
-import org.maplibre.android.geometry.LatLng
+import no.synth.where.data.geo.LatLng
 import java.util.concurrent.TimeUnit
 
 object GeocodingHelper {
