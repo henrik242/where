@@ -12,10 +12,10 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.data.geo.LatLng
-import timber.log.Timber
+import no.synth.where.util.Logger
 
 object PlaceSearchClient {
-    private val client = HttpClient(CIO) {
+    internal var client: HttpClient = HttpClient(CIO) {
         engine {
             requestTimeout = 10_000
         }
@@ -66,7 +66,7 @@ object PlaceSearchClient {
             }
             results
         } catch (e: Exception) {
-            Timber.e(e, "Error searching places")
+            Logger.e(e, "Error searching places")
             emptyList()
         }
     }

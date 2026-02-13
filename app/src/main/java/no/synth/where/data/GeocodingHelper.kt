@@ -11,10 +11,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.data.geo.LatLng
-import timber.log.Timber
+import no.synth.where.util.Logger
 
 object GeocodingHelper {
-    private val client = HttpClient(CIO) {
+    internal var client: HttpClient = HttpClient(CIO) {
         engine {
             requestTimeout = 10_000
         }
@@ -54,7 +54,7 @@ object GeocodingHelper {
 
             null
         } catch (e: Exception) {
-            Timber.e(e, "Error reverse geocoding")
+            Logger.e(e, "Error reverse geocoding")
             null
         }
     }

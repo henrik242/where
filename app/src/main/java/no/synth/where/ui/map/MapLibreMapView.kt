@@ -29,7 +29,7 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import timber.log.Timber
+import no.synth.where.util.Logger
 
 @Composable
 fun MapLibreMapView(
@@ -143,7 +143,7 @@ fun MapLibreMapView(
                         }
                     })
             } catch (e: Exception) {
-                Timber.e(e, "Map screen error")
+                Logger.e(e, "Map screen error")
             }
         }
     }
@@ -206,7 +206,7 @@ fun MapLibreMapView(
                             }
                         })
                 } catch (e: Exception) {
-                    Timber.e(e, "Map screen error")
+                    Logger.e(e, "Map screen error")
                 }
             }
         }
@@ -227,7 +227,7 @@ fun MapLibreMapView(
                     style.getLayer("saved-points-layer")?.let { style.removeLayer(it) }
                     style.getSource("saved-points-source")?.let { style.removeSource(it) }
                 } catch (e: Exception) {
-                    Timber.e(e, "Map screen error")
+                    Logger.e(e, "Map screen error")
                 }
             }
         }
@@ -323,7 +323,7 @@ fun MapLibreMapView(
                                 }
                             })
                     } catch (e: Exception) {
-                        Timber.e(e, "Map screen error")
+                        Logger.e(e, "Map screen error")
                     }
                 }
             }
