@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.Track
 import no.synth.where.util.formatDateTime
+import no.synth.where.util.formatKm
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -312,7 +313,7 @@ fun TrackItem(
 @Composable
 fun formatTrackInfo(track: Track): String {
     val date = formatDateTime(track.startTime, "MMM d, yyyy HH:mm")
-    val distance = "%.2f".format(track.getDistanceMeters() / 1000.0)
+    val distance = track.getDistanceMeters().formatKm()
     val duration = track.getDurationMillis()
     val hours = duration / (1000 * 60 * 60)
     val minutes = (duration / (1000 * 60)) % 60

@@ -23,7 +23,7 @@ object PlaceSearchClient {
         val latLng: LatLng
     )
 
-    suspend fun search(query: String): List<SearchResult> = withContext(Dispatchers.IO) {
+    suspend fun search(query: String): List<SearchResult> = withContext(Dispatchers.Default) {
         try {
             val response = client.get("https://ws.geonorge.no/stedsnavn/v1/sted") {
                 url {
