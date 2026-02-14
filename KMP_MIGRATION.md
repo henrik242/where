@@ -250,7 +250,31 @@ Moved the content composables from the remaining 5 screens to `shared/src/common
 
 ---
 
-## Phase 9 — Create iOS target (large effort)
+## Phase 9 — Move FylkeDownloader/FylkeDataLoader/RegionsRepository to commonMain ✅ DONE
+
+Moved the county data download/parse/cache chain from `shared/src/androidMain` to `shared/src/commonMain`. These files were ~90% pure Kotlin logic with only three JVM dependencies: `java.net.URL` (HTTP), `java.util.zip.ZipInputStream` (ZIP), and `java.io.File` (file I/O).
+
+### What was done
+
+1. **Extended PlatformFile** — Added `lastModified(): Long`, `writeBytes(ByteArray)`, `length(): Long` to expect class in commonMain. Android actual delegates to `java.io.File`. iOS actual has TODO stubs.
+2. **Created ZipUtils expect/actual** — `extractFirstFileFromZip(zipData: ByteArray, extension: String): ByteArray?` in commonMain. Android actual uses `java.util.zip.ZipInputStream`. iOS actual has TODO stub.
+3. **Moved FylkeDataLoader** — `java.io.File` → `PlatformFile`. Data classes (`FylkeGeoJSON`, `FylkeFeature`, `FylkeGeometry`) moved along unchanged — all pure `kotlinx.serialization`.
+4. **Moved FylkeDownloader** — Replaced `java.net.URL` with Ktor `HttpClient.get().readRawBytes()`, `ZipInputStream` with `extractFirstFileFromZip()`, `java.io.File` with `PlatformFile`, `System.currentTimeMillis()` with `currentTimeMillis()`, `Dispatchers.IO` with `Dispatchers.Default`.
+5. **Moved RegionsRepository** — `java.io.File` → `PlatformFile`. No other changes.
+6. **Updated callers** — `WhereApp.kt`, `MapLibreMapView.kt`, `DownloadScreen.kt`, `MapDownloadService.kt` now wrap `context.cacheDir` in `PlatformFile()`.
+7. **Updated tests** — `FylkeDownloaderTest.kt` wraps `tempFolder.root` in `PlatformFile()`. `FylkeGeoJSONTest.kt` unchanged (tests pure string parsing).
+
+**Files created:** `shared/src/commonMain/.../util/ZipUtils.kt`, `shared/src/androidMain/.../util/ZipUtils.kt`, `shared/src/iosMain/.../util/ZipUtils.kt`
+
+**Files moved to commonMain:** `FylkeDownloader.kt`, `FylkeDataLoader.kt` (with `FylkeGeoJSON`, `FylkeFeature`, `FylkeGeometry`), `RegionsRepository.kt`
+
+**Files changed:** `PlatformFile.kt` (commonMain, androidMain, iosMain), `WhereApp.kt`, `MapLibreMapView.kt`, `DownloadScreen.kt`, `MapDownloadService.kt`, `FylkeDownloaderTest.kt`
+
+**Result:** The entire county data pipeline is now in `commonMain`. Only `androidMain` data files remaining are `StyleServer.kt`, `MapDownloadManager.kt`, and `MapLibreConversions.kt` (all have hard MapLibre Android dependencies).
+
+---
+
+## Phase 10 — Create iOS target (large effort)
 
 ### Steps
 
@@ -258,8 +282,8 @@ Moved the content composables from the remaining 5 screens to `shared/src/common
 2. Implement all `actual` declarations in `shared/src/iosMain/`:
    - `Logger` → `os_log` or `print`
    - `HmacUtils` → CommonCrypto
-   - `FileSystem` / cache access → Foundation `FileManager`
-   - `ZipExtractor` → Foundation or a Swift ZIP library
+   - `PlatformFile` → Foundation `FileManager`
+   - `ZipUtils` → Foundation or a Swift ZIP library
    - Platform actions (share, open URL, pick file) → UIKit APIs
 3. Implement `MapLibreMapView` for iOS using MapLibre Native iOS SDK in a `UIKitView`
 4. Implement `MapRenderUtils` for iOS using MapLibre iOS style API

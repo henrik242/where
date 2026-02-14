@@ -1,18 +1,16 @@
 package no.synth.where.data
 
-import java.io.File
-
 object RegionsRepository {
     private var _regions: List<Region>? = null
 
-    fun getRegions(cacheDir: File): List<Region> {
+    fun getRegions(cacheDir: PlatformFile): List<Region> {
         if (_regions == null) {
             _regions = FylkeDataLoader.loadFylker(cacheDir)
         }
         return _regions ?: emptyList()
     }
 
-    fun reloadRegions(cacheDir: File) {
+    fun reloadRegions(cacheDir: PlatformFile) {
         _regions = FylkeDataLoader.loadFylker(cacheDir)
     }
 

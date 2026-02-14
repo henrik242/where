@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import no.synth.where.data.MapStyle
+import no.synth.where.data.PlatformFile
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
 import no.synth.where.data.Track
@@ -105,7 +106,7 @@ fun MapLibreMapView(
     ) {
         map?.let { mapInstance ->
             try {
-                val regions = RegionsRepository.getRegions(context.cacheDir)
+                val regions = RegionsRepository.getRegions(PlatformFile(context.cacheDir))
                 val styleJson = MapStyle.getStyle(
                     selectedLayer,
                     showCountyBorders,
@@ -174,7 +175,7 @@ fun MapLibreMapView(
         if (wasInitialized && isOnline && map != null) {
 
             map?.let { mapInstance ->
-                val regions = RegionsRepository.getRegions(context.cacheDir)
+                val regions = RegionsRepository.getRegions(PlatformFile(context.cacheDir))
                 val styleJson = MapStyle.getStyle(
                     selectedLayer,
                     showCountyBorders,
@@ -297,7 +298,7 @@ fun MapLibreMapView(
                     // Don't add any click listeners here to avoid conflicts
 
                     try {
-                        val regions = RegionsRepository.getRegions(ctx.cacheDir)
+                        val regions = RegionsRepository.getRegions(PlatformFile(ctx.cacheDir))
                         val styleJson = MapStyle.getStyle(
                             selectedLayer,
                             showCountyBorders,
