@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import no.synth.where.MainActivity
 import no.synth.where.R
 import no.synth.where.data.MapDownloadManager
+import no.synth.where.data.PlatformFile
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
 
@@ -59,7 +60,7 @@ class MapDownloadService : Service() {
                 val maxZoom = intent.getIntExtra(EXTRA_MAX_ZOOM, 12)
 
                 if (regionName != null && layerName != null) {
-                    val regions = RegionsRepository.getRegions(cacheDir)
+                    val regions = RegionsRepository.getRegions(PlatformFile(cacheDir))
                     val region = regions.find { it.name == regionName }
                     if (region != null) {
                         startDownload(region, layerName, minZoom, maxZoom)
