@@ -15,7 +15,7 @@ import no.synth.where.util.Logger
 object GeocodingHelper {
     var client: HttpClient = createDefaultHttpClient()
 
-    suspend fun reverseGeocode(latLng: LatLng): String? = withContext(Dispatchers.IO) {
+    suspend fun reverseGeocode(latLng: LatLng): String? = withContext(Dispatchers.Default) {
         try {
             val url = "https://nominatim.openstreetmap.org/reverse?lat=${latLng.latitude}&lon=${latLng.longitude}&format=json&addressdetails=1"
             val response = client.get(url) {
