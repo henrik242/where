@@ -7,7 +7,9 @@ object MapStyle {
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
         showCountyBorders: Boolean = true,
         showWaymarkedTrails: Boolean = false,
-        regions: List<Region> = emptyList()
+        showSkiTrails: Boolean = false,
+        regions: List<Region> = emptyList(),
+        skiTrails: List<SkiTrail> = emptyList()
     ): String {
         val activeRegions = if (showCountyBorders) regions else emptyList()
         val regionsGeoJson = activeRegions.joinToString(",") { region ->
@@ -67,6 +69,21 @@ object MapStyle {
       "attribution": "© Waymarked Trails, OSM"
     }""")
             }
+            if (showSkiTrails && skiTrails.isNotEmpty()) {
+                val skiTrailsGeoJson = skiTrails.joinToString(",") { trail ->
+                    val coords = trail.coordinates.joinToString(",") { c -> "[${c[0]},${c[1]}]" }
+                    val escapedName = trail.name.replace("\\", "\\\\").replace("\"", "\\\"")
+                    """{"type":"Feature","properties":{"name":"$escapedName"},"geometry":{"type":"LineString","coordinates":[$coords]}}"""
+                }
+                append(""",
+    "skitrails": {
+      "type": "geojson",
+      "data": {
+        "type": "FeatureCollection",
+        "features": [$skiTrailsGeoJson]
+      }
+    }""")
+            }
             append(""",
     "regions": {
       "type": "geojson",
@@ -102,6 +119,19 @@ object MapStyle {
       "source": "waymarkedtrails",
       "paint": {
         "raster-opacity": 1.0
+      }
+    }""")
+            }
+            if (showSkiTrails && skiTrails.isNotEmpty()) {
+                append(""",
+    {
+      "id": "skitrails-line",
+      "type": "line",
+      "source": "skitrails",
+      "paint": {
+        "line-color": "#1E88E5",
+        "line-width": 2,
+        "line-opacity": 0.8
       }
     }""")
             }
