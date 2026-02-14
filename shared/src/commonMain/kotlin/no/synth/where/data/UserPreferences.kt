@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class UserPreferences(private val dataStore: DataStore<Preferences>) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val _showCountyBorders = MutableStateFlow(false)
     val showCountyBorders: StateFlow<Boolean> = _showCountyBorders.asStateFlow()

@@ -30,7 +30,7 @@ class OnlineTrackingClient(
     val client: HttpClient = createDefaultHttpClient()
 ) {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var currentTrackId: String? = null
 
     fun startTrack(trackName: String) {

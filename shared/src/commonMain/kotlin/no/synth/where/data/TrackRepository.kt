@@ -20,7 +20,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val json = Json { ignoreUnknownKeys = true }
     private val tracksFile = filesDir.resolve("tracks.json")
     private val migratedFile = filesDir.resolve("tracks.json.migrated")
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())
     val tracks: StateFlow<List<Track>> = _tracks.asStateFlow()
