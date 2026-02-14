@@ -11,6 +11,16 @@
     <string name="name_label">Name</string>
     <string name="description_optional">Description (optional)</string>
     <string name="color">Color</string>
+    <string name="collapse">Collapse</string>
+    <string name="expand">Expand</string>
+    <string name="stop">Stop</string>
+    <string name="share">Share</string>
+    <string name="edit">Edit</string>
+    <string name="rename">Rename</string>
+    <string name="open">Open</string>
+    <string name="download">Download</string>
+    <string name="show_on_map">Show on Map</string>
+    <string name="continue_label">Continue</string>
 
     <!-- Map Dialogs -->
     <string name="background_location_access">Background Location Access</string>
@@ -63,4 +73,69 @@
     <string name="search_places_hint">Search places\u2026</string>
     <string name="clear">Clear</string>
     <string name="close_search">Close Search</string>
+
+    <!-- Saved Points Screen -->
+    <string name="no_saved_points">No saved points yet.\nLong press on the map to save a point.</string>
+    <string name="edit_point">Edit Point</string>
+
+    <!-- Online Tracking Screen -->
+    <string name="enable_online_tracking">Enable Online Tracking</string>
+    <string name="tracking_active">Active</string>
+    <string name="tracking_disabled">Disabled</string>
+    <string name="your_client_id">Your Client ID</string>
+    <string name="client_id_description">Share this ID with others to let them view your live location</string>
+    <string name="actions">Actions</string>
+    <string name="open_in_browser">Open in Browser</string>
+    <string name="view_on_web">View on Web</string>
+    <string name="share_tracking_link">Share Tracking Link</string>
+    <string name="regenerate_id">Regenerate ID</string>
+    <string name="regenerate_client_id">Regenerate Client ID</string>
+    <string name="how_it_works">\u2139\uFE0F How it works</string>
+    <string name="how_it_works_description">When you press record in map view and online tracking is enabled, your location is shared in real-time with anyone who has your Client ID. They can view your track on the web interface.</string>
+    <string name="regenerate_client_id_title">Regenerate Client ID?</string>
+    <string name="regenerate_client_id_message">This will create a new client ID. Your old ID (%1$s) will no longer be associated with your tracks on the server.</string>
+    <string name="regenerate">Regenerate</string>
+
+    <!-- Settings Screen -->
+    <string name="go_to_online_tracking">Go to Online Tracking</string>
+    <string name="saved_tracks">Saved Tracks</string>
+    <string name="go_to_saved_tracks">Go to Saved Tracks</string>
+    <string name="go_to_saved_points">Go to Saved Points</string>
+    <string name="offline_maps">Offline Maps</string>
+    <string name="go_to_download_manager">Go to Download Manager</string>
+    <string name="language">Language</string>
+    <string name="system_default">System Default</string>
+    <string name="crash_reporting">Crash Reporting</string>
+    <string name="crash_reporting_description">Send anonymous crash reports to help improve the app</string>
+
+    <!-- Tracks Screen -->
+    <string name="import_gpx">Import GPX</string>
+    <string name="no_saved_tracks">No saved tracks yet</string>
+    <string name="delete_track_title">Delete Track?</string>
+    <string name="delete_track_confirm">Are you sure you want to delete \'%1$s\'?</string>
+    <string name="import_failed">Import Failed</string>
+    <string name="rename_track">Rename Track</string>
+    <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d points</string>
+    <string name="duration_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_minutes">%1$dm</string>
+
+    <!-- Download Screen -->
+    <string name="automatic_cache">Automatic Cache</string>
+    <string name="tiles_loaded_automatically">Tiles loaded automatically while browsing</string>
+    <string name="downloading_region">Downloading %1$s</string>
+    <string name="downloading_region_ellipsis">Downloading %1$s\u2026</string>
+    <string name="view_regions">View regions</string>
+    <string name="download_regions">Download Regions</string>
+    <string name="delete_region_title">Delete %1$s?</string>
+    <string name="delete_region_message">This will delete all %1$s tiles for %2$s. You can re-download them later.</string>
+    <string name="tiles_needed">%1$d tiles needed</string>
+    <string name="tiles_stats">%1$d tiles \u2022 %2$s</string>
+    <string name="tiles_downloaded">\u2713 %1$d tiles \u2022 %2$s</string>
+    <string name="tiles_partial">%1$d/%2$d tiles \u2022 %3$s</string>
+    <string name="layer_kartverket_desc">Topographic maps from Kartverket</string>
+    <string name="layer_toporaster_desc">Topographic raster maps</string>
+    <string name="layer_sjokartraster_desc">Nautical charts</string>
+    <string name="layer_osm_desc">Community-sourced street maps</string>
+    <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
+    <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
 </resources>

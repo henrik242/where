@@ -54,9 +54,8 @@ import no.synth.where.data.geo.toCommon
 import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.maps.MapLibreMap
 import no.synth.where.util.Logger
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import no.synth.where.util.formatDateTime
+import no.synth.where.util.currentTimeMillis
 
 @Composable
 fun MapScreen(
@@ -134,8 +133,7 @@ fun MapScreen(
         hasBackgroundLocationPermission = granted
         if (granted && pendingRecordStart) {
             pendingRecordStart = false
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-            val trackName = dateFormat.format(Date())
+            val trackName = formatDateTime(currentTimeMillis(), "yyyy-MM-dd HH:mm")
             viewModel.startRecording(trackName)
             LocationTrackingService.start(context)
             scope.launch { snackbarHostState.showSnackbar(recordingMsg) }
@@ -278,8 +276,7 @@ fun MapScreen(
             } else if (!hasBackgroundLocationPermission) {
                 showBackgroundLocationDisclosure = true
             } else {
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                val trackName = dateFormat.format(Date())
+                val trackName = formatDateTime(currentTimeMillis(), "yyyy-MM-dd HH:mm")
                 viewModel.startRecording(trackName)
                 LocationTrackingService.start(context)
                 scope.launch { snackbarHostState.showSnackbar(recordingMsg) }

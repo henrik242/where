@@ -361,11 +361,4 @@ class MapDownloadManager(private val context: Context) {
                 }
             })
         }
-
-    data class RegionTileInfo(
-        val totalTiles: Int,
-        val downloadedTiles: Int,
-        val downloadedSize: Long,
-        val isFullyDownloaded: Boolean
-    )
 }

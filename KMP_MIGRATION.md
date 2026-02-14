@@ -199,18 +199,47 @@ Added Compose Multiplatform to the shared module and moved the pure-Compose UI f
 
 **Result:** 6 Compose UI files are now in `commonMain` and will work on both Android and iOS. String resources use Compose Multiplatform's resource system. The app module's `strings.xml` retains all strings for backward compatibility with app-level files that still use `R.string.*`.
 
-### Remaining (Phase 8 part 2)
+---
 
-Screens with platform-specific dependencies that need expect/actual:
+## Phase 8 Part 2 — Move remaining screen content composables to shared ✅ DONE
 
-| Screen | Platform APIs needed |
-|---|---|
-| `SettingsScreen.kt` | `expect fun setAppLocale(tag: String?)` |
-| `SavedPointsScreen.kt` | `parseHexColor` (now available — can move) |
-| `OnlineTrackingScreen.kt` | `expect fun shareText(...)`, `expect fun openUrl(...)` |
-| `TracksScreen.kt` | `expect fun shareFile(...)`, `expect fun pickFile(...)`, `expect fun saveToDownloads(...)` |
-| `DownloadScreen.kt` | Download service trigger |
-| `MapScreen.kt` | Permission handling, location service start/stop |
+Moved the content composables from the remaining 5 screens to `shared/src/commonMain`. Each screen follows the pattern of `XxxScreen()` (wrapper with ViewModel + platform APIs) calling `XxxScreenContent()` (pure Compose). The content was moved to shared; wrappers stay in app.
+
+### What was done
+
+1. **Fixed Phase 5 leftovers** — `Track.kt`: replaced remaining `System.currentTimeMillis()` with `currentTimeMillis()` from `no.synth.where.util`
+2. **Created `DateTimeUtils` expect/actual** — `expect fun formatDateTime(epochMillis: Long, pattern: String): String` in commonMain with `SimpleDateFormat`-based actual in androidMain and TODO stub in iosMain. Replaces `SimpleDateFormat` usage in TracksScreen's `formatTrackInfo` and MapScreen's date formatting.
+3. **Extracted `RegionTileInfo`** — Moved from nested class in `MapDownloadManager` to top-level data class in `shared/src/commonMain/kotlin/no/synth/where/data/RegionTileInfo.kt`
+4. **Extracted `formatBytes` utility** — Created `shared/src/commonMain/kotlin/no/synth/where/util/FormatUtils.kt` replacing duplicated local functions in `DownloadScreen.kt`
+5. **Added string resources** — All strings referenced by the 5 content composables added to `shared/src/commonMain/composeResources/values/strings.xml`
+6. **Moved content composables to shared** — Created 5 new files in `shared/src/commonMain/kotlin/no/synth/where/ui/`:
+   - `SavedPointsScreenContent.kt` — `SavedPointsScreenContent`, `SavedPointItem`, `EditPointDialog`
+   - `OnlineTrackingScreenContent.kt` — `OnlineTrackingScreenContent`
+   - `SettingsScreenContent.kt` — `SettingsScreenContent`, `LanguageOption` data class
+   - `TracksScreenContent.kt` — `TracksScreenContent`, `TrackItem`, `formatTrackInfo`
+   - `DownloadScreenContent.kt` — `DownloadScreenContent`, `LayerRegionsScreenContent`, `LayerInfo`
+7. **Slimmed app wrappers** — Each screen file in app now contains only the wrapper composable and platform-specific functions
+8. **Updated MapScreen.kt** — Replaced `SimpleDateFormat` with `formatDateTime()` from shared utils
+9. **Added tests** — `DateTimeUtilsTest`, `FormatUtilsTest`, `ScreenContentTest` (parameter documentation + data class tests)
+
+**Files created:**
+- `shared/src/commonMain/kotlin/no/synth/where/util/DateTimeUtils.kt`
+- `shared/src/androidMain/kotlin/no/synth/where/util/DateTimeUtils.kt`
+- `shared/src/iosMain/kotlin/no/synth/where/util/DateTimeUtils.kt`
+- `shared/src/commonMain/kotlin/no/synth/where/data/RegionTileInfo.kt`
+- `shared/src/commonMain/kotlin/no/synth/where/util/FormatUtils.kt`
+- `shared/src/commonMain/kotlin/no/synth/where/ui/SavedPointsScreenContent.kt`
+- `shared/src/commonMain/kotlin/no/synth/where/ui/OnlineTrackingScreenContent.kt`
+- `shared/src/commonMain/kotlin/no/synth/where/ui/SettingsScreenContent.kt`
+- `shared/src/commonMain/kotlin/no/synth/where/ui/TracksScreenContent.kt`
+- `shared/src/commonMain/kotlin/no/synth/where/ui/DownloadScreenContent.kt`
+- `app/src/test/java/no/synth/where/util/DateTimeUtilsTest.kt`
+- `app/src/test/java/no/synth/where/util/FormatUtilsTest.kt`
+- `app/src/test/java/no/synth/where/ui/ScreenContentTest.kt`
+
+**Files changed:** `Track.kt`, `MapDownloadManager.kt` (removed nested RegionTileInfo), `strings.xml` (shared), `SavedPointsScreen.kt`, `OnlineTrackingScreen.kt`, `SettingsScreen.kt`, `TracksScreen.kt`, `DownloadScreen.kt`, `MapScreen.kt`
+
+**Result:** All screen content composables are now in `commonMain` and will work on both Android and iOS. Only platform wrappers (ViewModel, Intent, file picker, location services) remain in the app module.
 
 ### Stays in androidMain / iosMain
 
