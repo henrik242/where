@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import no.synth.where.R
 import no.synth.where.data.MapDownloadManager
+import no.synth.where.data.PlatformFile
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
 import no.synth.where.service.MapDownloadService
@@ -85,7 +86,7 @@ fun LayerRegionsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val downloadManager = remember { MapDownloadManager(context) }
-    val regions = remember { RegionsRepository.getRegions(context.cacheDir) }
+    val regions = remember { RegionsRepository.getRegions(PlatformFile(context.cacheDir)) }
 
     val downloadState by MapDownloadService.downloadState.collectAsState()
     var refreshTrigger by remember { mutableIntStateOf(0) }

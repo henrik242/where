@@ -4,7 +4,6 @@ import kotlinx.serialization.json.*
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.util.Logger
-import java.io.File
 
 data class FylkeGeoJSON(
     val type: String,
@@ -52,7 +51,7 @@ data class FylkeGeometry(
 )
 
 object FylkeDataLoader {
-    fun loadFylker(cacheDir: File): List<Region> {
+    fun loadFylker(cacheDir: PlatformFile): List<Region> {
         val json = try {
             val cachedFile = FylkeDownloader.getCachedFile(cacheDir)
             if (cachedFile != null) {

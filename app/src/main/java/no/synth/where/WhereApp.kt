@@ -11,6 +11,7 @@ import androidx.navigation.toRoute
 import org.koin.androidx.compose.koinViewModel
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import no.synth.where.data.FylkeDownloader
+import no.synth.where.data.PlatformFile
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.SavedPoint
 import no.synth.where.navigation.*
@@ -34,7 +35,7 @@ fun WhereApp(
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     var showSavedPoints by remember { mutableStateOf(true) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
-    var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(context.cacheDir)) }
+    var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(PlatformFile(context.cacheDir))) }
     var isOnline by remember { mutableStateOf(false) }
 
     DisposableEffect(context) {
@@ -67,10 +68,10 @@ fun WhereApp(
 
     LaunchedEffect(isOnline, showCountyBorders) {
         if (isOnline && showCountyBorders && !hasDownloadedCounties) {
-            val success = FylkeDownloader.downloadAndCacheFylker(context.cacheDir)
+            val success = FylkeDownloader.downloadAndCacheFylker(PlatformFile(context.cacheDir))
             if (success) {
                 hasDownloadedCounties = true
-                RegionsRepository.reloadRegions(context.cacheDir)
+                RegionsRepository.reloadRegions(PlatformFile(context.cacheDir))
                 onRegionsLoaded()
             }
         }
