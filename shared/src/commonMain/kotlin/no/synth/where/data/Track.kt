@@ -103,8 +103,8 @@ $trackPointsXml
 
                 if (trackPoints.isEmpty()) return null
 
-                val startTime = trackPoints.minOfOrNull { it.timestamp } ?: System.currentTimeMillis()
-                val endTime = trackPoints.maxOfOrNull { it.timestamp } ?: System.currentTimeMillis()
+                val startTime = trackPoints.minOfOrNull { it.timestamp } ?: currentTimeMillis()
+                val endTime = trackPoints.maxOfOrNull { it.timestamp } ?: currentTimeMillis()
 
                 return Track(
                     name = trackName,
