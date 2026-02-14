@@ -64,6 +64,9 @@ fun MapScreen(
     onShowCountyBordersChange: (Boolean) -> Unit,
     showSavedPoints: Boolean,
     onShowSavedPointsChange: (Boolean) -> Unit,
+    showSkiTrails: Boolean,
+    onShowSkiTrailsChange: (Boolean) -> Unit,
+    skiTrailsReady: Boolean = false,
     viewingPoint: no.synth.where.data.SavedPoint? = null,
     onClearViewingPoint: () -> Unit = {},
     regionsLoadedTrigger: Int = 0
@@ -248,6 +251,7 @@ fun MapScreen(
         showLayerMenu = showLayerMenu,
         selectedLayer = selectedLayer,
         showWaymarkedTrails = showWaymarkedTrails,
+        showSkiTrails = showSkiTrails,
         showCountyBorders = showCountyBorders,
         showSavedPoints = showSavedPoints,
         onlineTrackingEnabled = onlineTrackingEnabled,
@@ -265,6 +269,9 @@ fun MapScreen(
         onLayerSelected = { selectedLayer = it; showLayerMenu = false },
         onWaymarkedTrailsToggle = {
             showWaymarkedTrails = !showWaymarkedTrails; showLayerMenu = false
+        },
+        onSkiTrailsToggle = {
+            onShowSkiTrailsChange(!showSkiTrails); showLayerMenu = false
         },
         onCountyBordersToggle = {
             onShowCountyBordersChange(!showCountyBorders); showLayerMenu = false
@@ -342,6 +349,8 @@ fun MapScreen(
                 hasLocationPermission = hasLocationPermission,
                 showCountyBorders = showCountyBorders,
                 showWaymarkedTrails = showWaymarkedTrails,
+                showSkiTrails = showSkiTrails,
+                skiTrailsReady = skiTrailsReady,
                 showSavedPoints = showSavedPoints,
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,
@@ -585,6 +594,7 @@ private fun MapScreenFullPreview() {
             showLayerMenu = false,
             selectedLayer = MapLayer.KARTVERKET,
             showWaymarkedTrails = false,
+            showSkiTrails = false,
             showCountyBorders = false,
             showSavedPoints = true,
             onlineTrackingEnabled = false,
@@ -601,6 +611,7 @@ private fun MapScreenFullPreview() {
             onLayerMenuToggle = {},
             onLayerSelected = {},
             onWaymarkedTrailsToggle = {},
+            onSkiTrailsToggle = {},
             onCountyBordersToggle = {},
             onSavedPointsToggle = {},
             onRecordStopClick = {},
