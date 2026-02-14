@@ -17,7 +17,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: SavedPointDao) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val json = Json { ignoreUnknownKeys = true }
     private val pointsFile: PlatformFile = filesDir.resolve("saved_points.json")
     private val migratedFile: PlatformFile = filesDir.resolve("saved_points.json.migrated")

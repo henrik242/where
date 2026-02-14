@@ -77,14 +77,20 @@ $trackPointsXml
 
                 val trackPoints = mutableListOf<TrackPoint>()
 
-                val trkptPattern = Regex("""<trkpt lat="([^"]+)" lon="([^"]+)">(.*?)</trkpt>""", RegexOption.DOT_MATCHES_ALL)
-                trkptPattern.findAll(gpxContent).forEach { match ->
-                    val lat = match.groupValues[1].toDoubleOrNull() ?: return@forEach
-                    val lon = match.groupValues[2].toDoubleOrNull() ?: return@forEach
-                    val content = match.groupValues[3]
+                var searchFrom = 0
+                while (true) {
+                    val trkptStart = gpxContent.indexOf("<trkpt ", searchFrom)
+                    if (trkptStart < 0) break
+                    val trkptEnd = gpxContent.indexOf("</trkpt>", trkptStart)
+                    if (trkptEnd < 0) break
+                    searchFrom = trkptEnd + 8
 
-                    val ele = content.substringAfter("<ele>", "").substringBefore("</ele>", "").toDoubleOrNull()
-                    val timeStr = content.substringAfter("<time>", "").substringBefore("</time>", "")
+                    val tag = gpxContent.substring(trkptStart, trkptEnd)
+                    val lat = tag.substringAfter("lat=\"", "").substringBefore("\"", "").toDoubleOrNull() ?: continue
+                    val lon = tag.substringAfter("lon=\"", "").substringBefore("\"", "").toDoubleOrNull() ?: continue
+
+                    val ele = tag.substringAfter("<ele>", "").substringBefore("</ele>", "").toDoubleOrNull()
+                    val timeStr = tag.substringAfter("<time>", "").substringBefore("</time>", "")
                     val timestamp = try {
                         Instant.parse(timeStr).toEpochMilliseconds()
                     } catch (_: Exception) {
