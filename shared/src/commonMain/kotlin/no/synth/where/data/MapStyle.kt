@@ -147,7 +147,7 @@ object MapStyle {
         return """
 {
   "version": 8,
-  "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  "glyphs": "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
   "sources": {$sources
   },
   "layers": [$layers
