@@ -5,6 +5,7 @@ on:
     branches: [ main, develop ]
     paths:
       - 'app/**'
+      - 'shared/**'
       - 'gradle/**'
       - '*.gradle.kts'
       - 'gradlew'
@@ -13,6 +14,7 @@ on:
     branches: [ main ]
     paths:
       - 'app/**'
+      - 'shared/**'
       - 'gradle/**'
       - '*.gradle.kts'
       - 'gradlew'
@@ -63,6 +65,9 @@ jobs:
       run: |
         echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
         echo "✅ google-services.json created"
+
+    - name: Compile shared module (all targets)
+      run: ./gradlew :shared:compileCommonMainKotlinMetadata :shared:compileKotlinIosArm64 --stacktrace
 
     - name: Build debug APK
       run: ./gradlew assembleDebug --stacktrace
