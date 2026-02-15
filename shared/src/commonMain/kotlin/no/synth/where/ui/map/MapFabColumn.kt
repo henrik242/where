@@ -57,14 +57,12 @@ fun MapFabColumn(
     showLayerMenu: Boolean,
     selectedLayer: MapLayer,
     showWaymarkedTrails: Boolean,
-    showSkiTrails: Boolean,
     showCountyBorders: Boolean,
     showSavedPoints: Boolean,
     onSearchClick: () -> Unit,
     onLayerMenuToggle: (Boolean) -> Unit,
     onLayerSelected: (MapLayer) -> Unit,
     onWaymarkedTrailsToggle: () -> Unit,
-    onSkiTrailsToggle: () -> Unit,
     onCountyBordersToggle: () -> Unit,
     onSavedPointsToggle: () -> Unit,
     onRecordStopClick: () -> Unit,
@@ -104,7 +102,6 @@ fun MapFabColumn(
             HorizontalDivider()
             MenuSection(stringResource(Res.string.overlays))
             LayerMenuItem(stringResource(Res.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
-            LayerMenuItem(stringResource(Res.string.ski_trails_turrutebasen), showSkiTrails) { onSkiTrailsToggle() }
             LayerMenuItem(stringResource(Res.string.county_borders_norway), showCountyBorders) { onCountyBordersToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
         }
