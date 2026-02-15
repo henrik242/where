@@ -1,14 +1,17 @@
 # Where?
 
-Norwegian hiking maps for Android with real-time online tracking and offline map support.
+Free offline hiking maps for Norway. A lightweight alternative to the discontinued [Hvor?](https://www.kartverket.no/til-lands/kart/hvor-appen) app from Kartverket, with topographic maps from Kartverket and OpenStreetMap.
 
 ## Features
 
-- Live GPS tracking with background recording
-- Offline map tile downloads (MapLibre)
-- GPX import/export
-- Real-time track sharing via WebSocket server
-- Saved points, distance measurement, county borders
+- Free offline maps from Kartverket (topo, toporaster, nautical charts) and OpenStreetMap
+- GPS tracking with background recording — track your hike with the screen locked
+- Real-time location sharing — let friends and family follow your trip live
+- Save and revisit tracks and points of interest
+- GPX import/export — compatible with other hiking and navigation apps
+- Distance measurement tool
+- Map overlays: hiking trails from Waymarked Trails (OSM), county borders
+- Lightweight and always free
 
 ## Building
 
