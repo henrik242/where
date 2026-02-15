@@ -66,15 +66,11 @@ jobs:
         echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
         echo "✅ google-services.json created"
 
-    - name: Compile shared module (all targets)
-      run: ./gradlew :shared:compileCommonMainKotlinMetadata :shared:compileKotlinIosArm64 --stacktrace
+    - name: Build shared module (all targets)
+      run: ./gradlew :shared:build --stacktrace
 
     - name: Build debug APK
       run: ./gradlew assembleDebug --stacktrace
-
-      # Disabled until signing keys are configured
-      # - name: Build release APK
-      #   run: ./gradlew assembleRelease --stacktrace
 
     - name: Run tests
       run: ./gradlew testDebugUnitTest --stacktrace
