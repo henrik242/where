@@ -2,10 +2,13 @@ package no.synth.where.ui
 
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.core.os.LocaleListCompat
 import no.synth.where.BuildConfig
 import no.synth.where.R
+import no.synth.where.data.UserPreferences
 
 @Composable
 fun SettingsScreen(
@@ -15,7 +18,8 @@ fun SettingsScreen(
     onSavedPointsClick: () -> Unit,
     onOnlineTrackingClick: () -> Unit,
     crashReportingEnabled: Boolean,
-    onCrashReportingChange: (Boolean) -> Unit
+    onCrashReportingChange: (Boolean) -> Unit,
+    userPreferences: UserPreferences
 ) {
     val languages = listOf(
         LanguageOption(null, stringResource(R.string.system_default)),
@@ -27,6 +31,16 @@ fun SettingsScreen(
     val currentTag = if (currentLocale.isEmpty) null else currentLocale.toLanguageTags()
     val currentLabel = languages.find { it.tag == currentTag }?.displayName
         ?: languages.first().displayName
+
+    val themeOptions = listOf(
+        LanguageOption("system", stringResource(R.string.theme_system)),
+        LanguageOption("light", stringResource(R.string.theme_light)),
+        LanguageOption("dark", stringResource(R.string.theme_dark))
+    )
+
+    val themeMode by userPreferences.themeMode.collectAsState()
+    val currentThemeLabel = themeOptions.find { it.tag == themeMode }?.displayName
+        ?: themeOptions.first().displayName
 
     SettingsScreenContent(
         versionInfo = "${BuildConfig.GIT_COMMIT_COUNT}.${BuildConfig.GIT_SHORT_SHA} ${BuildConfig.BUILD_DATE}",
@@ -46,6 +60,9 @@ fun SettingsScreen(
                 LocaleListCompat.forLanguageTags(tag)
             }
             AppCompatDelegate.setApplicationLocales(locales)
-        }
+        },
+        currentThemeLabel = currentThemeLabel,
+        themeOptions = themeOptions,
+        onThemeSelected = { userPreferences.updateThemeMode(it) }
     )
 }

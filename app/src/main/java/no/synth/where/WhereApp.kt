@@ -132,7 +132,8 @@ fun WhereApp(
                 onCrashReportingChange = { enabled ->
                     userPreferences.updateCrashReportingEnabled(enabled)
                     FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = enabled
-                }
+                },
+                userPreferences = userPreferences
             )
         }
         composable<OnlineTrackingRoute> {

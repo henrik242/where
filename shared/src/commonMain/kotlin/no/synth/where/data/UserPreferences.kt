@@ -28,6 +28,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _trackingServerUrl = MutableStateFlow("https://where.synth.no")
     val trackingServerUrl: StateFlow<String> = _trackingServerUrl.asStateFlow()
 
+    private val _themeMode = MutableStateFlow("system")
+    val themeMode: StateFlow<String> = _themeMode.asStateFlow()
+
     init {
         scope.launch {
             dataStore.data.collect { prefs ->
@@ -35,6 +38,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
+                _themeMode.value = prefs[THEME_MODE] ?: "system"
             }
         }
     }
@@ -60,10 +64,18 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    fun updateThemeMode(value: String) {
+        _themeMode.value = value
+        scope.launch {
+            dataStore.edit { it[THEME_MODE] = value }
+        }
+    }
+
     companion object {
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
         private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")
+        private val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 }
