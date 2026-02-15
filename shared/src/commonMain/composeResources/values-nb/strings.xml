@@ -1,0 +1,146 @@
+<resources>
+    <!-- Common -->
+    <string name="back">Tilbake</string>
+    <string name="cancel">Avbryt</string>
+    <string name="save">Lagre</string>
+    <string name="delete">Slett</string>
+    <string name="ok">OK</string>
+    <string name="discard">Forkast</string>
+    <string name="allow">Tillat</string>
+    <string name="deny">Avslå</string>
+    <string name="name_label">Navn</string>
+    <string name="description_optional">Beskrivelse (valgfritt)</string>
+    <string name="color">Farge</string>
+    <string name="collapse">Skjul</string>
+    <string name="expand">Vis</string>
+    <string name="stop">Stopp</string>
+    <string name="share">Del</string>
+    <string name="edit">Rediger</string>
+    <string name="rename">Gi nytt navn</string>
+    <string name="open">Åpne</string>
+    <string name="download">Last ned</string>
+    <string name="show_on_map">Vis på kart</string>
+    <string name="continue_label">Fortsett</string>
+
+    <!-- Map Dialogs -->
+    <string name="background_location_access">Bakgrunnsposisjon</string>
+    <string name="background_location_intro">Denne appen samler inn posisjonen din i bakgrunnen for å muliggjøre:</string>
+    <string name="background_location_features">\u2022 GPS-sporopptak mens skjermen er låst eller andre apper er i bruk\n\u2022 Sanntidsdeling av posisjon når direktesporing er aktivert</string>
+    <string name="background_location_privacy">Posisjonen din spores bare mens du har en aktiv opptaksøkt. Du kan stoppe sporingen når som helst med stoppknappen eller varselet.</string>
+    <string name="background_location_instruction">Velg «Tillat hele tiden» på neste skjerm for å aktivere bakgrunnssporing.</string>
+    <string name="save_track">Lagre spor</string>
+    <string name="enter_track_name">Skriv inn et navn for sporet:</string>
+    <string name="track_name">Spornavn</string>
+    <string name="save_location">Lagre posisjon</string>
+    <string name="enter_location_name">Skriv inn et navn for denne posisjonen:</string>
+    <string name="location_name">Stedsnavn</string>
+    <string name="edit_location">Rediger posisjon</string>
+    <string name="save_route_as_track">Lagre rute som spor</string>
+    <string name="enter_route_name">Skriv inn et navn for denne ruten:</string>
+    <string name="ruler_points_distance">%1$d punkter \u2022 %2$s</string>
+
+    <!-- Map FAB Column -->
+    <string name="search_places">Søk etter steder</string>
+    <string name="layers_and_overlays">Lag og kartlag</string>
+    <string name="map_layers">Kartlag</string>
+    <string name="kartverket_norway">Kartverket (Norge)</string>
+    <string name="kartverket_toporaster">Kartverket toporaster</string>
+    <string name="kartverket_sjokart">Kartverket sjøkart</string>
+    <string name="overlays">Overlegg</string>
+    <string name="waymarked_trails_osm">Merkede stier (OSM)</string>
+    <string name="ski_trails_turrutebasen">Skiløyper (Turrutebasen)</string>
+    <string name="county_borders_norway">Fylkesgrenser (Norge)</string>
+    <string name="saved_points">Lagrede punkter</string>
+    <string name="stop_recording">Stopp opptak</string>
+    <string name="start_recording">Start opptak</string>
+    <string name="my_location">Min posisjon</string>
+    <string name="ruler">Linjal</string>
+    <string name="settings">Innstillinger</string>
+
+    <!-- Map Overlays -->
+    <string name="zoom_in">Zoom inn</string>
+    <string name="zoom_out">Zoom ut</string>
+    <string name="tap_to_measure">Trykk for å måle</string>
+    <string name="n_points">%1$d punkter</string>
+    <string name="remove_last_point">Fjern siste punkt</string>
+    <string name="clear_all">Fjern alle</string>
+    <string name="save_as_track">Lagre som spor</string>
+    <string name="recording">Tar opp</string>
+    <string name="online_tracking">Direktesporing</string>
+    <string name="close_track_view">Lukk sporvisning</string>
+    <string name="close_point_view">Lukk punktvisning</string>
+
+    <!-- Search Overlay -->
+    <string name="search_places_hint">Søk etter steder\u2026</string>
+    <string name="clear">Tøm</string>
+    <string name="close_search">Lukk søk</string>
+
+    <!-- Saved Points Screen -->
+    <string name="no_saved_points">Ingen lagrede punkter ennå.\nLangt trykk på kartet for å lagre et punkt.</string>
+    <string name="edit_point">Rediger punkt</string>
+
+    <!-- Online Tracking Screen -->
+    <string name="enable_online_tracking">Aktiver direktesporing</string>
+    <string name="tracking_active">Aktiv</string>
+    <string name="tracking_disabled">Deaktivert</string>
+    <string name="your_client_id">Din klient-ID</string>
+    <string name="client_id_description">Del denne ID-en med andre for å la dem se posisjonen din i sanntid</string>
+    <string name="actions">Handlinger</string>
+    <string name="open_in_browser">Åpne i nettleser</string>
+    <string name="view_on_web">Vis på nett</string>
+    <string name="share_tracking_link">Del sporingslenke</string>
+    <string name="regenerate_id">Generer ny ID</string>
+    <string name="regenerate_client_id">Generer ny klient-ID</string>
+    <string name="how_it_works">\u2139\uFE0F Slik fungerer det</string>
+    <string name="how_it_works_description">Når du trykker ta opp i kartvisningen og direktesporing er aktivert, deles posisjonen din i sanntid med alle som har din klient-ID. De kan se sporet ditt på nettsiden.</string>
+    <string name="regenerate_client_id_title">Generere ny klient-ID?</string>
+    <string name="regenerate_client_id_message">Dette vil opprette en ny klient-ID. Din gamle ID (%1$s) vil ikke lenger være tilknyttet sporene dine på serveren.</string>
+    <string name="regenerate">Generer ny</string>
+
+    <!-- Settings Screen -->
+    <string name="go_to_online_tracking">Gå til Direktesporing</string>
+    <string name="saved_tracks">Lagrede spor</string>
+    <string name="go_to_saved_tracks">Gå til Lagrede spor</string>
+    <string name="go_to_saved_points">Gå til Lagrede punkter</string>
+    <string name="offline_maps">Frakoblede kart</string>
+    <string name="go_to_download_manager">Gå til Nedlastinger</string>
+    <string name="language">Språk</string>
+    <string name="system_default">Systemstandard</string>
+    <string name="theme">Tema</string>
+    <string name="theme_system">Systemstandard</string>
+    <string name="theme_light">Lyst</string>
+    <string name="theme_dark">Mørkt</string>
+    <string name="crash_reporting">Krasjrapportering</string>
+    <string name="crash_reporting_description">Send anonyme krasjrapporter for å hjelpe med å forbedre appen</string>
+
+    <!-- Tracks Screen -->
+    <string name="import_gpx">Importer GPX</string>
+    <string name="no_saved_tracks">Ingen lagrede spor ennå</string>
+    <string name="delete_track_title">Slette spor?</string>
+    <string name="delete_track_confirm">Er du sikker på at du vil slette «%1$s»?</string>
+    <string name="import_failed">Importering feilet</string>
+    <string name="rename_track">Gi nytt navn til spor</string>
+    <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d punkter</string>
+    <string name="duration_hours_minutes">%1$dt %2$dm</string>
+    <string name="duration_minutes">%1$dm</string>
+
+    <!-- Download Screen -->
+    <string name="automatic_cache">Automatisk hurtigbuffer</string>
+    <string name="tiles_loaded_automatically">Kartfliser lastes automatisk ved bruk</string>
+    <string name="downloading_region">Laster ned %1$s</string>
+    <string name="downloading_region_ellipsis">Laster ned %1$s\u2026</string>
+    <string name="view_regions">Vis regioner</string>
+    <string name="download_regions">Last ned regioner</string>
+    <string name="delete_region_title">Slette %1$s?</string>
+    <string name="delete_region_message">Dette vil slette alle %1$s-fliser for %2$s. Du kan laste dem ned igjen senere.</string>
+    <string name="tiles_needed">%1$d fliser trengs</string>
+    <string name="tiles_stats">%1$d fliser \u2022 %2$s</string>
+    <string name="tiles_downloaded">\u2713 %1$d fliser \u2022 %2$s</string>
+    <string name="tiles_partial">%1$d/%2$d fliser \u2022 %3$s</string>
+    <string name="layer_kartverket_desc">Topografiske kart fra Kartverket</string>
+    <string name="layer_toporaster_desc">Topografiske rasterkart</string>
+    <string name="layer_sjokartraster_desc">Sjøkart</string>
+    <string name="layer_osm_desc">Brukergenererte gatekart</string>
+    <string name="layer_opentopomap_desc">Topografiske kart med turstier</string>
+    <string name="layer_waymarkedtrails_desc">Kartlag med merkede stier</string>
+</resources>
