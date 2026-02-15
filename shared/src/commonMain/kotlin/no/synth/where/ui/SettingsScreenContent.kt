@@ -49,7 +49,10 @@ fun SettingsScreenContent(
     onCrashReportingChange: (Boolean) -> Unit = {},
     currentLanguageLabel: String = "",
     languages: List<LanguageOption> = emptyList(),
-    onLanguageSelected: (String?) -> Unit = {}
+    onLanguageSelected: (String?) -> Unit = {},
+    currentThemeLabel: String = "",
+    themeOptions: List<LanguageOption> = emptyList(),
+    onThemeSelected: (String) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -211,6 +214,47 @@ fun SettingsScreenContent(
                                     onClick = {
                                         expanded = false
                                         onLanguageSelected(option.tag)
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider()
+                }
+
+                if (themeOptions.isNotEmpty()) {
+                    var themeExpanded by remember { mutableStateOf(false) }
+
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { themeExpanded = true }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.theme),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = currentThemeLabel,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = themeExpanded,
+                            onDismissRequest = { themeExpanded = false }
+                        ) {
+                            themeOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.displayName) },
+                                    onClick = {
+                                        themeExpanded = false
+                                        option.tag?.let { onThemeSelected(it) }
                                     }
                                 )
                             }

@@ -36,6 +36,10 @@
     <string name="go_to_download_manager">Gå til Nedlastinger</string>
     <string name="language">Språk</string>
     <string name="system_default">Systemstandard</string>
+    <string name="theme">Tema</string>
+    <string name="theme_system">Systemstandard</string>
+    <string name="theme_light">Lyst</string>
+    <string name="theme_dark">Mørkt</string>
     <string name="crash_reporting">Krasjrapportering</string>
     <string name="crash_reporting_description">Send anonyme krasjrapporter for å hjelpe med å forbedre appen</string>
 

@@ -106,6 +106,10 @@
     <string name="go_to_download_manager">Go to Download Manager</string>
     <string name="language">Language</string>
     <string name="system_default">System Default</string>
+    <string name="theme">Theme</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
     <string name="crash_reporting">Crash Reporting</string>
     <string name="crash_reporting_description">Send anonymous crash reports to help improve the app</string>
 

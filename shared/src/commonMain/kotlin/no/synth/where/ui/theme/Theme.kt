@@ -35,7 +35,12 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun WhereTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: String = "system",
+    darkTheme: Boolean = when (themeMode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemInDarkTheme()
+    },
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

@@ -9,16 +9,20 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import no.synth.where.data.UserPreferences
 import no.synth.where.ui.theme.WhereTheme
+import org.koin.android.ext.android.inject
 
 class MainActivity : AppCompatActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
     private var regionsLoaded by mutableIntStateOf(0)
+    private val userPreferences: UserPreferences by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Enable edge-to-edge display
@@ -27,7 +31,8 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
 
         setContent {
-            WhereTheme {
+            val themeMode by userPreferences.themeMode.collectAsState()
+            WhereTheme(themeMode = themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
