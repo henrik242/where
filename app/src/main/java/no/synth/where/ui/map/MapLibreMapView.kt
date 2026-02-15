@@ -23,7 +23,6 @@ import no.synth.where.data.MapStyle
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
-import no.synth.where.data.SkiTrailRepository
 import no.synth.where.data.Track
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.toCommon
@@ -41,8 +40,6 @@ fun MapLibreMapView(
     hasLocationPermission: Boolean = false,
     showCountyBorders: Boolean = true,
     showWaymarkedTrails: Boolean = false,
-    showSkiTrails: Boolean = false,
-    skiTrailsReady: Boolean = false,
     showSavedPoints: Boolean = true,
     savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
     currentTrack: Track? = null,
@@ -101,8 +98,6 @@ fun MapLibreMapView(
         selectedLayer,
         showCountyBorders,
         showWaymarkedTrails,
-        showSkiTrails,
-        skiTrailsReady,
         showSavedPoints,
         savedPoints.size,
         isOnline,
@@ -111,16 +106,12 @@ fun MapLibreMapView(
     ) {
         map?.let { mapInstance ->
             try {
-                val cacheDir = PlatformFile(context.cacheDir)
-                val regions = RegionsRepository.getRegions(cacheDir)
-                val skiTrails = if (showSkiTrails) SkiTrailRepository.getSkiTrails(cacheDir) else emptyList()
+                val regions = RegionsRepository.getRegions(PlatformFile(context.cacheDir))
                 val styleJson = MapStyle.getStyle(
                     selectedLayer,
                     showCountyBorders,
                     showWaymarkedTrails,
-                    showSkiTrails,
-                    regions = regions,
-                    skiTrails = skiTrails
+                    regions = regions
                 )
                 val viewing = viewingTrack
                 val current = currentTrack
@@ -184,16 +175,12 @@ fun MapLibreMapView(
         if (wasInitialized && isOnline && map != null) {
 
             map?.let { mapInstance ->
-                val cacheDir = PlatformFile(context.cacheDir)
-                val regions = RegionsRepository.getRegions(cacheDir)
-                val skiTrails = if (showSkiTrails) SkiTrailRepository.getSkiTrails(cacheDir) else emptyList()
+                val regions = RegionsRepository.getRegions(PlatformFile(context.cacheDir))
                 val styleJson = MapStyle.getStyle(
                     selectedLayer,
                     showCountyBorders,
                     showWaymarkedTrails,
-                    showSkiTrails,
-                    regions = regions,
-                    skiTrails = skiTrails
+                    regions = regions
                 )
                 val viewing = viewingTrack
                 val current = currentTrack
@@ -311,16 +298,12 @@ fun MapLibreMapView(
                     // Don't add any click listeners here to avoid conflicts
 
                     try {
-                        val cacheDir = PlatformFile(ctx.cacheDir)
-                        val regions = RegionsRepository.getRegions(cacheDir)
-                        val skiTrails = if (showSkiTrails) SkiTrailRepository.getSkiTrails(cacheDir) else emptyList()
+                        val regions = RegionsRepository.getRegions(PlatformFile(ctx.cacheDir))
                         val styleJson = MapStyle.getStyle(
                             selectedLayer,
                             showCountyBorders,
                             showWaymarkedTrails,
-                            showSkiTrails,
-                            regions = regions,
-                            skiTrails = skiTrails
+                            regions = regions
                         )
                         val viewing = viewingTrack
                         val current = currentTrack

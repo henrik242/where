@@ -14,7 +14,6 @@ import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.SavedPoint
-import no.synth.where.data.SkiTrailDownloader
 import no.synth.where.navigation.*
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
@@ -36,9 +35,7 @@ fun WhereApp(
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     var showSavedPoints by remember { mutableStateOf(true) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
-    var showSkiTrails by remember { mutableStateOf(false) }
     var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(PlatformFile(context.cacheDir))) }
-    val skiTrailsReady by viewModel.skiTrailsReady.collectAsState()
     var isOnline by remember { mutableStateOf(false) }
 
     DisposableEffect(context) {
@@ -80,12 +77,6 @@ fun WhereApp(
         }
     }
 
-    LaunchedEffect(isOnline, showSkiTrails) {
-        if (isOnline && showSkiTrails) {
-            viewModel.downloadSkiTrailsIfNeeded(PlatformFile(context.cacheDir))
-        }
-    }
-
     LaunchedEffect(pendingGpxUri) {
         pendingGpxUri?.let { uri ->
             try {
@@ -113,9 +104,6 @@ fun WhereApp(
                 onShowCountyBordersChange = { userPreferences.updateShowCountyBorders(it) },
                 showSavedPoints = showSavedPoints,
                 onShowSavedPointsChange = { showSavedPoints = it },
-                showSkiTrails = showSkiTrails,
-                onShowSkiTrailsChange = { showSkiTrails = it },
-                skiTrailsReady = skiTrailsReady,
                 viewingPoint = viewingPoint,
                 onClearViewingPoint = { viewingPoint = null },
                 regionsLoadedTrigger = regionsLoadedTrigger
