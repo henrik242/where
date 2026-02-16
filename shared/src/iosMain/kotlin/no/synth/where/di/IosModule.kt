@@ -11,6 +11,7 @@ import no.synth.where.data.db.getDatabaseBuilder
 import org.koin.dsl.module
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 
 val iosModule = module {
@@ -21,12 +22,12 @@ val iosModule = module {
     single { get<WhereDatabase>().savedPointDao() }
     single {
         val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
-        val documentsDir = paths.first().toString().removeSuffix("/")
+        val documentsDir = (paths.first() as NSURL).path!!
         TrackRepository(PlatformFile(documentsDir), get())
     }
     single {
         val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
-        val documentsDir = paths.first().toString().removeSuffix("/")
+        val documentsDir = (paths.first() as NSURL).path!!
         SavedPointsRepository(PlatformFile(documentsDir), get())
     }
     single { UserPreferences(createDataStore("user_prefs")) }

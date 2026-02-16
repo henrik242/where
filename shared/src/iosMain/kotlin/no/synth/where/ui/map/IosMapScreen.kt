@@ -30,17 +30,12 @@ fun IosMapScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val rulerState = remember { RulerState() }
 
-    LaunchedEffect(currentLayer, waymarkedTrails, countyBorders) {
-        val styleJson = MapStyle.getStyle(
+    val styleJson = remember(currentLayer, waymarkedTrails, countyBorders) {
+        MapStyle.getStyle(
             selectedLayer = currentLayer,
             showCountyBorders = countyBorders,
             showWaymarkedTrails = waymarkedTrails
         )
-        mapViewProvider.setStyle(styleJson)
-    }
-
-    LaunchedEffect(Unit) {
-        mapViewProvider.setShowsUserLocation(true)
     }
 
     MapScreenContent(
@@ -72,8 +67,8 @@ fun IosMapScreen(
         onMyLocationClick = onMyLocationClick,
         onRulerToggle = {},
         onSettingsClick = onSettingsClick,
-        onZoomIn = {},
-        onZoomOut = {},
+        onZoomIn = { mapViewProvider.zoomIn() },
+        onZoomOut = { mapViewProvider.zoomOut() },
         onRulerUndo = {},
         onRulerClear = {},
         onRulerSaveAsTrack = {},
@@ -86,7 +81,11 @@ fun IosMapScreen(
         mapContent = {
             UIKitView(
                 factory = { mapViewProvider.createMapView() },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                update = {
+                    mapViewProvider.setStyle(styleJson)
+                    mapViewProvider.setShowsUserLocation(true)
+                }
             )
         }
     )
