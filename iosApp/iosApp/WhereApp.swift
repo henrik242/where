@@ -4,7 +4,7 @@ import Shared
 @main
 struct WhereApp: App {
     init() {
-        KoinHelperKt.initKoin()
+        KoinHelperKt.doInitKoin()
     }
 
     var body: some Scene {
