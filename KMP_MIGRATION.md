@@ -319,7 +319,6 @@ Implemented a working iOS app with map viewing, screen navigation, and settings.
    - `IosApp.kt` — State-based navigation with `Screen` enum and back stack. Collects `UserPreferences` flows for theme/settings. Wires all shared `*ScreenContent` composables with dialog state management.
    - `MapViewProvider.kt` — Interface with `createMapView()`, `setStyle(json)`, `setCamera(lat, lon, zoom)`, `setShowsUserLocation(show)`. Implemented in Swift.
    - `IosMapScreen.kt` — Wraps `MapScreenContent` with `UIKitView` factory. Manages layer selection, style updates via `MapStyle.getStyle()`, user location toggle.
-
 6. **Created Xcode project:**
    - `iosApp/iosApp.xcodeproj` — iOS 16.0 deployment target, MapLibre iOS SDK via SPM
    - `WhereApp.swift` — Entry point, calls `KoinHelperKt.initKoin()`
@@ -372,15 +371,46 @@ Implemented a working iOS app with map viewing, screen navigation, and settings.
 
 ---
 
-## Phase 11 — iOS location and track recording (planned)
+## Phase 11 — iOS location and track recording ✅ DONE
 
-### Steps
-1. Add `NSLocationAlwaysAndWhenInUseUsageDescription` to Info.plist
-2. Add background mode `location` in Xcode capabilities
-3. Create `IosLocationManager` in iosMain using `CLLocationManager`
-4. Wire to `TrackRepository.addTrackPoint()` on location updates
-5. Connect record/stop FAB in `IosMapScreen`
-6. Render current track as MapLibre line layer via Swift bridge
+Wired up location tracking and track recording on iOS, matching the Android UX: tap record, see live distance, tap stop, name the track via reverse geocode, save or discard.
+
+### What was done
+
+1. **Created `IosLocationTracker`** — Kotlin/Native class wrapping `CLLocationManager`, implementing `CLLocationManagerDelegateProtocol`. Handles permission requests, start/stop tracking, and feeds location updates to `TrackRepository.addTrackPoint()` during recording. Uses `useContents` for `CLLocationCoordinate2D` access, `distanceFilter = 5.0`, `kCLLocationAccuracyBest`.
+2. **Extended `MapViewProvider`** — Added `updateTrackLine(geoJson, color)`, `clearTrackLine()`, and `getUserLocation()` methods to the Kotlin interface.
+3. **Implemented track rendering in `MapViewFactory.swift`** — `MLNMapViewDelegate` conformance, GeoJSON-based track line rendering via `MLNShapeSource` + `MLNLineStyleLayer`, pending track state for style reloads, `UIColor(hex:)` convenience initializer. Fixed map reset on navigation by reusing existing `MLNMapView` instance.
+4. **`IosLocationTracker` created directly** — Not registered in Koin because `KClass` for Kotlin subclasses of Obj-C classes (`NSObject`) is not supported by Koin's reflection. Created directly in `IosMapScreen` via `remember { IosLocationTracker(trackRepository) }`.
+5. **Rewrote `IosMapScreen`** — Full recording state management: observes `trackRepository.isRecording` and `currentTrack`, stop dialog with auto-resolved track name via `GeocodingHelper.reverseGeocode()` (same "Place1 → Place2" pattern as Android), live distance display, snackbar feedback, track line rendering in `UIKitView` update block.
+6. **Created `TrackGeoJson` utility** — Builds GeoJSON LineString string from track points, avoiding Kotlin/Native collection boxing issues.
+7. **Updated `IosApp.kt`** — Removed `onMyLocationClick` parameter (now handled internally by `IosMapScreen`).
+
+### Key decisions
+
+- **CLLocationManager in Kotlin/Native** — No Swift bridge needed. `platform.CoreLocation` provides full access.
+- **GeoJSON string for track rendering** — Avoids Kotlin/Native collection boxing. Kotlin builds the string, Swift passes it to `MLNShape(data:encoding:)`.
+- **getUserLocation() via MapLibre** — Reads `mapView.userLocation.location` instead of running a second CLLocationManager.
+- **Foreground-only for MVP** — "When in use" location. No `UIBackgroundModes` needed yet.
+
+**Files created:**
+- `shared/src/iosMain/kotlin/no/synth/where/location/IosLocationTracker.kt`
+- `shared/src/iosMain/kotlin/no/synth/where/ui/map/TrackGeoJson.kt`
+
+**Files modified:**
+- `shared/src/iosMain/kotlin/no/synth/where/ui/map/MapViewProvider.kt` — added 3 methods
+- `shared/src/iosMain/kotlin/no/synth/where/ui/map/IosMapScreen.kt` — full rewrite for recording
+- `shared/src/iosMain/kotlin/no/synth/where/di/IosModule.kt` — no changes needed (IosLocationTracker created directly)
+- `shared/src/iosMain/kotlin/no/synth/where/IosApp.kt` — removed onMyLocationClick param
+- `iosApp/iosApp/MapViewFactory.swift` — track rendering, delegate, getUserLocation, map view reuse
+
+**Verification:**
+- `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` — BUILD SUCCESSFUL
+- `cd app && ../gradlew assembleDebug` — BUILD SUCCESSFUL (no Android regression)
+- `cd app && ../gradlew testDebugUnitTest` — BUILD SUCCESSFUL (all tests pass)
+
+### Bug fix: map reset on navigation
+
+Fixed a bug where navigating to settings and back would show a blank/default map. The issue was that `createMapView()` created a new `MLNMapView` each time, but `currentStyleJson` still held the old value causing `setStyle()` to skip applying the style. Fix: `createMapView()` now returns the existing map view if one already exists.
 
 ---
 
