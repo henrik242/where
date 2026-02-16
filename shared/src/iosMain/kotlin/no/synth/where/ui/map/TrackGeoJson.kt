@@ -1,5 +1,6 @@
 package no.synth.where.ui.map
 
+import no.synth.where.data.SavedPoint
 import no.synth.where.data.TrackPoint
 
 fun buildTrackGeoJson(points: List<TrackPoint>): String {
@@ -7,4 +8,13 @@ fun buildTrackGeoJson(points: List<TrackPoint>): String {
         "[${point.latLng.longitude},${point.latLng.latitude}]"
     }
     return """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coordinates]}}"""
+}
+
+fun buildSavedPointsGeoJson(points: List<SavedPoint>): String {
+    val features = points.joinToString(",") { point ->
+        val name = point.name.replace("\"", "\\\"")
+        val color = point.color ?: "#FF5722"
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"name":"$name","color":"$color"}}"""
+    }
+    return """{"type":"FeatureCollection","features":[$features]}"""
 }
