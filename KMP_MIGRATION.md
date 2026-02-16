@@ -414,15 +414,36 @@ Fixed a bug where navigating to settings and back would show a blank/default map
 
 ---
 
-## Phase 12 — iOS map interaction (planned)
+## Phase 12 — iOS place search, viewing tracks/points on map ✅ DONE
 
-### Steps
-1. Extend `MapViewProvider` with tap handling, camera change callbacks
-2. Implement place search (wire `PlaceSearchClient` to search overlay)
-3. Implement ruler tool (tap-to-add points on map)
-4. Render saved points as MapLibre symbol layer
-5. Render tracks as MapLibre line layers (viewing track + recording track)
-6. Implement "show on map" for tracks and saved points (camera animation)
+Wired the remaining map screen interactions: place search, "show on map" for tracks and saved points, saved points layer rendering, and viewing track/point banners.
+
+### What was done
+
+1. **Extended `MapViewProvider`** — Added `setCameraBounds(south, west, north, east, padding)` for fitting camera to track bounds, `updateSavedPoints(geoJson)` and `clearSavedPoints()` for rendering saved point circles.
+2. **Implemented in `MapViewFactory.swift`** — `setCameraBounds` uses `MLNCoordinateBounds` + `setVisibleCoordinateBounds`. `updateSavedPoints` parses GeoJSON FeatureCollection, creates `MLNShapeSource` + `MLNCircleStyleLayer` with dynamic color from feature properties (`circleColor = NSExpression(forKeyPath: "color")`), white stroke. Pending state for style reloads (same pattern as track line).
+3. **Added `buildSavedPointsGeoJson`** — Builds GeoJSON FeatureCollection with Point features, each having `name` and `color` properties. Matches Android's `MapRenderUtils.updateSavedPointsOnMap()` format.
+4. **Wired place search** — Debounced search via `snapshotFlow` + `debounce(300)` on `searchQuery`. Calls `PlaceSearchClient.search()` when query >= 2 chars. Result click animates camera to location at zoom 14.
+5. **Wired viewing track** — Observes `trackRepository.viewingTrack`. Shows blue track line (`#0000FF`), fits camera to bounds via `setCameraBounds`. Close banner clears viewing track and track line. Recording (red) takes precedence over viewing (blue).
+6. **Wired viewing point** — `viewingPoint` state lives in `IosApp` (matching Android pattern where it's in the navigator). "Show on map" from SavedPointsScreen sets `viewingPoint` and navigates to MAP. Camera centers on point at zoom 15. Close banner clears state.
+7. **Wired saved points layer** — Observes `savedPointsRepository.savedPoints`. Renders as circle layer when `showSavedPoints` toggle is true. Toggle in layer menu controls visibility.
+8. **Wired "show on map" for tracks** — From TracksScreen, calls `trackRepository.setViewingTrack(track)` and navigates to MAP.
+
+### Not in scope (deferred)
+
+- **Ruler tool** — Requires map tap handling (Swift bridge for tap coordinates → Kotlin callback), belongs in a separate phase.
+- **Map tap/long-press handling** — Save point from map, point info on click.
+- **Continue track** — Resume recording a saved track.
+- **Online tracking toggle from map** — Toggle in layer menu is a no-op.
+
+**Files modified:**
+- `shared/src/iosMain/kotlin/no/synth/where/ui/map/MapViewProvider.kt` — added 3 methods
+- `iosApp/iosApp/MapViewFactory.swift` — implemented bounds fitting, saved points circle layer
+- `shared/src/iosMain/kotlin/no/synth/where/ui/map/TrackGeoJson.kt` — added `buildSavedPointsGeoJson`
+- `shared/src/iosMain/kotlin/no/synth/where/ui/map/IosMapScreen.kt` — wired search, viewing track/point, saved points
+- `shared/src/iosMain/kotlin/no/synth/where/IosApp.kt` — viewingPoint state, "show on map" callbacks
+
+**No changes to commonMain or Android** — fully backwards-compatible.
 
 ---
 

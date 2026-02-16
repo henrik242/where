@@ -10,27 +10,38 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.MapStyle
+import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
+import no.synth.where.data.SavedPoint
+import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
 import no.synth.where.location.IosLocationTracker
 import no.synth.where.util.NamingUtils
 import org.koin.mp.KoinPlatform.getKoin
 
+@OptIn(FlowPreview::class)
 @Composable
 fun IosMapScreen(
     mapViewProvider: MapViewProvider,
     selectedLayer: MapLayer = MapLayer.KARTVERKET,
     showWaymarkedTrails: Boolean = false,
     showCountyBorders: Boolean = false,
+    viewingPoint: SavedPoint? = null,
+    onClearViewingPoint: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     val koin = remember { getKoin() }
     val trackRepository = remember { koin.get<TrackRepository>() }
+    val savedPointsRepository = remember { koin.get<SavedPointsRepository>() }
     val locationTracker = remember { IosLocationTracker(trackRepository) }
 
     var showLayerMenu by remember { mutableStateOf(false) }
@@ -44,10 +55,18 @@ fun IosMapScreen(
 
     val isRecording by trackRepository.isRecording.collectAsState()
     val currentTrack by trackRepository.currentTrack.collectAsState()
+    val viewingTrack by trackRepository.viewingTrack.collectAsState()
+    val savedPoints by savedPointsRepository.savedPoints.collectAsState()
 
     var showStopTrackDialog by remember { mutableStateOf(false) }
     var trackNameInput by remember { mutableStateOf("") }
     var isResolvingTrackName by remember { mutableStateOf(false) }
+
+    // Search state
+    var showSearch by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<PlaceSearchClient.SearchResult>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
 
     val styleJson = remember(currentLayer, waymarkedTrails, countyBorders) {
         MapStyle.getStyle(
@@ -60,6 +79,52 @@ fun IosMapScreen(
     LaunchedEffect(Unit) {
         if (!locationTracker.hasPermission) {
             locationTracker.requestPermission()
+        }
+    }
+
+    // Debounced search
+    LaunchedEffect(Unit) {
+        snapshotFlow { searchQuery }
+            .debounce(300)
+            .distinctUntilChanged()
+            .collect { query ->
+                if (query.length < 2) {
+                    searchResults = emptyList()
+                    isSearching = false
+                    return@collect
+                }
+                isSearching = true
+                searchResults = PlaceSearchClient.search(query)
+                isSearching = false
+            }
+    }
+
+    // Animate camera to viewing point
+    LaunchedEffect(viewingPoint) {
+        if (viewingPoint != null) {
+            mapViewProvider.setCamera(
+                latitude = viewingPoint.latLng.latitude,
+                longitude = viewingPoint.latLng.longitude,
+                zoom = 15.0
+            )
+        }
+    }
+
+    // Fit camera to viewing track bounds and render blue track line
+    LaunchedEffect(viewingTrack) {
+        val track = viewingTrack
+        if (track != null && track.points.size >= 2 && !isRecording) {
+            val geoJson = buildTrackGeoJson(track.points)
+            mapViewProvider.updateTrackLine(geoJson, "#0000FF")
+            val lats = track.points.map { it.latLng.latitude }
+            val lngs = track.points.map { it.latLng.longitude }
+            mapViewProvider.setCameraBounds(
+                south = lats.min(),
+                west = lngs.min(),
+                north = lats.max(),
+                east = lngs.max(),
+                padding = 80
+            )
         }
     }
 
@@ -106,15 +171,15 @@ fun IosMapScreen(
         showSavedPoints = showSavedPoints,
         onlineTrackingEnabled = false,
         recordingDistance = currentTrack?.getDistanceMeters(),
-        viewingTrackName = null,
-        viewingPointName = null,
-        viewingPointColor = "#FF5722",
-        showViewingPoint = false,
-        showSearch = false,
-        searchQuery = "",
-        searchResults = emptyList(),
-        isSearching = false,
-        onSearchClick = {},
+        viewingTrackName = viewingTrack?.name,
+        viewingPointName = viewingPoint?.name,
+        viewingPointColor = viewingPoint?.color ?: "#FF5722",
+        showViewingPoint = viewingPoint != null,
+        showSearch = showSearch,
+        searchQuery = searchQuery,
+        searchResults = searchResults,
+        isSearching = isSearching,
+        onSearchClick = { showSearch = true },
         onLayerMenuToggle = { showLayerMenu = it },
         onLayerSelected = { currentLayer = it },
         onWaymarkedTrailsToggle = { waymarkedTrails = !waymarkedTrails },
@@ -180,11 +245,27 @@ fun IosMapScreen(
         onRulerClear = {},
         onRulerSaveAsTrack = {},
         onOnlineTrackingChange = {},
-        onCloseViewingTrack = {},
-        onCloseViewingPoint = {},
-        onSearchQueryChange = {},
-        onSearchResultClick = {},
-        onSearchClose = {},
+        onCloseViewingTrack = {
+            trackRepository.clearViewingTrack()
+            mapViewProvider.clearTrackLine()
+        },
+        onCloseViewingPoint = { onClearViewingPoint() },
+        onSearchQueryChange = { searchQuery = it },
+        onSearchResultClick = { result ->
+            mapViewProvider.setCamera(
+                latitude = result.latLng.latitude,
+                longitude = result.latLng.longitude,
+                zoom = 14.0
+            )
+            showSearch = false
+            searchQuery = ""
+            searchResults = emptyList()
+        },
+        onSearchClose = {
+            showSearch = false
+            searchQuery = ""
+            searchResults = emptyList()
+        },
         mapContent = {
             UIKitView(
                 factory = { mapViewProvider.createMapView() },
@@ -192,12 +273,28 @@ fun IosMapScreen(
                 update = {
                     mapViewProvider.setStyle(styleJson)
                     mapViewProvider.setShowsUserLocation(true)
-                    val track = currentTrack
-                    if (track != null && track.points.size >= 2) {
-                        val geoJson = buildTrackGeoJson(track.points)
+
+                    // Track rendering: recording (red) takes precedence over viewing (blue)
+                    val recording = currentTrack
+                    if (recording != null && recording.points.size >= 2) {
+                        val geoJson = buildTrackGeoJson(recording.points)
                         mapViewProvider.updateTrackLine(geoJson, "#FF0000")
                     } else if (!isRecording) {
-                        mapViewProvider.clearTrackLine()
+                        val viewing = viewingTrack
+                        if (viewing != null && viewing.points.size >= 2) {
+                            val geoJson = buildTrackGeoJson(viewing.points)
+                            mapViewProvider.updateTrackLine(geoJson, "#0000FF")
+                        } else {
+                            mapViewProvider.clearTrackLine()
+                        }
+                    }
+
+                    // Saved points rendering
+                    if (showSavedPoints && savedPoints.isNotEmpty()) {
+                        val geoJson = buildSavedPointsGeoJson(savedPoints)
+                        mapViewProvider.updateSavedPoints(geoJson)
+                    } else {
+                        mapViewProvider.clearSavedPoints()
                     }
                 }
             )
