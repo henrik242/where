@@ -274,22 +274,154 @@ Moved the county data download/parse/cache chain from `shared/src/androidMain` t
 
 ---
 
-## Phase 10 — Create iOS target (large effort)
+## Phase 10 — iOS target MVP (large effort) ✅ DONE
+
+Implemented a working iOS app with map viewing, screen navigation, and settings. Track recording, offline downloads, and online tracking actions are deferred.
+
+### Scope
+
+- Map viewing with Kartverket/OSM/OpenTopoMap layers
+- Navigation to all screens (settings, tracks, saved points, online tracking)
+- "My location" on map
+- Theme setting (system/light/dark)
+- Delete/rename tracks and saved points from their screens
+
+**Deferred:** track recording, offline map downloads, online tracking, GPX import/export, Firebase Crashlytics, county borders (ZipUtils returns null)
+
+### What was done
+
+1. **Implemented 7 iOS actual stubs** in `shared/src/iosMain/`:
+   - `Platform.kt` — `NSDate().timeIntervalSince1970 * 1000`
+   - `Logger.kt` — `println` with level prefix (`D:`, `W:`, `E:`), `%s` format argument support
+   - `HmacUtils.kt` — `CCHmac` via `platform.CoreCrypto` with `ByteArray.usePinned` for zero-copy, Base64 encoding via `kotlin.io.encoding`
+   - `DateTimeUtils.kt` — `NSDateFormatter` with `NSLocale.currentLocale`
+   - `DeviceUtils.kt` — `NSProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]` check
+   - `PlatformFile.kt` — `NSFileManager` for exists/rename/lastModified/length, `NSString` for readText/resolve/path operations, `NSData.create` for writeBytes with auto parent directory creation
+   - `ZipUtils.kt` — Returns `null` (county borders deferred)
+
+2. **Configured Room for iOS:**
+   - Added KSP tasks for `kspIosX64`, `kspIosArm64`, `kspIosSimulatorArm64`
+   - Added `sqlite-bundled` (2.5.0) dependency to `iosMain`
+   - Added `@ConstructedBy(WhereDatabaseConstructor::class)` annotation to `WhereDatabase`
+   - Added `expect object WhereDatabaseConstructor : RoomDatabaseConstructor<WhereDatabase>` in commonMain
+   - Created `DatabaseBuilder.kt` in iosMain — `Room.databaseBuilder` with `BundledSQLiteDriver` and `NSDocumentDirectory` path
+
+3. **Configured DataStore for iOS:**
+   - Created `DataStoreFactory.kt` — `PreferenceDataStoreFactory.createWithPath` using `NSDocumentDirectory`
+
+4. **Created Koin iOS module:**
+   - `IosModule.kt` — Registers Room database, DAOs, repositories (with `PlatformFile(documentsDir)`), `UserPreferences`, `ClientIdManager`
+   - `KoinHelper.kt` — `fun initKoin()` wrapping `startKoin { modules(iosModule) }`, callable from Swift
+   - Added `koin-core` (4.1.1) dependency to `iosMain`
+
+5. **Created iOS UI layer:**
+   - `MainViewController.kt` — `ComposeUIViewController { IosApp(mapViewProvider) }` entry point
+   - `IosApp.kt` — State-based navigation with `Screen` enum and back stack. Collects `UserPreferences` flows for theme/settings. Wires all shared `*ScreenContent` composables with dialog state management.
+   - `MapViewProvider.kt` — Interface with `createMapView()`, `setStyle(json)`, `setCamera(lat, lon, zoom)`, `setShowsUserLocation(show)`. Implemented in Swift.
+   - `IosMapScreen.kt` — Wraps `MapScreenContent` with `UIKitView` factory. Manages layer selection, style updates via `MapStyle.getStyle()`, user location toggle.
+
+6. **Created Xcode project:**
+   - `iosApp/iosApp.xcodeproj` — iOS 16.0 deployment target, MapLibre iOS SDK via SPM
+   - `WhereApp.swift` — Entry point, calls `KoinHelperKt.initKoin()`
+   - `ComposeView.swift` — `UIViewControllerRepresentable` wrapping `MainViewControllerKt.MainViewController(mapViewProvider:)`
+   - `MapViewFactory.swift` — Swift class implementing `MapViewProvider`, creates `MLNMapView`, writes style JSON to temp file and loads as `file://` URL
+   - `Info.plist` — `NSLocationWhenInUseUsageDescription` for location permission
+   - Gradle `embedAndSignAppleFrameworkForXcode` build phase to compile and link `Shared.framework`
+
+### Key architectural decisions
+
+1. **MapLibre via Swift bridge** — Rather than complex Kotlin/Native cinterop for MapLibre iOS, a Swift `MapViewFactory` implements a Kotlin `MapViewProvider` interface. Compose `UIKitView` calls through this interface.
+2. **Style via temp file** — Android uses `StyleServer` (local HTTP). iOS writes style JSON to a temp file and loads `file://` URL. Simpler, no server needed.
+3. **State-based navigation** — Simple `mutableStateOf<Screen>` with back stack list. Shared screen content composables are navigation-agnostic.
+4. **Dialog state hoisted** — `TracksScreenContent` and `SavedPointsScreenContent` expect dialog state (trackToDelete, editingPoint, etc.) as parameters. `IosApp.kt` manages this state.
+
+**Files created:**
+- 7 iOS actual implementations (replaced TODO stubs)
+- `data/db/DatabaseBuilder.kt`, `data/DataStoreFactory.kt` (iosMain)
+- `di/IosModule.kt`, `di/KoinHelper.kt` (iosMain)
+- `MainViewController.kt`, `IosApp.kt` (iosMain)
+- `ui/map/MapViewProvider.kt`, `ui/map/IosMapScreen.kt` (iosMain)
+- `iosApp/iosApp/WhereApp.swift`, `ComposeView.swift`, `MapViewFactory.swift`, `Info.plist`
+- `iosApp/iosApp.xcodeproj/project.pbxproj`
+
+**Files modified:**
+- `shared/build.gradle.kts` — KSP iOS tasks, `sqlite-bundled` + `koin-core` deps
+- `gradle/libs.versions.toml` — Added `sqlite-bundled`, `koin-core`
+- `shared/.../data/db/WhereDatabase.kt` — `@ConstructedBy` annotation + `WhereDatabaseConstructor` expect
+
+**Verification:**
+- `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` — BUILD SUCCESSFUL
+- `cd app && ../gradlew assembleDebug` — BUILD SUCCESSFUL (no Android regression)
+- `cd app && ../gradlew testDebugUnitTest` — BUILD SUCCESSFUL (all tests pass)
+
+### What's missing from iOS (MVP gaps)
+
+| Feature | Status | Notes |
+|---|---|---|
+| Track recording | Not wired | No `LocationTrackingService` equivalent. Needs CoreLocation + background modes. |
+| Offline map downloads | Not wired | No `MapDownloadManager` equivalent. Needs MapLibre iOS offline API. |
+| Online tracking (sending) | Not wired | Toggle works but no location data is sent. |
+| GPX import/export | Not wired | Buttons are no-ops. Needs `UIDocumentPickerViewController` / `UIActivityViewController`. |
+| Place search | Not wired | Search button is a no-op. `GeocodingHelper`/`PlaceSearchClient` are in commonMain and ready. |
+| County borders | Deferred | `ZipUtils` returns `null`. Needs a zip library or `NSData`+compression framework. |
+| Map track/point rendering | Not implemented | MapLibre iOS style layers for tracks and saved points. |
+| Ruler tool | Not wired | Button is a no-op. Needs map tap handling through Swift bridge. |
+| Firebase Crashlytics | Not applicable | Would need a separate iOS crash reporting SDK. |
+| Language selection | Not shown | iOS handles language via system settings; dropdown omitted. |
+| Version info | Hardcoded | Shows "Where iOS MVP" instead of git-derived version. |
+
+---
+
+## Phase 11 — iOS location and track recording (planned)
 
 ### Steps
+1. Add `NSLocationAlwaysAndWhenInUseUsageDescription` to Info.plist
+2. Add background mode `location` in Xcode capabilities
+3. Create `IosLocationManager` in iosMain using `CLLocationManager`
+4. Wire to `TrackRepository.addTrackPoint()` on location updates
+5. Connect record/stop FAB in `IosMapScreen`
+6. Render current track as MapLibre line layer via Swift bridge
 
-1. Create Xcode project, import `Shared.xcframework`
-2. Implement all `actual` declarations in `shared/src/iosMain/`:
-   - `Logger` → `os_log` or `print`
-   - `HmacUtils` → CommonCrypto
-   - `PlatformFile` → Foundation `FileManager`
-   - `ZipUtils` → Foundation or a Swift ZIP library
-   - Platform actions (share, open URL, pick file) → UIKit APIs
-3. Implement `MapLibreMapView` for iOS using MapLibre Native iOS SDK in a `UIKitView`
-4. Implement `MapRenderUtils` for iOS using MapLibre iOS style API
-5. Implement location tracking using CoreLocation (no foreground service concept — use background location modes in `Info.plist`)
-6. Implement offline map downloads using MapLibre iOS offline API
-7. Wire up the Compose Multiplatform UI as the app's root view
+---
+
+## Phase 12 — iOS map interaction (planned)
+
+### Steps
+1. Extend `MapViewProvider` with tap handling, camera change callbacks
+2. Implement place search (wire `PlaceSearchClient` to search overlay)
+3. Implement ruler tool (tap-to-add points on map)
+4. Render saved points as MapLibre symbol layer
+5. Render tracks as MapLibre line layers (viewing track + recording track)
+6. Implement "show on map" for tracks and saved points (camera animation)
+
+---
+
+## Phase 13 — iOS sharing and file operations (planned)
+
+### Steps
+1. GPX export via `UIActivityViewController`
+2. GPX import via `UIDocumentPickerViewController`
+3. Online tracking link sharing via `UIActivityViewController`
+4. Open tracking URL in Safari via `UIApplication.shared.open`
+
+---
+
+## Phase 14 — iOS offline maps (planned)
+
+### Steps
+1. Implement `MapDownloadManager` equivalent using MapLibre iOS `MLNOfflineStorage`
+2. Wire `DownloadScreenContent` to real download/delete/progress operations
+3. Region-based tile caching matching the Android download regions
+
+---
+
+## Phase 15 — iOS polish (planned)
+
+### Steps
+1. Implement `ZipUtils` for county borders (Foundation compression or third-party zip)
+2. Git-derived version info (build script or Xcode build phase)
+3. App icon and launch screen
+4. TestFlight distribution setup
 
 ---
 
