@@ -12,4 +12,7 @@ interface MapViewProvider {
     fun updateTrackLine(geoJson: String, color: String)
     fun clearTrackLine()
     fun getUserLocation(): List<Double>?
+    fun setCameraBounds(south: Double, west: Double, north: Double, east: Double, padding: Int)
+    fun updateSavedPoints(geoJson: String)
+    fun clearSavedPoints()
 }

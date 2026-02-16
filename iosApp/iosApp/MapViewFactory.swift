@@ -7,9 +7,12 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
     private var currentStyleJson: String?
     private var pendingTrackGeoJson: String?
     private var pendingTrackColor: String?
+    private var pendingSavedPointsGeoJson: String?
 
     private let trackSourceId = "track-source"
     private let trackLayerId = "track-layer"
+    private let savedPointsSourceId = "saved-points-source"
+    private let savedPointsLayerId = "saved-points-layer"
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -83,6 +86,30 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
         removeTrackLine(style: style)
     }
 
+    func setCameraBounds(south: Double, west: Double, north: Double, east: Double, padding: Int32) {
+        guard let mapView = self.mapView else { return }
+        let sw = CLLocationCoordinate2D(latitude: south, longitude: west)
+        let ne = CLLocationCoordinate2D(latitude: north, longitude: east)
+        let bounds = MLNCoordinateBounds(sw: sw, ne: ne)
+        let p = CGFloat(padding)
+        let edgePadding = UIEdgeInsets(top: p, left: p, bottom: p, right: p)
+        mapView.setVisibleCoordinateBounds(bounds, edgePadding: edgePadding, animated: true, completionHandler: nil)
+    }
+
+    func updateSavedPoints(geoJson: String) {
+        guard let mapView = self.mapView, let style = mapView.style else {
+            pendingSavedPointsGeoJson = geoJson
+            return
+        }
+        applySavedPoints(style: style, geoJson: geoJson)
+    }
+
+    func clearSavedPoints() {
+        pendingSavedPointsGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeSavedPoints(style: style)
+    }
+
     func getUserLocation() -> [KotlinDouble]? {
         guard let mapView = self.mapView,
               let location = mapView.userLocation?.location else { return nil }
@@ -95,6 +122,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
         if let geoJson = pendingTrackGeoJson, let color = pendingTrackColor {
             applyTrackLine(style: style, geoJson: geoJson, color: color)
+        }
+        if let geoJson = pendingSavedPointsGeoJson {
+            applySavedPoints(style: style, geoJson: geoJson)
         }
     }
 
@@ -129,6 +159,37 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
             style.removeLayer(existingLayer)
         }
         if let existingSource = style.source(withIdentifier: trackSourceId) {
+            style.removeSource(existingSource)
+        }
+    }
+
+    private func applySavedPoints(style: MLNStyle, geoJson: String) {
+        removeSavedPoints(style: style)
+
+        guard let data = geoJson.data(using: .utf8),
+              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+            print("Failed to parse saved points GeoJSON")
+            return
+        }
+
+        let source = MLNShapeSource(identifier: savedPointsSourceId, shape: shape, options: nil)
+        style.addSource(source)
+
+        let layer = MLNCircleStyleLayer(identifier: savedPointsLayerId, source: source)
+        layer.circleRadius = NSExpression(forConstantValue: 6)
+        layer.circleColor = NSExpression(forKeyPath: "color")
+        layer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+        layer.circleStrokeWidth = NSExpression(forConstantValue: 2)
+        style.addLayer(layer)
+
+        pendingSavedPointsGeoJson = geoJson
+    }
+
+    private func removeSavedPoints(style: MLNStyle) {
+        if let existingLayer = style.layer(withIdentifier: savedPointsLayerId) {
+            style.removeLayer(existingLayer)
+        }
+        if let existingSource = style.source(withIdentifier: savedPointsSourceId) {
             style.removeSource(existingSource)
         }
     }

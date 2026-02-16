@@ -50,6 +50,7 @@ fun IosApp(mapViewProvider: MapViewProvider) {
 
     var currentScreen by remember { mutableStateOf(Screen.MAP) }
     var backStack by remember { mutableStateOf(listOf<Screen>()) }
+    var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
     val scope = rememberCoroutineScope()
     var clientId by remember { mutableStateOf("") }
@@ -66,12 +67,19 @@ fun IosApp(mapViewProvider: MapViewProvider) {
         }
     }
 
+    fun navigateToMap() {
+        currentScreen = Screen.MAP
+        backStack = emptyList()
+    }
+
     WhereTheme(themeMode = themeMode) {
         when (currentScreen) {
             Screen.MAP -> {
                 IosMapScreen(
                     mapViewProvider = mapViewProvider,
                     showCountyBorders = showCountyBorders,
+                    viewingPoint = viewingPoint,
+                    onClearViewingPoint = { viewingPoint = null },
                     onSettingsClick = { navigateTo(Screen.SETTINGS) }
                 )
             }
@@ -134,7 +142,10 @@ fun IosApp(mapViewProvider: MapViewProvider) {
                     onDismissRename = { trackToRename = null },
                     onDismissImportError = {},
                     onContinue = {},
-                    onShowOnMap = { navigateBack() }
+                    onShowOnMap = { track ->
+                        trackRepository.setViewingTrack(track)
+                        navigateToMap()
+                    }
                 )
             }
 
@@ -152,7 +163,10 @@ fun IosApp(mapViewProvider: MapViewProvider) {
                         showEditDialog = true
                     },
                     onDelete = { savedPointsRepository.deletePoint(it.id) },
-                    onShowOnMap = { navigateBack() },
+                    onShowOnMap = { point ->
+                        viewingPoint = point
+                        navigateToMap()
+                    },
                     onDismissEdit = {
                         showEditDialog = false
                         editingPoint = null
