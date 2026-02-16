@@ -17,4 +17,6 @@ abstract class WhereDatabase : RoomDatabase() {
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
-expect object WhereDatabaseConstructor : RoomDatabaseConstructor<WhereDatabase>
+expect object WhereDatabaseConstructor : RoomDatabaseConstructor<WhereDatabase> {
+    override fun initialize(): WhereDatabase
+}
