@@ -10,6 +10,8 @@
 		A10001 /* WhereApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20001 /* WhereApp.swift */; };
 		A10002 /* ComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20002 /* ComposeView.swift */; };
 		A10003 /* MapViewFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20003 /* MapViewFactory.swift */; };
+		A10004 /* OfflineMapFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20006 /* OfflineMapFactory.swift */; };
+		A10005 /* StyleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20007 /* StyleServer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +20,8 @@
 		A20003 /* MapViewFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewFactory.swift; sourceTree = "<group>"; };
 		A20004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A20005 /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20006 /* OfflineMapFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineMapFactory.swift; sourceTree = "<group>"; };
+		A20007 /* StyleServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleServer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,6 +49,8 @@
 				A20001 /* WhereApp.swift */,
 				A20002 /* ComposeView.swift */,
 				A20003 /* MapViewFactory.swift */,
+				A20006 /* OfflineMapFactory.swift */,
+				A20007 /* StyleServer.swift */,
 				A20004 /* Info.plist */,
 			);
 			path = iosApp;
@@ -153,6 +159,8 @@
 				A10001 /* WhereApp.swift in Sources */,
 				A10002 /* ComposeView.swift in Sources */,
 				A10003 /* MapViewFactory.swift in Sources */,
+				A10004 /* OfflineMapFactory.swift in Sources */,
+				A10005 /* StyleServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

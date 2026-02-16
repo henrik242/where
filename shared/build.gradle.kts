@@ -47,6 +47,9 @@ kotlin {
             @Suppress("DEPRECATION")
             implementation(compose.components.resources)
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
         androidMain.dependencies {
             implementation(libs.ktor.client.android)
             implementation(libs.timber)
