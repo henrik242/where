@@ -51,5 +51,13 @@ jobs:
     - name: Create google-services.json
       run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
 
+    - name: Cache Konan
+      uses: actions/cache@v4
+      with:
+        path: /Users/runner/.konan
+        key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle.kts') }}
+        restore-keys: |
+          ${{ runner.os }}-konan-
+
     - name: Build shared iOS frameworks
       run: ./gradlew :shared:linkDebugFrameworkIosArm64 :shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
