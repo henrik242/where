@@ -7,4 +7,6 @@ interface MapViewProvider {
     fun setStyle(json: String)
     fun setCamera(latitude: Double, longitude: Double, zoom: Double)
     fun setShowsUserLocation(show: Boolean)
+    fun zoomIn()
+    fun zoomOut()
 }

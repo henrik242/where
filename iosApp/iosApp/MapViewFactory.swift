@@ -4,6 +4,7 @@ import Shared
 
 class MapViewFactory: MapViewProvider {
     private var mapView: MLNMapView?
+    private var currentStyleJson: String?
 
     func createMapView() -> UIView {
         let map = MLNMapView(frame: .zero)
@@ -18,6 +19,8 @@ class MapViewFactory: MapViewProvider {
 
     func setStyle(json: String) {
         guard let mapView = self.mapView else { return }
+        guard json != currentStyleJson else { return }
+        currentStyleJson = json
 
         // Write style JSON to temp file and load as file:// URL
         let tempDir = NSTemporaryDirectory()
@@ -43,5 +46,15 @@ class MapViewFactory: MapViewProvider {
     func setShowsUserLocation(show: Bool) {
         guard let mapView = self.mapView else { return }
         mapView.showsUserLocation = show
+    }
+
+    func zoomIn() {
+        guard let mapView = self.mapView else { return }
+        mapView.setZoomLevel(mapView.zoomLevel + 1, animated: true)
+    }
+
+    func zoomOut() {
+        guard let mapView = self.mapView else { return }
+        mapView.setZoomLevel(mapView.zoomLevel - 1, animated: true)
     }
 }

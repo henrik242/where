@@ -35,5 +35,7 @@
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Where needs your location to show your position on the map.</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 </dict>
 </plist>
