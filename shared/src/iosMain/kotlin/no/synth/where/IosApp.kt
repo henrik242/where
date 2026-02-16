@@ -72,8 +72,7 @@ fun IosApp(mapViewProvider: MapViewProvider) {
                 IosMapScreen(
                     mapViewProvider = mapViewProvider,
                     showCountyBorders = showCountyBorders,
-                    onSettingsClick = { navigateTo(Screen.SETTINGS) },
-                    onMyLocationClick = {}
+                    onSettingsClick = { navigateTo(Screen.SETTINGS) }
                 )
             }
 
