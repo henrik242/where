@@ -19,7 +19,7 @@ Prepare the codebase incrementally *before* adding iOS. Each phase keeps the And
 ## Example agent prompt:
 
 proceed with kmp phase X. update and improve the migration guide as you go. make sure things are backwards compatible using relevant tests.
-be clean, simple and intuitive,s add tests, and prefer best practises (that also applies to previous phases, if relevant).
+be clean, simple and intuitive, add tests, and prefer best practises (that also applies to previous phases, if relevant).
 prefer shared code over ios/android-specific code.
 
 ---
@@ -597,7 +597,47 @@ Wired offline map downloads on iOS, matching Android functionality. Extracted sh
 
 ---
 
-## Phase 16 — iOS polish (planned)
+## Phase 16 — iOS ruler tool
+
+### What was done
+
+1. **Moved GeoJSON builders from iosMain to commonMain:**
+   - `TrackGeoJson.kt` (iOS-only) → `MapGeoJson.kt` (shared)
+   - Added `buildRulerLineGeoJson()` and `buildRulerPointsGeoJson()` for ruler overlay rendering
+   - All four GeoJSON builders (`buildTrackGeoJson`, `buildSavedPointsGeoJson`, `buildRulerLineGeoJson`, `buildRulerPointsGeoJson`) now available to both platforms
+
+2. **Added ruler rendering to `MapViewProvider` + `MapViewFactory.swift`:**
+   - `updateRuler(lineGeoJson, pointsGeoJson)` and `clearRuler()` on the interface
+   - Swift implementation: orange dashed line (#FFA500, dash pattern [2,2]) + orange circle points with white stroke — matching Android's `MapRenderUtils.updateRulerOnMap()`
+
+3. **Wired full ruler functionality in `IosMapScreen.kt`:**
+   - `rulerState` is now mutable (`var` with `mutableStateOf`)
+   - Ruler toggle: activates/deactivates ruler mode (clears on deactivate)
+   - Map tap when ruler active: adds ruler point
+   - Undo: removes last point
+   - Clear: resets ruler and clears map overlay
+   - Save as Track: opens `SaveRulerAsTrackDialog` with auto-resolved name via reverse geocoding, saves via `TrackRepository.createTrackFromPoints()`
+
+4. **Added shared tests:**
+   - `RulerStateTest` — 10 tests: initial state, addPoint, removeLastPoint, clear, distances, segment distances, sum equality, active state preservation
+   - `MapGeoJsonTest` — 8 tests: track/saved points/ruler line/ruler points GeoJSON structure, quote escaping, empty lists
+
+**Files created:**
+- `shared/src/commonMain/.../ui/map/MapGeoJson.kt`
+- `shared/src/commonTest/.../data/RulerStateTest.kt`
+- `shared/src/commonTest/.../ui/map/MapGeoJsonTest.kt`
+
+**Files modified:**
+- `shared/src/iosMain/.../ui/map/MapViewProvider.kt` — `updateRuler()` + `clearRuler()`
+- `iosApp/iosApp/MapViewFactory.swift` — ruler line + point layers
+- `shared/src/iosMain/.../ui/map/IosMapScreen.kt` — full ruler wiring + save-as-track dialog
+
+**Files deleted:**
+- `shared/src/iosMain/.../ui/map/TrackGeoJson.kt` — moved to commonMain as `MapGeoJson.kt`
+
+---
+
+## Phase 17 — iOS polish (planned)
 
 ### Steps
 1. Implement `ZipUtils` for county borders (Foundation compression or third-party zip)
