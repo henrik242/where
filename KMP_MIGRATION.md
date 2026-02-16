@@ -558,7 +558,46 @@ Wired offline map downloads on iOS, matching Android functionality. Extracted sh
 
 ---
 
-## Phase 15 — iOS polish (planned)
+## Phase 15 — iOS hold-to-save-point and tap-to-edit-point
+
+### What was done
+
+1. **Extracted `SavedPointUtils` to commonMain:**
+   - `findNearestPoint(tapLocation, savedPoints, maxDistanceMeters)` replaces inline proximity logic
+   - Android `MapLibreMapView.kt` updated to use it
+
+2. **Added gesture callback interfaces to `MapViewProvider`:**
+   - `MapLongPressCallback` and `MapClickCallback` interfaces (matches `OfflineMapDownloadObserver` pattern for Swift interop)
+   - `setOnLongPressCallback()` and `setOnMapClickCallback()` setters
+
+3. **Implemented gestures in `MapViewFactory.swift`:**
+   - `UILongPressGestureRecognizer` fires on `.began` state, converts screen point to map coordinate
+   - `UITapGestureRecognizer` requires long press to fail first for correct priority
+   - Both call Kotlin callbacks with lat/lng
+
+4. **Wired save-point and edit-point in `IosMapScreen.kt`:**
+   - Long press (when ruler inactive): opens `SavePointDialog` with auto-resolved name via `GeocodingHelper.reverseGeocode()` + `NamingUtils.makeUnique()`
+   - Tap: uses `SavedPointUtils.findNearestPoint()` to find nearest saved point within 500m, opens `PointInfoDialog`
+   - `PointInfoDialog` supports edit name/description/color, delete, save — matches Android behavior
+   - Snackbar feedback on save/update/delete
+
+5. **Added shared tests:**
+   - `SavedPointUtilsTest` — empty list, within range, beyond max, closest of multiple, custom max distance
+
+**Files created:**
+- `shared/src/commonMain/.../data/SavedPointUtils.kt`
+- `shared/src/commonTest/.../data/SavedPointUtilsTest.kt`
+
+**Files modified:**
+- `shared/src/iosMain/.../ui/map/MapViewProvider.kt` — callback interfaces + setters
+- `iosApp/iosApp/MapViewFactory.swift` — gesture recognizers + callbacks
+- `shared/src/iosMain/.../ui/map/IosMapScreen.kt` — save/edit point dialogs + gesture wiring
+- `app/.../ui/map/MapLibreMapView.kt` — use `SavedPointUtils.findNearestPoint`
+- `KMP_MIGRATION.md`
+
+---
+
+## Phase 16 — iOS polish (planned)
 
 ### Steps
 1. Implement `ZipUtils` for county borders (Foundation compression or third-party zip)
