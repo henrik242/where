@@ -32,8 +32,8 @@ fun TracksScreenContent(
     onBackClick: () -> Unit,
     onImport: () -> Unit,
     onExport: (Track) -> Unit,
-    onSave: (Track) -> Unit,
-    onOpen: (Track) -> Unit,
+    onSave: ((Track) -> Unit)? = null,
+    onOpen: ((Track) -> Unit)? = null,
     onDeleteRequest: (Track) -> Unit,
     onConfirmDelete: () -> Unit,
     onDismissDelete: () -> Unit,
@@ -85,8 +85,8 @@ fun TracksScreenContent(
                     TrackItem(
                         track = track,
                         onExport = { onExport(track) },
-                        onSave = { onSave(track) },
-                        onOpen = { onOpen(track) },
+                        onSave = onSave?.let { { it(track) } },
+                        onOpen = onOpen?.let { { it(track) } },
                         onDelete = { onDeleteRequest(track) },
                         onRename = { onRenameRequest(track) },
                         onContinue = { onContinue(track) },
@@ -159,8 +159,8 @@ fun TracksScreenContent(
 fun TrackItem(
     track: Track,
     onExport: () -> Unit,
-    onSave: () -> Unit,
-    onOpen: () -> Unit,
+    onSave: (() -> Unit)? = null,
+    onOpen: (() -> Unit)? = null,
     onDelete: () -> Unit,
     onRename: () -> Unit,
     onContinue: () -> Unit,
@@ -232,46 +232,65 @@ fun TrackItem(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(stringResource(Res.string.continue_label))
                 }
-                OutlinedButton(
-                    onClick = onSave,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        Icons.Filled.Save,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(Res.string.save))
+                if (onSave != null) {
+                    OutlinedButton(
+                        onClick = onSave,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Filled.Save,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(Res.string.save))
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = onExport,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Filled.Share,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(Res.string.share))
+                    }
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onOpen,
-                    modifier = Modifier.weight(1f)
+            if (onOpen != null || onSave != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(Res.string.open))
-                }
-                OutlinedButton(
-                    onClick = onExport,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        Icons.Filled.Share,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(Res.string.share))
+                    if (onOpen != null) {
+                        OutlinedButton(
+                            onClick = onOpen,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(stringResource(Res.string.open))
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onExport,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Filled.Share,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(Res.string.share))
+                    }
                 }
             }
             Row(
