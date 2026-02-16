@@ -15,3 +15,6 @@ local.properties
 web/.env
 /app/release/app-release.aab
 google-services.json
+
+# Xcode user state
+xcuserdata/
