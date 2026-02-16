@@ -251,19 +251,8 @@ class MapDownloadManager(private val context: Context) {
         })
     }
 
-    private fun estimateTileCount(bounds: LatLngBounds, minZoom: Int, maxZoom: Int): Int {
-        var totalTiles = 0
-        for (zoom in minZoom..maxZoom) {
-            val tilesPerSide = 1 shl zoom
-            val latSpan = bounds.latitudeSpan
-            val lonSpan = bounds.longitudeSpan
-
-            val tilesAtZoom =
-                ((latSpan / 180.0) * (lonSpan / 360.0) * tilesPerSide * tilesPerSide).toInt()
-            totalTiles += tilesAtZoom
-        }
-        return totalTiles.coerceAtLeast(1)
-    }
+    private fun estimateTileCount(bounds: LatLngBounds, minZoom: Int, maxZoom: Int): Int =
+        TileUtils.estimateTileCount(bounds, minZoom, maxZoom)
 
     suspend fun deleteRegionTiles(region: Region, layerName: String = "kartverket"): Boolean =
         suspendCancellableCoroutine { continuation ->
