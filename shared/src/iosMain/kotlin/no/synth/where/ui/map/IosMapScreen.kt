@@ -19,7 +19,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.MapStyle
+import no.synth.where.data.PlatformFile
 import no.synth.where.data.PlaceSearchClient
+import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
@@ -27,6 +29,9 @@ import no.synth.where.data.TrackRepository
 import no.synth.where.location.IosLocationTracker
 import no.synth.where.util.NamingUtils
 import org.koin.mp.KoinPlatform.getKoin
+import platform.Foundation.NSCachesDirectory
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSUserDomainMask
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -68,11 +73,20 @@ fun IosMapScreen(
     var searchResults by remember { mutableStateOf<List<PlaceSearchClient.SearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
 
-    val styleJson = remember(currentLayer, waymarkedTrails, countyBorders) {
+    val cacheDir = remember {
+        val paths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
+        @Suppress("UNCHECKED_CAST")
+        val url = (paths as List<platform.Foundation.NSURL>).first()
+        PlatformFile(url.path ?: "")
+    }
+    val regions = remember { RegionsRepository.getRegions(cacheDir) }
+
+    val styleJson = remember(currentLayer, waymarkedTrails, countyBorders, regions) {
         MapStyle.getStyle(
             selectedLayer = currentLayer,
             showCountyBorders = countyBorders,
-            showWaymarkedTrails = waymarkedTrails
+            showWaymarkedTrails = waymarkedTrails,
+            regions = regions
         )
     }
 
