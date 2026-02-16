@@ -1,4 +1,4 @@
-name: Build Android App
+name: Build Android
 
 on:
   push:
@@ -44,30 +44,17 @@ jobs:
     - name: Validate secrets
       run: |
         if [ -z "${{ secrets.TRACKING_HMAC_SECRET }}" ]; then
-          echo "❌ ERROR: TRACKING_HMAC_SECRET is not set in GitHub secrets!"
-          echo ""
-          echo "To fix this:"
-          echo "1. Generate a secret key: openssl rand -base64 32"
-          echo "2. Go to repository Settings → Secrets and variables → Actions"
-          echo "3. Add a new repository secret named TRACKING_HMAC_SECRET"
-          echo "4. Paste the generated key as the value"
+          echo "ERROR: TRACKING_HMAC_SECRET is not set in GitHub secrets"
           exit 1
         fi
-        echo "✅ TRACKING_HMAC_SECRET is set"
 
     - name: Create local.properties
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
         echo "TRACKING_HMAC_SECRET=${{ secrets.TRACKING_HMAC_SECRET }}" >> local.properties
-        echo "✅ local.properties created"
 
     - name: Create google-services.json
-      run: |
-        echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
-        echo "✅ google-services.json created"
-
-    - name: Build shared module (all targets)
-      run: ./gradlew :shared:build --stacktrace
+      run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
 
     - name: Build debug APK
       run: ./gradlew assembleDebug --stacktrace
@@ -82,14 +69,6 @@ jobs:
         path: app/build/outputs/apk/debug/app-debug.apk
         retention-days: 30
 
-    # Disabled until signing keys are configured
-    # - name: Upload release APK
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: app-release-unsigned
-    #     path: app/build/outputs/apk/release/app-release-unsigned.apk
-    #     retention-days: 30
-
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v4
@@ -97,4 +76,3 @@ jobs:
         name: test-results
         path: app/build/reports/tests/
         retention-days: 14
-
