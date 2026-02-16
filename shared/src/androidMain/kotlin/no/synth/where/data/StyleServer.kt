@@ -81,35 +81,7 @@ class StyleServer private constructor(private val port: Int) {
     private fun serveStyleJson(uri: String): String {
         val layerName = uri.substringAfter("/styles/").substringBefore("-style.json")
 
-        val tileUrl = when (layerName) {
-            "kartverket" -> "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
-            "toporaster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"
-            "sjokartraster" -> "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"
-            "osm" -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            "opentopomap" -> "https://tile.opentopomap.org/{z}/{x}/{y}.png"
-            "waymarkedtrails" -> "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
-            else -> "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        }
-
-        val styleJson = """
-{
-  "version": 8,
-  "sources": {
-    "$layerName": {
-      "type": "raster",
-      "tiles": ["$tileUrl"],
-      "tileSize": 256
-    }
-  },
-  "layers": [
-    {
-      "id": "$layerName-layer",
-      "type": "raster",
-      "source": "$layerName"
-    }
-  ]
-}
-        """.trimIndent()
+        val styleJson = DownloadLayers.getDownloadStyleJson(layerName)
 
         val contentLength = styleJson.toByteArray(Charsets.UTF_8).size
 

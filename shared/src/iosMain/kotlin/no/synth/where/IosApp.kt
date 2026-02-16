@@ -4,43 +4,62 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
+import no.synth.where.data.DownloadLayers
+import no.synth.where.data.DownloadState
+import no.synth.where.data.FylkeDownloader
+import no.synth.where.data.IosMapDownloadManager
+import no.synth.where.data.OfflineMapManager
+import no.synth.where.data.PlatformFile
+import no.synth.where.data.Region
+import no.synth.where.data.RegionsRepository
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
+import no.synth.where.ui.DownloadScreenContent
 import no.synth.where.ui.LanguageOption
+import no.synth.where.ui.LayerInfo
+import no.synth.where.ui.LayerRegionsScreenContent
 import no.synth.where.ui.OnlineTrackingScreenContent
 import no.synth.where.ui.SavedPointsScreenContent
 import no.synth.where.ui.SettingsScreenContent
 import no.synth.where.ui.TracksScreenContent
 import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
+import no.synth.where.util.Logger
 import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.util.IosPlatformActions
 import org.koin.mp.KoinPlatform.getKoin
+import platform.Foundation.NSCachesDirectory
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSUserDomainMask
 
 enum class Screen {
     MAP,
     SETTINGS,
     TRACKS,
     SAVED_POINTS,
-    ONLINE_TRACKING
+    ONLINE_TRACKING,
+    DOWNLOAD,
+    LAYER_REGIONS
 }
 
 @Composable
-fun IosApp(mapViewProvider: MapViewProvider) {
+fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManager) {
     val koin = remember { getKoin() }
     val userPreferences = remember { koin.get<UserPreferences>() }
     val trackRepository = remember { koin.get<TrackRepository>() }
     val savedPointsRepository = remember { koin.get<SavedPointsRepository>() }
     val clientIdManager = remember { koin.get<ClientIdManager>() }
+    val downloadManager = remember { IosMapDownloadManager(offlineMapManager) }
 
     val themeMode by userPreferences.themeMode.collectAsState()
     val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
@@ -48,13 +67,36 @@ fun IosApp(mapViewProvider: MapViewProvider) {
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val tracks by trackRepository.tracks.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
+    val downloadState by downloadManager.downloadState.collectAsState()
+
+    val cacheDir = remember {
+        val paths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
+        @Suppress("UNCHECKED_CAST")
+        val url = (paths as List<platform.Foundation.NSURL>).first()
+        PlatformFile(url.path ?: "")
+    }
 
     var currentScreen by remember { mutableStateOf(Screen.MAP) }
     var backStack by remember { mutableStateOf(listOf<Screen>()) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
+    var selectedLayerId by remember { mutableStateOf("") }
+    var regionsLoaded by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     var clientId by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        for (attempt in 1..3) {
+            val hasCached = FylkeDownloader.hasCachedData(cacheDir)
+            Logger.d("FylkeDownloader: attempt=%s, hasCachedData=%s", attempt.toString(), hasCached.toString())
+            if (hasCached) break
+            val success = FylkeDownloader.downloadAndCacheFylker(cacheDir)
+            Logger.d("FylkeDownloader: download result=%s", success.toString())
+            if (success) break
+            kotlinx.coroutines.delay(2000L)
+        }
+        regionsLoaded = true
+    }
 
     fun navigateTo(screen: Screen) {
         backStack = backStack + currentScreen
@@ -96,7 +138,7 @@ fun IosApp(mapViewProvider: MapViewProvider) {
                 SettingsScreenContent(
                     versionInfo = "Where iOS MVP",
                     onBackClick = { navigateBack() },
-                    onDownloadClick = {},
+                    onDownloadClick = { navigateTo(Screen.DOWNLOAD) },
                     onTracksClick = { navigateTo(Screen.TRACKS) },
                     onSavedPointsClick = { navigateTo(Screen.SAVED_POINTS) },
                     onOnlineTrackingClick = { navigateTo(Screen.ONLINE_TRACKING) },
@@ -200,6 +242,87 @@ fun IosApp(mapViewProvider: MapViewProvider) {
                 )
             }
 
+            Screen.DOWNLOAD -> {
+                var refreshTrigger by remember { mutableIntStateOf(0) }
+
+                val layers = remember {
+                    DownloadLayers.all.map { layer ->
+                        LayerInfo(layer.id, layer.displayName, layerDescription(layer.id))
+                    }
+                }
+
+                LaunchedEffect(downloadState.isDownloading) {
+                    if (!downloadState.isDownloading) refreshTrigger++
+                }
+
+                DownloadScreenContent(
+                    layers = layers,
+                    cacheSize = 0L,
+                    isDownloading = downloadState.isDownloading,
+                    downloadRegionName = downloadState.region?.name,
+                    downloadLayerName = downloadState.layerName,
+                    downloadProgress = downloadState.progress,
+                    onBackClick = { navigateBack() },
+                    onLayerClick = { layerId ->
+                        selectedLayerId = layerId
+                        navigateTo(Screen.LAYER_REGIONS)
+                    },
+                    onStopDownload = { downloadManager.stopDownload() },
+                    getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },
+                    refreshTrigger = refreshTrigger
+                )
+            }
+
+            Screen.LAYER_REGIONS -> {
+                val regions = remember(regionsLoaded) {
+                    val r = RegionsRepository.getRegions(cacheDir)
+                    Logger.d("LAYER_REGIONS: regionsLoaded=%s, regions count=%s", regionsLoaded.toString(), r.size.toString())
+                    r
+                }
+                val layerDisplayName = remember(selectedLayerId) {
+                    DownloadLayers.all.find { it.id == selectedLayerId }?.displayName ?: selectedLayerId
+                }
+                var refreshTrigger by remember { mutableIntStateOf(0) }
+                var showDeleteDialog by remember { mutableStateOf<Region?>(null) }
+
+                var wasDownloading by remember { mutableStateOf(false) }
+                LaunchedEffect(downloadState.isDownloading) {
+                    if (wasDownloading && !downloadState.isDownloading) {
+                        refreshTrigger++
+                    }
+                    wasDownloading = downloadState.isDownloading
+                }
+
+                LayerRegionsScreenContent(
+                    layerDisplayName = layerDisplayName,
+                    layerId = selectedLayerId,
+                    regions = regions,
+                    isDownloading = downloadState.isDownloading,
+                    downloadRegionName = downloadState.region?.name,
+                    downloadLayerName = downloadState.layerName,
+                    downloadProgress = downloadState.progress,
+                    showDeleteDialog = showDeleteDialog,
+                    onBackClick = { navigateBack() },
+                    onStopDownload = { downloadManager.stopDownload() },
+                    onStartDownload = { region ->
+                        downloadManager.startDownload(region, selectedLayerId)
+                    },
+                    onDeleteRequest = { region -> showDeleteDialog = region },
+                    onConfirmDelete = { region ->
+                        scope.launch {
+                            downloadManager.deleteRegionTiles(region, selectedLayerId)
+                            showDeleteDialog = null
+                            refreshTrigger++
+                        }
+                    },
+                    onDismissDelete = { showDeleteDialog = null },
+                    getRegionTileInfo = { region ->
+                        downloadManager.getRegionTileInfo(region, selectedLayerId)
+                    },
+                    refreshTrigger = refreshTrigger
+                )
+            }
+
             Screen.ONLINE_TRACKING -> {
                 var showRegenerateDialog by remember { mutableStateOf(false) }
                 val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
@@ -233,4 +356,14 @@ fun IosApp(mapViewProvider: MapViewProvider) {
             }
         }
     }
+}
+
+private fun layerDescription(layerId: String): String = when (layerId) {
+    "kartverket" -> "Topographic maps from Kartverket"
+    "toporaster" -> "Topographic raster maps"
+    "sjokartraster" -> "Nautical charts"
+    "osm" -> "Community-sourced street maps"
+    "opentopomap" -> "Topographic maps with hiking trails"
+    "waymarkedtrails" -> "Hiking trail overlay"
+    else -> ""
 }

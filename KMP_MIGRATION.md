@@ -16,6 +16,12 @@ Migrate the Android app to Kotlin Multiplatform (KMP) with Compose Multiplatform
 
 Prepare the codebase incrementally *before* adding iOS. Each phase keeps the Android app fully functional and testable. The iOS target is only introduced once the shared module is ready.
 
+## Example agent prompt:
+
+proceed with kmp phase X. update and improve the migration guide as you go. make sure things are backwards compatible using relevant tests.
+be clean, simple and intuitive,s add tests, and prefer best practises (that also applies to previous phases, if relevant).
+prefer shared code over ios/android-specific code.
+
 ---
 
 ## Phase 1 — Extract common geo types (low effort, high impact) ✅ DONE
@@ -487,12 +493,68 @@ Wired up GPX import/export/save/open for tracks and online tracking sharing/view
 
 ---
 
-## Phase 14 — iOS offline maps (planned)
+## Phase 14 — iOS offline maps ✅ DONE
 
-### Steps
-1. Implement `MapDownloadManager` equivalent using MapLibre iOS `MLNOfflineStorage`
-2. Wire `DownloadScreenContent` to real download/delete/progress operations
-3. Region-based tile caching matching the Android download regions
+Wired offline map downloads on iOS, matching Android functionality. Extracted shared utilities from the Android implementation and created iOS-specific bridge to MapLibre's `MLNOfflineStorage`.
+
+### What was done
+
+1. **Extracted shared utilities to commonMain:**
+   - `TileUtils.kt` — `estimateTileCount(bounds, minZoom, maxZoom)` pure math, moved from `MapDownloadManager`
+   - `DownloadLayers.kt` — `DownloadLayers` object with tile URL mapping and style JSON generation, consolidating duplicated logic from `StyleServer` and `DownloadScreen`
+   - `DownloadState.kt` — Shared `DownloadState` data class, moved from `MapDownloadService`'s inner class
+
+2. **Updated Android to use shared utilities (backward-compatible):**
+   - `MapDownloadManager` — delegates to `TileUtils.estimateTileCount`
+   - `StyleServer` — uses `DownloadLayers.getDownloadStyleJson()` instead of inline tile URL mapping
+   - `MapDownloadService` — imports shared `DownloadState` instead of inner class
+   - `DownloadScreen` — uses `DownloadLayers.all` for layer display names
+
+3. **Created iOS bridge interfaces** (`shared/src/iosMain`):
+   - `OfflineMapManager` — callback-based interface for Swift implementation (avoids Kotlin lambda interop issues)
+   - `OfflineMapDownloadObserver`, `OfflineMapRegionStatusCallback`, `OfflineMapDeleteCallback`, `OfflineMapLayerStatsCallback` — callback interfaces for clean Swift interop
+   - `IosMapDownloadManager` — wraps `OfflineMapManager`, owns `StateFlow<DownloadState>`, converts callbacks to suspend functions via `suspendCoroutine`
+
+4. **Created Swift implementation:**
+   - `OfflineMapFactory.swift` — implements `OfflineMapManager` using `MLNOfflineStorage`
+   - Downloads via `MLNTilePyramidOfflineRegion` + `addPack()`, observes `NSNotification.Name.MLNOfflinePackProgressChanged`
+   - Metadata stored as JSON with `"name"` and `"layer"` keys (matches Android format)
+   - Supports download, stop, get status, delete, and aggregate layer stats
+
+5. **Wired iOS screens:**
+   - Added `DOWNLOAD` and `LAYER_REGIONS` to `Screen` enum
+   - `IosApp` accepts `offlineMapManager` parameter, creates `IosMapDownloadManager`, collects `downloadState`
+   - Settings `onDownloadClick` navigates to download screen
+   - `DownloadScreenContent` shows layers from `DownloadLayers.all` with descriptions
+   - `LayerRegionsScreenContent` shows regions, wired to download/delete/stats
+
+6. **Added shared tests:**
+   - `TileUtilsTest` — returns at least 1, higher zoom → more tiles, larger region → more tiles
+   - `DownloadLayersTest` — 6 unique layers, known URL, OSM fallback, style JSON structure
+   - Added `commonTest` dependency on `kotlin("test")` in `shared/build.gradle.kts`
+
+**Files created:**
+- `shared/src/commonMain/.../data/TileUtils.kt`
+- `shared/src/commonMain/.../data/DownloadLayers.kt`
+- `shared/src/commonMain/.../data/DownloadState.kt`
+- `shared/src/iosMain/.../data/OfflineMapManager.kt`
+- `shared/src/iosMain/.../data/IosMapDownloadManager.kt`
+- `iosApp/iosApp/OfflineMapFactory.swift`
+- `shared/src/commonTest/.../data/TileUtilsTest.kt`
+- `shared/src/commonTest/.../data/DownloadLayersTest.kt`
+
+**Files modified:**
+- `shared/src/androidMain/.../data/MapDownloadManager.kt` — use `TileUtils`
+- `shared/src/androidMain/.../data/StyleServer.kt` — use `DownloadLayers`
+- `app/.../service/MapDownloadService.kt` — import shared `DownloadState`
+- `app/.../ui/DownloadScreen.kt` — use shared `DownloadState` + `DownloadLayers`
+- `shared/src/iosMain/.../IosApp.kt` — download screens + `offlineMapManager` param
+- `shared/src/iosMain/.../MainViewController.kt` — `offlineMapManager` param
+- `iosApp/iosApp/ComposeView.swift` — create `OfflineMapFactory`
+- `shared/build.gradle.kts` — `commonTest` dependency
+- `KMP_MIGRATION.md`
+
+**No changes to commonMain UI** — `DownloadScreenContent` and `LayerRegionsScreenContent` were already shared.
 
 ---
 

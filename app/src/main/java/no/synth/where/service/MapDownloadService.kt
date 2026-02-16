@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import no.synth.where.MainActivity
 import no.synth.where.R
+import no.synth.where.data.DownloadState
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.Region
@@ -31,13 +32,6 @@ class MapDownloadService : Service() {
     private var currentRegionName: String? = null
     private var lastNotificationUpdate = 0L
     private var lastNotificationProgress = -1
-
-    data class DownloadState(
-        val region: Region? = null,
-        val layerName: String? = null,
-        val progress: Int = 0,
-        val isDownloading: Boolean = false
-    )
 
     override fun onCreate() {
         super.onCreate()
