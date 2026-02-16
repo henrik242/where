@@ -57,7 +57,7 @@ fun IosMapScreen(
     var countyBorders by remember { mutableStateOf(showCountyBorders) }
     var showSavedPoints by remember { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val rulerState = remember { RulerState() }
+    var rulerState by remember { mutableStateOf(RulerState()) }
     val scope = rememberCoroutineScope()
 
     val isRecording by trackRepository.isRecording.collectAsState()
@@ -84,6 +84,11 @@ fun IosMapScreen(
     // Edit point state (tap)
     var showPointInfoDialog by remember { mutableStateOf(false) }
     var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
+
+    // Save ruler as track state
+    var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
+    var rulerTrackName by remember { mutableStateOf("") }
+    var isResolvingRulerName by remember { mutableStateOf(false) }
 
     val cacheDir = remember {
         val paths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
@@ -177,7 +182,10 @@ fun IosMapScreen(
         })
         mapViewProvider.setOnMapClickCallback(object : MapClickCallback {
             override fun onMapClick(latitude: Double, longitude: Double) {
-                if (rulerState.isActive) return
+                if (rulerState.isActive) {
+                    rulerState = rulerState.addPoint(LatLng(latitude, longitude))
+                    return
+                }
                 val tapLocation = LatLng(latitude, longitude)
                 val nearest = SavedPointUtils.findNearestPoint(tapLocation, savedPoints)
                 if (nearest != null) {
@@ -291,6 +299,30 @@ fun IosMapScreen(
         )
     }
 
+    if (showSaveRulerAsTrackDialog) {
+        MapDialogs.SaveRulerAsTrackDialog(
+            trackName = rulerTrackName,
+            rulerState = rulerState,
+            onTrackNameChange = { rulerTrackName = it },
+            isLoading = isResolvingRulerName,
+            onSave = {
+                val name = rulerTrackName
+                if (name.isNotBlank()) {
+                    trackRepository.createTrackFromPoints(name, rulerState.points)
+                    rulerState = rulerState.clear()
+                    mapViewProvider.clearRuler()
+                }
+                showSaveRulerAsTrackDialog = false
+                rulerTrackName = ""
+                scope.launch { snackbarHostState.showSnackbar("Saved as track") }
+            },
+            onDismiss = {
+                showSaveRulerAsTrackDialog = false
+                rulerTrackName = ""
+            }
+        )
+    }
+
     MapScreenContent(
         snackbarHostState = snackbarHostState,
         isRecording = isRecording,
@@ -368,13 +400,58 @@ fun IosMapScreen(
                 )
             }
         },
-        onRulerToggle = {},
+        onRulerToggle = {
+            rulerState = if (rulerState.isActive) {
+                mapViewProvider.clearRuler()
+                rulerState.clear()
+            } else {
+                rulerState.copy(isActive = true)
+            }
+        },
         onSettingsClick = onSettingsClick,
         onZoomIn = { mapViewProvider.zoomIn() },
         onZoomOut = { mapViewProvider.zoomOut() },
-        onRulerUndo = {},
-        onRulerClear = {},
-        onRulerSaveAsTrack = {},
+        onRulerUndo = {
+            rulerState = rulerState.removeLastPoint()
+        },
+        onRulerClear = {
+            mapViewProvider.clearRuler()
+            rulerState = rulerState.clear()
+        },
+        onRulerSaveAsTrack = {
+            showSaveRulerAsTrackDialog = true
+            rulerTrackName = ""
+            isResolvingRulerName = true
+            scope.launch {
+                val points = rulerState.points
+                if (points.isNotEmpty()) {
+                    val firstPoint = points.first()
+                    val lastPoint = points.last()
+                    val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
+                    val baseName = if (points.size > 1) {
+                        val distance = firstPoint.latLng.distanceTo(lastPoint.latLng)
+                        if (distance > 100 && startName != null) {
+                            val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
+                            if (endName != null && startName != endName) {
+                                "$startName → $endName"
+                            } else {
+                                startName
+                            }
+                        } else {
+                            startName
+                        }
+                    } else {
+                        startName
+                    }
+                    if (baseName != null) {
+                        rulerTrackName = NamingUtils.makeUnique(
+                            baseName, trackRepository.tracks.value.map { it.name }
+                        )
+                    }
+                }
+                isResolvingRulerName = false
+            }
+        },
         onOnlineTrackingChange = {},
         onCloseViewingTrack = {
             trackRepository.clearViewingTrack()
@@ -426,6 +503,19 @@ fun IosMapScreen(
                         mapViewProvider.updateSavedPoints(geoJson)
                     } else {
                         mapViewProvider.clearSavedPoints()
+                    }
+
+                    // Ruler rendering
+                    if (rulerState.points.isNotEmpty()) {
+                        val pointsGeoJson = buildRulerPointsGeoJson(rulerState.points)
+                        val lineGeoJson = if (rulerState.points.size >= 2) {
+                            buildRulerLineGeoJson(rulerState.points)
+                        } else {
+                            """{"type":"Feature","geometry":{"type":"LineString","coordinates":[]}}"""
+                        }
+                        mapViewProvider.updateRuler(lineGeoJson, pointsGeoJson)
+                    } else {
+                        mapViewProvider.clearRuler()
                     }
                 }
             )
