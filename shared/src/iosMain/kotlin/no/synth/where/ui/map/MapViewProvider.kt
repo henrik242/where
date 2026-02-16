@@ -9,4 +9,7 @@ interface MapViewProvider {
     fun setShowsUserLocation(show: Boolean)
     fun zoomIn()
     fun zoomOut()
+    fun updateTrackLine(geoJson: String, color: String)
+    fun clearTrackLine()
+    fun getUserLocation(): List<Double>?
 }
