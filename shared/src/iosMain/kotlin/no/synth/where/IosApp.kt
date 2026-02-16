@@ -23,6 +23,7 @@ import no.synth.where.ui.TracksScreenContent
 import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
 import no.synth.where.ui.theme.WhereTheme
+import no.synth.where.util.IosPlatformActions
 import org.koin.mp.KoinPlatform.getKoin
 
 enum class Screen {
@@ -111,19 +112,37 @@ fun IosApp(mapViewProvider: MapViewProvider) {
                 var trackToDelete by remember { mutableStateOf<Track?>(null) }
                 var trackToRename by remember { mutableStateOf<Track?>(null) }
                 var newTrackName by remember { mutableStateOf("") }
+                var showImportError by remember { mutableStateOf(false) }
+                var importErrorMessage by remember { mutableStateOf("") }
+                fun sanitizeFileName(name: String): String =
+                    name.replace(" ", "_").replace(":", "-")
 
                 TracksScreenContent(
                     tracks = tracks,
                     trackToDelete = trackToDelete,
                     trackToRename = trackToRename,
                     newTrackName = newTrackName,
-                    showImportError = false,
-                    importErrorMessage = "",
+                    showImportError = showImportError,
+                    importErrorMessage = importErrorMessage,
                     onBackClick = { navigateBack() },
-                    onImport = {},
-                    onExport = {},
-                    onSave = {},
-                    onOpen = {},
+                    onImport = {
+                        IosPlatformActions.pickFile(listOf("public.xml", "org.topografix.gpx")) { content ->
+                            if (content == null) return@pickFile
+                            try {
+                                val imported = trackRepository.importTrack(content)
+                                if (imported == null) {
+                                    importErrorMessage = "Failed to import GPX file. The file may be corrupted or in an unsupported format."
+                                    showImportError = true
+                                }
+                            } catch (e: Exception) {
+                                importErrorMessage = "Error importing GPX file: ${e.message}"
+                                showImportError = true
+                            }
+                        }
+                    },
+                    onExport = { track ->
+                        IosPlatformActions.shareFile("${sanitizeFileName(track.name)}.gpx", track.toGPX())
+                    },
                     onDeleteRequest = { trackToDelete = it },
                     onConfirmDelete = {
                         trackToDelete?.let { trackRepository.deleteTrack(it) }
@@ -140,7 +159,7 @@ fun IosApp(mapViewProvider: MapViewProvider) {
                         trackToRename = null
                     },
                     onDismissRename = { trackToRename = null },
-                    onDismissImportError = {},
+                    onDismissImportError = { showImportError = false },
                     onContinue = {},
                     onShowOnMap = { track ->
                         trackRepository.setViewingTrack(track)
@@ -183,6 +202,7 @@ fun IosApp(mapViewProvider: MapViewProvider) {
 
             Screen.ONLINE_TRACKING -> {
                 var showRegenerateDialog by remember { mutableStateOf(false) }
+                val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
 
                 LaunchedEffect(Unit) {
                     if (clientId.isEmpty()) {
@@ -196,8 +216,13 @@ fun IosApp(mapViewProvider: MapViewProvider) {
                     showRegenerateDialog = showRegenerateDialog,
                     onBackClick = { navigateBack() },
                     onToggleTracking = { userPreferences.updateOnlineTrackingEnabled(it) },
-                    onViewOnWeb = {},
-                    onShare = {},
+                    onViewOnWeb = {
+                        IosPlatformActions.openUrl("${trackingServerUrl}?clients=$clientId")
+                    },
+                    onShare = {
+                        val url = "${trackingServerUrl}?clients=$clientId"
+                        IosPlatformActions.shareText("Track my location: $url")
+                    },
                     onRegenerateClick = { showRegenerateDialog = true },
                     onConfirmRegenerate = {
                         scope.launch { clientId = clientIdManager.regenerateClientId() }

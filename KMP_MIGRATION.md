@@ -447,13 +447,43 @@ Wired the remaining map screen interactions: place search, "show on map" for tra
 
 ---
 
-## Phase 13 — iOS sharing and file operations (planned)
+## Phase 13 — iOS sharing and file operations ✅ DONE
 
-### Steps
-1. GPX export via `UIActivityViewController`
-2. GPX import via `UIDocumentPickerViewController`
-3. Online tracking link sharing via `UIActivityViewController`
-4. Open tracking URL in Safari via `UIApplication.shared.open`
+Wired up GPX import/export/save/open for tracks and online tracking sharing/view-on-web. All business logic was already in commonMain; this phase bridges Compose callbacks to iOS platform APIs.
+
+### What was done
+
+1. **Created `IosPlatformActions`** — Utility object in `shared/src/iosMain/kotlin/no/synth/where/util/IosPlatformActions.kt` with four functions:
+   - `openUrl(url)` → `UIApplication.sharedApplication.openURL()`
+   - `shareText(text)` → Present `UIActivityViewController` with text
+   - `shareFile(fileName, content)` → Write to temp file via `NSData`, present `UIActivityViewController` with file URL
+   - `pickFile(types, onResult)` → Present `UIDocumentPickerViewController` with UTType list, read file content via security-scoped access (`startAccessingSecurityScopedResource`/`stopAccessingSecurityScopedResource`)
+   - Document picker delegate stored as class-level ref to prevent GC. `topViewController()` helper walks presented VC chain from key window root.
+
+2. **Wired GPX import** — `onImport` calls `IosPlatformActions.pickFile` with `public.xml` and `org.topografix.gpx` UTTypes. Callback calls `trackRepository.importTrack(gpxContent)`. On null result or exception, sets `showImportError`/`importErrorMessage` state for the error dialog.
+
+3. **Wired GPX export** — `onExport` uses `IosPlatformActions.shareFile` (share sheet with GPX file URL). File name sanitization matches Android (`replace(" ", "_").replace(":", "-")`). iOS only shows this single share button (Save and Open are hidden) since the iOS share sheet covers save-to-files, AirDrop, and open-in-app. `TracksScreenContent` accepts nullable `onSave`/`onOpen` — when null, those buttons are hidden and the layout adjusts.
+
+4. **Wired online tracking** — Collects `trackingServerUrl` from `UserPreferences`. `onViewOnWeb` opens `${trackingServerUrl}?clients=$clientId` in Safari via `IosPlatformActions.openUrl`. `onShare` shares "Track my location: ..." text via `IosPlatformActions.shareText`.
+
+### Key decisions
+
+- **Single share button on iOS** — Android has three distinct actions (Save to Downloads, Open in external app, Share via intent). On iOS, the share sheet covers all three, so only the share/export button is shown. `TracksScreenContent` was updated to accept nullable `onSave`/`onOpen` callbacks — when null, buttons are hidden.
+- **UTType for GPX** — Uses `org.topografix.gpx` (custom UTType identifier) and `public.xml` as fallback since not all file managers register the GPX type.
+- **Security-scoped access** — Document picker requires `startAccessingSecurityScopedResource()`/`stopAccessingSecurityScopedResource()` to read files from other apps' sandboxes.
+
+**Files created:**
+- `shared/src/iosMain/kotlin/no/synth/where/util/IosPlatformActions.kt`
+
+**Files modified:**
+- `shared/src/iosMain/kotlin/no/synth/where/IosApp.kt` — wired all callbacks
+
+**No changes to commonMain or Android** — fully backwards-compatible.
+
+**Verification:**
+- `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` — BUILD SUCCESSFUL
+- `cd app && ../gradlew assembleDebug` — BUILD SUCCESSFUL (no Android regression)
+- `cd app && ../gradlew testDebugUnitTest` — BUILD SUCCESSFUL (all tests pass)
 
 ---
 
