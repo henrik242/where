@@ -8,6 +8,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
     private var pendingTrackGeoJson: String?
     private var pendingTrackColor: String?
     private var pendingSavedPointsGeoJson: String?
+    private var pendingRulerLineGeoJson: String?
+    private var pendingRulerPointsGeoJson: String?
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
@@ -16,6 +18,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
     private let trackLayerId = "track-layer"
     private let savedPointsSourceId = "saved-points-source"
     private let savedPointsLayerId = "saved-points-layer"
+    private let rulerLineSourceId = "ruler-line-source"
+    private let rulerLineLayerId = "ruler-line-layer"
+    private let rulerPointSourceId = "ruler-point-source"
+    private let rulerPointLayerId = "ruler-point-layer"
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -143,6 +149,22 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
         removeSavedPoints(style: style)
     }
 
+    func updateRuler(lineGeoJson: String, pointsGeoJson: String) {
+        guard let mapView = self.mapView, let style = mapView.style else {
+            pendingRulerLineGeoJson = lineGeoJson
+            pendingRulerPointsGeoJson = pointsGeoJson
+            return
+        }
+        applyRuler(style: style, lineGeoJson: lineGeoJson, pointsGeoJson: pointsGeoJson)
+    }
+
+    func clearRuler() {
+        pendingRulerLineGeoJson = nil
+        pendingRulerPointsGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeRuler(style: style)
+    }
+
     func getUserLocation() -> [KotlinDouble]? {
         guard let mapView = self.mapView,
               let location = mapView.userLocation?.location else { return nil }
@@ -158,6 +180,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
         }
         if let geoJson = pendingSavedPointsGeoJson {
             applySavedPoints(style: style, geoJson: geoJson)
+        }
+        if let lineGeoJson = pendingRulerLineGeoJson, let pointsGeoJson = pendingRulerPointsGeoJson {
+            applyRuler(style: style, lineGeoJson: lineGeoJson, pointsGeoJson: pointsGeoJson)
         }
     }
 
@@ -225,6 +250,48 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
         if let existingSource = style.source(withIdentifier: savedPointsSourceId) {
             style.removeSource(existingSource)
         }
+    }
+
+    private func applyRuler(style: MLNStyle, lineGeoJson: String, pointsGeoJson: String) {
+        removeRuler(style: style)
+
+        // Ruler line (orange dashed)
+        if let lineData = lineGeoJson.data(using: .utf8),
+           let lineShape = try? MLNShape(data: lineData, encoding: String.Encoding.utf8.rawValue) {
+            let lineSource = MLNShapeSource(identifier: rulerLineSourceId, shape: lineShape, options: nil)
+            style.addSource(lineSource)
+
+            let lineLayer = MLNLineStyleLayer(identifier: rulerLineLayerId, source: lineSource)
+            lineLayer.lineColor = NSExpression(forConstantValue: UIColor(hex: "#FFA500"))
+            lineLayer.lineWidth = NSExpression(forConstantValue: 3)
+            lineLayer.lineOpacity = NSExpression(forConstantValue: 0.9)
+            lineLayer.lineDashPattern = NSExpression(forConstantValue: [2, 2])
+            style.addLayer(lineLayer)
+        }
+
+        // Ruler points (orange circles with white stroke)
+        if let pointsData = pointsGeoJson.data(using: .utf8),
+           let pointsShape = try? MLNShape(data: pointsData, encoding: String.Encoding.utf8.rawValue) {
+            let pointSource = MLNShapeSource(identifier: rulerPointSourceId, shape: pointsShape, options: nil)
+            style.addSource(pointSource)
+
+            let pointLayer = MLNCircleStyleLayer(identifier: rulerPointLayerId, source: pointSource)
+            pointLayer.circleRadius = NSExpression(forConstantValue: 6)
+            pointLayer.circleColor = NSExpression(forConstantValue: UIColor(hex: "#FFA500"))
+            pointLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)
+            pointLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+            style.addLayer(pointLayer)
+        }
+
+        pendingRulerLineGeoJson = lineGeoJson
+        pendingRulerPointsGeoJson = pointsGeoJson
+    }
+
+    private func removeRuler(style: MLNStyle) {
+        if let layer = style.layer(withIdentifier: rulerLineLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: rulerLineSourceId) { style.removeSource(source) }
+        if let layer = style.layer(withIdentifier: rulerPointLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: rulerPointSourceId) { style.removeSource(source) }
     }
 }
 

@@ -25,4 +25,6 @@ interface MapViewProvider {
     fun clearSavedPoints()
     fun setOnLongPressCallback(callback: MapLongPressCallback?)
     fun setOnMapClickCallback(callback: MapClickCallback?)
+    fun updateRuler(lineGeoJson: String, pointsGeoJson: String)
+    fun clearRuler()
 }
