@@ -2,6 +2,14 @@ package no.synth.where.ui.map
 
 import platform.UIKit.UIView
 
+interface MapLongPressCallback {
+    fun onLongPress(latitude: Double, longitude: Double)
+}
+
+interface MapClickCallback {
+    fun onMapClick(latitude: Double, longitude: Double)
+}
+
 interface MapViewProvider {
     fun createMapView(): UIView
     fun setStyle(json: String)
@@ -15,4 +23,6 @@ interface MapViewProvider {
     fun setCameraBounds(south: Double, west: Double, north: Double, east: Double, padding: Int)
     fun updateSavedPoints(geoJson: String)
     fun clearSavedPoints()
+    fun setOnLongPressCallback(callback: MapLongPressCallback?)
+    fun setOnMapClickCallback(callback: MapClickCallback?)
 }

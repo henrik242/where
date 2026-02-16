@@ -9,6 +9,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
     private var pendingTrackColor: String?
     private var pendingSavedPointsGeoJson: String?
 
+    private var longPressCallback: MapLongPressCallback?
+    private var mapClickCallback: MapClickCallback?
+
     private let trackSourceId = "track-source"
     private let trackLayerId = "track-layer"
     private let savedPointsSourceId = "saved-points-source"
@@ -25,8 +28,38 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
         map.delegate = self
         // Default camera: center of Norway
         map.setCenter(CLLocationCoordinate2D(latitude: 65.0, longitude: 14.0), zoomLevel: 4, animated: false)
+
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        map.addGestureRecognizer(longPress)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+        tap.require(toFail: longPress)
+        map.addGestureRecognizer(tap)
+
         self.mapView = map
         return map
+    }
+
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, let mapView = self.mapView else { return }
+        let point = gesture.location(in: mapView)
+        let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
+        longPressCallback?.onLongPress(latitude: coordinate.latitude, longitude: coordinate.longitude)
+    }
+
+    @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        guard let mapView = self.mapView else { return }
+        let point = gesture.location(in: mapView)
+        let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
+        mapClickCallback?.onMapClick(latitude: coordinate.latitude, longitude: coordinate.longitude)
+    }
+
+    func setOnLongPressCallback(callback: MapLongPressCallback?) {
+        self.longPressCallback = callback
+    }
+
+    func setOnMapClickCallback(callback: MapClickCallback?) {
+        self.mapClickCallback = callback
     }
 
     func setStyle(json: String) {

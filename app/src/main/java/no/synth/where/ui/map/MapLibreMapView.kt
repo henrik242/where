@@ -23,6 +23,7 @@ import no.synth.where.data.MapStyle
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
+import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.Track
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.toCommon
@@ -250,11 +251,7 @@ fun MapLibreMapView(
                     onRulerPointAdded(commonPoint)
                     true
                 } else {
-                    val clickedSavedPoint = savedPoints.minByOrNull { savedPoint ->
-                        commonPoint.distanceTo(savedPoint.latLng)
-                    }?.let { closestPoint ->
-                        if (commonPoint.distanceTo(closestPoint.latLng) < 500) closestPoint else null
-                    }
+                    val clickedSavedPoint = SavedPointUtils.findNearestPoint(commonPoint, savedPoints)
 
                     if (clickedSavedPoint != null) {
                         onPointClick(clickedSavedPoint)

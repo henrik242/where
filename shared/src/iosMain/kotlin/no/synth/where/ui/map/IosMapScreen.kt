@@ -24,8 +24,10 @@ import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
+import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
+import no.synth.where.data.geo.LatLng
 import no.synth.where.location.IosLocationTracker
 import no.synth.where.util.NamingUtils
 import org.koin.mp.KoinPlatform.getKoin
@@ -72,6 +74,16 @@ fun IosMapScreen(
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<PlaceSearchClient.SearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
+
+    // Save point state (long press)
+    var showSavePointDialog by remember { mutableStateOf(false) }
+    var savePointLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var savePointName by remember { mutableStateOf("") }
+    var isResolvingPointName by remember { mutableStateOf(false) }
+
+    // Edit point state (tap)
+    var showPointInfoDialog by remember { mutableStateOf(false) }
+    var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
     val cacheDir = remember {
         val paths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
@@ -142,6 +154,40 @@ fun IosMapScreen(
         }
     }
 
+    // Set gesture callbacks
+    LaunchedEffect(rulerState.isActive, savedPoints.size) {
+        mapViewProvider.setOnLongPressCallback(object : MapLongPressCallback {
+            override fun onLongPress(latitude: Double, longitude: Double) {
+                if (rulerState.isActive) return
+                val latLng = LatLng(latitude, longitude)
+                savePointLatLng = latLng
+                savePointName = ""
+                isResolvingPointName = true
+                showSavePointDialog = true
+                scope.launch {
+                    val name = GeocodingHelper.reverseGeocode(latLng)
+                    if (name != null) {
+                        savePointName = NamingUtils.makeUnique(
+                            name, savedPoints.map { it.name }
+                        )
+                    }
+                    isResolvingPointName = false
+                }
+            }
+        })
+        mapViewProvider.setOnMapClickCallback(object : MapClickCallback {
+            override fun onMapClick(latitude: Double, longitude: Double) {
+                if (rulerState.isActive) return
+                val tapLocation = LatLng(latitude, longitude)
+                val nearest = SavedPointUtils.findNearestPoint(tapLocation, savedPoints)
+                if (nearest != null) {
+                    clickedPoint = nearest
+                    showPointInfoDialog = true
+                }
+            }
+        })
+    }
+
     if (showStopTrackDialog) {
         MapDialogs.StopTrackDialog(
             trackNameInput = trackNameInput,
@@ -171,6 +217,77 @@ fun IosMapScreen(
                 showStopTrackDialog = false
             },
             isLoading = isResolvingTrackName
+        )
+    }
+
+    if (showSavePointDialog && savePointLatLng != null) {
+        val latLng = savePointLatLng!!
+        MapDialogs.SavePointDialog(
+            pointName = savePointName,
+            onPointNameChange = { savePointName = it },
+            isLoading = isResolvingPointName,
+            coordinates = "${latLng.latitude.toString().take(10)}, ${latLng.longitude.toString().take(10)}",
+            onSave = {
+                savedPointsRepository.addPoint(
+                    name = savePointName.ifBlank { "Unnamed point" },
+                    latLng = latLng
+                )
+                showSavePointDialog = false
+                savePointLatLng = null
+                savePointName = ""
+                scope.launch { snackbarHostState.showSnackbar("Point saved") }
+            },
+            onDismiss = {
+                showSavePointDialog = false
+                savePointLatLng = null
+                savePointName = ""
+            }
+        )
+    }
+
+    if (showPointInfoDialog && clickedPoint != null) {
+        var editName by remember { mutableStateOf(clickedPoint!!.name) }
+        var editDescription by remember { mutableStateOf(clickedPoint!!.description ?: "") }
+        var editColor by remember { mutableStateOf(clickedPoint!!.color ?: "#FF5722") }
+
+        val colors = listOf(
+            "#FF5722" to "Red",
+            "#2196F3" to "Blue",
+            "#4CAF50" to "Green",
+            "#FFC107" to "Yellow",
+            "#9C27B0" to "Purple",
+            "#FF9800" to "Orange",
+            "#00BCD4" to "Cyan",
+            "#E91E63" to "Pink"
+        )
+
+        MapDialogs.PointInfoDialog(
+            pointName = editName,
+            pointDescription = editDescription,
+            pointColor = editColor,
+            coordinates = "${clickedPoint!!.latLng.latitude.toString().take(10)}, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
+            availableColors = colors,
+            onNameChange = { editName = it },
+            onDescriptionChange = { editDescription = it },
+            onColorChange = { editColor = it },
+            onDelete = {
+                clickedPoint?.let { savedPointsRepository.deletePoint(it.id) }
+                showPointInfoDialog = false
+                clickedPoint = null
+                scope.launch { snackbarHostState.showSnackbar("Point deleted") }
+            },
+            onSave = {
+                clickedPoint?.let {
+                    savedPointsRepository.updatePoint(it.id, editName, editDescription, editColor)
+                }
+                showPointInfoDialog = false
+                clickedPoint = null
+                scope.launch { snackbarHostState.showSnackbar("Point updated") }
+            },
+            onDismiss = {
+                showPointInfoDialog = false
+                clickedPoint = null
+            }
         )
     }
 
