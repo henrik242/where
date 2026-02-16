@@ -300,12 +300,9 @@ fun LayerRegionsScreenContent(
             }
 
             items(regions) { region ->
-                @Suppress("UNUSED_VARIABLE")
-                val trigger = refreshTrigger
-
                 var tileInfo by remember { mutableStateOf<RegionTileInfo?>(null) }
 
-                LaunchedEffect(region, layerId) {
+                LaunchedEffect(region, layerId, refreshTrigger) {
                     tileInfo = getRegionTileInfo(region)
                 }
 

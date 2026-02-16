@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import no.synth.where.R
+import no.synth.where.data.DownloadLayers
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.Region
@@ -39,15 +40,21 @@ fun DownloadScreen(
     val opentopomapDesc = stringResource(R.string.layer_opentopomap_desc)
     val waymarkedtrailsDesc = stringResource(R.string.layer_waymarkedtrails_desc)
 
-    val layers = remember(kartverketDesc) {
-        listOf(
-            LayerInfo("kartverket", "Kartverket", kartverketDesc),
-            LayerInfo("toporaster", "Kartverket Toporaster", toporasterDesc),
-            LayerInfo("sjokartraster", "Kartverket Sjøkart", sjokartrasterDesc),
-            LayerInfo("osm", "OpenStreetMap", osmDesc),
-            LayerInfo("opentopomap", "OpenTopoMap", opentopomapDesc),
-            LayerInfo("waymarkedtrails", "Waymarked Trails", waymarkedtrailsDesc)
+    val descriptionMap = remember(kartverketDesc) {
+        mapOf(
+            "kartverket" to kartverketDesc,
+            "toporaster" to toporasterDesc,
+            "sjokartraster" to sjokartrasterDesc,
+            "osm" to osmDesc,
+            "opentopomap" to opentopomapDesc,
+            "waymarkedtrails" to waymarkedtrailsDesc,
         )
+    }
+
+    val layers = remember(descriptionMap) {
+        DownloadLayers.all.map { layer ->
+            LayerInfo(layer.id, layer.displayName, descriptionMap[layer.id] ?: "")
+        }
     }
 
     LaunchedEffect(refreshTrigger) {
@@ -99,15 +106,7 @@ fun LayerRegionsScreen(
     }
 
     val layerDisplayName = remember(layerId) {
-        when (layerId) {
-            "kartverket" -> "Kartverket"
-            "toporaster" -> "Kartverket Toporaster"
-            "sjokartraster" -> "Kartverket Sjøkart"
-            "osm" -> "OpenStreetMap"
-            "opentopomap" -> "OpenTopoMap"
-            "waymarkedtrails" -> "Waymarked Trails"
-            else -> layerId
-        }
+        DownloadLayers.all.find { it.id == layerId }?.displayName ?: layerId
     }
 
     LayerRegionsScreenContent(
