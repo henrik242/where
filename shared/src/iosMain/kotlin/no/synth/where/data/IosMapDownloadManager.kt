@@ -70,6 +70,9 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         pollJob = scope.launch {
             delay(2000) // Wait for addPack to complete
             Logger.d("Starting progress polling for %s", regionName)
+            var lastPolledProgress = -1
+            var stallCount = 0
+            var stallThreshold = 15 // First stall triggers after ~15s, then backs off
             while (isActive && _downloadState.value.isDownloading) {
                 try {
                     val status = offlineMapManager.getRegionStatusEncoded(regionName)
@@ -88,6 +91,24 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
                             _downloadState.value = DownloadState()
                             break
                         }
+                        // Stall detection: auto-resume when no tile progress
+                        if (downloaded == lastPolledProgress && downloaded > 0) {
+                            stallCount++
+                            if (stallCount >= stallThreshold) {
+                                Logger.d("Auto-resuming stalled pack for %s (stuck at %s tiles for %ss)", regionName, downloaded.toString(), stallCount.toString())
+                                offlineMapManager.resumeDownload(regionName)
+                                stallCount = 0
+                                // Keep lastPolledProgress — don't reset to -1 or the
+                                // "progress changed" branch will reset stallThreshold
+                                stallThreshold = (stallThreshold * 2).coerceAtMost(120)
+                                delay(5_000) // Cooldown: let server throttle expire
+                                continue
+                            }
+                        } else if (downloaded > lastPolledProgress) {
+                            stallCount = 0
+                            stallThreshold = 15 // Reset backoff on real progress
+                        }
+                        lastPolledProgress = downloaded
                     }
                 } catch (e: Exception) {
                     Logger.e("Poll error for %s: %s", regionName, e.message ?: "unknown")

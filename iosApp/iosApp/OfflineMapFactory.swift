@@ -45,23 +45,33 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         activeObservers.removeValue(forKey: regionName)
         cachedStatus.removeValue(forKey: regionName)
 
-        // Register style with HTTP server (needed for both new and resumed packs)
+        // Register style with HTTP server
         StyleServer.shared.setStyle(name: regionName, json: styleJson)
 
-        // Check if pack already exists in storage — resume instead of remove+add
+        let styleURL = StyleServer.shared.styleURL(for: regionName)
+
+        // Delete any existing pack — stale packs from previous sessions may have
+        // broken internal state (wrong tile URLs, exhausted retries). Creating a
+        // fresh pack with the current style JSON is more reliable than resuming.
         if let existing = findPackSync(name: regionName) {
-            NSLog("[OfflineMap] Resuming existing pack for \(regionName) (state=\(existing.state.rawValue))")
-            activeObservers[regionName] = observer
-            activePacks[regionName] = existing
-            existing.resume()
+            NSLog("[OfflineMap] Removing stale pack for \(regionName) (state=\(existing.state.rawValue)) before creating fresh")
+            invalidatedPacks.insert(ObjectIdentifier(existing))
+            if existing.state == .active {
+                existing.suspend()
+            }
+            MLNOfflineStorage.shared.removePack(existing) { [weak self] error in
+                if let error = error {
+                    NSLog("[OfflineMap] removePack error during refresh for \(regionName): \(error)")
+                }
+                // Create new pack after old one is removed
+                self?.startPack(regionName: regionName, layerName: layerName, styleURL: styleURL,
+                               south: south, west: west, north: north, east: east,
+                               minZoom: minZoom, maxZoom: maxZoom, observer: observer)
+            }
             return
         }
 
-        // Create new pack with HTTP style URL
-        let styleURL = StyleServer.shared.styleURL(for: regionName)
-        NSLog("[OfflineMap] Style URL: \(styleURL)")
-        NSLog("[OfflineMap] Style JSON (\(styleJson.count) chars): \(styleJson.prefix(500))")
-
+        NSLog("[OfflineMap] No existing pack for \(regionName), creating new")
         startPack(regionName: regionName, layerName: layerName, styleURL: styleURL,
                   south: south, west: west, north: north, east: east,
                   minZoom: minZoom, maxZoom: maxZoom, observer: observer)
@@ -85,7 +95,7 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
 
         NSLog("[OfflineMap] Creating new pack for \(regionName), bounds=(\(south),\(west))-(\(north),\(east)), zoom=\(minZoom)-\(maxZoom)")
         NSLog("[OfflineMap] styleURL=\(styleURL)")
-        NSLog("[OfflineMap] Database path: \(MLNOfflineStorage.shared.databasePath ?? "nil")")
+        NSLog("[OfflineMap] Database path: \(MLNOfflineStorage.shared.databasePath)")
         NSLog("[OfflineMap] Existing packs count: \(MLNOfflineStorage.shared.packs?.count ?? -1)")
 
         MLNOfflineStorage.shared.addPack(for: region, withContext: metadata) { [weak self] pack, error in
@@ -121,18 +131,38 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         activeObservers.removeValue(forKey: regionName)
     }
 
+    func resumeDownload(regionName: String) {
+        guard let pack = activePacks[regionName] else {
+            NSLog("[OfflineMap] Auto-resume: no pack in activePacks for \(regionName)")
+            return
+        }
+
+        let packId = ObjectIdentifier(pack)
+        NSLog("[OfflineMap] Auto-resume for \(regionName): state=\(pack.state.rawValue), invalidated=\(invalidatedPacks.contains(packId))")
+
+        // Suspend then resume after a pause to kick MapLibre's download engine
+        pack.suspend()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            pack.resume()
+            NSLog("[OfflineMap] Auto-resume: resumed pack for \(regionName) (state=\(pack.state.rawValue))")
+        }
+    }
+
     func getRegionStatusEncoded(regionName: String) -> String {
-        // Check active in-memory pack first (has current download progress)
+        // Active download: trust the pack reference directly — never fall through
+        // to findPackSync, because reloadPacks() invalidates live pack objects.
         if let pack = activePacks[regionName],
            !invalidatedPacks.contains(ObjectIdentifier(pack)),
            pack.state != .invalid {
             let status = encodePackStatus(pack, name: regionName)
             if !status.hasPrefix("0,0,") {
                 cachedStatus[regionName] = status
-                return status
             }
+            return cachedStatus[regionName] ?? status
         }
-        // Fall back to storage for completed/historical packs
+
+        // No active download — safe to check storage for completed/historical packs
         let storedPack = findPackSync(name: regionName)
         if let pack = storedPack {
             let status = encodePackStatus(pack, name: regionName)
@@ -141,7 +171,6 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
                 return status
             }
         }
-        // Use cached status (best progress seen so far)
         if let cached = cachedStatus[regionName] {
             return cached
         }
@@ -200,8 +229,10 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             }
         }
 
-        // Include stored packs not already counted
-        MLNOfflineStorage.shared.reloadPacks()
+        // Include stored packs not already counted (skip reload during active downloads)
+        if activePacks.isEmpty {
+            MLNOfflineStorage.shared.reloadPacks()
+        }
         if let packs = MLNOfflineStorage.shared.packs {
             for pack in packs {
                 guard !invalidatedPacks.contains(ObjectIdentifier(pack)) else { continue }
@@ -306,7 +337,11 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
     // MARK: - Helpers
 
     private func findPackSync(name: String) -> MLNOfflinePack? {
-        MLNOfflineStorage.shared.reloadPacks()
+        // reloadPacks() invalidates ALL existing MLNOfflinePack Swift objects,
+        // killing active downloads. Only reload when no downloads are running.
+        if activePacks.isEmpty {
+            MLNOfflineStorage.shared.reloadPacks()
+        }
         guard let packs = MLNOfflineStorage.shared.packs else { return nil }
         return packs.first { pack in
             guard !self.invalidatedPacks.contains(ObjectIdentifier(pack)) else { return false }
