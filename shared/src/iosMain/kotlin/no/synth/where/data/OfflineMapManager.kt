@@ -13,6 +13,7 @@ interface OfflineMapManager {
         minZoom: Int, maxZoom: Int, observer: OfflineMapDownloadObserver
     )
     fun stopDownload(regionName: String)
+    fun resumeDownload(regionName: String)
 
     // Synchronous queries — return encoded strings for reliable Kotlin/Native ↔ Swift interop.
     // Returns "downloadedTiles,totalTiles,downloadedSize,isComplete" or "" if not found

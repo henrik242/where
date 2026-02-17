@@ -4,7 +4,7 @@ object RegionsRepository {
     private var _regions: List<Region>? = null
 
     fun getRegions(cacheDir: PlatformFile): List<Region> {
-        if (_regions == null) {
+        if (_regions.isNullOrEmpty()) {
             _regions = FylkeDataLoader.loadFylker(cacheDir)
         }
         return _regions ?: emptyList()
