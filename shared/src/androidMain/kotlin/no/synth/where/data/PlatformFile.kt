@@ -10,4 +10,5 @@ actual class PlatformFile(internal val file: File) {
     actual fun lastModified(): Long = file.lastModified()
     actual fun writeBytes(bytes: ByteArray) = file.writeBytes(bytes)
     actual fun length(): Long = file.length()
+    actual fun delete(): Boolean = file.delete()
 }

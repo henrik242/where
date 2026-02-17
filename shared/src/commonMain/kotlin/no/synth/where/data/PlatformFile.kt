@@ -8,4 +8,5 @@ expect class PlatformFile {
     fun lastModified(): Long
     fun writeBytes(bytes: ByteArray)
     fun length(): Long
+    fun delete(): Boolean
 }
