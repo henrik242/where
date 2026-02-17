@@ -136,7 +136,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 val currentThemeLabel = themeOptions.find { it.tag == themeMode }?.displayName ?: "System"
 
                 SettingsScreenContent(
-                    versionInfo = "Where iOS MVP",
+                    versionInfo = BuildInfo.VERSION_INFO,
                     onBackClick = { navigateBack() },
                     onDownloadClick = { navigateTo(Screen.DOWNLOAD) },
                     onTracksClick = { navigateTo(Screen.TRACKS) },

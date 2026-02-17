@@ -6,7 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.core.os.LocaleListCompat
-import no.synth.where.BuildConfig
+import no.synth.where.BuildInfo
 import no.synth.where.R
 import no.synth.where.data.UserPreferences
 
@@ -43,7 +43,7 @@ fun SettingsScreen(
         ?: themeOptions.first().displayName
 
     SettingsScreenContent(
-        versionInfo = "${BuildConfig.GIT_COMMIT_COUNT}.${BuildConfig.GIT_SHORT_SHA} ${BuildConfig.BUILD_DATE}",
+        versionInfo = BuildInfo.VERSION_INFO,
         onBackClick = onBackClick,
         onDownloadClick = onDownloadClick,
         onTracksClick = onTracksClick,
