@@ -58,4 +58,6 @@ actual class PlatformFile(val path: String = "") {
         val attrs = fileManager.attributesOfItemAtPath(path, null) ?: return 0L
         return (attrs["NSFileSize"] as? Number)?.toLong() ?: 0L
     }
+
+    actual fun delete(): Boolean = fileManager.removeItemAtPath(path, null)
 }

@@ -640,10 +640,9 @@ Wired offline map downloads on iOS, matching Android functionality. Extracted sh
 ## Phase 17 — iOS polish (planned)
 
 ### Steps
-1. Implement `ZipUtils` for county borders (Foundation compression or third-party zip)
-2. Git-derived version info (build script or Xcode build phase)
-3. App icon and launch screen
-4. TestFlight distribution setup
+1. Git-derived version info (build script or Xcode build phase)
+2. App icon and launch screen
+3. TestFlight distribution setup
 
 ---
 
