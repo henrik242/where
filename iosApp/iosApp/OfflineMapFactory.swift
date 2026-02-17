@@ -105,17 +105,12 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             self.activePacks[regionName] = pack
             pack.resume()
             NSLog("[OfflineMap] After resume: state=\(pack.state.rawValue)")
-
-            // Delayed state check for debugging
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                let p = pack.progress
-                NSLog("[OfflineMap] 3s check for \(regionName): state=\(pack.state.rawValue), completed=\(p.countOfResourcesCompleted), expected=\(p.countOfResourcesExpected), bytes=\(p.countOfBytesCompleted)")
-            }
         }
     }
 
     func stopDownload(regionName: String) {
-        if let pack = activePacks[regionName] {
+        if let pack = activePacks[regionName],
+           !invalidatedPacks.contains(ObjectIdentifier(pack)) {
             if pack.state != .invalid {
                 // Cache progress BEFORE suspending (suspend may reset progress)
                 cachedStatus[regionName] = encodePackStatus(pack, name: regionName)
@@ -128,7 +123,9 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
 
     func getRegionStatusEncoded(regionName: String) -> String {
         // Check active in-memory pack first (has current download progress)
-        if let pack = activePacks[regionName], pack.state != .invalid {
+        if let pack = activePacks[regionName],
+           !invalidatedPacks.contains(ObjectIdentifier(pack)),
+           pack.state != .invalid {
             let status = encodePackStatus(pack, name: regionName)
             if !status.hasPrefix("0,0,") {
                 cachedStatus[regionName] = status
@@ -164,15 +161,21 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
     }
 
     func deleteRegionSync(regionName: String) -> Bool {
-        // Remove from active tracking
+        // Remove from active tracking and suspend to stop notifications
         if let pack = activePacks.removeValue(forKey: regionName) {
             invalidatedPacks.insert(ObjectIdentifier(pack))
+            if pack.state == .active {
+                pack.suspend()
+            }
         }
         activeObservers.removeValue(forKey: regionName)
         cachedStatus.removeValue(forKey: regionName)
 
         guard let pack = findPackSync(name: regionName) else { return false }
         invalidatedPacks.insert(ObjectIdentifier(pack))
+        if pack.state == .active {
+            pack.suspend()
+        }
         MLNOfflineStorage.shared.removePack(pack) { error in
             if let error = error {
                 NSLog("[OfflineMap] removePack error for \(regionName): \(error)")
@@ -187,7 +190,7 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         var counted = Set<String>()
 
         // Include active in-memory packs
-        for (name, pack) in activePacks where pack.state != .invalid {
+        for (name, pack) in activePacks where !invalidatedPacks.contains(ObjectIdentifier(pack)) && pack.state != .invalid {
             if let metadata = decodeMetadata(data: pack.context),
                metadata["layer"] == layerName {
                 let progress = pack.progress
