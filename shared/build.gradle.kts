@@ -38,6 +38,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.ktor.client.core)
+            implementation(libs.okio)
             implementation(libs.room.runtime)
             implementation(libs.androidx.datastore.preferences)
             @Suppress("DEPRECATION")
