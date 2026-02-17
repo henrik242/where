@@ -21,12 +21,15 @@ object FylkeDownloader {
                 if (ageInDays < 7) {
                     return@withContext true
                 }
+                cacheFile.delete()
             }
 
             val client = createDefaultHttpClient()
             try {
                 val zipBytes = client.get(GEOJSON_URL).readRawBytes()
+                Logger.d("FylkeDownloader: downloaded %s bytes", zipBytes.size.toString())
                 val extracted = extractFirstFileFromZip(zipBytes, ".geojson")
+                Logger.d("FylkeDownloader: extracted %s bytes", (extracted?.size ?: 0).toString())
                 if (extracted != null) {
                     cacheFile.writeBytes(extracted)
                 }

@@ -7,6 +7,7 @@ actual fun createDefaultHttpClient(): HttpClient = HttpClient(Darwin) {
     engine {
         configureRequest {
             setAllowsCellularAccess(true)
+            setTimeoutInterval(30.0)
         }
     }
 }
