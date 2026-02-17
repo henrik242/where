@@ -23,7 +23,7 @@ material = "1.13.0"
 mockk = "1.14.9"
 mockkAndroid = "1.14.9"
 navigationCompose = "2.9.7"
-okio = "3.16.4"
+kmpLibs = "0.4.0"
 playServicesLocation = "21.3.0"
 robolectric = "4.16.1"
 room = "2.8.4"
@@ -67,7 +67,7 @@ maplibre-android-sdk = { group = "org.maplibre.gl", name = "android-sdk", versio
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockkAndroid" }
-okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+kmp-libs = { module = "no.synth.kmplibs:library", version.ref = "kmpLibs" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
