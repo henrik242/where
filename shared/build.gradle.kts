@@ -1,3 +1,5 @@
+import java.time.LocalDate
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
@@ -6,6 +8,46 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.room)
+}
+
+fun execGit(command: Array<String>): String {
+    return try {
+        val process = Runtime.getRuntime().exec(command)
+        val output = process.inputStream.bufferedReader().readText().trim()
+        process.waitFor()
+        output
+    } catch (e: Exception) {
+        println("Warning: Failed to execute '${command.joinToString(" ")}': ${e.message}")
+        ""
+    }
+}
+
+val generateBuildInfo by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/buildinfo")
+    outputs.dir(outputDir)
+    // Always re-run so git info stays current
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val gitCommitCount = execGit(arrayOf("git", "rev-list", "--count", "HEAD")).ifEmpty { "0" }
+        val gitShortSha = execGit(arrayOf("git", "rev-parse", "--short", "HEAD")).ifEmpty { "unknown" }
+        val buildDate = LocalDate.now().toString()
+
+        val dir = outputDir.get().asFile.resolve("no/synth/where")
+        dir.mkdirs()
+        dir.resolve("BuildInfo.kt").writeText(
+            """
+            |package no.synth.where
+            |
+            |object BuildInfo {
+            |    const val GIT_COMMIT_COUNT = "$gitCommitCount"
+            |    const val GIT_SHORT_SHA = "$gitShortSha"
+            |    const val BUILD_DATE = "$buildDate"
+            |    const val VERSION_INFO = "$gitCommitCount.$gitShortSha $buildDate"
+            |}
+            """.trimMargin()
+        )
+    }
 }
 
 kotlin {
@@ -35,6 +77,9 @@ kotlin {
     }
 
     sourceSets {
+        commonMain {
+            kotlin.srcDir(generateBuildInfo.map { it.outputs.files.singleFile })
+        }
         commonMain.dependencies {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.ktor.client.core)

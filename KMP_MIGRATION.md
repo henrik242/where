@@ -637,12 +637,43 @@ Wired offline map downloads on iOS, matching Android functionality. Extracted sh
 
 ---
 
-## Phase 17 — iOS polish (planned)
+## Phase 17 — iOS polish ✅ DONE
+
+Made the iOS app production-ready: shared git-derived version info, app icon asset catalog, and TestFlight-ready Info.plist.
+
+### What was done
+
+1. **Shared `BuildInfo` object** — Added a Gradle task in `shared/build.gradle.kts` that generates `BuildInfo.kt` at build time with `GIT_COMMIT_COUNT`, `GIT_SHORT_SHA`, `BUILD_DATE`, and `VERSION_INFO`. Wired into `commonMain.kotlin.srcDir(...)` so both platforms use identical version info. Reuses the same `execGit()` pattern from `app/build.gradle.kts`.
+
+2. **Updated version display** — iOS (`IosApp.kt`) replaced hardcoded `"Where iOS MVP"` with `BuildInfo.VERSION_INFO`. Android (`SettingsScreen.kt`) replaced `BuildConfig.GIT_COMMIT_COUNT/GIT_SHORT_SHA/BUILD_DATE` concatenation with `BuildInfo.VERSION_INFO`. Android `BuildConfig` fields kept for `versionCode`/`versionName`.
+
+3. **App icon asset catalog** — Created `iosApp/iosApp/Assets.xcassets/` with `AppIcon.appiconset` (single 1024x1024 entry, modern Xcode generates all sizes). Added to Xcode project as `PBXFileReference` + `PBXBuildFile` in Resources phase.
+
+4. **TestFlight-ready Info.plist** — Changed `CFBundleShortVersionString` to `$(MARKETING_VERSION)` and `CFBundleVersion` to `$(CURRENT_PROJECT_VERSION)`. These reference build settings from `Generated.xcconfig`.
+
+5. **Version build script** — Extended the "Compile Kotlin Framework" shell script phase to generate `iosApp/Generated.xcconfig` with git-derived `CURRENT_PROJECT_VERSION` (commit count) and `MARKETING_VERSION` (1.0.{short-sha}). Both Debug and Release configurations reference this xcconfig. File is gitignored.
+
+6. **BuildInfoTest** — Common test verifying `VERSION_INFO` is not blank, `GIT_COMMIT_COUNT` is numeric, `BUILD_DATE` matches yyyy-MM-dd.
+
+**Files created:**
+- `shared/src/commonTest/kotlin/no/synth/where/BuildInfoTest.kt`
+- `iosApp/iosApp/Assets.xcassets/Contents.json`
+- `iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/Contents.json`
+
+**Files modified:**
+- `shared/build.gradle.kts` — BuildInfo generation task + srcDir
+- `shared/src/iosMain/.../IosApp.kt` — `BuildInfo.VERSION_INFO`
+- `app/src/main/.../ui/SettingsScreen.kt` — `BuildInfo.VERSION_INFO`
+- `iosApp/iosApp/Info.plist` — `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)`
+- `iosApp/iosApp.xcodeproj/project.pbxproj` — asset catalog + xcconfig + script
+- `.gitignore` — `iosApp/iosApp/Generated.xcconfig`
+
+## Phase 18 - ios missing pieces
 
 ### Steps
-1. Git-derived version info (build script or Xcode build phase)
-2. App icon and launch screen
-3. TestFlight distribution setup
+1. Crash reporting (e.g. Firebase Crashlytics or alternative)
+2. Language selector and translations (currently hardcoded English)
+3. Online tracking
 
 ---
 

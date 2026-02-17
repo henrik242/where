@@ -16,8 +16,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        mavenLocal()
-        maven("https://henrik242.github.io/kmp-libs")
     }
 }
 
