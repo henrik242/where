@@ -34,7 +34,11 @@ import no.synth.where.ui.SettingsScreenContent
 import no.synth.where.ui.TracksScreenContent
 import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
+import no.synth.where.resources.Res
+import no.synth.where.resources.import_gpx_corrupted
+import no.synth.where.util.CrashReporter
 import no.synth.where.util.Logger
+import org.jetbrains.compose.resources.stringResource
 import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.util.IosPlatformActions
 import org.koin.mp.KoinPlatform.getKoin
@@ -143,7 +147,10 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onSavedPointsClick = { navigateTo(Screen.SAVED_POINTS) },
                     onOnlineTrackingClick = { navigateTo(Screen.ONLINE_TRACKING) },
                     crashReportingEnabled = crashReportingEnabled,
-                    onCrashReportingChange = { userPreferences.updateCrashReportingEnabled(it) },
+                    onCrashReportingChange = {
+                        userPreferences.updateCrashReportingEnabled(it)
+                        CrashReporter.setEnabled(it)
+                    },
                     themeOptions = themeOptions,
                     currentThemeLabel = currentThemeLabel,
                     onThemeSelected = { userPreferences.updateThemeMode(it) }
@@ -156,6 +163,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 var newTrackName by remember { mutableStateOf("") }
                 var showImportError by remember { mutableStateOf(false) }
                 var importErrorMessage by remember { mutableStateOf("") }
+                val gpxCorruptedMsg = stringResource(Res.string.import_gpx_corrupted)
                 fun sanitizeFileName(name: String): String =
                     name.replace(" ", "_").replace(":", "-")
 
@@ -173,11 +181,11 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                             try {
                                 val imported = trackRepository.importTrack(content)
                                 if (imported == null) {
-                                    importErrorMessage = "Failed to import GPX file. The file may be corrupted or in an unsupported format."
+                                    importErrorMessage = gpxCorruptedMsg
                                     showImportError = true
                                 }
                             } catch (e: Exception) {
-                                importErrorMessage = "Error importing GPX file: ${e.message}"
+                                importErrorMessage = e.message ?: gpxCorruptedMsg
                                 showImportError = true
                             }
                         }

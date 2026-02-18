@@ -142,4 +142,21 @@
     <string name="layer_osm_desc">Community-sourced street maps</string>
     <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
+
+    <!-- Map Screen snackbars -->
+    <string name="recording_snackbar">Recording\u2026</string>
+    <string name="track_discarded">Track discarded</string>
+    <string name="track_saved">Track saved</string>
+    <string name="point_saved">Point saved</string>
+    <string name="point_deleted">Point deleted</string>
+    <string name="point_updated">Point updated</string>
+    <string name="online_tracking_enabled">Online tracking enabled</string>
+    <string name="online_tracking_disabled">Online tracking disabled</string>
+    <string name="saved_as_track_name">Saved as track: %1$s</string>
+    <string name="location_permission_required">Location permission required</string>
+    <string name="unnamed_point">Unnamed point</string>
+
+    <!-- GPX import errors -->
+    <string name="import_gpx_corrupted">Failed to import GPX file. The file may be corrupted or in an unsupported format.</string>
+    <string name="import_gpx_error">Error importing GPX file: %1$s</string>
 </resources>

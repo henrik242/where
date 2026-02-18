@@ -2,6 +2,7 @@ package no.synth.where.location
 
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
+import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
@@ -21,6 +22,7 @@ class IosLocationTracker(
     private val locationManager = CLLocationManager()
     private var _lastLocation: CLLocation? = null
     val lastLocation: CLLocation? get() = _lastLocation
+    var onlineTrackingClient: OnlineTrackingClient? = null
 
     init {
         locationManager.delegate = this
@@ -57,11 +59,13 @@ class IosLocationTracker(
             val coordinate = location.coordinate.useContents {
                 LatLng(latitude, longitude)
             }
+            val accuracy = location.horizontalAccuracy.toFloat()
             trackRepository.addTrackPoint(
                 latLng = coordinate,
                 altitude = altitude,
-                accuracy = location.horizontalAccuracy.toFloat()
+                accuracy = accuracy
             )
+            onlineTrackingClient?.sendPoint(coordinate, altitude, accuracy)
         }
     }
 

@@ -142,4 +142,21 @@
     <string name="layer_osm_desc">Brukergenererte gatekart</string>
     <string name="layer_opentopomap_desc">Topografiske kart med turstier</string>
     <string name="layer_waymarkedtrails_desc">Kartlag med merkede stier</string>
+
+    <!-- Map Screen snackbars -->
+    <string name="recording_snackbar">Tar opp\u2026</string>
+    <string name="track_discarded">Spor forkastet</string>
+    <string name="track_saved">Spor lagret</string>
+    <string name="point_saved">Punkt lagret</string>
+    <string name="point_deleted">Punkt slettet</string>
+    <string name="point_updated">Punkt oppdatert</string>
+    <string name="online_tracking_enabled">Direktesporing aktivert</string>
+    <string name="online_tracking_disabled">Direktesporing deaktivert</string>
+    <string name="saved_as_track_name">Lagret som spor: %1$s</string>
+    <string name="location_permission_required">Posisjonstillatelse kreves</string>
+    <string name="unnamed_point">Navnløst punkt</string>
+
+    <!-- GPX import errors -->
+    <string name="import_gpx_corrupted">Kunne ikke importere GPX-fil. Filen kan være skadet eller i et format som ikke støttes.</string>
+    <string name="import_gpx_error">Feil ved import av GPX-fil: %1$s</string>
 </resources>
