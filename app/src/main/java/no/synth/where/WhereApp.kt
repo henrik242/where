@@ -9,7 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import org.koin.androidx.compose.koinViewModel
-import com.google.firebase.crashlytics.FirebaseCrashlytics
+import no.synth.where.util.CrashReporter
 import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.RegionsRepository
@@ -119,7 +119,7 @@ fun WhereApp(
                 crashReportingEnabled = crashReportingEnabled,
                 onCrashReportingChange = { enabled ->
                     userPreferences.updateCrashReportingEnabled(enabled)
-                    FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = enabled
+                    CrashReporter.setEnabled(enabled)
                 },
                 userPreferences = userPreferences
             )

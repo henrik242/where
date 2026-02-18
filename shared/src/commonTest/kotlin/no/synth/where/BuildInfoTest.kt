@@ -18,4 +18,9 @@ class BuildInfoTest {
     fun buildDateMatchesPattern() {
         assertTrue(BuildInfo.BUILD_DATE.matches(Regex("""\d{4}-\d{2}-\d{2}""")))
     }
+
+    @Test
+    fun trackingHmacSecretIsNotBlank() {
+        assertTrue(BuildInfo.TRACKING_HMAC_SECRET.isNotBlank())
+    }
 }

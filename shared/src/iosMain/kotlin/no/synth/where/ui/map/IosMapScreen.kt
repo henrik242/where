@@ -17,8 +17,11 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import no.synth.where.BuildInfo
+import no.synth.where.data.ClientIdManager
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.MapStyle
+import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RegionsRepository
@@ -27,9 +30,23 @@ import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
+import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLng
 import no.synth.where.location.IosLocationTracker
+import no.synth.where.resources.Res
+import no.synth.where.resources.location_permission_required
+import no.synth.where.resources.online_tracking_disabled
+import no.synth.where.resources.online_tracking_enabled
+import no.synth.where.resources.point_deleted
+import no.synth.where.resources.point_saved
+import no.synth.where.resources.point_updated
+import no.synth.where.resources.recording_snackbar
+import no.synth.where.resources.saved_as_track_name
+import no.synth.where.resources.track_discarded
+import no.synth.where.resources.track_saved
+import no.synth.where.resources.unnamed_point
 import no.synth.where.util.NamingUtils
+import org.jetbrains.compose.resources.stringResource
 import org.koin.mp.KoinPlatform.getKoin
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSFileManager
@@ -49,6 +66,8 @@ fun IosMapScreen(
     val koin = remember { getKoin() }
     val trackRepository = remember { koin.get<TrackRepository>() }
     val savedPointsRepository = remember { koin.get<SavedPointsRepository>() }
+    val userPreferences = remember { koin.get<UserPreferences>() }
+    val clientIdManager = remember { koin.get<ClientIdManager>() }
     val locationTracker = remember { IosLocationTracker(trackRepository) }
 
     var showLayerMenu by remember { mutableStateOf(false) }
@@ -64,6 +83,20 @@ fun IosMapScreen(
     val currentTrack by trackRepository.currentTrack.collectAsState()
     val viewingTrack by trackRepository.viewingTrack.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
+    val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
+    val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
+
+    // Hoisted string resources for use in lambdas
+    val recordingMsg = stringResource(Res.string.recording_snackbar)
+    val trackDiscardedMsg = stringResource(Res.string.track_discarded)
+    val trackSavedMsg = stringResource(Res.string.track_saved)
+    val pointSavedMsg = stringResource(Res.string.point_saved)
+    val pointDeletedMsg = stringResource(Res.string.point_deleted)
+    val pointUpdatedMsg = stringResource(Res.string.point_updated)
+    val onlineEnabledMsg = stringResource(Res.string.online_tracking_enabled)
+    val onlineDisabledMsg = stringResource(Res.string.online_tracking_disabled)
+    val locationPermissionMsg = stringResource(Res.string.location_permission_required)
+    val unnamedPointStr = stringResource(Res.string.unnamed_point)
 
     var showStopTrackDialog by remember { mutableStateOf(false) }
     var trackNameInput by remember { mutableStateOf("") }
@@ -201,14 +234,18 @@ fun IosMapScreen(
             trackNameInput = trackNameInput,
             onTrackNameChange = { trackNameInput = it },
             onDiscard = {
+                locationTracker.onlineTrackingClient?.stopTrack()
+                locationTracker.onlineTrackingClient = null
                 trackRepository.discardRecording()
                 locationTracker.stopTracking()
                 mapViewProvider.clearTrackLine()
                 showStopTrackDialog = false
                 trackNameInput = ""
-                scope.launch { snackbarHostState.showSnackbar("Track discarded") }
+                scope.launch { snackbarHostState.showSnackbar(trackDiscardedMsg) }
             },
             onSave = {
+                locationTracker.onlineTrackingClient?.stopTrack()
+                locationTracker.onlineTrackingClient = null
                 val current = currentTrack
                 val name = trackNameInput
                 if (current != null && name.isNotBlank()) {
@@ -219,7 +256,7 @@ fun IosMapScreen(
                 mapViewProvider.clearTrackLine()
                 showStopTrackDialog = false
                 trackNameInput = ""
-                scope.launch { snackbarHostState.showSnackbar("Track saved") }
+                scope.launch { snackbarHostState.showSnackbar(trackSavedMsg) }
             },
             onDismiss = {
                 showStopTrackDialog = false
@@ -237,13 +274,13 @@ fun IosMapScreen(
             coordinates = "${latLng.latitude.toString().take(10)}, ${latLng.longitude.toString().take(10)}",
             onSave = {
                 savedPointsRepository.addPoint(
-                    name = savePointName.ifBlank { "Unnamed point" },
+                    name = savePointName.ifBlank { unnamedPointStr },
                     latLng = latLng
                 )
                 showSavePointDialog = false
                 savePointLatLng = null
                 savePointName = ""
-                scope.launch { snackbarHostState.showSnackbar("Point saved") }
+                scope.launch { snackbarHostState.showSnackbar(pointSavedMsg) }
             },
             onDismiss = {
                 showSavePointDialog = false
@@ -282,7 +319,7 @@ fun IosMapScreen(
                 clickedPoint?.let { savedPointsRepository.deletePoint(it.id) }
                 showPointInfoDialog = false
                 clickedPoint = null
-                scope.launch { snackbarHostState.showSnackbar("Point deleted") }
+                scope.launch { snackbarHostState.showSnackbar(pointDeletedMsg) }
             },
             onSave = {
                 clickedPoint?.let {
@@ -290,7 +327,7 @@ fun IosMapScreen(
                 }
                 showPointInfoDialog = false
                 clickedPoint = null
-                scope.launch { snackbarHostState.showSnackbar("Point updated") }
+                scope.launch { snackbarHostState.showSnackbar(pointUpdatedMsg) }
             },
             onDismiss = {
                 showPointInfoDialog = false
@@ -300,6 +337,7 @@ fun IosMapScreen(
     }
 
     if (showSaveRulerAsTrackDialog) {
+        val savedAsTrackMsg = stringResource(Res.string.saved_as_track_name, rulerTrackName)
         MapDialogs.SaveRulerAsTrackDialog(
             trackName = rulerTrackName,
             rulerState = rulerState,
@@ -314,7 +352,7 @@ fun IosMapScreen(
                 }
                 showSaveRulerAsTrackDialog = false
                 rulerTrackName = ""
-                scope.launch { snackbarHostState.showSnackbar("Saved as track") }
+                scope.launch { snackbarHostState.showSnackbar(savedAsTrackMsg) }
             },
             onDismiss = {
                 showSaveRulerAsTrackDialog = false
@@ -332,7 +370,7 @@ fun IosMapScreen(
         showWaymarkedTrails = waymarkedTrails,
         showCountyBorders = countyBorders,
         showSavedPoints = showSavedPoints,
-        onlineTrackingEnabled = false,
+        onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,
         viewingPointName = viewingPoint?.name,
@@ -382,12 +420,24 @@ fun IosMapScreen(
             } else {
                 if (!locationTracker.hasPermission) {
                     locationTracker.requestPermission()
-                    scope.launch { snackbarHostState.showSnackbar("Location permission required") }
+                    scope.launch { snackbarHostState.showSnackbar(locationPermissionMsg) }
                     return@MapScreenContent
                 }
                 trackRepository.startNewTrack()
                 locationTracker.startTracking()
-                scope.launch { snackbarHostState.showSnackbar("Recording started") }
+                if (onlineTrackingEnabled) {
+                    scope.launch {
+                        val clientId = clientIdManager.getClientId()
+                        val client = OnlineTrackingClient(
+                            serverUrl = trackingServerUrl,
+                            clientId = clientId,
+                            hmacSecret = BuildInfo.TRACKING_HMAC_SECRET
+                        )
+                        client.startTrack("Track")
+                        locationTracker.onlineTrackingClient = client
+                    }
+                }
+                scope.launch { snackbarHostState.showSnackbar(recordingMsg) }
             }
         },
         onMyLocationClick = {
@@ -452,7 +502,33 @@ fun IosMapScreen(
                 isResolvingRulerName = false
             }
         },
-        onOnlineTrackingChange = {},
+        onOnlineTrackingChange = { enabled ->
+            userPreferences.updateOnlineTrackingEnabled(enabled)
+            if (isRecording) {
+                if (enabled) {
+                    scope.launch {
+                        val clientId = clientIdManager.getClientId()
+                        val client = OnlineTrackingClient(
+                            serverUrl = trackingServerUrl,
+                            clientId = clientId,
+                            hmacSecret = BuildInfo.TRACKING_HMAC_SECRET
+                        )
+                        val track = currentTrack
+                        if (track != null && track.isRecording) {
+                            client.syncExistingTrack(track)
+                        } else {
+                            client.startTrack(track?.name ?: "Track")
+                        }
+                        locationTracker.onlineTrackingClient = client
+                        snackbarHostState.showSnackbar(onlineEnabledMsg)
+                    }
+                } else {
+                    locationTracker.onlineTrackingClient?.stopTrack()
+                    locationTracker.onlineTrackingClient = null
+                    scope.launch { snackbarHostState.showSnackbar(onlineDisabledMsg) }
+                }
+            }
+        },
         onCloseViewingTrack = {
             trackRepository.clearViewingTrack()
             mapViewProvider.clearTrackLine()

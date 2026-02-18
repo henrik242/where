@@ -1,4 +1,5 @@
 import java.time.LocalDate
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -33,6 +34,21 @@ val generateBuildInfo by tasks.registering {
         val gitShortSha = execGit(arrayOf("git", "rev-parse", "--short", "HEAD")).ifEmpty { "unknown" }
         val buildDate = LocalDate.now().toString()
 
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(localPropertiesFile.inputStream())
+        }
+        val trackingHmacSecret = System.getenv("TRACKING_HMAC_SECRET")
+            ?: localProperties.getProperty("TRACKING_HMAC_SECRET")
+            ?: throw GradleException(
+                "TRACKING_HMAC_SECRET is not set!\n" +
+                    "Add it to local.properties:\n" +
+                    "  TRACKING_HMAC_SECRET=your-secret-key\n" +
+                    "Or set it as an environment variable.\n" +
+                    "Generate a key with: openssl rand -base64 32"
+            )
+
         val dir = outputDir.get().asFile.resolve("no/synth/where")
         dir.mkdirs()
         dir.resolve("BuildInfo.kt").writeText(
@@ -44,6 +60,7 @@ val generateBuildInfo by tasks.registering {
             |    const val GIT_SHORT_SHA = "$gitShortSha"
             |    const val BUILD_DATE = "$buildDate"
             |    const val VERSION_INFO = "$gitCommitCount.$gitShortSha $buildDate"
+            |    const val TRACKING_HMAC_SECRET = "$trackingHmacSecret"
             |}
             """.trimMargin()
         )
@@ -100,6 +117,8 @@ kotlin {
             implementation(libs.ktor.client.android)
             implementation(libs.timber)
             implementation(libs.maplibre.android.sdk)
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.crashlytics)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
