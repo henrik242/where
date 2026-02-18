@@ -701,6 +701,18 @@ Closed the three remaining feature gaps between iOS and Android: crash reporting
 - `app/src/main/java/no/synth/where/service/LocationTrackingService.kt` — BuildInfo.TRACKING_HMAC_SECRET
 - `app/build.gradle.kts` — removed TRACKING_HMAC_SECRET buildConfigField
 
+## Phase 18 — iOS missing pieces, pt2
+
+### Steps
+
+1. Language selector
+2. "Fortsett" on a track doesn't work
+3. Overview over "Frakoblede kart" doesn't show the size of the downloaded maps
+4. Should I worry over these XCode warnings?:
+   * Run script build phase 'Copy Firebase Config' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase.
+   * Run script build phase 'Compile Kotlin Framework' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked.
+
+
 ---
 
 ## Known warnings
