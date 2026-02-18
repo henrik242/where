@@ -56,9 +56,6 @@ jobs:
         echo "sdk.dir=$ANDROID_HOME" > local.properties
         echo "TRACKING_HMAC_SECRET=${{ secrets.TRACKING_HMAC_SECRET }}" >> local.properties
 
-    - name: Create google-services.json
-      run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
-
     - name: Create GoogleService-Info.plist
       run: |
         echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 -d > iosApp/iosApp/GoogleService-Info.plist
