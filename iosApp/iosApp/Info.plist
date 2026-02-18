@@ -11,7 +11,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleDisplayName</key>
-	<string>Where?</string>
+	<string>$(BUNDLE_DISPLAY_NAME)</string>
 	<key>CFBundleName</key>
 	<string>Where</string>
 	<key>CFBundlePackageType</key>
