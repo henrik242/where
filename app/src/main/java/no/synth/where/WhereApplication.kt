@@ -1,8 +1,8 @@
 package no.synth.where
 
 import android.app.Application
-import com.google.firebase.crashlytics.FirebaseCrashlytics
 import no.synth.where.data.UserPreferences
+import no.synth.where.util.CrashReporter
 import no.synth.where.di.appModule
 import no.synth.where.di.userPrefsDataStore
 import org.koin.android.ext.koin.androidContext
@@ -26,7 +26,7 @@ class WhereApplication : Application() {
         }
 
         val prefs = UserPreferences(userPrefsDataStore)
-        FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = prefs.crashReportingEnabled.value
+        CrashReporter.setEnabled(prefs.crashReportingEnabled.value)
 
         MapLibre.getInstance(this)
 

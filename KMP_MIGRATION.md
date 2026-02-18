@@ -668,12 +668,38 @@ Made the iOS app production-ready: shared git-derived version info, app icon ass
 - `iosApp/iosApp.xcodeproj/project.pbxproj` — asset catalog + xcconfig + script
 - `.gitignore` — `iosApp/iosApp/Generated.xcconfig`
 
-## Phase 18 - ios missing pieces
+## Phase 18 — iOS missing pieces ✅ DONE
 
-### Steps
-1. Crash reporting (e.g. Firebase Crashlytics or alternative)
-2. Language selector and translations (currently hardcoded English)
-3. Online tracking
+Closed the three remaining feature gaps between iOS and Android: crash reporting, translations, and online tracking.
+
+### What was done
+
+1. **CrashReporter expect/actual** — Created `expect object CrashReporter` with `setEnabled(Boolean)` and `log(String)`. Android actual wraps `FirebaseCrashlytics.getInstance()`. iOS actual is a no-op that logs via `Logger`. Added `firebase-bom` + `firebase-crashlytics` to `shared/build.gradle.kts` androidMain dependencies. Updated `WhereApplication.kt`, `WhereApp.kt`, `IosApp.kt`, and `KoinHelper.kt` to use `CrashReporter.setEnabled()` instead of direct Crashlytics calls.
+
+2. **Translations** — Added missing shared string resources (`recording_snackbar`, `track_discarded`, `track_saved`, `point_saved`, `point_deleted`, `point_updated`, `online_tracking_enabled`, `online_tracking_disabled`, `saved_as_track_name`, `location_permission_required`, `unnamed_point`, `import_gpx_corrupted`, `import_gpx_error`) with Norwegian translations. Replaced all hardcoded English strings in `IosMapScreen.kt` and `IosApp.kt` with `stringResource()` calls, hoisting at composable level for use in lambdas (same pattern as Android `MapScreen.kt`).
+
+3. **Online tracking** — Moved `TRACKING_HMAC_SECRET` from `app/build.gradle.kts` `BuildConfig` to shared `BuildInfo` (generated at build time from env/local.properties). Updated `LocationTrackingService` to use `BuildInfo.TRACKING_HMAC_SECRET`. Added `onlineTrackingClient` property to `IosLocationTracker` — calls `sendPoint()` after each `addTrackPoint()`, mirroring Android's service. Wired full lifecycle in `IosMapScreen.kt`: creates `OnlineTrackingClient` on record start (when enabled), stops on discard/save, toggles mid-recording via `onOnlineTrackingChange`. Shows actual `onlineTrackingEnabled` state in the overlay.
+
+4. **Tests** — Added `trackingHmacSecretIsNotBlank()` test to `BuildInfoTest.kt`. All Android tests, shared tests, and iOS framework link pass.
+
+**Files created:**
+- `shared/src/commonMain/kotlin/no/synth/where/util/CrashReporter.kt`
+- `shared/src/androidMain/kotlin/no/synth/where/util/CrashReporter.kt`
+- `shared/src/iosMain/kotlin/no/synth/where/util/CrashReporter.kt`
+
+**Files modified:**
+- `shared/build.gradle.kts` — Firebase deps in androidMain, HMAC secret in generateBuildInfo
+- `shared/src/commonMain/composeResources/values/strings.xml` — snackbar + GPX error strings
+- `shared/src/commonMain/composeResources/values-nb/strings.xml` — Norwegian translations
+- `shared/src/commonTest/kotlin/no/synth/where/BuildInfoTest.kt` — HMAC test
+- `shared/src/iosMain/kotlin/no/synth/where/IosApp.kt` — CrashReporter, translated GPX errors
+- `shared/src/iosMain/kotlin/no/synth/where/ui/map/IosMapScreen.kt` — online tracking wiring, string resources
+- `shared/src/iosMain/kotlin/no/synth/where/location/IosLocationTracker.kt` — onlineTrackingClient property
+- `shared/src/iosMain/kotlin/no/synth/where/di/KoinHelper.kt` — CrashReporter init
+- `app/src/main/java/no/synth/where/WhereApplication.kt` — CrashReporter
+- `app/src/main/java/no/synth/where/WhereApp.kt` — CrashReporter
+- `app/src/main/java/no/synth/where/service/LocationTrackingService.kt` — BuildInfo.TRACKING_HMAC_SECRET
+- `app/build.gradle.kts` — removed TRACKING_HMAC_SECRET buildConfigField
 
 ---
 

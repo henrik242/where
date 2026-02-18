@@ -48,29 +48,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Load HMAC secret from environment variable or local.properties
-        val localProperties = Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            localProperties.load(localPropertiesFile.inputStream())
-        }
-
-        val trackingHmacSecret = System.getenv("TRACKING_HMAC_SECRET")
-            ?: localProperties.getProperty("TRACKING_HMAC_SECRET")
-            ?: throw GradleException(
-                "TRACKING_HMAC_SECRET is not set!\n" +
-                        "Add it to local.properties:\n" +
-                        "  TRACKING_HMAC_SECRET=your-secret-key\n" +
-                        "Or set it as an environment variable.\n" +
-                        "Generate a key with: openssl rand -base64 32"
-            )
-
-        if (trackingHmacSecret.isBlank()) {
-            throw GradleException("TRACKING_HMAC_SECRET cannot be empty!")
-        }
-
-        buildConfigField("String", "TRACKING_HMAC_SECRET", "\"$trackingHmacSecret\"")
-
         // Generate version info from git
         fun execGit(command: Array<String>): String {
             return try {
