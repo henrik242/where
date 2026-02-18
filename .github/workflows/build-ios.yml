@@ -34,7 +34,9 @@ jobs:
       with:
         java-version: '21'
         distribution: 'temurin'
-        cache: gradle
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v4
 
     - name: Validate secrets
       run: |
@@ -60,14 +62,6 @@ jobs:
       run: |
         echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 -d > iosApp/iosApp/GoogleService-Info.plist
         echo "${{ secrets.GOOGLE_SERVICE_INFO_DEBUG_PLIST }}" | base64 -d > iosApp/iosApp/GoogleService-debug-Info.plist
-
-    - name: Cache Konan
-      uses: actions/cache@v4
-      with:
-        path: /Users/runner/.konan
-        key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
-        restore-keys: |
-          ${{ runner.os }}-konan-
 
     - name: Build shared iOS frameworks
       run: ./gradlew :shared:linkDebugFrameworkIosArm64 :shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
