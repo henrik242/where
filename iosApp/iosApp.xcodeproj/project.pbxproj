@@ -13,7 +13,6 @@
 		A10004 /* OfflineMapFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20006 /* OfflineMapFactory.swift */; };
 		A10005 /* StyleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20007 /* StyleServer.swift */; };
 		A10006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20008 /* Assets.xcassets */; };
-		A10007 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A2000A /* GoogleService-Info.plist */; };
 		A10008 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = A80003 /* FirebaseCrashlytics */; };
 		AF3CE3122F447F6300661CE0 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = A80001 /* MapLibre */; };
 /* End PBXBuildFile section */
@@ -29,6 +28,7 @@
 		A20008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20009 /* Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Generated.xcconfig; sourceTree = "<group>"; };
 		A2000A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		A2000B /* GoogleService-debug-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-debug-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +64,7 @@
 				A20009 /* Generated.xcconfig */,
 				A20004 /* Info.plist */,
 				A2000A /* GoogleService-Info.plist */,
+				A2000B /* GoogleService-debug-Info.plist */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -87,6 +88,7 @@
 				A50002 /* Sources */,
 				A30001 /* Frameworks */,
 				A50003 /* Resources */,
+				A60002 /* Copy Firebase Config */,
 			);
 			buildRules = (
 			);
@@ -139,7 +141,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10006 /* Assets.xcassets in Resources */,
-				A10007 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -164,6 +165,24 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "cd \"$SRCROOT/..\"\nCOMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo \"1\")\nSHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo \"unknown\")\nBUILD_DATE=$(date +%Y-%m-%d)\n\necho \"CURRENT_PROJECT_VERSION = $COMMIT_COUNT\" > \"$SRCROOT/iosApp/Generated.xcconfig\"\necho \"MARKETING_VERSION = 1.0.$SHORT_SHA\" >> \"$SRCROOT/iosApp/Generated.xcconfig\"\n\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+		};
+		A60002 /* Copy Firebase Config */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Firebase Config";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n  cp \"${SRCROOT}/iosApp/GoogleService-debug-Info.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nelse\n  cp \"${SRCROOT}/iosApp/GoogleService-Info.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -240,6 +259,7 @@
 			baseConfigurationReference = A20009 /* Generated.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				BUNDLE_DISPLAY_NAME = "Where? (debug)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = U9DK75CHGD;
@@ -261,7 +281,7 @@
 					"-framework",
 					Shared,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = no.synth.where;
+				PRODUCT_BUNDLE_IDENTIFIER = no.synth.where.debug;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -274,6 +294,7 @@
 			baseConfigurationReference = A20009 /* Generated.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				BUNDLE_DISPLAY_NAME = "Where?";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = U9DK75CHGD;
