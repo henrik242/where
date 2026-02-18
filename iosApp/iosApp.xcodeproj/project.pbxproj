@@ -13,6 +13,8 @@
 		A10004 /* OfflineMapFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20006 /* OfflineMapFactory.swift */; };
 		A10005 /* StyleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20007 /* StyleServer.swift */; };
 		A10006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20008 /* Assets.xcassets */; };
+		A10007 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A2000A /* GoogleService-Info.plist */; };
+		A10008 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = A80003 /* FirebaseCrashlytics */; };
 		AF3CE3122F447F6300661CE0 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = A80001 /* MapLibre */; };
 /* End PBXBuildFile section */
 
@@ -26,6 +28,7 @@
 		A20007 /* StyleServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleServer.swift; sourceTree = "<group>"; };
 		A20008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20009 /* Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Generated.xcconfig; sourceTree = "<group>"; };
+		A2000A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,6 +36,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10008 /* FirebaseCrashlytics in Frameworks */,
 				AF3CE3122F447F6300661CE0 /* MapLibre in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -59,6 +63,7 @@
 				A20008 /* Assets.xcassets */,
 				A20009 /* Generated.xcconfig */,
 				A20004 /* Info.plist */,
+				A2000A /* GoogleService-Info.plist */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -90,6 +95,7 @@
 			name = iosApp;
 			packageProductDependencies = (
 				A80001 /* MapLibre */,
+				A80003 /* FirebaseCrashlytics */,
 			);
 			productName = iosApp;
 			productReference = A20005 /* iosApp.app */;
@@ -116,6 +122,7 @@
 			mainGroup = A40001;
 			packageReferences = (
 				A80000 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
+				A80002 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			productRefGroup = A40003 /* Products */;
 			projectDirPath = "";
@@ -132,6 +139,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10006 /* Assets.xcassets in Resources */,
+				A10007 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -327,6 +335,14 @@
 				minimumVersion = 6.0.0;
 			};
 		};
+		A80002 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -334,6 +350,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A80000 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */;
 			productName = MapLibre;
+		};
+		A80003 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A80002 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
