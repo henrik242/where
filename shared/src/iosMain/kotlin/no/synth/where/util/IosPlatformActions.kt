@@ -24,7 +24,7 @@ object IosPlatformActions {
 
     fun openUrl(url: String) {
         val nsUrl = NSURL(string = url)
-        UIApplication.sharedApplication.openURL(nsUrl)
+        UIApplication.sharedApplication.openURL(nsUrl, options = emptyMap<Any?, Any>(), completionHandler = null)
     }
 
     fun shareText(text: String) {
