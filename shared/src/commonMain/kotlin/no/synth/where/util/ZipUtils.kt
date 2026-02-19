@@ -1,7 +1,7 @@
 package no.synth.where.util
 
-import no.synth.kmplibs.io.ByteArrayInputStream
-import no.synth.kmplibs.zip.ZipInputStream
+import no.synth.kmpzip.io.ByteArrayInputStream
+import no.synth.kmpzip.zip.ZipInputStream
 
 fun extractFirstFileFromZip(zipData: ByteArray, extension: String): ByteArray? {
     ByteArrayInputStream(zipData).use { bais ->
