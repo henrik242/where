@@ -36,6 +36,7 @@ import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
 import no.synth.where.resources.Res
 import no.synth.where.resources.import_gpx_corrupted
+import no.synth.where.resources.system_default
 import no.synth.where.util.CrashReporter
 import no.synth.where.util.Logger
 import org.jetbrains.compose.resources.stringResource
@@ -45,6 +46,7 @@ import org.koin.mp.KoinPlatform.getKoin
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
+import platform.Foundation.NSUserDefaults
 
 enum class Screen {
     MAP,
@@ -132,6 +134,19 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
             }
 
             Screen.SETTINGS -> {
+                val languages = listOf(
+                    LanguageOption(null, stringResource(Res.string.system_default)),
+                    LanguageOption("en", "English"),
+                    LanguageOption("nb", "Norsk bokmål")
+                )
+
+                val appleLanguages = NSUserDefaults.standardUserDefaults.arrayForKey("AppleLanguages")
+                val currentTag = (appleLanguages?.firstOrNull() as? String)?.let { lang ->
+                    languages.find { it.tag == lang }?.tag
+                }
+                val currentLanguageLabel = languages.find { it.tag == currentTag }?.displayName
+                    ?: languages.first().displayName
+
                 val themeOptions = listOf(
                     LanguageOption("system", "System"),
                     LanguageOption("light", "Light"),
@@ -150,6 +165,15 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onCrashReportingChange = {
                         userPreferences.updateCrashReportingEnabled(it)
                         CrashReporter.setEnabled(it)
+                    },
+                    currentLanguageLabel = currentLanguageLabel,
+                    languages = languages,
+                    onLanguageSelected = { tag ->
+                        if (tag == null) {
+                            NSUserDefaults.standardUserDefaults.removeObjectForKey("AppleLanguages")
+                        } else {
+                            NSUserDefaults.standardUserDefaults.setObject(listOf(tag), "AppleLanguages")
+                        }
                     },
                     themeOptions = themeOptions,
                     currentThemeLabel = currentThemeLabel,
