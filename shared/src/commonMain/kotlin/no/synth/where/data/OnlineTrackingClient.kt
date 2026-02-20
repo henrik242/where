@@ -27,7 +27,8 @@ class OnlineTrackingClient(
     private val serverUrl: String,
     private val clientId: String,
     private val hmacSecret: String,
-    val client: HttpClient = createDefaultHttpClient()
+    val client: HttpClient = createDefaultHttpClient(),
+    private val canSend: () -> Boolean = { true }
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -132,6 +133,7 @@ class OnlineTrackingClient(
     }
 
     fun sendPoint(latLng: LatLng, altitude: Double? = null, accuracy: Float? = null) {
+        if (!canSend()) return
         val trackId = currentTrackId ?: return
 
         scope.launch {

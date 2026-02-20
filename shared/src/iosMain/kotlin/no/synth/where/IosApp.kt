@@ -70,6 +70,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val themeMode by userPreferences.themeMode.collectAsState()
     val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
+    val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val tracks by trackRepository.tracks.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
@@ -87,11 +88,13 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
     var selectedLayerId by remember { mutableStateOf("") }
     var regionsLoaded by remember { mutableStateOf(false) }
+    var highlightOfflineMode by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     var clientId by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(offlineModeEnabled) {
+        if (offlineModeEnabled) return@LaunchedEffect
         for (attempt in 1..3) {
             val hasCached = FylkeDownloader.hasCachedData(cacheDir)
             Logger.d("FylkeDownloader: attempt=%s, hasCachedData=%s", attempt.toString(), hasCached.toString())
@@ -129,7 +132,11 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     showCountyBorders = showCountyBorders,
                     viewingPoint = viewingPoint,
                     onClearViewingPoint = { viewingPoint = null },
-                    onSettingsClick = { navigateTo(Screen.SETTINGS) }
+                    onSettingsClick = { navigateTo(Screen.SETTINGS) },
+                    onOfflineIndicatorClick = {
+                        highlightOfflineMode = true
+                        navigateTo(Screen.SETTINGS)
+                    }
                 )
             }
 
@@ -156,11 +163,17 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
 
                 SettingsScreenContent(
                     versionInfo = BuildInfo.VERSION_INFO,
-                    onBackClick = { navigateBack() },
+                    highlightOfflineMode = highlightOfflineMode,
+                    onBackClick = {
+                        highlightOfflineMode = false
+                        navigateBack()
+                    },
                     onDownloadClick = { navigateTo(Screen.DOWNLOAD) },
                     onTracksClick = { navigateTo(Screen.TRACKS) },
                     onSavedPointsClick = { navigateTo(Screen.SAVED_POINTS) },
                     onOnlineTrackingClick = { navigateTo(Screen.ONLINE_TRACKING) },
+                    offlineModeEnabled = offlineModeEnabled,
+                    onOfflineModeChange = { userPreferences.updateOfflineModeEnabled(it) },
                     crashReportingEnabled = crashReportingEnabled,
                     onCrashReportingChange = {
                         userPreferences.updateCrashReportingEnabled(it)
@@ -351,7 +364,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     getRegionTileInfo = { region ->
                         downloadManager.getRegionTileInfo(region, selectedLayerId)
                     },
-                    refreshTrigger = refreshTrigger
+                    refreshTrigger = refreshTrigger,
+                    offlineModeEnabled = offlineModeEnabled
                 )
             }
 

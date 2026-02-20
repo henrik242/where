@@ -27,4 +27,5 @@ interface MapViewProvider {
     fun setOnMapClickCallback(callback: MapClickCallback?)
     fun updateRuler(lineGeoJson: String, pointsGeoJson: String)
     fun clearRuler()
+    fun setConnected(connected: Boolean)
 }
