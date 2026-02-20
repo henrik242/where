@@ -2,9 +2,10 @@ import UIKit
 import MapLibre
 import Shared
 
-class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
+class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkConfigurationDelegate {
     private var mapView: MLNMapView?
     private var currentStyleJson: String?
+    private var isMapConnected = true
     private var pendingTrackGeoJson: String?
     private var pendingTrackColor: String?
     private var pendingSavedPointsGeoJson: String?
@@ -163,6 +164,19 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate {
         pendingRulerPointsGeoJson = nil
         guard let mapView = self.mapView, let style = mapView.style else { return }
         removeRuler(style: style)
+    }
+
+    func setConnected(connected: Bool) {
+        isMapConnected = connected
+        MLNNetworkConfiguration.sharedManager.delegate = connected ? nil : self
+    }
+
+    @objc(willSendRequest:)
+    func willSend(_ request: NSMutableURLRequest) -> NSMutableURLRequest {
+        if !isMapConnected {
+            request.cachePolicy = .returnCacheDataDontLoad
+        }
+        return request
     }
 
     func getUserLocation() -> [KotlinDouble]? {

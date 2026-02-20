@@ -54,9 +54,7 @@ class LocationTrackingService : Service(), KoinComponent {
                     accuracy = accuracy
                 )
 
-                if (!userPreferences.offlineModeEnabled.value) {
-                    onlineTrackingClient?.sendPoint(latLng, altitude, accuracy)
-                }
+                onlineTrackingClient?.sendPoint(latLng, altitude, accuracy)
             }
         }
     }
@@ -80,7 +78,8 @@ class LocationTrackingService : Service(), KoinComponent {
             onlineTrackingClient = OnlineTrackingClient(
                 serverUrl = userPreferences.trackingServerUrl.value,
                 clientId = clientId,
-                hmacSecret = BuildInfo.TRACKING_HMAC_SECRET
+                hmacSecret = BuildInfo.TRACKING_HMAC_SECRET,
+                canSend = { !userPreferences.offlineModeEnabled.value }
             )
 
             // Sync existing track if already recording
