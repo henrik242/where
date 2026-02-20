@@ -10,11 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,7 +54,7 @@ fun OnlineTrackingScreenContent(
                 title = { Text(stringResource(Res.string.online_tracking)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
+                        Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
                     }
                 }
             )
@@ -147,7 +143,7 @@ fun OnlineTrackingScreenContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    Icons.Filled.OpenInBrowser,
+                    painterResource(Res.drawable.ic_open_in_browser),
                     contentDescription = stringResource(Res.string.open_in_browser),
                     modifier = Modifier.size(20.dp)
                 )
@@ -160,7 +156,7 @@ fun OnlineTrackingScreenContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    Icons.Filled.Share,
+                    painterResource(Res.drawable.ic_share),
                     contentDescription = stringResource(Res.string.share),
                     modifier = Modifier.size(20.dp)
                 )
@@ -173,7 +169,7 @@ fun OnlineTrackingScreenContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    Icons.Filled.Refresh,
+                    painterResource(Res.drawable.ic_refresh),
                     contentDescription = stringResource(Res.string.regenerate_id),
                     modifier = Modifier.size(20.dp)
                 )

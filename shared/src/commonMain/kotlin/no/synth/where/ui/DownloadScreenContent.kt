@@ -11,10 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -44,6 +40,7 @@ import no.synth.where.data.RegionTileInfo
 import no.synth.where.util.formatBytes
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 data class LayerInfo(
@@ -73,7 +70,7 @@ fun DownloadScreenContent(
                 title = { Text(stringResource(Res.string.offline_maps)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
+                        Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
                     }
                 }
             )
@@ -203,7 +200,7 @@ fun DownloadScreenContent(
                             }
                         }
                         Icon(
-                            Icons.Default.ChevronRight,
+                            painterResource(Res.drawable.ic_chevron_right),
                             contentDescription = stringResource(Res.string.view_regions),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -242,7 +239,7 @@ fun LayerRegionsScreenContent(
                 title = { Text(layerDisplayName) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
+                        Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
                     }
                 }
             )
@@ -333,7 +330,7 @@ fun LayerRegionsScreenContent(
                             ) {
                                 if (hasPartialDownload || isDownloaded) {
                                     IconButton(onClick = { onDeleteRequest(region) }) {
-                                        Icon(Icons.Filled.Delete, contentDescription = stringResource(Res.string.delete))
+                                        Icon(painterResource(Res.drawable.ic_delete), contentDescription = stringResource(Res.string.delete))
                                     }
                                 }
                                 Button(

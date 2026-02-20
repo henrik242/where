@@ -4,14 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -26,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -76,7 +69,7 @@ fun MapFabColumn(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Search, contentDescription = stringResource(Res.string.search_places))
+            Icon(painterResource(Res.drawable.ic_search), contentDescription = stringResource(Res.string.search_places))
         }
 
         Spacer(modifier = Modifier.size(8.dp))
@@ -86,7 +79,7 @@ fun MapFabColumn(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Layers, contentDescription = stringResource(Res.string.layers_and_overlays))
+            Icon(painterResource(Res.drawable.ic_layers), contentDescription = stringResource(Res.string.layers_and_overlays))
         }
 
         DropdownMenu(
@@ -114,7 +107,7 @@ fun MapFabColumn(
             containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant
         ) {
             Icon(
-                if (isRecording) Icons.Filled.Stop else Icons.Filled.FiberManualRecord,
+                if (isRecording) painterResource(Res.drawable.ic_stop) else painterResource(Res.drawable.ic_fiber_manual_record),
                 contentDescription = if (isRecording) stringResource(Res.string.stop_recording) else stringResource(Res.string.start_recording),
                 tint = if (isRecording) Color.White else Color.Red
             )
@@ -127,7 +120,7 @@ fun MapFabColumn(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.MyLocation, contentDescription = stringResource(Res.string.my_location))
+            Icon(painterResource(Res.drawable.ic_my_location), contentDescription = stringResource(Res.string.my_location))
         }
 
         Spacer(modifier = Modifier.size(8.dp))
@@ -138,7 +131,7 @@ fun MapFabColumn(
             containerColor = if (rulerActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
         ) {
             Icon(
-                Icons.Filled.Straighten,
+                painterResource(Res.drawable.ic_straighten),
                 contentDescription = stringResource(Res.string.ruler),
                 tint = if (rulerActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -151,7 +144,7 @@ fun MapFabColumn(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Settings, contentDescription = stringResource(Res.string.settings))
+            Icon(painterResource(Res.drawable.ic_settings), contentDescription = stringResource(Res.string.settings))
         }
     }
 }

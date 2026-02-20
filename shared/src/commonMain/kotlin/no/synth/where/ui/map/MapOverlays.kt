@@ -13,16 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +37,7 @@ import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
 import no.synth.where.util.parseHexColor
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -64,14 +55,14 @@ fun ZoomControls(
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Add, contentDescription = stringResource(Res.string.zoom_in))
+            Icon(painterResource(Res.drawable.ic_add), contentDescription = stringResource(Res.string.zoom_in))
         }
         SmallFloatingActionButton(
             onClick = onZoomOut,
             modifier = Modifier.size(48.dp),
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(Icons.Filled.Remove, contentDescription = stringResource(Res.string.zoom_out))
+            Icon(painterResource(Res.drawable.ic_remove), contentDescription = stringResource(Res.string.zoom_out))
         }
     }
 }
@@ -119,7 +110,7 @@ fun RulerCard(
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Icon(
-                                Icons.AutoMirrored.Filled.Undo,
+                                painterResource(Res.drawable.ic_undo),
                                 contentDescription = stringResource(Res.string.remove_last_point),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -131,7 +122,7 @@ fun RulerCard(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Icon(
-                            Icons.Filled.Clear,
+                            painterResource(Res.drawable.ic_clear),
                             contentDescription = stringResource(Res.string.clear_all),
                             modifier = Modifier.size(16.dp)
                         )
@@ -146,7 +137,7 @@ fun RulerCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        Icons.Filled.Save,
+                        painterResource(Res.drawable.ic_save),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -177,7 +168,7 @@ fun RecordingCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    Icons.Filled.FiberManualRecord,
+                    painterResource(Res.drawable.ic_fiber_manual_record),
                     contentDescription = null,
                     tint = Color.Red
                 )
@@ -210,7 +201,7 @@ fun RecordingCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        Icons.Filled.CloudUpload,
+                        painterResource(Res.drawable.ic_cloud_upload),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.size(20.dp)
@@ -248,7 +239,7 @@ fun ViewingTrackBanner(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                Icons.Filled.Map,
+                painterResource(Res.drawable.ic_map),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -258,7 +249,7 @@ fun ViewingTrackBanner(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.close_track_view))
+                Icon(painterResource(Res.drawable.ic_close), contentDescription = stringResource(Res.string.close_track_view))
             }
         }
     }
@@ -296,7 +287,7 @@ fun ViewingPointBanner(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.close_point_view))
+                Icon(painterResource(Res.drawable.ic_close), contentDescription = stringResource(Res.string.close_point_view))
             }
         }
     }
