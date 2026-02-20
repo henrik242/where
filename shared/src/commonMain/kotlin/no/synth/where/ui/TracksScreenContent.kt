@@ -4,10 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +14,7 @@ import no.synth.where.util.formatDateTime
 import no.synth.where.util.formatKm
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,12 +48,12 @@ fun TracksScreenContent(
                 title = { Text(stringResource(Res.string.saved_tracks)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
+                        Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = onImport) {
-                        Icon(Icons.Filled.FileUpload, contentDescription = stringResource(Res.string.import_gpx))
+                        Icon(painterResource(Res.drawable.ic_file_upload), contentDescription = stringResource(Res.string.import_gpx))
                     }
                 }
             )
@@ -192,7 +189,7 @@ fun TrackItem(
                 )
             }
             Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                painter = if (expanded) painterResource(Res.drawable.ic_expand_less) else painterResource(Res.drawable.ic_expand_more),
                 contentDescription = if (expanded) stringResource(Res.string.collapse) else stringResource(Res.string.expand)
             )
         }
@@ -208,7 +205,7 @@ fun TrackItem(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        Icons.Filled.Map,
+                        painterResource(Res.drawable.ic_map),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -225,7 +222,7 @@ fun TrackItem(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        Icons.Filled.PlayArrow,
+                        painterResource(Res.drawable.ic_play_arrow),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -238,7 +235,7 @@ fun TrackItem(
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            Icons.Filled.Save,
+                            painterResource(Res.drawable.ic_save),
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -251,7 +248,7 @@ fun TrackItem(
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            Icons.Filled.Share,
+                            painterResource(Res.drawable.ic_share),
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -271,7 +268,7 @@ fun TrackItem(
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(
-                                Icons.AutoMirrored.Filled.OpenInNew,
+                                painterResource(Res.drawable.ic_open_in_new),
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -284,7 +281,7 @@ fun TrackItem(
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            Icons.Filled.Share,
+                            painterResource(Res.drawable.ic_share),
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -302,7 +299,7 @@ fun TrackItem(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        Icons.Filled.Edit,
+                        painterResource(Res.drawable.ic_edit),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -317,7 +314,7 @@ fun TrackItem(
                     )
                 ) {
                     Icon(
-                        Icons.Filled.Delete,
+                        painterResource(Res.drawable.ic_delete),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
