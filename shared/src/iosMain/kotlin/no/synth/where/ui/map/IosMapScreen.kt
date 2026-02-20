@@ -61,7 +61,8 @@ fun IosMapScreen(
     showCountyBorders: Boolean = false,
     viewingPoint: SavedPoint? = null,
     onClearViewingPoint: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onOfflineIndicatorClick: () -> Unit = {}
 ) {
     val koin = remember { getKoin() }
     val trackRepository = remember { koin.get<TrackRepository>() }
@@ -84,6 +85,7 @@ fun IosMapScreen(
     val viewingTrack by trackRepository.viewingTrack.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
+    val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
 
     // Hoisted string resources for use in lambdas
@@ -144,6 +146,10 @@ fun IosMapScreen(
         if (!locationTracker.hasPermission) {
             locationTracker.requestPermission()
         }
+    }
+
+    LaunchedEffect(offlineModeEnabled) {
+        mapViewProvider.setConnected(!offlineModeEnabled)
     }
 
     // Debounced search
@@ -370,6 +376,7 @@ fun IosMapScreen(
         showWaymarkedTrails = waymarkedTrails,
         showCountyBorders = countyBorders,
         showSavedPoints = showSavedPoints,
+        offlineModeEnabled = offlineModeEnabled,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,
@@ -425,13 +432,14 @@ fun IosMapScreen(
                 }
                 trackRepository.startNewTrack()
                 locationTracker.startTracking()
-                if (onlineTrackingEnabled) {
+                if (onlineTrackingEnabled && !offlineModeEnabled) {
                     scope.launch {
                         val clientId = clientIdManager.getClientId()
                         val client = OnlineTrackingClient(
                             serverUrl = trackingServerUrl,
                             clientId = clientId,
-                            hmacSecret = BuildInfo.TRACKING_HMAC_SECRET
+                            hmacSecret = BuildInfo.TRACKING_HMAC_SECRET,
+                            canSend = { !userPreferences.offlineModeEnabled.value }
                         )
                         client.startTrack("Track")
                         locationTracker.onlineTrackingClient = client
@@ -459,6 +467,7 @@ fun IosMapScreen(
             }
         },
         onSettingsClick = onSettingsClick,
+        onOfflineIndicatorClick = onOfflineIndicatorClick,
         onZoomIn = { mapViewProvider.zoomIn() },
         onZoomOut = { mapViewProvider.zoomOut() },
         onRulerUndo = {
@@ -511,7 +520,8 @@ fun IosMapScreen(
                         val client = OnlineTrackingClient(
                             serverUrl = trackingServerUrl,
                             clientId = clientId,
-                            hmacSecret = BuildInfo.TRACKING_HMAC_SECRET
+                            hmacSecret = BuildInfo.TRACKING_HMAC_SECRET,
+                            canSend = { !userPreferences.offlineModeEnabled.value }
                         )
                         val track = currentTrack
                         if (track != null && track.isRecording) {
