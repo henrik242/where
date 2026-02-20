@@ -208,34 +208,6 @@ fun SettingsScreenContent(
 
                 HorizontalDivider()
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onCrashReportingChange(!crashReportingEnabled) }
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(Res.string.crash_reporting),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = stringResource(Res.string.crash_reporting_description),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        modifier = Modifier.padding(start = 16.dp),
-                        checked = crashReportingEnabled,
-                        onCheckedChange = onCrashReportingChange
-                    )
-                }
-
-                HorizontalDivider()
-
                 if (languages.isNotEmpty()) {
                     var expanded by remember { mutableStateOf(false) }
 
@@ -316,6 +288,32 @@ fun SettingsScreenContent(
                     }
 
                     HorizontalDivider()
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onCrashReportingChange(!crashReportingEnabled) }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(Res.string.crash_reporting),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = stringResource(Res.string.crash_reporting_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        modifier = Modifier.padding(start = 16.dp),
+                        checked = crashReportingEnabled,
+                        onCheckedChange = onCrashReportingChange
+                    )
                 }
             }
 
