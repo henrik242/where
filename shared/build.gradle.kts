@@ -98,27 +98,24 @@ kotlin {
             kotlin.srcDir(generateBuildInfo.map { it.outputs.files.singleFile })
         }
         commonMain.dependencies {
-            implementation(libs.kotlinx.serialization.json)
-            implementation(libs.ktor.client.core)
+            api(libs.kotlinx.serialization.json)
+            api(libs.ktor.client.core)
             implementation(libs.kmp.zip)
-            implementation(libs.room.runtime)
-            implementation(libs.androidx.datastore.preferences)
-            @Suppress("DEPRECATION")
-            implementation(compose.material3)
-            @Suppress("DEPRECATION")
-            implementation(compose.materialIconsExtended)
-            @Suppress("DEPRECATION")
-            implementation(compose.components.resources)
+            api(libs.room.runtime)
+            api(libs.androidx.datastore.preferences)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.material.icons.extended)
+            implementation(libs.compose.components.resources)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
         androidMain.dependencies {
-            implementation(libs.ktor.client.android)
-            implementation(libs.timber)
-            implementation(libs.maplibre.android.sdk)
-            implementation(project.dependencies.platform(libs.firebase.bom))
-            implementation(libs.firebase.crashlytics)
+            api(libs.ktor.client.android)
+            api(libs.timber)
+            api(libs.maplibre.android.sdk)
+            api(project.dependencies.platform(libs.firebase.bom))
+            api(libs.firebase.crashlytics)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

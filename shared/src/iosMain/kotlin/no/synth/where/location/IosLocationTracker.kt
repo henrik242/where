@@ -1,6 +1,7 @@
 package no.synth.where.location
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.useContents
 import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
@@ -49,7 +50,7 @@ class IosLocationTracker(
         locationManager.stopUpdatingLocation()
     }
 
-    @Suppress("CONFLICTING_OVERLOADS", "PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+    @ObjCSignatureOverride
     override fun locationManager(manager: CLLocationManager, didUpdateLocations: List<*>) {
         val location = didUpdateLocations.lastOrNull() as? CLLocation ?: return
         _lastLocation = location
@@ -69,7 +70,7 @@ class IosLocationTracker(
         }
     }
 
-    @Suppress("CONFLICTING_OVERLOADS", "PARAMETER_NAME_CHANGED_ON_OVERRIDE")
+    @ObjCSignatureOverride
     override fun locationManager(manager: CLLocationManager, didFailWithError: platform.Foundation.NSError) {
         Logger.e("Location error: ${didFailWithError.localizedDescription}")
     }
