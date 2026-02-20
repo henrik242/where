@@ -721,10 +721,6 @@ Closed the three remaining feature gaps between iOS and Android: crash reporting
 
 `KLIB resolver: The same 'unique_name=...' found in more than one library` warnings appear during `:shared:compileIosMainKotlinMetadata`. This happens because AndroidX artifacts (`androidx.*`) and JetBrains Compose artifacts (`org.jetbrains.compose.*`, `org.jetbrains.androidx.*`) both bundle the same libraries at slightly different versions (e.g. `lifecycle-common` 2.9.4 vs 2.9.6, `runtime` 1.10.2 vs 1.10.1). The resolver picks one and it works fine. To fix, align dependency versions so both trees resolve to the same artifact. Harmless for now.
 
-### CONFLICTING_OVERLOADS suppression in IosLocationTracker
-
-`IosLocationTracker.kt` uses `@Suppress("CONFLICTING_OVERLOADS")` on two `locationManager(...)` delegate methods. This is a known Kotlin/Native limitation with Objective-C delegate methods that share the same Kotlin name but differ by ObjC parameter labels. The compiler warns that this behavior is unspecified and may break in future Kotlin versions. No clean fix exists yet — track [KT-51925](https://youtrack.jetbrains.com/issue/KT-51925) for progress.
-
 ---
 
 ## What stays Android-only forever
