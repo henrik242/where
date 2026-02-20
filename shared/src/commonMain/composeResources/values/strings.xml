@@ -111,6 +111,8 @@
     <string name="theme_dark">Dark</string>
     <string name="crash_reporting">Crash Reporting</string>
     <string name="crash_reporting_description">Send anonymous crash reports to help improve the app</string>
+    <string name="offline_mode">Offline Mode</string>
+    <string name="offline_mode_description">Only use cached maps and data, no network requests</string>
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Import GPX</string>

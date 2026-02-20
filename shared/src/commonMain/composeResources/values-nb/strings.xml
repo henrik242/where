@@ -111,6 +111,8 @@
     <string name="theme_dark">Mørkt</string>
     <string name="crash_reporting">Krasjrapportering</string>
     <string name="crash_reporting_description">Send anonyme krasjrapporter for å hjelpe med å forbedre appen</string>
+    <string name="offline_mode">Frakoblet modus</string>
+    <string name="offline_mode_description">Bruk kun bufrede kart og data, ingen nettverksforespørsler</string>
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Importer GPX</string>
