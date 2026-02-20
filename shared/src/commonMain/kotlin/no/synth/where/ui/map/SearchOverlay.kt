@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -71,13 +69,13 @@ fun SearchOverlay(
                             )
                         } else if (query.isNotEmpty()) {
                             IconButton(onClick = { onQueryChange("") }) {
-                                Icon(Icons.Filled.Clear, contentDescription = stringResource(Res.string.clear))
+                                Icon(painterResource(Res.drawable.ic_clear), contentDescription = stringResource(Res.string.clear))
                             }
                         }
                     }
                 )
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, contentDescription = stringResource(Res.string.close_search))
+                    Icon(painterResource(Res.drawable.ic_close), contentDescription = stringResource(Res.string.close_search))
                 }
             }
         }
