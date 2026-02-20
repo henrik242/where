@@ -106,6 +106,7 @@ fun WhereApp(
             MapScreen(
                 onSettingsClick = { navController.navigate(SettingsRoute()) },
                 onOfflineSettingsClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
+                onOnlineTrackingSettingsClick = { navController.navigate(OnlineTrackingRoute) },
                 showCountyBorders = showCountyBorders,
                 onShowCountyBordersChange = { userPreferences.updateShowCountyBorders(it) },
                 showSavedPoints = showSavedPoints,
