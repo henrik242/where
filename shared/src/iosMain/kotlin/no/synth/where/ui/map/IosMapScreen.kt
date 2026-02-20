@@ -62,7 +62,8 @@ fun IosMapScreen(
     viewingPoint: SavedPoint? = null,
     onClearViewingPoint: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onOfflineIndicatorClick: () -> Unit = {}
+    onOfflineIndicatorClick: () -> Unit = {},
+    onOnlineTrackingClick: () -> Unit = {}
 ) {
     val koin = remember { getKoin() }
     val trackRepository = remember { koin.get<TrackRepository>() }
@@ -468,6 +469,7 @@ fun IosMapScreen(
         },
         onSettingsClick = onSettingsClick,
         onOfflineIndicatorClick = onOfflineIndicatorClick,
+        onOnlineTrackingClick = onOnlineTrackingClick,
         onZoomIn = { mapViewProvider.zoomIn() },
         onZoomOut = { mapViewProvider.zoomOut() },
         onRulerUndo = {

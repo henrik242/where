@@ -136,7 +136,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onOfflineIndicatorClick = {
                         highlightOfflineMode = true
                         navigateTo(Screen.SETTINGS)
-                    }
+                    },
+                    onOnlineTrackingClick = { navigateTo(Screen.ONLINE_TRACKING) }
                 )
             }
 
