@@ -6,13 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +16,7 @@ import no.synth.where.data.SavedPoint
 import no.synth.where.util.parseHexColor
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +38,7 @@ fun SavedPointsScreenContent(
                 title = { Text(stringResource(Res.string.saved_points)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
+                        Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
                     }
                 }
             )
@@ -157,7 +151,7 @@ fun SavedPointItem(
             }
 
             Icon(
-                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                painter = if (expanded) painterResource(Res.drawable.ic_expand_less) else painterResource(Res.drawable.ic_expand_more),
                 contentDescription = if (expanded) stringResource(Res.string.collapse) else stringResource(Res.string.expand)
             )
         }
@@ -173,7 +167,7 @@ fun SavedPointItem(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        Icons.Filled.Map,
+                        painterResource(Res.drawable.ic_map),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -190,7 +184,7 @@ fun SavedPointItem(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        Icons.Filled.Edit,
+                        painterResource(Res.drawable.ic_edit),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -205,7 +199,7 @@ fun SavedPointItem(
                     )
                 ) {
                     Icon(
-                        Icons.Filled.Delete,
+                        painterResource(Res.drawable.ic_delete),
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )

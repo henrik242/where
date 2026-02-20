@@ -8,9 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 data class LanguageOption(val tag: String?, val displayName: String)
@@ -60,7 +58,7 @@ fun SettingsScreenContent(
                 title = { Text(stringResource(Res.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
+                        Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
                     }
                 }
             )
@@ -87,7 +85,7 @@ fun SettingsScreenContent(
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Icon(
-                        Icons.Filled.ChevronRight,
+                        painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_online_tracking)
                     )
                 }
@@ -107,7 +105,7 @@ fun SettingsScreenContent(
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Icon(
-                        Icons.Filled.ChevronRight,
+                        painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_saved_tracks)
                     )
                 }
@@ -127,7 +125,7 @@ fun SettingsScreenContent(
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Icon(
-                        Icons.Filled.ChevronRight,
+                        painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_saved_points)
                     )
                 }
@@ -147,7 +145,7 @@ fun SettingsScreenContent(
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Icon(
-                        Icons.Filled.ChevronRight,
+                        painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_download_manager)
                     )
                 }
