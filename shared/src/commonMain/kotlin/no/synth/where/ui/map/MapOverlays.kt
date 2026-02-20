@@ -156,7 +156,8 @@ fun RecordingCard(
     modifier: Modifier = Modifier,
     distance: Double,
     onlineTrackingEnabled: Boolean,
-    onOnlineTrackingChange: (Boolean) -> Unit
+    onOnlineTrackingChange: (Boolean) -> Unit,
+    onOnlineTrackingClick: () -> Unit = {}
 ) {
     Card(
         modifier = modifier,
@@ -194,7 +195,9 @@ fun RecordingCard(
             )
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOnlineTrackingClick() },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -316,6 +319,7 @@ fun BoxScope.MapOverlays(
     onRulerClear: () -> Unit,
     onRulerSaveAsTrack: () -> Unit,
     onOnlineTrackingChange: (Boolean) -> Unit,
+    onOnlineTrackingClick: () -> Unit = {},
     onCloseViewingTrack: () -> Unit,
     onCloseViewingPoint: () -> Unit,
     onOfflineIndicatorClick: () -> Unit = {},
@@ -382,7 +386,8 @@ fun BoxScope.MapOverlays(
                 RecordingCard(
                     distance = recordingDistance,
                     onlineTrackingEnabled = onlineTrackingEnabled,
-                    onOnlineTrackingChange = onOnlineTrackingChange
+                    onOnlineTrackingChange = onOnlineTrackingChange,
+                    onOnlineTrackingClick = onOnlineTrackingClick
                 )
             }
         }

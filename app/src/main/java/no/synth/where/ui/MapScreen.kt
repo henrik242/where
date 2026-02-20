@@ -61,6 +61,7 @@ import no.synth.where.util.currentTimeMillis
 fun MapScreen(
     onSettingsClick: () -> Unit,
     onOfflineSettingsClick: () -> Unit = {},
+    onOnlineTrackingSettingsClick: () -> Unit = {},
     showCountyBorders: Boolean,
     onShowCountyBordersChange: (Boolean) -> Unit,
     showSavedPoints: Boolean,
@@ -319,6 +320,7 @@ fun MapScreen(
         onRulerClear = { viewModel.clearRuler() },
         onRulerSaveAsTrack = { viewModel.openSaveRulerAsTrackDialog() },
         onOfflineIndicatorClick = onOfflineSettingsClick,
+        onOnlineTrackingClick = onOnlineTrackingSettingsClick,
         onOnlineTrackingChange = { newValue ->
             viewModel.updateOnlineTracking(newValue)
             if (newValue) {
