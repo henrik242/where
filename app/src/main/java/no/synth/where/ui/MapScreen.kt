@@ -96,9 +96,9 @@ fun MapScreen(
     val isResolvingRulerName by viewModel.isResolvingRulerName.collectAsState()
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
-    var selectedLayer by remember { mutableStateOf(MapLayer.KARTVERKET) }
+    var selectedLayer by rememberSaveable { mutableStateOf(MapLayer.KARTVERKET) }
     var showLayerMenu by remember { mutableStateOf(false) }
-    var showWaymarkedTrails by remember { mutableStateOf(false) }
+    var showWaymarkedTrails by rememberSaveable { mutableStateOf(false) }
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasBackgroundLocationPermission by remember {
         mutableStateOf(
