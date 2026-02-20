@@ -1,7 +1,10 @@
 [versions]
 activityCompose = "1.12.4"
 agp = "9.0.1"
+# Component versions from https://github.com/JetBrains/compose-multiplatform/releases
 composeMultiplatform = "1.10.1"
+composeMaterial3 = "1.10.0-alpha05" # see release notes for matching version
+composeMaterialIconsExtended = "1.7.3" # frozen, migrate to Material Symbols
 appcompat = "1.7.1"
 composeBom = "2026.02.00"
 core = "1.7.0"
@@ -75,6 +78,9 @@ room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version = "2.6.2" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMaterial3" }
+compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeMaterialIconsExtended" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
