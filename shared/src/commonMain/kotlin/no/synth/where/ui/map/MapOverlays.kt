@@ -1,6 +1,7 @@
 package no.synth.where.ui.map
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -36,6 +37,7 @@ import no.synth.where.data.RulerState
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
+import androidx.compose.foundation.shape.RoundedCornerShape
 import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -295,6 +297,7 @@ fun ViewingPointBanner(
 
 @Composable
 fun BoxScope.MapOverlays(
+    offlineModeEnabled: Boolean = false,
     rulerState: RulerState,
     isRecording: Boolean,
     recordingDistance: Double?,
@@ -315,6 +318,7 @@ fun BoxScope.MapOverlays(
     onOnlineTrackingChange: (Boolean) -> Unit,
     onCloseViewingTrack: () -> Unit,
     onCloseViewingPoint: () -> Unit,
+    onOfflineIndicatorClick: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit,
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchClose: () -> Unit
@@ -329,6 +333,34 @@ fun BoxScope.MapOverlays(
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut
         )
+
+        if (offlineModeEnabled) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .clickable { onOfflineIndicatorClick() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_cloud_off),
+                    contentDescription = stringResource(Res.string.offline_mode),
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = stringResource(Res.string.offline_mode),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 
     if (rulerState.isActive || isRecording) {

@@ -24,6 +24,7 @@ fun MapScreenContent(
     showCountyBorders: Boolean,
     showSavedPoints: Boolean,
     // Overlay state
+    offlineModeEnabled: Boolean = false,
     onlineTrackingEnabled: Boolean,
     recordingDistance: Double?,
     viewingTrackName: String?,
@@ -52,6 +53,7 @@ fun MapScreenContent(
     onRulerClear: () -> Unit,
     onRulerSaveAsTrack: () -> Unit,
     onOnlineTrackingChange: (Boolean) -> Unit,
+    onOfflineIndicatorClick: () -> Unit = {},
     onCloseViewingTrack: () -> Unit,
     onCloseViewingPoint: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -92,6 +94,7 @@ fun MapScreenContent(
             mapContent()
 
             MapOverlays(
+                offlineModeEnabled = offlineModeEnabled,
                 rulerState = rulerState,
                 isRecording = isRecording,
                 recordingDistance = recordingDistance,
@@ -110,6 +113,7 @@ fun MapScreenContent(
                 onRulerClear = onRulerClear,
                 onRulerSaveAsTrack = onRulerSaveAsTrack,
                 onOnlineTrackingChange = onOnlineTrackingChange,
+                onOfflineIndicatorClick = onOfflineIndicatorClick,
                 onCloseViewingTrack = onCloseViewingTrack,
                 onCloseViewingPoint = onCloseViewingPoint,
                 onSearchQueryChange = onSearchQueryChange,

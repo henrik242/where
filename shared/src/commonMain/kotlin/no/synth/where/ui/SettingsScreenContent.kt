@@ -1,5 +1,8 @@
 package no.synth.where.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,13 +23,16 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.painterResource
@@ -43,6 +49,8 @@ fun SettingsScreenContent(
     onTracksClick: () -> Unit,
     onSavedPointsClick: () -> Unit,
     onOnlineTrackingClick: () -> Unit,
+    offlineModeEnabled: Boolean = false,
+    onOfflineModeChange: (Boolean) -> Unit = {},
     crashReportingEnabled: Boolean = false,
     onCrashReportingChange: (Boolean) -> Unit = {},
     currentLanguageLabel: String = "",
@@ -50,8 +58,27 @@ fun SettingsScreenContent(
     onLanguageSelected: (String?) -> Unit = {},
     currentThemeLabel: String = "",
     themeOptions: List<LanguageOption> = emptyList(),
-    onThemeSelected: (String) -> Unit = {}
+    onThemeSelected: (String) -> Unit = {},
+    highlightOfflineMode: Boolean = false
 ) {
+    var flashOfflineMode by remember { mutableStateOf(highlightOfflineMode) }
+    val offlineHighlightColor by animateColorAsState(
+        targetValue = if (flashOfflineMode) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        animationSpec = tween(durationMillis = 500),
+        label = "offlineHighlight"
+    )
+
+    LaunchedEffect(highlightOfflineMode) {
+        if (highlightOfflineMode) {
+            flashOfflineMode = true
+            delay(600)
+            flashOfflineMode = false
+            delay(400)
+            flashOfflineMode = true
+            delay(600)
+            flashOfflineMode = false
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -147,6 +174,35 @@ fun SettingsScreenContent(
                     Icon(
                         painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_download_manager)
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(offlineHighlightColor)
+                        .clickable { onOfflineModeChange(!offlineModeEnabled) }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(Res.string.offline_mode),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = stringResource(Res.string.offline_mode_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        modifier = Modifier.padding(start = 16.dp),
+                        checked = offlineModeEnabled,
+                        onCheckedChange = onOfflineModeChange
                     )
                 }
 

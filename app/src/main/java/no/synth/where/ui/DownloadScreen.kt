@@ -88,7 +88,8 @@ fun DownloadScreen(
 @Composable
 fun LayerRegionsScreen(
     layerId: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    offlineModeEnabled: Boolean = false
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -139,6 +140,7 @@ fun LayerRegionsScreen(
         },
         onDismissDelete = { showDeleteDialog = null },
         getRegionTileInfo = { region -> downloadManager.getRegionTileInfo(region, layerId) },
-        refreshTrigger = refreshTrigger
+        refreshTrigger = refreshTrigger,
+        offlineModeEnabled = offlineModeEnabled
     )
 }

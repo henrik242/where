@@ -3,7 +3,7 @@ package no.synth.where.navigation
 import kotlinx.serialization.Serializable
 
 @Serializable object MapRoute
-@Serializable object SettingsRoute
+@Serializable data class SettingsRoute(val highlightOfflineMode: Boolean = false)
 @Serializable object TracksRoute
 @Serializable object SavedPointsRoute
 @Serializable object OnlineTrackingRoute

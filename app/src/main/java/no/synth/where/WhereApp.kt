@@ -33,6 +33,7 @@ fun WhereApp(
     val trackRepository = viewModel.trackRepository
     val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
+    val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     var showSavedPoints by remember { mutableStateOf(true) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
     var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(PlatformFile(context.cacheDir))) }
@@ -66,8 +67,12 @@ fun WhereApp(
         }
     }
 
-    LaunchedEffect(isOnline, showCountyBorders) {
-        if (isOnline && showCountyBorders && !hasDownloadedCounties) {
+    LaunchedEffect(offlineModeEnabled) {
+        org.maplibre.android.MapLibre.setConnected(!offlineModeEnabled)
+    }
+
+    LaunchedEffect(isOnline, showCountyBorders, offlineModeEnabled) {
+        if (isOnline && !offlineModeEnabled && showCountyBorders && !hasDownloadedCounties) {
             val success = FylkeDownloader.downloadAndCacheFylker(PlatformFile(context.cacheDir))
             if (success) {
                 hasDownloadedCounties = true
@@ -99,7 +104,8 @@ fun WhereApp(
     NavHost(navController = navController, startDestination = MapRoute) {
         composable<MapRoute> {
             MapScreen(
-                onSettingsClick = { navController.navigate(SettingsRoute) },
+                onSettingsClick = { navController.navigate(SettingsRoute()) },
+                onOfflineSettingsClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
                 showCountyBorders = showCountyBorders,
                 onShowCountyBordersChange = { userPreferences.updateShowCountyBorders(it) },
                 showSavedPoints = showSavedPoints,
@@ -109,8 +115,10 @@ fun WhereApp(
                 regionsLoadedTrigger = regionsLoadedTrigger
             )
         }
-        composable<SettingsRoute> {
+        composable<SettingsRoute> { backStackEntry ->
+            val settingsRoute = backStackEntry.toRoute<SettingsRoute>()
             SettingsScreen(
+                highlightOfflineMode = settingsRoute.highlightOfflineMode,
                 onBackClick = { navController.popBackStack() },
                 onDownloadClick = { navController.navigate(DownloadRoute) },
                 onTracksClick = { navController.navigate(TracksRoute) },
@@ -164,7 +172,8 @@ fun WhereApp(
             val route = backStackEntry.toRoute<LayerRegionsRoute>()
             LayerRegionsScreen(
                 layerId = route.layerId,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                offlineModeEnabled = offlineModeEnabled
             )
         }
     }

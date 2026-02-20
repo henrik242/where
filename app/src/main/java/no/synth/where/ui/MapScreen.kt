@@ -60,6 +60,7 @@ import no.synth.where.util.currentTimeMillis
 @Composable
 fun MapScreen(
     onSettingsClick: () -> Unit,
+    onOfflineSettingsClick: () -> Unit = {},
     showCountyBorders: Boolean,
     onShowCountyBordersChange: (Boolean) -> Unit,
     showSavedPoints: Boolean,
@@ -75,6 +76,7 @@ fun MapScreen(
     val currentTrack by viewModel.currentTrack.collectAsState()
     val viewingTrack by viewModel.viewingTrack.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
+    val offlineModeEnabled by viewModel.userPreferences.offlineModeEnabled.collectAsState()
     val rulerState by viewModel.rulerState.collectAsState()
     val showSearch by viewModel.showSearch.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -250,6 +252,7 @@ fun MapScreen(
         showWaymarkedTrails = showWaymarkedTrails,
         showCountyBorders = showCountyBorders,
         showSavedPoints = showSavedPoints,
+        offlineModeEnabled = offlineModeEnabled,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,
@@ -315,6 +318,7 @@ fun MapScreen(
         onRulerUndo = { viewModel.removeLastRulerPoint() },
         onRulerClear = { viewModel.clearRuler() },
         onRulerSaveAsTrack = { viewModel.openSaveRulerAsTrackDialog() },
+        onOfflineIndicatorClick = onOfflineSettingsClick,
         onOnlineTrackingChange = { newValue ->
             viewModel.updateOnlineTracking(newValue)
             if (newValue) {

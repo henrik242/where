@@ -54,7 +54,9 @@ class LocationTrackingService : Service(), KoinComponent {
                     accuracy = accuracy
                 )
 
-                onlineTrackingClient?.sendPoint(latLng, altitude, accuracy)
+                if (!userPreferences.offlineModeEnabled.value) {
+                    onlineTrackingClient?.sendPoint(latLng, altitude, accuracy)
+                }
             }
         }
     }
@@ -64,7 +66,7 @@ class LocationTrackingService : Service(), KoinComponent {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         serviceScope.launch {
-            if (userPreferences.onlineTrackingEnabled.value) {
+            if (userPreferences.onlineTrackingEnabled.value && !userPreferences.offlineModeEnabled.value) {
                 enableOnlineTracking()
             }
         }

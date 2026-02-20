@@ -229,7 +229,8 @@ fun LayerRegionsScreenContent(
     onConfirmDelete: (Region) -> Unit,
     onDismissDelete: () -> Unit,
     getRegionTileInfo: suspend (Region) -> RegionTileInfo?,
-    refreshTrigger: Int
+    refreshTrigger: Int,
+    offlineModeEnabled: Boolean = false
 ) {
     fun cleanRegionName(name: String): String = name.substringBefore(" - ")
 
@@ -335,7 +336,7 @@ fun LayerRegionsScreenContent(
                                 }
                                 Button(
                                     onClick = { onStartDownload(region) },
-                                    enabled = !isDownloading
+                                    enabled = !isDownloading && !offlineModeEnabled
                                 ) {
                                     Text(
                                         when {
