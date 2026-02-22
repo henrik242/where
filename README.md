@@ -25,7 +25,7 @@ Free offline hiking maps for Norway. A lightweight alternative to the discontinu
 
 1. Set up `local.properties` as above (needed for the shared module build)
 2. Build the shared framework: `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64`
-3. Open `iosApp/iosApp.xcodeproj` in Xcode
+3. Open `iosApp/Where.xcodeproj` in Xcode
 4. Xcode will fetch MapLibre via SPM on first open — wait for package resolution to finish
 5. Select an iPhone simulator and press Run (Cmd+R)
 
