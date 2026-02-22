@@ -23,4 +23,4 @@ xcuserdata/
 **/xcshareddata/WorkspaceSettings.xcsettings
 
 # Generated build config
-iosApp/iosApp/Generated.xcconfig
+**/Where/Generated.xcconfig

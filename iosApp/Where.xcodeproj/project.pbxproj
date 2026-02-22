@@ -47,12 +47,12 @@
 		A40001 = {
 			isa = PBXGroup;
 			children = (
-				A40002 /* iosApp */,
+				A40002 /* Where */,
 				A40003 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A40002 /* iosApp */ = {
+		A40002 /* Where */ = {
 			isa = PBXGroup;
 			children = (
 				A20001 /* WhereApp.swift */,
@@ -66,7 +66,7 @@
 				A2000A /* GoogleService-Info.plist */,
 				A2000B /* GoogleService-debug-Info.plist */,
 			);
-			path = iosApp;
+			path = Where;
 			sourceTree = "<group>";
 		};
 		A40003 /* Products */ = {
@@ -113,7 +113,7 @@
 				LastSwiftUpdateCheck = 1540;
 				LastUpgradeCheck = 2620;
 			};
-			buildConfigurationList = A70000 /* Build configuration list for PBXProject "iosApp" */;
+			buildConfigurationList = A70000 /* Build configuration list for PBXProject "Where" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -164,7 +164,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"$SRCROOT/..\"\nCOMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo \"1\")\nSHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo \"unknown\")\nBUILD_DATE=$(date +%Y-%m-%d)\n\necho \"CURRENT_PROJECT_VERSION = $COMMIT_COUNT\" > \"$SRCROOT/iosApp/Generated.xcconfig\"\necho \"MARKETING_VERSION = 1.0.$COMMIT_COUNT\" >> \"$SRCROOT/iosApp/Generated.xcconfig\"\n\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "cd \"$SRCROOT/..\"\nCOMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo \"1\")\nSHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo \"unknown\")\nBUILD_DATE=$(date +%Y-%m-%d)\n\necho \"CURRENT_PROJECT_VERSION = $COMMIT_COUNT\" > \"$SRCROOT/Where/Generated.xcconfig\"\necho \"MARKETING_VERSION = 1.0.$COMMIT_COUNT\" >> \"$SRCROOT/Where/Generated.xcconfig\"\n\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
 		};
 		A60002 /* Copy Firebase Config */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -182,7 +182,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n  cp \"${SRCROOT}/iosApp/GoogleService-debug-Info.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nelse\n  cp \"${SRCROOT}/iosApp/GoogleService-Info.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nfi\n";
+			shellScript = "if [ \"${CONFIGURATION}\" == \"Debug\" ]; then\n  cp \"${SRCROOT}/Where/GoogleService-debug-Info.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nelse\n  cp \"${SRCROOT}/Where/GoogleService-Info.plist\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/GoogleService-Info.plist\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -312,13 +312,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_DISPLAY_NAME = "Where? (debug)";
-				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 358L7UXVJ4;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = iosApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "$(BUNDLE_DISPLAY_NAME)";
+				INFOPLIST_FILE = Where/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Where? (debug)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Where needs your location to show your position on the map.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -332,8 +333,9 @@
 					"-framework",
 					Shared,
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = no.synth.where.debug;
+				PRODUCT_BUNDLE_IDENTIFIER = no.synth.ios.where.debug;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -351,8 +353,8 @@
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = iosApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "$(BUNDLE_DISPLAY_NAME)";
+				INFOPLIST_FILE = Where/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Where? (debug)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Where needs your location to show your position on the map.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -377,7 +379,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A70000 /* Build configuration list for PBXProject "iosApp" */ = {
+		A70000 /* Build configuration list for PBXProject "Where" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A70002 /* Debug */,
