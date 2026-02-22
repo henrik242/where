@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -290,6 +291,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
 
             Screen.DOWNLOAD -> {
                 var refreshTrigger by remember { mutableIntStateOf(0) }
+                var cacheSize by remember { mutableLongStateOf(0L) }
 
                 val layers = remember {
                     DownloadLayers.all.map { layer ->
@@ -301,9 +303,13 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     if (!downloadState.isDownloading) refreshTrigger++
                 }
 
+                LaunchedEffect(refreshTrigger) {
+                    cacheSize = downloadManager.getCacheSize()
+                }
+
                 DownloadScreenContent(
                     layers = layers,
-                    cacheSize = 0L,
+                    cacheSize = cacheSize,
                     isDownloading = downloadState.isDownloading,
                     downloadRegionName = downloadState.region?.name,
                     downloadLayerName = downloadState.layerName,

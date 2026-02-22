@@ -170,11 +170,18 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         }
     }
 
+    fun getCacheSize(): Long = offlineMapManager.getDatabaseSize()
+
     suspend fun getLayerStats(layerName: String): Pair<Long, Int> {
         return try {
-            val result = offlineMapManager.getLayerStatsEncoded(layerName)
+            var result = offlineMapManager.getLayerStatsEncoded(layerName)
+            if (result == "-1,-1") {
+                // requestProgress() was triggered for stale packs; wait for notifications
+                delay(300)
+                result = offlineMapManager.getLayerStatsEncoded(layerName)
+            }
             Logger.d("getLayerStats %s: '%s'", layerName, result)
-            if (result.isEmpty()) Pair(0L, 0)
+            if (result.isEmpty() || result == "-1,-1") Pair(0L, 0)
             else {
                 val parts = result.split(",")
                 Pair(

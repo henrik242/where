@@ -140,10 +140,20 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         let packId = ObjectIdentifier(pack)
         NSLog("[OfflineMap] Auto-resume for \(regionName): state=\(pack.state.rawValue), invalidated=\(invalidatedPacks.contains(packId))")
 
+        guard !invalidatedPacks.contains(packId), pack.state != .invalid else {
+            NSLog("[OfflineMap] Auto-resume: pack is invalid, cleaning up \(regionName)")
+            activePacks.removeValue(forKey: regionName)
+            return
+        }
+
         // Suspend then resume after a pause to kick MapLibre's download engine
         pack.suspend()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard pack.state != .invalid else {
+                NSLog("[OfflineMap] Auto-resume: pack became invalid before resume for \(regionName)")
+                return
+            }
             pack.resume()
             NSLog("[OfflineMap] Auto-resume: resumed pack for \(regionName) (state=\(pack.state.rawValue))")
         }
@@ -217,6 +227,7 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         var totalSize: Int64 = 0
         var totalTiles: Int32 = 0
         var counted = Set<String>()
+        var requestedProgress = false
 
         // Include active in-memory packs
         for (name, pack) in activePacks where !invalidatedPacks.contains(ObjectIdentifier(pack)) && pack.state != .invalid {
@@ -236,18 +247,40 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         if let packs = MLNOfflineStorage.shared.packs {
             for pack in packs {
                 guard !invalidatedPacks.contains(ObjectIdentifier(pack)) else { continue }
-                if let metadata = decodeMetadata(data: pack.context),
-                   metadata["layer"] == layerName,
-                   let name = metadata["name"],
-                   !counted.contains(name) {
-                    let progress = pack.progress
-                    totalSize += Int64(progress.countOfBytesCompleted)
-                    totalTiles += Int32(progress.countOfResourcesCompleted)
+                guard let metadata = decodeMetadata(data: pack.context),
+                      metadata["layer"] == layerName,
+                      let name = metadata["name"],
+                      !counted.contains(name) else { continue }
+
+                let resources = Int32(pack.progress.countOfResourcesCompleted)
+                if resources > 0 {
+                    totalSize += Int64(pack.progress.countOfBytesCompleted)
+                    totalTiles += resources
+                } else if let cached = cachedStatus[name] {
+                    // Use values populated by a previous requestProgress() notification
+                    let parts = cached.split(separator: ",")
+                    if parts.count >= 3 {
+                        totalTiles += Int32(String(parts[0])) ?? 0
+                        totalSize += Int64(String(parts[2])) ?? 0
+                    }
+                } else {
+                    // pack.progress not yet populated; request it asynchronously
+                    pack.requestProgress()
+                    requestedProgress = true
                 }
             }
         }
 
+        // Tell the caller to retry after the requestProgress notifications fire
+        if requestedProgress { return "-1,-1" }
         return "\(totalSize),\(totalTiles)"
+    }
+
+    func getDatabaseSize() -> Int64 {
+        let path = MLNOfflineStorage.shared.databasePath
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attrs[.size] as? Int64 else { return 0 }
+        return size
     }
 
     // MARK: - Notification handlers
