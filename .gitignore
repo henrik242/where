@@ -20,6 +20,7 @@ GoogleService-debug-Info.plist
 
 # Xcode user state
 xcuserdata/
+**/xcshareddata/WorkspaceSettings.xcsettings
 
 # Generated build config
 iosApp/iosApp/Generated.xcconfig
