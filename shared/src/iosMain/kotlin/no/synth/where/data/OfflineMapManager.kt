@@ -21,4 +21,5 @@ interface OfflineMapManager {
     fun deleteRegionSync(regionName: String): Boolean
     // Returns "totalSize,totalTiles"
     fun getLayerStatsEncoded(layerName: String): String
+    fun getDatabaseSize(): Long
 }
