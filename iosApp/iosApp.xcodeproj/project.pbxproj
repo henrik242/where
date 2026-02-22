@@ -22,7 +22,7 @@
 		A20002 /* ComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposeView.swift; sourceTree = "<group>"; };
 		A20003 /* MapViewFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewFactory.swift; sourceTree = "<group>"; };
 		A20004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A20005 /* iosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20005 /* Where.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Where.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20006 /* OfflineMapFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineMapFactory.swift; sourceTree = "<group>"; };
 		A20007 /* StyleServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleServer.swift; sourceTree = "<group>"; };
 		A20008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -72,7 +72,7 @@
 		A40003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A20005 /* iosApp.app */,
+				A20005 /* Where.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -80,9 +80,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A50001 /* iosApp */ = {
+		A50001 /* Where */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A70001 /* Build configuration list for PBXNativeTarget "iosApp" */;
+			buildConfigurationList = A70001 /* Build configuration list for PBXNativeTarget "Where" */;
 			buildPhases = (
 				A60001 /* Compile Kotlin Framework */,
 				A50002 /* Sources */,
@@ -94,13 +94,13 @@
 			);
 			dependencies = (
 			);
-			name = iosApp;
+			name = Where;
 			packageProductDependencies = (
 				A80001 /* MapLibre */,
 				A80003 /* FirebaseCrashlytics */,
 			);
-			productName = iosApp;
-			productReference = A20005 /* iosApp.app */;
+			productName = Where;
+			productReference = A20005 /* Where.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -130,7 +130,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A50001 /* iosApp */,
+				A50001 /* Where */,
 			);
 		};
 /* End PBXProject section */
@@ -336,7 +336,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A70001 /* Build configuration list for PBXNativeTarget "iosApp" */ = {
+		A70001 /* Build configuration list for PBXNativeTarget "Where" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A70004 /* Debug */,
