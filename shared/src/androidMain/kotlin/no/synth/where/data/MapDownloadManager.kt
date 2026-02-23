@@ -407,38 +407,6 @@ class MapDownloadManager(private val context: Context) {
         })
     }
 
-    suspend fun getAmbientCacheSize(): Long {
-        val maplibreTilesDir = java.io.File(context.getExternalFilesDir(null), "maplibre-tiles")
-        val totalSize = if (maplibreTilesDir.exists()) {
-            maplibreTilesDir.walkTopDown().sumOf { if (it.isFile) it.length() else 0L }
-        } else 0L
-        val packsSize = getTotalPacksSize()
-        return maxOf(0L, totalSize - packsSize)
-    }
-
-    private suspend fun getTotalPacksSize(): Long = suspendCancellableCoroutine { continuation ->
-        offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
-            override fun onList(offlineRegions: Array<OfflineRegion>?) {
-                if (offlineRegions.isNullOrEmpty()) { continuation.resume(0L); return }
-                var totalSize = 0L
-                var processed = 0
-                offlineRegions.forEach { region ->
-                    region.getStatus(object : OfflineRegion.OfflineRegionStatusCallback {
-                        override fun onStatus(status: OfflineRegionStatus?) {
-                            totalSize += status?.completedResourceSize ?: 0L
-                            processed++
-                            if (processed == offlineRegions.size) continuation.resume(totalSize)
-                        }
-                        override fun onError(error: String?) {
-                            processed++
-                            if (processed == offlineRegions.size) continuation.resume(totalSize)
-                        }
-                    })
-                }
-            }
-            override fun onError(error: String) { continuation.resume(0L) }
-        })
-    }
 
     suspend fun getLayerStats(layerName: String): Pair<Long, Int> =
         suspendCancellableCoroutine { continuation ->

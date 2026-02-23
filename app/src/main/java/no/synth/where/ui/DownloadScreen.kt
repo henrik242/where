@@ -16,6 +16,7 @@ import no.synth.where.R
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.service.MapDownloadService
+import java.io.File
 
 @Composable
 fun DownloadScreen(
@@ -55,8 +56,17 @@ fun DownloadScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        cacheSize = downloadManager.getAmbientCacheSize()
+    LaunchedEffect(refreshTrigger) {
+        val maplibreTilesDir = File(context.getExternalFilesDir(null), "maplibre-tiles")
+        cacheSize = if (maplibreTilesDir.exists()) {
+            maplibreTilesDir.walkTopDown().sumOf { file ->
+                if (file.isFile) file.length() else 0L
+            }
+        } else {
+            context.cacheDir.walkTopDown().sumOf { file ->
+                if (file.isFile) file.length() else 0L
+            }
+        }
     }
 
     DownloadScreenContent(
@@ -72,14 +82,12 @@ fun DownloadScreen(
         onDeleteLayer = { layerId ->
             scope.launch {
                 downloadManager.deleteAllRegionsForLayer(layerId)
-                cacheSize = downloadManager.getAmbientCacheSize()
                 refreshTrigger++
             }
         },
         onClearAutoCache = {
             scope.launch {
                 downloadManager.clearAutoCache()
-                cacheSize = 0L  // SQLite file doesn't shrink after row deletion; set directly
                 refreshTrigger++
             }
         },
