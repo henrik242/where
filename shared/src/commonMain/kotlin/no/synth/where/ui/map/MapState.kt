@@ -8,6 +8,7 @@ enum class MapLayer {
     OPENTOPOMAP,
     KARTVERKET,
     TOPORASTER,
-    SJOKARTRASTER
+    SJOKARTRASTER,
+    MAPANT
 }
 

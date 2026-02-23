@@ -90,6 +90,7 @@ fun MapFabColumn(
             LayerMenuItem(stringResource(Res.string.kartverket_norway), selectedLayer == MapLayer.KARTVERKET) { onLayerSelected(MapLayer.KARTVERKET) }
             LayerMenuItem(stringResource(Res.string.kartverket_toporaster), selectedLayer == MapLayer.TOPORASTER) { onLayerSelected(MapLayer.TOPORASTER) }
             LayerMenuItem(stringResource(Res.string.kartverket_sjokart), selectedLayer == MapLayer.SJOKARTRASTER) { onLayerSelected(MapLayer.SJOKARTRASTER) }
+            LayerMenuItem("MapAnt", selectedLayer == MapLayer.MAPANT) { onLayerSelected(MapLayer.MAPANT) }
             LayerMenuItem("OpenStreetMap", selectedLayer == MapLayer.OSM) { onLayerSelected(MapLayer.OSM) }
             LayerMenuItem("OpenTopoMap", selectedLayer == MapLayer.OPENTOPOMAP) { onLayerSelected(MapLayer.OPENTOPOMAP) }
             HorizontalDivider()
