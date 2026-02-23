@@ -25,6 +25,7 @@ import no.synth.where.data.RegionTileInfo
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.service.MapDownloadService
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
@@ -36,6 +37,7 @@ private val NORWAY_BOUNDS = LatLngBounds(south = 56.0, west = 3.0, north = 72.0,
 fun LayerHexMapScreen(
     layerId: String,
     onBackClick: () -> Unit,
+    onOfflineChipClick: () -> Unit = {},
     offlineModeEnabled: Boolean = false
 ) {
     val context = LocalContext.current
@@ -116,6 +118,9 @@ fun LayerHexMapScreen(
                 }
             }
         },
+        onZoomIn = { mapInstance?.animateCamera(CameraUpdateFactory.zoomIn()) },
+        onZoomOut = { mapInstance?.animateCamera(CameraUpdateFactory.zoomOut()) },
+        onOfflineChipClick = onOfflineChipClick,
         onDismissDelete = { showDeleteDialog = false },
         onDismissHex = {
             selectedHex = null

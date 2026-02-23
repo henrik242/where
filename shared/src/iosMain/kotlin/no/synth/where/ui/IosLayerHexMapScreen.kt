@@ -32,7 +32,8 @@ fun IosLayerHexMapScreen(
     onBackClick: () -> Unit,
     hexMapViewProvider: MapViewProvider,
     downloadManager: IosMapDownloadManager,
-    offlineModeEnabled: Boolean = false
+    offlineModeEnabled: Boolean = false,
+    onOfflineChipClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val downloadState by downloadManager.downloadState.collectAsState()
@@ -134,6 +135,9 @@ fun IosLayerHexMapScreen(
                 }
             }
         },
+        onZoomIn = { hexMapViewProvider.zoomIn() },
+        onZoomOut = { hexMapViewProvider.zoomOut() },
+        onOfflineChipClick = onOfflineChipClick,
         onDismissDelete = { showDeleteDialog = false },
         onDismissHex = {
             selectedHex = null

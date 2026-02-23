@@ -3,6 +3,8 @@ package no.synth.where.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -13,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,9 +40,13 @@ import androidx.compose.ui.unit.dp
 import no.synth.where.data.RegionTileInfo
 import no.synth.where.resources.Res
 import no.synth.where.resources.ic_arrow_back
+import no.synth.where.resources.ic_cloud_off
 import no.synth.where.resources.ic_close
+import no.synth.where.resources.offline_mode
+import no.synth.where.ui.map.ZoomControls
 import no.synth.where.util.formatBytes
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +68,9 @@ fun HexMapScreenContent(
     onDeleteHexRequest: () -> Unit,
     onConfirmDelete: () -> Unit,
     onDismissDelete: () -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onOfflineChipClick: () -> Unit,
     onDismissHex: () -> Unit,
     mapContent: @Composable BoxScope.() -> Unit
 ) {
@@ -84,6 +95,44 @@ fun HexMapScreenContent(
                 .padding(padding)
         ) {
             mapContent()
+
+            if (!(isDownloading && downloadLayerId == currentLayerId)) {
+                ZoomControls(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(16.dp),
+                    onZoomIn = onZoomIn,
+                    onZoomOut = onZoomOut
+                )
+
+                if (offlineModeEnabled) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .clickable { onOfflineChipClick() }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_cloud_off),
+                            contentDescription = stringResource(Res.string.offline_mode),
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = stringResource(Res.string.offline_mode),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
 
             // Download progress banner
             if (isDownloading && downloadLayerId == currentLayerId) {
