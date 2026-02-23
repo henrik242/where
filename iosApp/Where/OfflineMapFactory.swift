@@ -297,6 +297,35 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         return "\(totalSize),\(totalTiles)"
     }
 
+    func getRegionNamesForLayer(layerName: String) -> String {
+        var names: [String] = []
+        var counted = Set<String>()
+
+        // Include active in-memory packs
+        for (name, pack) in activePacks where !invalidatedPacks.contains(ObjectIdentifier(pack)) && pack.state != .invalid {
+            if let metadata = decodeMetadata(data: pack.context),
+               metadata["layer"] == layerName {
+                names.append(name)
+                counted.insert(name)
+            }
+        }
+
+        ensurePacksLoaded()
+        if let packs = MLNOfflineStorage.shared.packs {
+            for pack in packs {
+                guard !invalidatedPacks.contains(ObjectIdentifier(pack)) else { continue }
+                guard let metadata = decodeMetadata(data: pack.context),
+                      metadata["layer"] == layerName,
+                      let name = metadata["name"],
+                      !counted.contains(name) else { continue }
+                names.append(name)
+            }
+        }
+
+        let json = try? JSONSerialization.data(withJSONObject: names)
+        return json.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+    }
+
     func getDatabaseSize() -> Int64 {
         let path = MLNOfflineStorage.shared.databasePath
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),

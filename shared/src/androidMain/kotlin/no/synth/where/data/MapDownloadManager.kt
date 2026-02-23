@@ -293,6 +293,72 @@ class MapDownloadManager(private val context: Context) {
             })
         }
 
+    suspend fun getDownloadedRegionsForLayer(layerName: String): Map<String, RegionTileInfo> =
+        suspendCancellableCoroutine { continuation ->
+            offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+                override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                    if (offlineRegions.isNullOrEmpty()) {
+                        continuation.resume(emptyMap())
+                        return
+                    }
+
+                    val layerRegions = offlineRegions.filter { r ->
+                        try {
+                            val metadata = String(r.metadata)
+                            val json = Json.parseToJsonElement(metadata).jsonObject
+                            json["layer"]?.jsonPrimitive?.content == layerName
+                        } catch (_: Exception) {
+                            false
+                        }
+                    }
+
+                    if (layerRegions.isEmpty()) {
+                        continuation.resume(emptyMap())
+                        return
+                    }
+
+                    val result = mutableMapOf<String, RegionTileInfo>()
+                    var processed = 0
+
+                    layerRegions.forEach { offlineRegion ->
+                        val regionName = try {
+                            val metadata = String(offlineRegion.metadata)
+                            val json = Json.parseToJsonElement(metadata).jsonObject
+                            json["region"]?.jsonPrimitive?.content
+                        } catch (_: Exception) { null }
+
+                        offlineRegion.getStatus(object : OfflineRegion.OfflineRegionStatusCallback {
+                            override fun onStatus(status: OfflineRegionStatus?) {
+                                if (status != null && regionName != null) {
+                                    result[regionName] = RegionTileInfo(
+                                        totalTiles = status.requiredResourceCount.toInt(),
+                                        downloadedTiles = status.completedResourceCount.toInt(),
+                                        downloadedSize = status.completedResourceSize,
+                                        isFullyDownloaded = status.isComplete
+                                    )
+                                }
+                                processed++
+                                if (processed == layerRegions.size) {
+                                    continuation.resume(result)
+                                }
+                            }
+
+                            override fun onError(error: String?) {
+                                processed++
+                                if (processed == layerRegions.size) {
+                                    continuation.resume(result)
+                                }
+                            }
+                        })
+                    }
+                }
+
+                override fun onError(error: String) {
+                    continuation.resume(emptyMap())
+                }
+            })
+        }
+
     suspend fun getLayerStats(layerName: String): Pair<Long, Int> =
         suspendCancellableCoroutine { continuation ->
             offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {

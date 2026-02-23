@@ -21,5 +21,7 @@ interface OfflineMapManager {
     fun deleteRegionSync(regionName: String): Boolean
     // Returns "totalSize,totalTiles"
     fun getLayerStatsEncoded(layerName: String): String
+    // Returns JSON array of region names for the given layer, e.g. ["hex_5_10-kartverket",...]
+    fun getRegionNamesForLayer(layerName: String): String
     fun getDatabaseSize(): Long
 }

@@ -13,13 +13,10 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.DownloadLayers
-import no.synth.where.data.DownloadState
 import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.OfflineMapManager
 import no.synth.where.data.PlatformFile
-import no.synth.where.data.Region
-import no.synth.where.data.RegionsRepository
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
@@ -28,7 +25,7 @@ import no.synth.where.data.UserPreferences
 import no.synth.where.ui.DownloadScreenContent
 import no.synth.where.ui.LanguageOption
 import no.synth.where.ui.LayerInfo
-import no.synth.where.ui.LayerRegionsScreenContent
+import no.synth.where.ui.IosLayerHexMapScreen
 import no.synth.where.ui.OnlineTrackingScreenContent
 import no.synth.where.ui.SavedPointsScreenContent
 import no.synth.where.ui.SettingsScreenContent
@@ -60,7 +57,7 @@ enum class Screen {
 }
 
 @Composable
-fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManager) {
+fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManager, hexMapViewProvider: MapViewProvider) {
     val koin = remember { getKoin() }
     val userPreferences = remember { koin.get<UserPreferences>() }
     val trackRepository = remember { koin.get<TrackRepository>() }
@@ -326,52 +323,11 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
             }
 
             Screen.LAYER_REGIONS -> {
-                val regions = remember(regionsLoaded) {
-                    val r = RegionsRepository.getRegions(cacheDir)
-                    Logger.d("LAYER_REGIONS: regionsLoaded=%s, regions count=%s", regionsLoaded.toString(), r.size.toString())
-                    r
-                }
-                val layerDisplayName = remember(selectedLayerId) {
-                    DownloadLayers.all.find { it.id == selectedLayerId }?.displayName ?: selectedLayerId
-                }
-                var refreshTrigger by remember { mutableIntStateOf(0) }
-                var showDeleteDialog by remember { mutableStateOf<Region?>(null) }
-
-                var wasDownloading by remember { mutableStateOf(false) }
-                LaunchedEffect(downloadState.isDownloading) {
-                    if (wasDownloading && !downloadState.isDownloading) {
-                        refreshTrigger++
-                    }
-                    wasDownloading = downloadState.isDownloading
-                }
-
-                LayerRegionsScreenContent(
-                    layerDisplayName = layerDisplayName,
+                IosLayerHexMapScreen(
                     layerId = selectedLayerId,
-                    regions = regions,
-                    isDownloading = downloadState.isDownloading,
-                    downloadRegionName = downloadState.region?.name,
-                    downloadLayerName = downloadState.layerName,
-                    downloadProgress = downloadState.progress,
-                    showDeleteDialog = showDeleteDialog,
                     onBackClick = { navigateBack() },
-                    onStopDownload = { downloadManager.stopDownload() },
-                    onStartDownload = { region ->
-                        downloadManager.startDownload(region, selectedLayerId)
-                    },
-                    onDeleteRequest = { region -> showDeleteDialog = region },
-                    onConfirmDelete = { region ->
-                        scope.launch {
-                            downloadManager.deleteRegionTiles(region, selectedLayerId)
-                            showDeleteDialog = null
-                            refreshTrigger++
-                        }
-                    },
-                    onDismissDelete = { showDeleteDialog = null },
-                    getRegionTileInfo = { region ->
-                        downloadManager.getRegionTileInfo(region, selectedLayerId)
-                    },
-                    refreshTrigger = refreshTrigger,
+                    hexMapViewProvider = hexMapViewProvider,
+                    downloadManager = downloadManager,
                     offlineModeEnabled = offlineModeEnabled
                 )
             }

@@ -196,6 +196,24 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
 
     fun getCacheSize(): Long = offlineMapManager.getDatabaseSize()
 
+    suspend fun getDownloadedRegionsForLayer(layerName: String): Set<String> {
+        return try {
+            val json = offlineMapManager.getRegionNamesForLayer(layerName)
+            if (json == "[]" || json.isBlank()) return emptySet()
+            val suffix = "-$layerName"
+            json.removeSurrounding("[", "]")
+                .split(",")
+                .mapNotNull { s ->
+                    val name = s.trim().removeSurrounding("\"")
+                    if (name.endsWith(suffix)) name.dropLast(suffix.length) else null
+                }
+                .toSet()
+        } catch (e: Exception) {
+            Logger.e("getDownloadedRegionsForLayer error for %s: %s", layerName, e.message ?: "unknown")
+            emptySet()
+        }
+    }
+
     suspend fun getLayerStats(layerName: String): Pair<Long, Int> {
         return try {
             var result = offlineMapManager.getLayerStatsEncoded(layerName)

@@ -124,33 +124,6 @@ class ScreenContentTest {
     }
 
     @Test
-    fun layerRegionsScreenContent_requiredParameters_areDocumented() {
-        val requiredParameters = listOf(
-            "layerDisplayName",
-            "layerId",
-            "regions",
-            "isDownloading",
-            "downloadRegionName",
-            "downloadLayerName",
-            "downloadProgress",
-            "showDeleteDialog",
-            "onBackClick",
-            "onStopDownload",
-            "onStartDownload",
-            "onDeleteRequest",
-            "onConfirmDelete",
-            "onDismissDelete",
-            "getRegionTileInfo",
-            "refreshTrigger"
-        )
-        assertEquals(
-            "LayerRegionsScreenContent must have 16 parameters",
-            16,
-            requiredParameters.size
-        )
-    }
-
-    @Test
     fun regionTileInfo_construction() {
         val info = RegionTileInfo(
             totalTiles = 100,
