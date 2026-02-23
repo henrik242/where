@@ -6,19 +6,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import kotlinx.coroutines.launch
 import no.synth.where.R
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.MapDownloadManager
-import no.synth.where.data.PlatformFile
-import no.synth.where.data.Region
-import no.synth.where.data.RegionsRepository
 import no.synth.where.service.MapDownloadService
 import java.io.File
 
@@ -82,65 +76,5 @@ fun DownloadScreen(
         onStopDownload = { MapDownloadService.stopDownload(context) },
         getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },
         refreshTrigger = refreshTrigger
-    )
-}
-
-@Composable
-fun LayerRegionsScreen(
-    layerId: String,
-    onBackClick: () -> Unit,
-    offlineModeEnabled: Boolean = false
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val downloadManager = remember { MapDownloadManager(context) }
-    val regions = remember { RegionsRepository.getRegions(PlatformFile(context.cacheDir)) }
-
-    val downloadState by MapDownloadService.downloadState.collectAsState()
-    var refreshTrigger by remember { mutableIntStateOf(0) }
-    var showDeleteDialog by remember { mutableStateOf<Region?>(null) }
-
-    LaunchedEffect(downloadState.isDownloading) {
-        if (!downloadState.isDownloading && downloadState.region != null) {
-            refreshTrigger++
-        }
-    }
-
-    val layerDisplayName = remember(layerId) {
-        DownloadLayers.all.find { it.id == layerId }?.displayName ?: layerId
-    }
-
-    LayerRegionsScreenContent(
-        layerDisplayName = layerDisplayName,
-        layerId = layerId,
-        regions = regions,
-        isDownloading = downloadState.isDownloading,
-        downloadRegionName = downloadState.region?.name,
-        downloadLayerName = downloadState.layerName,
-        downloadProgress = downloadState.progress,
-        showDeleteDialog = showDeleteDialog,
-        onBackClick = onBackClick,
-        onStopDownload = { MapDownloadService.stopDownload(context) },
-        onStartDownload = { region ->
-            MapDownloadService.startDownload(
-                context = context,
-                region = region,
-                layerName = layerId,
-                minZoom = 5,
-                maxZoom = 12
-            )
-        },
-        onDeleteRequest = { region -> showDeleteDialog = region },
-        onConfirmDelete = { region ->
-            scope.launch {
-                downloadManager.deleteRegionTiles(region, layerId)
-                showDeleteDialog = null
-                refreshTrigger++
-            }
-        },
-        onDismissDelete = { showDeleteDialog = null },
-        getRegionTileInfo = { region -> downloadManager.getRegionTileInfo(region, layerId) },
-        refreshTrigger = refreshTrigger,
-        offlineModeEnabled = offlineModeEnabled
     )
 }

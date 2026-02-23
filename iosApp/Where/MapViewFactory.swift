@@ -14,6 +14,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
+    private var styleVersion = 0
 
     private let trackSourceId = "track-source"
     private let trackLayerId = "track-layer"
@@ -44,6 +45,17 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         map.addGestureRecognizer(tap)
 
         self.mapView = map
+
+        // If setStyle was called before the map was created, apply it now.
+        if let json = currentStyleJson {
+            styleVersion += 1
+            let tempDir = NSTemporaryDirectory()
+            let styleFile = (tempDir as NSString).appendingPathComponent("mapstyle_\(styleVersion).json")
+            if let _ = try? json.write(toFile: styleFile, atomically: true, encoding: .utf8) {
+                map.styleURL = URL(fileURLWithPath: styleFile)
+            }
+        }
+
         return map
     }
 
@@ -70,17 +82,18 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     }
 
     func setStyle(json: String) {
-        guard let mapView = self.mapView else { return }
         guard json != currentStyleJson else { return }
         currentStyleJson = json
+        guard let mapView = self.mapView else { return }
 
-        // Write style JSON to temp file and load as file:// URL
+        // Use a versioned filename so each update gets a distinct URL,
+        // forcing MapLibre to reload even when the path would otherwise be the same.
+        styleVersion += 1
         let tempDir = NSTemporaryDirectory()
-        let styleFile = (tempDir as NSString).appendingPathComponent("mapstyle.json")
+        let styleFile = (tempDir as NSString).appendingPathComponent("mapstyle_\(styleVersion).json")
         do {
             try json.write(toFile: styleFile, atomically: true, encoding: .utf8)
-            let styleURL = URL(fileURLWithPath: styleFile)
-            mapView.styleURL = styleURL
+            mapView.styleURL = URL(fileURLWithPath: styleFile)
         } catch {
             print("Failed to write map style: \(error)")
         }

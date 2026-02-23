@@ -24,6 +24,7 @@ import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
+import no.synth.where.data.geo.LatLngBounds
 
 class MapDownloadService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -52,10 +53,17 @@ class MapDownloadService : Service() {
                 val layerName = intent.getStringExtra(EXTRA_LAYER_NAME)
                 val minZoom = intent.getIntExtra(EXTRA_MIN_ZOOM, 5)
                 val maxZoom = intent.getIntExtra(EXTRA_MAX_ZOOM, 12)
+                val south = intent.getDoubleExtra(EXTRA_SOUTH, Double.NaN)
+                val west = intent.getDoubleExtra(EXTRA_WEST, Double.NaN)
+                val north = intent.getDoubleExtra(EXTRA_NORTH, Double.NaN)
+                val east = intent.getDoubleExtra(EXTRA_EAST, Double.NaN)
 
                 if (regionName != null && layerName != null) {
-                    val regions = RegionsRepository.getRegions(PlatformFile(cacheDir))
-                    val region = regions.find { it.name == regionName }
+                    val region = if (!south.isNaN() && !west.isNaN() && !north.isNaN() && !east.isNaN()) {
+                        Region(regionName, LatLngBounds(south = south, west = west, north = north, east = east))
+                    } else {
+                        RegionsRepository.getRegions(PlatformFile(cacheDir)).find { it.name == regionName }
+                    }
                     if (region != null) {
                         startDownload(region, layerName, minZoom, maxZoom)
                     }
@@ -197,6 +205,10 @@ class MapDownloadService : Service() {
         private const val EXTRA_LAYER_NAME = "extra_layer_name"
         private const val EXTRA_MIN_ZOOM = "extra_min_zoom"
         private const val EXTRA_MAX_ZOOM = "extra_max_zoom"
+        private const val EXTRA_SOUTH = "extra_south"
+        private const val EXTRA_WEST = "extra_west"
+        private const val EXTRA_NORTH = "extra_north"
+        private const val EXTRA_EAST = "extra_east"
 
         private val _downloadState = MutableStateFlow(DownloadState())
         val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
@@ -214,6 +226,10 @@ class MapDownloadService : Service() {
                 putExtra(EXTRA_LAYER_NAME, layerName)
                 putExtra(EXTRA_MIN_ZOOM, minZoom)
                 putExtra(EXTRA_MAX_ZOOM, maxZoom)
+                putExtra(EXTRA_SOUTH, region.boundingBox.south)
+                putExtra(EXTRA_WEST, region.boundingBox.west)
+                putExtra(EXTRA_NORTH, region.boundingBox.north)
+                putExtra(EXTRA_EAST, region.boundingBox.east)
             }
             context.startForegroundService(intent)
         }

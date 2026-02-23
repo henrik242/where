@@ -171,7 +171,7 @@ fun WhereApp(
         }
         composable<LayerRegionsRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<LayerRegionsRoute>()
-            LayerRegionsScreen(
+            LayerHexMapScreen(
                 layerId = route.layerId,
                 onBackClick = { navController.popBackStack() },
                 offlineModeEnabled = offlineModeEnabled
