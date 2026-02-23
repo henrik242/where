@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,9 +60,51 @@ fun DownloadScreenContent(
     onBackClick: () -> Unit,
     onLayerClick: (String) -> Unit,
     onStopDownload: () -> Unit,
+    onDeleteLayer: (String) -> Unit,
+    onClearAutoCache: () -> Unit,
     getLayerStats: suspend (String) -> Pair<Long, Int>,
     refreshTrigger: Int
 ) {
+    var deleteLayerDialog by rememberSaveable { mutableStateOf<String?>(null) }
+    var clearCacheDialog by rememberSaveable { mutableStateOf(false) }
+
+    deleteLayerDialog?.let { layerId ->
+        val layerName = layers.find { it.id == layerId }?.displayName ?: layerId
+        AlertDialog(
+            onDismissRequest = { deleteLayerDialog = null },
+            title = { Text(stringResource(Res.string.delete_layer_title, layerName)) },
+            text = { Text(stringResource(Res.string.delete_layer_message, layerName)) },
+            confirmButton = {
+                Button(onClick = { deleteLayerDialog = null; onDeleteLayer(layerId) }) {
+                    Text(stringResource(Res.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteLayerDialog = null }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (clearCacheDialog) {
+        AlertDialog(
+            onDismissRequest = { clearCacheDialog = false },
+            title = { Text(stringResource(Res.string.clear_cache_title)) },
+            text = { Text(stringResource(Res.string.clear_cache_message)) },
+            confirmButton = {
+                Button(onClick = { clearCacheDialog = false; onClearAutoCache() }) {
+                    Text(stringResource(Res.string.clear))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { clearCacheDialog = false }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -83,33 +129,45 @@ fun DownloadScreenContent(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    stringResource(Res.string.automatic_cache),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    stringResource(Res.string.tiles_loaded_automatically),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                stringResource(Res.string.automatic_cache),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                stringResource(Res.string.tiles_loaded_automatically),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             if (cacheSize > 0) {
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     formatBytes(cacheSize),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.tertiary
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
+                        if (cacheSize > 0) {
+                            IconButton(onClick = { clearCacheDialog = true }) {
+                                Icon(
+                                    painterResource(Res.drawable.ic_delete),
+                                    contentDescription = stringResource(Res.string.delete),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                        // Match width of chevron icon on layer cards so delete buttons align
+                        Spacer(modifier = Modifier.width(24.dp))
                     }
                 }
             }
@@ -191,6 +249,15 @@ fun DownloadScreenContent(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                        if (stats.second > 0) {
+                            IconButton(onClick = { deleteLayerDialog = layer.id }) {
+                                Icon(
+                                    painterResource(Res.drawable.ic_delete),
+                                    contentDescription = stringResource(Res.string.delete),
+                                    tint = MaterialTheme.colorScheme.error
                                 )
                             }
                         }

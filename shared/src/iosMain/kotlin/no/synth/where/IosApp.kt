@@ -317,6 +317,18 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         navigateTo(Screen.LAYER_REGIONS)
                     },
                     onStopDownload = { downloadManager.stopDownload() },
+                    onDeleteLayer = { layerId ->
+                        scope.launch {
+                            downloadManager.deleteAllRegionsForLayer(layerId)
+                            refreshTrigger++
+                        }
+                    },
+                    onClearAutoCache = {
+                        scope.launch {
+                            downloadManager.clearAutoCache()
+                            refreshTrigger++
+                        }
+                    },
                     getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },
                     refreshTrigger = refreshTrigger
                 )

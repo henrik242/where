@@ -359,6 +359,54 @@ class MapDownloadManager(private val context: Context) {
             })
         }
 
+    suspend fun deleteAllRegionsForLayer(layerName: String): Boolean =
+        suspendCancellableCoroutine { continuation ->
+            offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+                override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                    val layerRegions = offlineRegions?.filter { r ->
+                        try {
+                            val metadata = String(r.metadata)
+                            val json = Json.parseToJsonElement(metadata).jsonObject
+                            json["layer"]?.jsonPrimitive?.content == layerName
+                        } catch (_: Exception) { false }
+                    } ?: emptyList()
+
+                    if (layerRegions.isEmpty()) {
+                        continuation.resume(true)
+                        return
+                    }
+
+                    var processed = 0
+                    layerRegions.forEach { region ->
+                        region.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
+                            override fun onDelete() {
+                                processed++
+                                if (processed == layerRegions.size) continuation.resume(true)
+                            }
+                            override fun onError(error: String) {
+                                Logger.e("Error deleting region in layer %s: %s", layerName, error)
+                                processed++
+                                if (processed == layerRegions.size) continuation.resume(true)
+                            }
+                        })
+                    }
+                }
+                override fun onError(error: String) {
+                    continuation.resume(false)
+                }
+            })
+        }
+
+    suspend fun clearAutoCache(): Boolean = suspendCancellableCoroutine { continuation ->
+        offlineManager.clearAmbientCache(object : OfflineManager.FileSourceCallback {
+            override fun onSuccess() { continuation.resume(true) }
+            override fun onError(message: String) {
+                Logger.e("clearAutoCache error: %s", message)
+                continuation.resume(false)
+            }
+        })
+    }
+
     suspend fun getLayerStats(layerName: String): Pair<Long, Int> =
         suspendCancellableCoroutine { continuation ->
             offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
