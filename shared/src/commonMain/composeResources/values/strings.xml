@@ -145,6 +145,7 @@
     <string name="layer_kartverket_desc">Topographic maps from Kartverket</string>
     <string name="layer_toporaster_desc">Topographic raster maps</string>
     <string name="layer_sjokartraster_desc">Nautical charts</string>
+    <string name="layer_mapant_desc">Orienteering maps for Norway</string>
     <string name="layer_osm_desc">Community-sourced street maps</string>
     <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
