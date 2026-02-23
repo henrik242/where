@@ -196,7 +196,11 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         }
     }
 
-    fun getCacheSize(): Long = offlineMapManager.getDatabaseSize()
+    suspend fun getAmbientCacheSize(): Long {
+        val totalSize = offlineMapManager.getDatabaseSize()
+        val packsSize = DownloadLayers.all.sumOf { layer -> getLayerStats(layer.id).first }
+        return maxOf(0L, totalSize - packsSize)
+    }
 
     suspend fun deleteAllRegionsForLayer(layerName: String): Boolean {
         return try {

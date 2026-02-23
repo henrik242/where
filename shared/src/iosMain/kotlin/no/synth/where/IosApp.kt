@@ -315,12 +315,15 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     }
                 }
 
-                LaunchedEffect(downloadState.isDownloading) {
-                    if (!downloadState.isDownloading) refreshTrigger++
+                LaunchedEffect(Unit) {
+                    cacheSize = downloadManager.getAmbientCacheSize()
                 }
 
-                LaunchedEffect(refreshTrigger) {
-                    cacheSize = downloadManager.getCacheSize()
+                LaunchedEffect(downloadState.isDownloading) {
+                    if (!downloadState.isDownloading) {
+                        cacheSize = downloadManager.getAmbientCacheSize()
+                        refreshTrigger++
+                    }
                 }
 
                 DownloadScreenContent(
@@ -339,12 +342,14 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onDeleteLayer = { layerId ->
                         scope.launch {
                             downloadManager.deleteAllRegionsForLayer(layerId)
+                            cacheSize = downloadManager.getAmbientCacheSize()
                             refreshTrigger++
                         }
                     },
                     onClearAutoCache = {
                         scope.launch {
                             downloadManager.clearAutoCache()
+                            cacheSize = 0L  // SQLite file doesn't shrink after row deletion; set directly
                             refreshTrigger++
                         }
                     },
