@@ -139,21 +139,45 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         val regionName = "${region.name}-$layerName"
         val estimatedTileCount = TileUtils.estimateTileCount(region.boundingBox, minZoom, maxZoom)
         return try {
-            val result = offlineMapManager.getRegionStatusEncoded(regionName)
-            Logger.d("getRegionTileInfo %s: estimated=%s, status='%s'", regionName, estimatedTileCount.toString(), result)
-            if (result.isEmpty()) {
-                RegionTileInfo(estimatedTileCount, 0, 0, false)
-            } else {
-                val parts = result.split(",")
-                val downloaded = parts[0].toIntOrNull() ?: 0
-                val total = parts[1].toIntOrNull() ?: 0
-                RegionTileInfo(
-                    totalTiles = if (total > 0) total else estimatedTileCount,
-                    downloadedTiles = downloaded,
-                    downloadedSize = parts[2].toLongOrNull() ?: 0L,
-                    isFullyDownloaded = parts[3] == "true"
-                )
+            var result = offlineMapManager.getRegionStatusEncoded(regionName)
+            // Sentinel: state=Unknown after reloadPacks() — wait for requestProgress() notification
+            var retries = 0
+            while (result == "-1,-1,-1,-1" && retries < 5) {
+                delay(300)
+                result = offlineMapManager.getRegionStatusEncoded(regionName)
+                retries++
             }
+            Logger.d("getRegionTileInfo %s: estimated=%s, status='%s'", regionName, estimatedTileCount.toString(), result)
+            if (result.isEmpty() || result == "-1,-1,-1,-1") {
+                return RegionTileInfo(estimatedTileCount, 0, 0, false)
+            }
+            val parts = result.split(",")
+            val downloaded = parts[0].toIntOrNull() ?: 0
+            val total = parts[1].toIntOrNull() ?: 0
+            val size = parts[2].toLongOrNull() ?: 0L
+            val isComplete = parts.getOrNull(3) == "true"
+            // Pack state is complete but tile count is stale (0) — wait for the
+            // requestProgress() notification to populate cachedStatus, then retry
+            // to get the accurate count. isComplete is already correct so ✓ shows.
+            if (isComplete && downloaded == 0) {
+                delay(300)
+                val retry = offlineMapManager.getRegionStatusEncoded(regionName)
+                if (!retry.isEmpty() && retry != "-1,-1,-1,-1") {
+                    val rp = retry.split(",")
+                    return RegionTileInfo(
+                        totalTiles = rp.getOrNull(1)?.toIntOrNull()?.takeIf { it > 0 } ?: estimatedTileCount,
+                        downloadedTiles = rp.getOrNull(0)?.toIntOrNull() ?: 0,
+                        downloadedSize = rp.getOrNull(2)?.toLongOrNull() ?: 0L,
+                        isFullyDownloaded = rp.getOrNull(3) == "true"
+                    )
+                }
+            }
+            RegionTileInfo(
+                totalTiles = if (total > 0) total else estimatedTileCount,
+                downloadedTiles = downloaded,
+                downloadedSize = size,
+                isFullyDownloaded = isComplete
+            )
         } catch (e: Exception) {
             Logger.e("getRegionTileInfo error for %s: %s", regionName, e.message ?: "unknown")
             RegionTileInfo(estimatedTileCount, 0, 0, false)

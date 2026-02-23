@@ -8,6 +8,8 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
     private var invalidatedPacks = Set<ObjectIdentifier>()
     // Cache progress before suspension (pack.progress may reset after suspend)
     private var cachedStatus: [String: String] = [:]
+    // Reload flag: set to true whenever the stored pack list changes
+    private var packsNeedReload = true
 
     override init() {
         super.init()
@@ -29,6 +31,12 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             name: NSNotification.Name.MLNOfflinePackMaximumMapboxTilesReached,
             object: nil
         )
+        // Restore completion statuses persisted in a previous session so the UI
+        // shows the correct state immediately, without waiting for requestProgress()
+        // notifications which are unreliable for already-complete packs on restart.
+        if let saved = UserDefaults.standard.dictionary(forKey: "offlineMapStatus") as? [String: String] {
+            cachedStatus = saved
+        }
     }
 
     deinit {
@@ -43,7 +51,7 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         // Clean up stale in-memory references
         activePacks.removeValue(forKey: regionName)
         activeObservers.removeValue(forKey: regionName)
-        cachedStatus.removeValue(forKey: regionName)
+        removePersistedStatus(forRegion: regionName)
 
         // Register style with HTTP server
         StyleServer.shared.setStyle(name: regionName, json: styleJson)
@@ -180,11 +188,25 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
                 cachedStatus[regionName] = status
                 return status
             }
+            // Progress is 0 (stale); use cached data if available.
+            // ensurePacksLoaded() (called via findPackSync) already called
+            // requestProgress() on this pack, so the notification will fire shortly.
+            if let cached = cachedStatus[regionName] {
+                return cached
+            }
+            // pack.state == .unknown means reloadPacks() ran but requestProgress() hasn't
+            // fired its notification yet. Return the retry sentinel so the Kotlin caller
+            // waits and retries — the notification will populate cachedStatus shortly.
+            if pack.state == .unknown {
+                return "-1,-1,-1,-1"
+            }
+            // State is now known from the DB (inactive, complete, etc.).
+            return "0,0,0,\(pack.state == .complete)"
         }
         if let cached = cachedStatus[regionName] {
             return cached
         }
-        return storedPack != nil ? "0,0,0,false" : ""
+        return ""
     }
 
     private func encodePackStatus(_ pack: MLNOfflinePack, name: String) -> String {
@@ -208,17 +230,18 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             }
         }
         activeObservers.removeValue(forKey: regionName)
-        cachedStatus.removeValue(forKey: regionName)
+        removePersistedStatus(forRegion: regionName)
 
         guard let pack = findPackSync(name: regionName) else { return false }
         invalidatedPacks.insert(ObjectIdentifier(pack))
         if pack.state == .active {
             pack.suspend()
         }
-        MLNOfflineStorage.shared.removePack(pack) { error in
+        MLNOfflineStorage.shared.removePack(pack) { [weak self] error in
             if let error = error {
                 NSLog("[OfflineMap] removePack error for \(regionName): \(error)")
             }
+            self?.packsNeedReload = true
         }
         return true
     }
@@ -240,10 +263,9 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             }
         }
 
-        // Include stored packs not already counted (skip reload during active downloads)
-        if activePacks.isEmpty {
-            MLNOfflineStorage.shared.reloadPacks()
-        }
+        // ensurePacksLoaded() reloads once (if dirty) and calls requestProgress()
+        // on every pack so cachedStatus gets populated via notifications.
+        ensurePacksLoaded()
         if let packs = MLNOfflineStorage.shared.packs {
             for pack in packs {
                 guard !invalidatedPacks.contains(ObjectIdentifier(pack)) else { continue }
@@ -257,15 +279,14 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
                     totalSize += Int64(pack.progress.countOfBytesCompleted)
                     totalTiles += resources
                 } else if let cached = cachedStatus[name] {
-                    // Use values populated by a previous requestProgress() notification
+                    // Use values populated by the requestProgress() notification
                     let parts = cached.split(separator: ",")
                     if parts.count >= 3 {
                         totalTiles += Int32(String(parts[0])) ?? 0
                         totalSize += Int64(String(parts[2])) ?? 0
                     }
                 } else {
-                    // pack.progress not yet populated; request it asynchronously
-                    pack.requestProgress()
+                    // Notification hasn't fired yet; tell the caller to retry
                     requestedProgress = true
                 }
             }
@@ -311,11 +332,12 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
 
         if pack.state == .complete {
             NSLog("[OfflineMap] Pack complete: \(name)")
-            cachedStatus[name] = encodePackStatus(pack, name: name)
+            persistCompletionStatus(encodePackStatus(pack, name: name), forRegion: name)
             observer.onProgress(percent: 100)
             observer.onComplete(success: true)
             activePacks.removeValue(forKey: name)
             activeObservers.removeValue(forKey: name)
+            packsNeedReload = true
             return
         }
 
@@ -352,6 +374,7 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             activeObservers[name]?.onError(message: message)
             activePacks.removeValue(forKey: name)
             activeObservers.removeValue(forKey: name)
+            packsNeedReload = true
         }
     }
 
@@ -365,16 +388,31 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         activeObservers[name]?.onComplete(success: true)
         activePacks.removeValue(forKey: name)
         activeObservers.removeValue(forKey: name)
+        packsNeedReload = true
     }
 
     // MARK: - Helpers
 
+    /// Reloads packs from the database at most once per dirty window, then eagerly
+    /// calls requestProgress() on every pack so the MLNOfflinePackProgressChanged
+    /// notification fires and populates cachedStatus for all regions in one shot.
+    /// Repeated calls within the same window are no-ops, which prevents the
+    /// "15 reloadPacks() calls invalidating each other's pack objects" race.
+    private func ensurePacksLoaded() {
+        guard packsNeedReload, activePacks.isEmpty else { return }
+        MLNOfflineStorage.shared.reloadPacks()
+        packsNeedReload = false
+        MLNOfflineStorage.shared.packs?.forEach { pack in
+            guard !invalidatedPacks.contains(ObjectIdentifier(pack)) else { return }
+            pack.requestProgress()
+        }
+    }
+
     private func findPackSync(name: String) -> MLNOfflinePack? {
         // reloadPacks() invalidates ALL existing MLNOfflinePack Swift objects,
-        // killing active downloads. Only reload when no downloads are running.
-        if activePacks.isEmpty {
-            MLNOfflineStorage.shared.reloadPacks()
-        }
+        // killing active downloads. Only reload when no downloads are running
+        // (ensurePacksLoaded handles the guard).
+        ensurePacksLoaded()
         guard let packs = MLNOfflineStorage.shared.packs else { return nil }
         return packs.first { pack in
             guard !self.invalidatedPacks.contains(ObjectIdentifier(pack)) else { return false }
@@ -383,6 +421,20 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             }
             return false
         }
+    }
+
+    private func persistCompletionStatus(_ status: String, forRegion name: String) {
+        cachedStatus[name] = status
+        var saved = (UserDefaults.standard.dictionary(forKey: "offlineMapStatus") as? [String: String]) ?? [:]
+        saved[name] = status
+        UserDefaults.standard.set(saved, forKey: "offlineMapStatus")
+    }
+
+    private func removePersistedStatus(forRegion name: String) {
+        cachedStatus.removeValue(forKey: name)
+        var saved = (UserDefaults.standard.dictionary(forKey: "offlineMapStatus") as? [String: String]) ?? [:]
+        saved.removeValue(forKey: name)
+        UserDefaults.standard.set(saved, forKey: "offlineMapStatus")
     }
 
     private func encodeMetadata(name: String, layer: String) -> Data {
