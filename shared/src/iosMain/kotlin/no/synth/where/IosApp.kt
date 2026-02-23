@@ -364,7 +364,11 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onBackClick = { navigateBack() },
                     hexMapViewProvider = hexMapViewProvider,
                     downloadManager = downloadManager,
-                    offlineModeEnabled = offlineModeEnabled
+                    offlineModeEnabled = offlineModeEnabled,
+                    onOfflineChipClick = {
+                        highlightOfflineMode = true
+                        navigateTo(Screen.SETTINGS)
+                    }
                 )
             }
 

@@ -174,6 +174,7 @@ fun WhereApp(
             LayerHexMapScreen(
                 layerId = route.layerId,
                 onBackClick = { navController.popBackStack() },
+                onOfflineChipClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
                 offlineModeEnabled = offlineModeEnabled
             )
         }
