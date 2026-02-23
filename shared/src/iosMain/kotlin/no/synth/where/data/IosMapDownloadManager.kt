@@ -9,7 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import no.synth.where.util.Logger
+import kotlin.coroutines.resume
 
 class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
 
@@ -195,6 +197,34 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
     }
 
     fun getCacheSize(): Long = offlineMapManager.getDatabaseSize()
+
+    suspend fun deleteAllRegionsForLayer(layerName: String): Boolean {
+        return try {
+            val json = offlineMapManager.getRegionNamesForLayer(layerName)
+            if (json == "[]" || json.isBlank()) return true
+            json.removeSurrounding("[", "]")
+                .split(",")
+                .mapNotNull { s -> s.trim().removeSurrounding("\"").takeIf { it.isNotBlank() } }
+                .forEach { name -> offlineMapManager.deleteRegionSync(name) }
+            true
+        } catch (e: Exception) {
+            Logger.e("deleteAllRegionsForLayer error for %s: %s", layerName, e.message ?: "unknown")
+            false
+        }
+    }
+
+    suspend fun clearAutoCache(): Boolean = suspendCancellableCoroutine { continuation ->
+        try {
+            offlineMapManager.clearAmbientCache(object : ClearCacheCallback {
+                override fun onComplete() {
+                    continuation.resume(true)
+                }
+            })
+        } catch (e: Exception) {
+            Logger.e("clearAutoCache error: %s", e.message ?: "unknown")
+            continuation.resume(false)
+        }
+    }
 
     suspend fun getDownloadedRegionsForLayer(layerName: String): Set<String> {
         return try {

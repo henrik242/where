@@ -134,6 +134,10 @@
     <string name="download_regions">Last ned regioner</string>
     <string name="delete_region_title">Slette %1$s?</string>
     <string name="delete_region_message">Dette vil slette alle %1$s-fliser for %2$s. Du kan laste dem ned igjen senere.</string>
+    <string name="delete_layer_title">Slette %1$s-fliser?</string>
+    <string name="delete_layer_message">Dette vil slette alle nedlastede fliser for %1$s. Du kan laste dem ned igjen senere.</string>
+    <string name="clear_cache_title">Tøm hurtigbuffer?</string>
+    <string name="clear_cache_message">Dette vil slette alle automatisk bufrede fliser. De lastes ned igjen etter hvert som du bruker kartet.</string>
     <string name="tiles_needed">%1$d fliser trengs</string>
     <string name="tiles_stats">%1$d fliser \u2022 %2$s</string>
     <string name="tiles_downloaded">\u2713 %1$d fliser \u2022 %2$s</string>

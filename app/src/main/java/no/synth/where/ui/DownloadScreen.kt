@@ -7,7 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import no.synth.where.R
@@ -22,6 +24,7 @@ fun DownloadScreen(
     onLayerClick: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val downloadManager = remember { MapDownloadManager(context) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var cacheSize by remember { mutableLongStateOf(0L) }
@@ -74,6 +77,18 @@ fun DownloadScreen(
         onBackClick = onBackClick,
         onLayerClick = onLayerClick,
         onStopDownload = { MapDownloadService.stopDownload(context) },
+        onDeleteLayer = { layerId ->
+            scope.launch {
+                downloadManager.deleteAllRegionsForLayer(layerId)
+                refreshTrigger++
+            }
+        },
+        onClearAutoCache = {
+            scope.launch {
+                downloadManager.clearAutoCache()
+                refreshTrigger++
+            }
+        },
         getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },
         refreshTrigger = refreshTrigger
     )

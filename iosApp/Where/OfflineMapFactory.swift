@@ -333,6 +333,16 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         return size
     }
 
+    func clearAmbientCache(callback: any ClearCacheCallback) {
+        MLNOfflineStorage.shared.clearAmbientCache { [weak self] error in
+            if let error = error {
+                NSLog("[OfflineMap] clearAmbientCache error: \(error)")
+            }
+            self?.packsNeedReload = true
+            callback.onComplete()
+        }
+    }
+
     // MARK: - Notification handlers
 
     @objc private func offlinePackProgressChanged(_ notification: Notification) {

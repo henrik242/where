@@ -6,6 +6,10 @@ interface OfflineMapDownloadObserver {
     fun onError(message: String)
 }
 
+interface ClearCacheCallback {
+    fun onComplete()
+}
+
 interface OfflineMapManager {
     fun downloadRegion(
         regionName: String, layerName: String, styleJson: String,
@@ -24,4 +28,6 @@ interface OfflineMapManager {
     // Returns JSON array of region names for the given layer, e.g. ["hex_5_10-kartverket",...]
     fun getRegionNamesForLayer(layerName: String): String
     fun getDatabaseSize(): Long
+    // Clears automatically cached (ambient) tiles; calls callback when complete
+    fun clearAmbientCache(callback: ClearCacheCallback)
 }

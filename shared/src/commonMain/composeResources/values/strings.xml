@@ -134,6 +134,10 @@
     <string name="download_regions">Download Regions</string>
     <string name="delete_region_title">Delete %1$s?</string>
     <string name="delete_region_message">This will delete all %1$s tiles for %2$s. You can re-download them later.</string>
+    <string name="delete_layer_title">Delete %1$s tiles?</string>
+    <string name="delete_layer_message">This will delete all downloaded tiles for %1$s. You can re-download them later.</string>
+    <string name="clear_cache_title">Clear Cache?</string>
+    <string name="clear_cache_message">This will delete all automatically cached tiles. They will be re-downloaded as you browse.</string>
     <string name="tiles_needed">%1$d tiles needed</string>
     <string name="tiles_stats">%1$d tiles \u2022 %2$s</string>
     <string name="tiles_downloaded">\u2713 %1$d tiles \u2022 %2$s</string>
