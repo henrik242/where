@@ -4,7 +4,7 @@ Free offline hiking maps for Norway. A lightweight alternative to the discontinu
 
 ## Features
 
-- Free offline maps from Kartverket (topo, toporaster, nautical charts) and OpenStreetMap
+- Free offline maps from Kartverket (topo, toporaster, nautical charts), MapAnt (LiDAR-based orienteering maps), and OpenStreetMap
 - GPS tracking with background recording — track your hike with the screen locked
 - Real-time location sharing — let friends and family follow your trip live
 - Save and revisit tracks and points of interest
