@@ -103,6 +103,7 @@
     <string name="layer_kartverket_desc">Topografiske kart fra Kartverket</string>
     <string name="layer_toporaster_desc">Topografiske rasterkart</string>
     <string name="layer_sjokartraster_desc">Sjøkart</string>
+    <string name="layer_mapant_desc">Orienteringskart for Norge</string>
     <string name="layer_osm_desc">Brukergenererte gatekart</string>
     <string name="layer_opentopomap_desc">Topografiske kart med turstier</string>
     <string name="layer_waymarkedtrails_desc">Kartlag med merkede stier</string>

@@ -33,8 +33,7 @@ import no.synth.where.ui.TracksScreenContent
 import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
 import no.synth.where.resources.Res
-import no.synth.where.resources.import_gpx_corrupted
-import no.synth.where.resources.system_default
+import no.synth.where.resources.*
 import no.synth.where.util.CrashReporter
 import no.synth.where.util.Logger
 import org.jetbrains.compose.resources.stringResource
@@ -290,9 +289,29 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 var refreshTrigger by remember { mutableIntStateOf(0) }
                 var cacheSize by remember { mutableLongStateOf(0L) }
 
-                val layers = remember {
+                val kartverketDesc = stringResource(Res.string.layer_kartverket_desc)
+                val toporasterDesc = stringResource(Res.string.layer_toporaster_desc)
+                val sjokartrasterDesc = stringResource(Res.string.layer_sjokartraster_desc)
+                val mapantDesc = stringResource(Res.string.layer_mapant_desc)
+                val osmDesc = stringResource(Res.string.layer_osm_desc)
+                val opentopomapDesc = stringResource(Res.string.layer_opentopomap_desc)
+                val waymarkedtrailsDesc = stringResource(Res.string.layer_waymarkedtrails_desc)
+
+                val descriptionMap = remember(kartverketDesc) {
+                    mapOf(
+                        "kartverket" to kartverketDesc,
+                        "toporaster" to toporasterDesc,
+                        "sjokartraster" to sjokartrasterDesc,
+                        "mapant" to mapantDesc,
+                        "osm" to osmDesc,
+                        "opentopomap" to opentopomapDesc,
+                        "waymarkedtrails" to waymarkedtrailsDesc,
+                    )
+                }
+
+                val layers = remember(descriptionMap) {
                     DownloadLayers.all.map { layer ->
-                        LayerInfo(layer.id, layer.displayName, layerDescription(layer.id))
+                        LayerInfo(layer.id, layer.displayName, descriptionMap[layer.id] ?: "")
                     }
                 }
 
@@ -377,14 +396,4 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
             }
         }
     }
-}
-
-private fun layerDescription(layerId: String): String = when (layerId) {
-    "kartverket" -> "Topographic maps from Kartverket"
-    "toporaster" -> "Topographic raster maps"
-    "sjokartraster" -> "Nautical charts"
-    "osm" -> "Community-sourced street maps"
-    "opentopomap" -> "Topographic maps with hiking trails"
-    "waymarkedtrails" -> "Hiking trail overlay"
-    else -> ""
 }

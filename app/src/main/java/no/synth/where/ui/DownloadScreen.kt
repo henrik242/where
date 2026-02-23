@@ -33,6 +33,7 @@ fun DownloadScreen(
     val kartverketDesc = stringResource(R.string.layer_kartverket_desc)
     val toporasterDesc = stringResource(R.string.layer_toporaster_desc)
     val sjokartrasterDesc = stringResource(R.string.layer_sjokartraster_desc)
+    val mapantDesc = stringResource(R.string.layer_mapant_desc)
     val osmDesc = stringResource(R.string.layer_osm_desc)
     val opentopomapDesc = stringResource(R.string.layer_opentopomap_desc)
     val waymarkedtrailsDesc = stringResource(R.string.layer_waymarkedtrails_desc)
@@ -42,6 +43,7 @@ fun DownloadScreen(
             "kartverket" to kartverketDesc,
             "toporaster" to toporasterDesc,
             "sjokartraster" to sjokartrasterDesc,
+            "mapant" to mapantDesc,
             "osm" to osmDesc,
             "opentopomap" to opentopomapDesc,
             "waymarkedtrails" to waymarkedtrailsDesc,
