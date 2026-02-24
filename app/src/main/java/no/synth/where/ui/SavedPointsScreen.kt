@@ -2,7 +2,8 @@ package no.synth.where.ui
 
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
-import org.koin.androidx.compose.koinViewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.data.SavedPoint
 
 @Composable
@@ -10,7 +11,8 @@ fun SavedPointsScreen(
     onBackClick: () -> Unit,
     onShowOnMap: (SavedPoint) -> Unit = {}
 ) {
-    val viewModel: SavedPointsScreenViewModel = koinViewModel()
+    val app = LocalContext.current.applicationContext as no.synth.where.WhereApplication
+    val viewModel: SavedPointsScreenViewModel = viewModel { SavedPointsScreenViewModel(app.savedPointsRepository) }
     val savedPoints by viewModel.savedPoints.collectAsState()
 
     var showEditDialog by remember { mutableStateOf(false) }

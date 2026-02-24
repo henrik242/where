@@ -8,7 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import org.koin.androidx.compose.koinViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.util.CrashReporter
 import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.PlatformFile
@@ -28,7 +28,8 @@ fun WhereApp(
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val viewModel: WhereAppViewModel = koinViewModel()
+    val app = context.applicationContext as WhereApplication
+    val viewModel: WhereAppViewModel = viewModel { WhereAppViewModel(app.trackRepository, app.userPreferences) }
     val userPreferences = viewModel.userPreferences
     val trackRepository = viewModel.trackRepository
     val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
