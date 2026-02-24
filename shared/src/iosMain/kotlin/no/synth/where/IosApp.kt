@@ -34,12 +34,12 @@ import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import no.synth.where.di.AppDependencies
 import no.synth.where.util.CrashReporter
 import no.synth.where.util.Logger
 import org.jetbrains.compose.resources.stringResource
 import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.util.IosPlatformActions
-import org.koin.mp.KoinPlatform.getKoin
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
@@ -57,11 +57,10 @@ enum class Screen {
 
 @Composable
 fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManager, hexMapViewProvider: MapViewProvider) {
-    val koin = remember { getKoin() }
-    val userPreferences = remember { koin.get<UserPreferences>() }
-    val trackRepository = remember { koin.get<TrackRepository>() }
-    val savedPointsRepository = remember { koin.get<SavedPointsRepository>() }
-    val clientIdManager = remember { koin.get<ClientIdManager>() }
+    val userPreferences = remember { AppDependencies.userPreferences }
+    val trackRepository = remember { AppDependencies.trackRepository }
+    val savedPointsRepository = remember { AppDependencies.savedPointsRepository }
+    val clientIdManager = remember { AppDependencies.clientIdManager }
     val downloadManager = remember { IosMapDownloadManager(offlineMapManager) }
 
     val themeMode by userPreferences.themeMode.collectAsState()

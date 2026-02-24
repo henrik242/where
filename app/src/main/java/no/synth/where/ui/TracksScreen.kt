@@ -8,7 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
-import org.koin.androidx.compose.koinViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.R
 import no.synth.where.data.Track
 import no.synth.where.util.Logger
@@ -21,7 +21,8 @@ fun TracksScreen(
     onShowTrackOnMap: (Track) -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: TracksScreenViewModel = koinViewModel()
+    val app = context.applicationContext as no.synth.where.WhereApplication
+    val viewModel: TracksScreenViewModel = viewModel { TracksScreenViewModel(app.trackRepository) }
     val tracks by viewModel.tracks.collectAsState()
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }

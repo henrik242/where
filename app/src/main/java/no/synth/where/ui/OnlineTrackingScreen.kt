@@ -9,7 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
-import org.koin.androidx.compose.koinViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.R
 
 @Composable
@@ -18,7 +18,8 @@ fun OnlineTrackingScreen(
 ) {
     val context = LocalContext.current
     val resources = context.resources
-    val viewModel: OnlineTrackingScreenViewModel = koinViewModel()
+    val app = context.applicationContext as no.synth.where.WhereApplication
+    val viewModel: OnlineTrackingScreenViewModel = viewModel { OnlineTrackingScreenViewModel(app.userPreferences, app.clientIdManager) }
     val isTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val clientId by viewModel.clientId.collectAsState()
     val trackingServerUrl by viewModel.trackingServerUrl.collectAsState()

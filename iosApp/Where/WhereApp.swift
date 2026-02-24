@@ -18,7 +18,7 @@ struct WhereApp: App {
     init() {
         FirebaseApp.configure()
         CrashReporter.shared.bridge = IosCrashReporterBridge()
-        KoinHelperKt.doInitKoin()
+        AppSetupKt.startApp()
     }
 
     var body: some Scene {

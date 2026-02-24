@@ -20,5 +20,7 @@
 ## Android App Code Guidelines
 
 - Follow Android design guidelines and Material 3 best practices
-- Kotlin with Jetpack Compose, Koin for DI, Room for local storage
+- Kotlin with Jetpack Compose, manual constructor injection (no DI framework), Room for local storage
+- Dependencies are wired in `WhereApplication` (lazy properties); access via `applicationContext as WhereApplication`
+- ViewModels are created with `viewModel { MyViewModel(app.dep1, app.dep2) }` in Composables
 - Use Timber for logging, never `println` or `Log.*`

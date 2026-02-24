@@ -22,12 +22,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import no.synth.where.data.UserPreferences
 import no.synth.where.ui.theme.WhereTheme
-import org.koin.android.ext.android.inject
 
 class MainActivity : AppCompatActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
     private var regionsLoaded by mutableIntStateOf(0)
-    private val userPreferences: UserPreferences by inject()
+    private val userPreferences: UserPreferences get() = (application as WhereApplication).userPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Enable edge-to-edge display

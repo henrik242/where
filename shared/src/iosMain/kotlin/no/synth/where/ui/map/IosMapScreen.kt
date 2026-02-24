@@ -46,8 +46,8 @@ import no.synth.where.resources.track_discarded
 import no.synth.where.resources.track_saved
 import no.synth.where.resources.unnamed_point
 import no.synth.where.util.NamingUtils
+import no.synth.where.di.AppDependencies
 import org.jetbrains.compose.resources.stringResource
-import org.koin.mp.KoinPlatform.getKoin
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
@@ -65,11 +65,10 @@ fun IosMapScreen(
     onOfflineIndicatorClick: () -> Unit = {},
     onOnlineTrackingClick: () -> Unit = {}
 ) {
-    val koin = remember { getKoin() }
-    val trackRepository = remember { koin.get<TrackRepository>() }
-    val savedPointsRepository = remember { koin.get<SavedPointsRepository>() }
-    val userPreferences = remember { koin.get<UserPreferences>() }
-    val clientIdManager = remember { koin.get<ClientIdManager>() }
+    val trackRepository = remember { AppDependencies.trackRepository }
+    val savedPointsRepository = remember { AppDependencies.savedPointsRepository }
+    val userPreferences = remember { AppDependencies.userPreferences }
+    val clientIdManager = remember { AppDependencies.clientIdManager }
     val locationTracker = remember { IosLocationTracker(trackRepository) }
 
     var showLayerMenu by remember { mutableStateOf(false) }

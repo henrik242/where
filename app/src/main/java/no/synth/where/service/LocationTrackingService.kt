@@ -28,16 +28,16 @@ import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLng
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
+import no.synth.where.WhereApplication
 
-class LocationTrackingService : Service(), KoinComponent {
+class LocationTrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    private val trackRepository: TrackRepository by inject()
-    private val userPreferences: UserPreferences by inject()
-    private val clientIdManager: ClientIdManager by inject()
+    private val app get() = applicationContext as WhereApplication
+    private val trackRepository get() = app.trackRepository
+    private val userPreferences get() = app.userPreferences
+    private val clientIdManager get() = app.clientIdManager
 
     private var onlineTrackingClient: OnlineTrackingClient? = null
 
