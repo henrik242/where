@@ -96,7 +96,7 @@ jobs:
       run: |
         xcodebuild build \
           -project iosApp/Where.xcodeproj \
-          -target Where \
+          -scheme Where \
           -sdk iphonesimulator \
           -derivedDataPath iosApp/spm-derived-data \
           CODE_SIGNING_REQUIRED=NO \
