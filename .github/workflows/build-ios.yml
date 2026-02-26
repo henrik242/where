@@ -1,5 +1,8 @@
 name: Build iOS
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ main, develop ]
@@ -17,9 +20,6 @@ on:
       - '*.gradle.kts'
       - 'gradlew'
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
   build:

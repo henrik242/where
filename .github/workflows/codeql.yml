@@ -1,5 +1,9 @@
 name: CodeQL (ubuntu)
 
+permissions:
+  contents: read
+  security-events: write
+
 on:
   push:
     branches: [ main ]
@@ -23,10 +27,6 @@ on:
       - '.github/**'
   schedule:
     - cron: '0 4 * * 1'
-
-permissions:
-  contents: read
-  security-events: write
 
 jobs:
   analyze:

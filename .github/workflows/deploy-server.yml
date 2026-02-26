@@ -1,5 +1,8 @@
 name: Deploy Server
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ main ]
@@ -7,9 +10,6 @@ on:
       - 'web/**'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
   deploy:
