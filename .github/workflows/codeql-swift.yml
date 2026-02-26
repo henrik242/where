@@ -1,26 +1,22 @@
-name: CodeQL (ubuntu)
+name: CodeQL (swift)
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'app/**'
+      - 'iosApp/**'
       - 'shared/**'
       - 'gradle/**'
       - '*.gradle.kts'
       - 'gradlew'
-      - 'web/**'
-      - '.github/**'
   pull_request:
     branches: [ main ]
     paths:
-      - 'app/**'
+      - 'iosApp/**'
       - 'shared/**'
       - 'gradle/**'
       - '*.gradle.kts'
       - 'gradlew'
-      - 'web/**'
-      - '.github/**'
   schedule:
     - cron: '0 4 * * 1'
 
@@ -30,13 +26,8 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ java-kotlin, javascript-typescript, actions ]
+    name: Analyze (swift)
+    runs-on: macos-latest
 
     steps:
     - name: Checkout code
@@ -45,10 +36,10 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: ${{ matrix.language }}
+        languages: swift
         build-mode: none
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
-        category: /language:${{ matrix.language }}
+        category: /language:swift
