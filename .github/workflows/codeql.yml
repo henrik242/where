@@ -29,6 +29,42 @@ on:
     - cron: '0 4 * * 1'
 
 jobs:
+  analyze-jvm:
+    name: Analyze (java-kotlin)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+        echo "TRACKING_HMAC_SECRET=codeql-dummy-hmac-secret" >> local.properties
+
+    - name: Create google-services.json
+      run: cp .github/dummy/google-services-dummy.json app/google-services.json
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: java-kotlin
+        build-mode: autobuild
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: /language:java-kotlin
+
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
@@ -36,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ java-kotlin, javascript-typescript, actions ]
+        language: [ javascript-typescript, actions ]
 
     steps:
     - name: Checkout code
