@@ -1,5 +1,9 @@
 name: CodeQL (swift)
 
+permissions:
+  contents: read
+  security-events: write
+
 on:
   push:
     branches: [ main ]
@@ -20,10 +24,6 @@ on:
       - 'gradlew'
   schedule:
     - cron: '0 4 * * 1'
-
-permissions:
-  contents: read
-  security-events: write
 
 jobs:
   analyze:
