@@ -57,8 +57,12 @@ jobs:
         echo "TRACKING_HMAC_SECRET=${{ github.actor != 'dependabot[bot]' && secrets.TRACKING_HMAC_SECRET || 'dependabot-dummy-hmac-secret' }}" >> local.properties
 
     - name: Create google-services.json
-      if: github.actor != 'dependabot[bot]'
-      run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
+      run: |
+        if [ "${{ github.actor }}" = "dependabot[bot]" ]; then
+          cp .github/dummy/google-services-dummy.json app/google-services.json
+        else
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
+        fi
 
     - name: Build debug APK
       if: github.actor != 'dependabot[bot]'
