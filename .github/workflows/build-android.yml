@@ -23,7 +23,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ github.actor != 'dependabot[bot]' && 'production' || '' }}
 
     steps:
     - name: Checkout code
@@ -41,6 +41,7 @@ jobs:
       uses: gradle/actions/setup-gradle@v4
 
     - name: Validate secrets
+      if: github.actor != 'dependabot[bot]'
       run: |
         if [ -z "${{ secrets.TRACKING_HMAC_SECRET }}" ]; then
           echo "ERROR: TRACKING_HMAC_SECRET is not set in GitHub secrets"
@@ -50,18 +51,21 @@ jobs:
     - name: Create local.properties
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
-        echo "TRACKING_HMAC_SECRET=${{ secrets.TRACKING_HMAC_SECRET }}" >> local.properties
+        echo "TRACKING_HMAC_SECRET=${{ github.actor != 'dependabot[bot]' && secrets.TRACKING_HMAC_SECRET || 'dependabot-dummy-hmac-secret' }}" >> local.properties
 
     - name: Create google-services.json
+      if: github.actor != 'dependabot[bot]'
       run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
 
     - name: Build debug APK
+      if: github.actor != 'dependabot[bot]'
       run: ./gradlew assembleDebug --stacktrace
 
     - name: Run tests
       run: ./gradlew testDebugUnitTest --stacktrace
 
     - name: Upload debug APK
+      if: github.actor != 'dependabot[bot]'
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
@@ -69,7 +73,7 @@ jobs:
         retention-days: 30
 
     - name: Upload test results
-      if: always()
+      if: always() && github.actor != 'dependabot[bot]'
       uses: actions/upload-artifact@v4
       with:
         name: test-results

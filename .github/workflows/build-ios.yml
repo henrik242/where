@@ -21,7 +21,7 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-    environment: production
+    environment: ${{ github.actor != 'dependabot[bot]' && 'production' || '' }}
 
     steps:
     - name: Checkout code
@@ -49,6 +49,7 @@ jobs:
           ${{ runner.os }}-konan-
 
     - name: Validate secrets
+      if: github.actor != 'dependabot[bot]'
       run: |
         if [ -z "${{ secrets.TRACKING_HMAC_SECRET }}" ]; then
           echo "ERROR: TRACKING_HMAC_SECRET is not set in GitHub secrets"
@@ -66,9 +67,10 @@ jobs:
     - name: Create local.properties
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
-        echo "TRACKING_HMAC_SECRET=${{ secrets.TRACKING_HMAC_SECRET }}" >> local.properties
+        echo "TRACKING_HMAC_SECRET=${{ github.actor != 'dependabot[bot]' && secrets.TRACKING_HMAC_SECRET || 'dependabot-dummy-hmac-secret' }}" >> local.properties
 
     - name: Create GoogleService-Info.plist
+      if: github.actor != 'dependabot[bot]'
       run: |
         echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 -d > iosApp/Where/GoogleService-Info.plist
         echo "${{ secrets.GOOGLE_SERVICE_INFO_DEBUG_PLIST }}" | base64 -d > iosApp/Where/GoogleService-debug-Info.plist
