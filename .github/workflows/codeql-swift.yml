@@ -68,14 +68,20 @@ jobs:
         echo "CURRENT_PROJECT_VERSION = 1" > iosApp/Where/Generated.xcconfig
         echo "MARKETING_VERSION = 1.0.1" >> iosApp/Where/Generated.xcconfig
 
-    - name: Build shared iOS frameworks
-      run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
-
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
       with:
         languages: swift
-        build-mode: autobuild
+        build-mode: manual
+
+    - name: Build
+      run: |
+        xcodebuild build \
+          -project iosApp/Where.xcodeproj \
+          -target Where \
+          -sdk iphonesimulator \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
