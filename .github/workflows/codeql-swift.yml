@@ -82,6 +82,15 @@ jobs:
         languages: swift
         build-mode: manual
 
+    - name: Resolve SPM packages
+      run: |
+        xcodebuild -resolvePackageDependencies \
+          -project iosApp/Where.xcodeproj \
+          -derivedDataPath iosApp/spm-derived-data
+
+    - name: Fix nanopb build file conflict
+      run: rm -f iosApp/spm-derived-data/SourcePackages/checkouts/nanopb/build
+
     - name: Build
       run: |
         xcodebuild build \
