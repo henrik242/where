@@ -5,28 +5,9 @@ permissions:
   security-events: write
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'app/**'
-      - 'shared/**'
-      - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradlew'
-      - 'web/**'
-      - '.github/**'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'app/**'
-      - 'shared/**'
-      - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradlew'
-      - 'web/**'
-      - '.github/**'
   schedule:
     - cron: '0 4 * * 1'
+  workflow_dispatch:
 
 jobs:
   analyze-jvm:

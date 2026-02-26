@@ -5,25 +5,9 @@ permissions:
   security-events: write
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'iosApp/**'
-      - 'shared/**'
-      - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradlew'
-      - '.github/workflows/codeql-swift.yml'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'iosApp/**'
-      - 'shared/**'
-      - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradlew'
   schedule:
     - cron: '0 4 * * 1'
+  workflow_dispatch:
 
 jobs:
   analyze:
