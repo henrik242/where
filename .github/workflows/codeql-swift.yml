@@ -86,6 +86,7 @@ jobs:
       run: |
         xcodebuild -resolvePackageDependencies \
           -project iosApp/Where.xcodeproj \
+          -scheme Where \
           -derivedDataPath iosApp/spm-derived-data
 
     - name: Fix nanopb build file conflict
