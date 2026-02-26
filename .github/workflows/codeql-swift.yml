@@ -58,10 +58,10 @@ jobs:
         echo "sdk.dir=$ANDROID_HOME" > local.properties
         echo "TRACKING_HMAC_SECRET=codeql-dummy-hmac-secret" >> local.properties
 
-    - name: Create dummy GoogleService-Info.plist
+    - name: Create GoogleService-Info.plist
       run: |
-        touch iosApp/Where/GoogleService-Info.plist
-        touch iosApp/Where/GoogleService-debug-Info.plist
+        cp .github/dummy/GoogleService-Info-dummy.plist iosApp/Where/GoogleService-Info.plist
+        cp .github/dummy/GoogleService-debug-Info-dummy.plist iosApp/Where/GoogleService-debug-Info.plist
 
     - name: Build shared iOS frameworks
       run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
