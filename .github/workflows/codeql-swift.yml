@@ -9,6 +9,7 @@ on:
       - 'gradle/**'
       - '*.gradle.kts'
       - 'gradlew'
+      - '.github/workflows/codeql-swift.yml'
   pull_request:
     branches: [ main ]
     paths:
@@ -34,12 +35,12 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v4
       with:
         languages: swift
         build-mode: none
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@v4
       with:
         category: /language:swift
