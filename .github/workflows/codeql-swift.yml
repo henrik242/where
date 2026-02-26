@@ -63,6 +63,11 @@ jobs:
         cp .github/dummy/GoogleService-Info-dummy.plist iosApp/Where/GoogleService-Info.plist
         cp .github/dummy/GoogleService-debug-Info-dummy.plist iosApp/Where/GoogleService-debug-Info.plist
 
+    - name: Create Generated.xcconfig
+      run: |
+        echo "CURRENT_PROJECT_VERSION = 1" > iosApp/Where/Generated.xcconfig
+        echo "MARKETING_VERSION = 1.0.1" >> iosApp/Where/Generated.xcconfig
+
     - name: Build shared iOS frameworks
       run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
 
