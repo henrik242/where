@@ -43,6 +43,14 @@ jobs:
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@v4
 
+    - name: Cache SPM packages
+      uses: actions/cache@v4
+      with:
+        path: iosApp/spm-derived-data/SourcePackages
+        key: ${{ runner.os }}-spm-${{ hashFiles('iosApp/Where.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+        restore-keys: |
+          ${{ runner.os }}-spm-
+
     - name: Cache Konan
       uses: actions/cache@v4
       with:
@@ -80,6 +88,7 @@ jobs:
           -project iosApp/Where.xcodeproj \
           -target Where \
           -sdk iphonesimulator \
+          -derivedDataPath iosApp/spm-derived-data \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO
 
