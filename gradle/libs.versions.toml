@@ -30,7 +30,7 @@ playServicesLocation = "21.3.0"
 robolectric = "4.16.1"
 room = "2.8.4"
 timber = "5.0.1"
-uiTestJunit4 = "1.10.3"
+uiTestJunit4 = "1.10.4"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
