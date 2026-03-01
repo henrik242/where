@@ -58,6 +58,7 @@
     <string name="import_gpx_corrupted">Failed to import GPX file. The file may be corrupted or in an unsupported format.</string>
     <string name="import_gpx_read_failed">Failed to read GPX file.</string>
     <string name="import_gpx_error">Error importing GPX file: %1$s</string>
+    <string name="import_url_error">Could not import from URL. The activity or route may be private, or the URL is not recognized.</string>
     <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d points</string>
     <string name="duration_hours_minutes">%1$dh %2$dm</string>
     <string name="duration_minutes">%1$dm</string>

@@ -1,11 +1,13 @@
 package no.synth.where.data
 
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.android.Android
+import io.ktor.client.engine.okhttp.OkHttp
 
-actual fun createDefaultHttpClient(): HttpClient = HttpClient(Android) {
+actual fun createDefaultHttpClient(): HttpClient = HttpClient(OkHttp) {
     engine {
-        connectTimeout = 30_000
-        socketTimeout = 30_000
+        config {
+            connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        }
     }
 }

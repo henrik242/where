@@ -24,6 +24,7 @@ fun TracksScreen(
     val app = context.applicationContext as no.synth.where.WhereApplication
     val viewModel: TracksScreenViewModel = viewModel { TracksScreenViewModel(app.trackRepository) }
     val tracks by viewModel.tracks.collectAsState()
+    val isImportingUrl by viewModel.isImportingUrl.collectAsState()
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var trackToRename by remember { mutableStateOf<Track?>(null) }
@@ -66,8 +67,17 @@ fun TracksScreen(
         newTrackName = newTrackName,
         showImportError = showImportError,
         importErrorMessage = importErrorMessage,
+        isImportingUrl = isImportingUrl,
         onBackClick = onBackClick,
         onImport = { filePickerLauncher.launch("*/*") },
+        onUrlImport = { url ->
+            viewModel.importFromUrl(url) { track ->
+                if (track == null) {
+                    importErrorMessage = resources.getString(R.string.import_url_error)
+                    showImportError = true
+                }
+            }
+        },
         onExport = { track -> shareTrack(context, track) },
         onSave = { track -> saveTrackToDownloads(context, track) },
         onOpen = { track -> openTrack(context, track) },

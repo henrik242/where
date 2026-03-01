@@ -26,8 +26,10 @@ fun TracksScreenContent(
     newTrackName: String,
     showImportError: Boolean,
     importErrorMessage: String,
+    isImportingUrl: Boolean = false,
     onBackClick: () -> Unit,
     onImport: () -> Unit,
+    onUrlImport: (String) -> Unit = {},
     onExport: (Track) -> Unit,
     onSave: ((Track) -> Unit)? = null,
     onOpen: ((Track) -> Unit)? = null,
@@ -50,34 +52,38 @@ fun TracksScreenContent(
                     IconButton(onClick = onBackClick) {
                         Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
                     }
-                },
-                actions = {
-                    IconButton(onClick = onImport) {
-                        Icon(painterResource(Res.drawable.ic_file_upload), contentDescription = stringResource(Res.string.import_gpx))
-                    }
                 }
             )
         }
     ) { padding ->
-        if (tracks.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(Res.string.no_saved_tracks),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            item {
+                ImportSection(
+                    isImportingUrl = isImportingUrl,
+                    onImportFile = onImport,
+                    onUrlImport = onUrlImport
                 )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
+            if (tracks.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillParentMaxHeight(0.5f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.no_saved_tracks),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
                 items(tracks, key = { it.id }) { track ->
                     TrackItem(
                         track = track,
@@ -340,4 +346,91 @@ fun formatTrackInfo(track: Track): String {
     }
 
     return stringResource(Res.string.track_info_format, date, distance, durationStr, track.points.size)
+}
+
+@Composable
+private fun ImportSection(
+    isImportingUrl: Boolean,
+    onImportFile: () -> Unit,
+    onUrlImport: (String) -> Unit
+) {
+    var importUrl by remember { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onImportFile,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_file_upload),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(Res.string.import_gpx))
+                }
+                OutlinedButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_open_in_browser),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(Res.string.import_url))
+                }
+            }
+
+            if (expanded) {
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = importUrl,
+                    onValueChange = { importUrl = it },
+                    label = { Text(stringResource(Res.string.import_url_hint)) },
+                    singleLine = true,
+                    enabled = !isImportingUrl,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        if (importUrl.isNotBlank()) {
+                            onUrlImport(importUrl)
+                            importUrl = ""
+                            expanded = false
+                        }
+                    },
+                    enabled = importUrl.isNotBlank() && !isImportingUrl,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isImportingUrl) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(Res.string.importing))
+                    } else {
+                        Text(stringResource(Res.string.import_label))
+                    }
+                }
+            }
+        }
+    }
 }

@@ -110,7 +110,7 @@ kotlin {
             implementation(kotlin("test"))
         }
         androidMain.dependencies {
-            api(libs.ktor.client.android)
+            api(libs.ktor.client.okhttp)
             api(libs.timber)
             api(libs.maplibre.android.sdk)
             api(project.dependencies.platform(libs.firebase.bom))

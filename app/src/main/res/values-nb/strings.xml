@@ -58,6 +58,7 @@
     <string name="import_gpx_corrupted">Kunne ikke importere GPX-fil. Filen kan være skadet eller i et format som ikke støttes.</string>
     <string name="import_gpx_read_failed">Kunne ikke lese GPX-fil.</string>
     <string name="import_gpx_error">Feil ved import av GPX-fil: %1$s</string>
+    <string name="import_url_error">Kunne ikke importere fra URL. Aktiviteten eller ruten kan være privat, eller URLen gjenkjennes ikke.</string>
     <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d punkter</string>
     <string name="duration_hours_minutes">%1$dt %2$dm</string>
     <string name="duration_minutes">%1$dm</string>

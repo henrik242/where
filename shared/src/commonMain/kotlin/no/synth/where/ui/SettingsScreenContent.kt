@@ -127,10 +127,17 @@ fun SettingsScreenContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = stringResource(Res.string.saved_tracks),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(Res.string.saved_tracks),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = stringResource(Res.string.saved_tracks_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Icon(
                         painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_saved_tracks)

@@ -78,8 +78,10 @@ class ScreenContentTest {
             "newTrackName",
             "showImportError",
             "importErrorMessage",
+            "isImportingUrl",
             "onBackClick",
             "onImport",
+            "onUrlImport",
             "onExport",
             "onSave",
             "onOpen",
@@ -95,8 +97,8 @@ class ScreenContentTest {
             "onShowOnMap"
         )
         assertEquals(
-            "TracksScreenContent must have 21 parameters",
-            21,
+            "TracksScreenContent must have 23 parameters",
+            23,
             requiredParameters.size
         )
     }

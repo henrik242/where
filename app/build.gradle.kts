@@ -102,7 +102,36 @@ android {
         abortOnError = false
     }
     testOptions {
-        unitTests.isIncludeAndroidResources = true
+        unitTests.isReturnDefaultValues = true
+        unitTests.all { test ->
+            test.testLogging {
+                showStandardStreams = true
+                events("passed", "failed", "skipped")
+            }
+            test.exclude("no/synth/where/integration/**")
+        }
+    }
+}
+
+afterEvaluate {
+    val debugUnitTest = tasks.named<Test>("testDebugUnitTest").get()
+    tasks.register<Test>("integrationTest") {
+        group = "verification"
+        description = "Runs integration tests (configure URLs in local.properties)"
+        dependsOn("compileDebugUnitTestKotlin")
+        testClassesDirs = debugUnitTest.testClassesDirs
+        classpath = debugUnitTest.classpath
+        filter { includeTestsMatching("no.synth.where.integration.*") }
+        testLogging {
+            showStandardStreams = true
+            events("passed", "failed", "skipped")
+        }
+        val localProps = Properties()
+        rootProject.file("local.properties").takeIf { it.exists() }
+            ?.inputStream()?.use { localProps.load(it) }
+        localProps.stringPropertyNames().forEach { key ->
+            environment(key, localProps.getProperty(key))
+        }
     }
 }
 
@@ -133,5 +162,4 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     testImplementation(libs.androidx.core)
-    testImplementation(libs.robolectric)
 }
