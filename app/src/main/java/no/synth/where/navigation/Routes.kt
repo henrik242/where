@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable object MapRoute
 @Serializable data class SettingsRoute(val highlightOfflineMode: Boolean = false)
-@Serializable object TracksRoute
+@Serializable data class TracksRoute(val importUrl: String? = null)
 @Serializable object SavedPointsRoute
 @Serializable object OnlineTrackingRoute
 @Serializable object DownloadRoute

@@ -18,6 +18,13 @@ class TracksScreenViewModel(
     private val _isImportingUrl = MutableStateFlow(false)
     val isImportingUrl: StateFlow<Boolean> = _isImportingUrl
 
+    private val _newlyImportedTrackId = MutableStateFlow<String?>(null)
+    val newlyImportedTrackId: StateFlow<String?> = _newlyImportedTrackId
+
+    fun clearNewlyImportedTrackId() {
+        _newlyImportedTrackId.value = null
+    }
+
     fun deleteTrack(track: Track) {
         trackRepository.deleteTrack(track)
     }
@@ -27,7 +34,9 @@ class TracksScreenViewModel(
     }
 
     fun importTrack(gpxContent: String): Track? {
-        return trackRepository.importTrack(gpxContent)
+        return trackRepository.importTrack(gpxContent)?.also {
+            _newlyImportedTrackId.value = it.id
+        }
     }
 
     fun importFromUrl(input: String, onResult: (Track?) -> Unit) {
@@ -39,6 +48,7 @@ class TracksScreenViewModel(
                 if (track != null) {
                     val gpx = track.toGPX()
                     val imported = trackRepository.importTrack(gpx)
+                    if (imported != null) _newlyImportedTrackId.value = imported.id
                     onResult(imported)
                 } else {
                     onResult(null)

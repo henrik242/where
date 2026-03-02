@@ -1,14 +1,21 @@
 package no.synth.where.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.gestures.animateScrollBy
+import kotlinx.coroutines.delay
 import no.synth.where.data.Track
 import no.synth.where.util.formatDateTime
 import no.synth.where.util.formatKm
@@ -27,6 +34,8 @@ fun TracksScreenContent(
     showImportError: Boolean,
     importErrorMessage: String,
     isImportingUrl: Boolean = false,
+    newlyImportedTrackId: String? = null,
+    onNewlyImportedTrackConsumed: () -> Unit = {},
     onBackClick: () -> Unit,
     onImport: () -> Unit,
     onUrlImport: (String) -> Unit = {},
@@ -56,7 +65,40 @@ fun TracksScreenContent(
             )
         }
     ) { padding ->
+        val listState = rememberLazyListState()
+        var expandedTrackId by remember { mutableStateOf<String?>(null) }
+        var highlightedTrackId by remember { mutableStateOf<String?>(null) }
+
+        LaunchedEffect(newlyImportedTrackId, tracks) {
+            val id = newlyImportedTrackId ?: return@LaunchedEffect
+            val index = tracks.indexOfFirst { it.id == id }
+            if (index >= 0) {
+                expandedTrackId = id
+                listState.animateScrollToItem(index + 1) // +1 for ImportSection
+                onNewlyImportedTrackConsumed()
+                highlightedTrackId = id
+                delay(800)
+                highlightedTrackId = null
+            }
+        }
+
+        LaunchedEffect(expandedTrackId) {
+            val id = expandedTrackId ?: return@LaunchedEffect
+            val index = tracks.indexOfFirst { it.id == id }
+            if (index < 0) return@LaunchedEffect
+            val itemIndex = index + 1 // +1 for ImportSection
+            // Wait for the expanded content to be measured
+            delay(50)
+            val layoutInfo = listState.layoutInfo
+            val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == itemIndex } ?: return@LaunchedEffect
+            val overshoot = (itemInfo.offset + itemInfo.size) - layoutInfo.viewportEndOffset
+            if (overshoot > 0) {
+                listState.animateScrollBy(overshoot.toFloat())
+            }
+        }
+
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
@@ -87,6 +129,11 @@ fun TracksScreenContent(
                 items(tracks, key = { it.id }) { track ->
                     TrackItem(
                         track = track,
+                        expanded = expandedTrackId == track.id,
+                        highlighted = highlightedTrackId == track.id,
+                        onExpandToggle = {
+                            expandedTrackId = if (expandedTrackId == track.id) null else track.id
+                        },
                         onExport = { onExport(track) },
                         onSave = onSave?.let { { it(track) } },
                         onOpen = onOpen?.let { { it(track) } },
@@ -161,6 +208,9 @@ fun TracksScreenContent(
 @Composable
 fun TrackItem(
     track: Track,
+    expanded: Boolean = false,
+    highlighted: Boolean = false,
+    onExpandToggle: () -> Unit = {},
     onExport: () -> Unit,
     onSave: (() -> Unit)? = null,
     onOpen: (() -> Unit)? = null,
@@ -169,12 +219,16 @@ fun TrackItem(
     onContinue: () -> Unit,
     onShowOnMap: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-
+    val highlightColor by animateColorAsState(
+        targetValue = if (highlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 400),
+        label = "highlight"
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded }
+            .background(highlightColor)
+            .clickable { onExpandToggle() }
             .padding(16.dp)
     ) {
         Row(

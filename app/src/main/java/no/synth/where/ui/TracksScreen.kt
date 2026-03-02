@@ -4,6 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
@@ -16,6 +19,7 @@ import java.io.File
 
 @Composable
 fun TracksScreen(
+    pendingImportUrl: String? = null,
     onBackClick: () -> Unit,
     onContinueTrack: (Track) -> Unit,
     onShowTrackOnMap: (Track) -> Unit
@@ -25,6 +29,7 @@ fun TracksScreen(
     val viewModel: TracksScreenViewModel = viewModel { TracksScreenViewModel(app.trackRepository) }
     val tracks by viewModel.tracks.collectAsState()
     val isImportingUrl by viewModel.isImportingUrl.collectAsState()
+    val newlyImportedTrackId by viewModel.newlyImportedTrackId.collectAsState()
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var trackToRename by remember { mutableStateOf<Track?>(null) }
@@ -33,6 +38,35 @@ fun TracksScreen(
     var importErrorMessage by remember { mutableStateOf("") }
 
     val resources = context.resources
+    var urlToConfirm by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(pendingImportUrl) {
+        if (pendingImportUrl != null) urlToConfirm = pendingImportUrl
+    }
+
+    urlToConfirm?.let { url ->
+        AlertDialog(
+            onDismissRequest = { urlToConfirm = null },
+            title = { Text(resources.getString(R.string.import_from_title)) },
+            text = { Text(resources.getString(R.string.import_from_message, friendlySourceName(url))) },
+            confirmButton = {
+                TextButton(onClick = {
+                    urlToConfirm = null
+                    viewModel.importFromUrl(url) { track ->
+                        if (track == null) {
+                            importErrorMessage = resources.getString(R.string.import_url_error)
+                            showImportError = true
+                        }
+                    }
+                }) { Text(resources.getString(R.string.import_label)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { urlToConfirm = null }) {
+                    Text(resources.getString(R.string.cancel))
+                }
+            }
+        )
+    }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -68,6 +102,8 @@ fun TracksScreen(
         showImportError = showImportError,
         importErrorMessage = importErrorMessage,
         isImportingUrl = isImportingUrl,
+        newlyImportedTrackId = newlyImportedTrackId,
+        onNewlyImportedTrackConsumed = { viewModel.clearNewlyImportedTrackId() },
         onBackClick = onBackClick,
         onImport = { filePickerLauncher.launch("*/*") },
         onUrlImport = { url ->
@@ -103,6 +139,16 @@ fun TracksScreen(
         onContinue = onContinueTrack,
         onShowOnMap = onShowTrackOnMap
     )
+}
+
+private fun friendlySourceName(url: String): String {
+    val host = Uri.parse(url).host ?: return url
+    return when {
+        "strava.com" in host || "strava.app.link" in host -> "Strava"
+        "garmin.com" in host -> "Garmin Connect"
+        "komoot.com" in host || "komoot.de" in host -> "Komoot"
+        else -> host
+    }
 }
 
 private fun shareTrack(context: android.content.Context, track: Track) {

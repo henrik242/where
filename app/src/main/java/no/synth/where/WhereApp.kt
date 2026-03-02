@@ -22,8 +22,10 @@ import no.synth.where.util.Logger
 @Composable
 fun WhereApp(
     pendingGpxUri: Uri? = null,
+    pendingImportUrl: String? = null,
     regionsLoadedTrigger: Int = 0,
     onGpxHandled: () -> Unit = {},
+    onImportUrlHandled: () -> Unit = {},
     onRegionsLoaded: () -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -83,6 +85,13 @@ fun WhereApp(
         }
     }
 
+    LaunchedEffect(pendingImportUrl) {
+        pendingImportUrl?.let { url ->
+            navController.navigate(TracksRoute(importUrl = url))
+            onImportUrlHandled()
+        }
+    }
+
     LaunchedEffect(pendingGpxUri) {
         pendingGpxUri?.let { uri ->
             try {
@@ -123,7 +132,7 @@ fun WhereApp(
                 highlightOfflineMode = settingsRoute.highlightOfflineMode,
                 onBackClick = { navController.popBackStack() },
                 onDownloadClick = { navController.navigate(DownloadRoute) },
-                onTracksClick = { navController.navigate(TracksRoute) },
+                onTracksClick = { navController.navigate(TracksRoute()) },
                 onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
                 onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
                 crashReportingEnabled = crashReportingEnabled,
@@ -148,8 +157,10 @@ fun WhereApp(
                 }
             )
         }
-        composable<TracksRoute> {
+        composable<TracksRoute> { backStackEntry ->
+            val route = backStackEntry.toRoute<TracksRoute>()
             TracksScreen(
+                pendingImportUrl = route.importUrl,
                 onBackClick = { navController.popBackStack() },
                 onContinueTrack = { track ->
                     trackRepository.continueTrack(track)

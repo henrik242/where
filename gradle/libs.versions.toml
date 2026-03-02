@@ -27,7 +27,6 @@ mockkAndroid = "1.14.9"
 navigationCompose = "2.9.7"
 kmpZip = "0.7.1"
 playServicesLocation = "21.3.0"
-robolectric = "4.16.1"
 room = "2.8.4"
 timber = "5.0.1"
 uiTestJunit4 = "1.10.4"
@@ -66,7 +65,6 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockkAndroid" }
 kmp-zip = { module = "no.synth:kmp-zip", version.ref = "kmpZip" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
-robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

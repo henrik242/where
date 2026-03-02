@@ -25,6 +25,7 @@ import no.synth.where.ui.theme.WhereTheme
 
 class MainActivity : AppCompatActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
+    private var pendingImportUrl by mutableStateOf<String?>(null)
     private var regionsLoaded by mutableIntStateOf(0)
     private val userPreferences: UserPreferences get() = (application as WhereApplication).userPreferences
 
@@ -53,8 +54,10 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     WhereApp(
                         pendingGpxUri = pendingGpxUri,
+                        pendingImportUrl = pendingImportUrl,
                         regionsLoadedTrigger = regionsLoaded,
                         onGpxHandled = { pendingGpxUri = null },
+                        onImportUrlHandled = { pendingImportUrl = null },
                         onRegionsLoaded = { regionsLoaded++ }
                     )
                 }
@@ -70,7 +73,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleIntent(intent: Intent) {
         if (intent.action == Intent.ACTION_VIEW) {
-            intent.data?.let { uri -> pendingGpxUri = uri }
+            val uri = intent.data ?: return
+            if (uri.scheme == "https" || uri.scheme == "http") {
+                pendingImportUrl = uri.toString()
+            } else {
+                pendingGpxUri = uri
+            }
         }
     }
 }
