@@ -1,0 +1,52 @@
+name: Integration Tests
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v4
+
+    - name: Create local.properties
+      run: |
+        cat > local.properties <<EOF
+        sdk.dir=$ANDROID_HOME
+        TRACKING_HMAC_SECRET=${{ secrets.TRACKING_HMAC_SECRET }}
+        STRAVA_URL=${{ vars.INTEGRATION_STRAVA_URL }}
+        GARMIN_URL=${{ vars.INTEGRATION_GARMIN_URL }}
+        KOMOOT_URL=${{ vars.INTEGRATION_KOMOOT_URL }}
+        UT_NO_URL=${{ vars.INTEGRATION_UT_NO_URL }}
+        EOF
+
+    - name: Create google-services.json
+      run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
+
+    - name: Run integration tests
+      run: ./gradlew integrationTest --stacktrace
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-test-results
+        path: app/build/reports/tests/
+        retention-days: 14

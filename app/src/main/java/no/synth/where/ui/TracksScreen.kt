@@ -147,6 +147,7 @@ private fun friendlySourceName(url: String): String {
         "strava.com" in host || "strava.app.link" in host -> "Strava"
         "garmin.com" in host -> "Garmin Connect"
         "komoot.com" in host || "komoot.de" in host -> "Komoot"
+        "ut.no" in host -> "UT.no"
         else -> host
     }
 }

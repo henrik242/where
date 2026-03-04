@@ -11,17 +11,17 @@ import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
- * Integration test that makes real HTTP requests to Garmin Connect.
+ * Integration test that makes real HTTP requests to UT.no GraphQL API.
  * Run with: ../gradlew integrationTest
- * (GARMIN_URL is read from local.properties)
+ * (UT_NO_URL is read from local.properties)
  */
-class GarminFetchTest {
+class UtNoFetchTest {
 
-    private val garminUrl: String = System.getenv("GARMIN_URL") ?: ""
+    private val utNoUrl: String = System.getenv("UT_NO_URL") ?: ""
 
     @Before
     fun setUp() {
-        require(garminUrl.isNotEmpty()) { "GARMIN_URL must be set in local.properties or environment" }
+        require(utNoUrl.isNotEmpty()) { "UT_NO_URL must be set in local.properties or environment" }
         if (Timber.treeCount == 0) {
             Timber.plant(object : Timber.Tree() {
                 override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -42,9 +42,9 @@ class GarminFetchTest {
     }
 
     @Test
-    fun importActivity_getsTrackWithPoints() = runBlocking {
-        val importer = GarminImporter(makeClient())
-        val track = importer.importFromUrl(garminUrl, addElevation = false)
+    fun importRoute_getsTrackWithPoints() = runBlocking {
+        val importer = UtNoImporter(makeClient())
+        val track = importer.importFromUrl(utNoUrl, addElevation = false)
         println("Track: name=${track?.name}, points=${track?.points?.size}")
         checkNotNull(track) { "Expected to import track but got null" }
         assertTrue("Expected track to have points", track.points.isNotEmpty())

@@ -36,6 +36,21 @@ class TrackUrlImporterTest {
     }
 
     @Test
+    fun detectService_utNoTurforslagUrl() {
+        assertEquals(TrackUrlImporter.Service.UT_NO, TrackUrlImporter.detectService("https://ut.no/turforslag/1234567/besseggen"))
+    }
+
+    @Test
+    fun detectService_utNoRutebeskrivelseUrl() {
+        assertEquals(TrackUrlImporter.Service.UT_NO, TrackUrlImporter.detectService("https://ut.no/rutebeskrivelse/7654321/trolltunga"))
+    }
+
+    @Test
+    fun detectService_utNoKartTurUrl() {
+        assertEquals(TrackUrlImporter.Service.UT_NO, TrackUrlImporter.detectService("https://ut.no/kart/tur/1234567/slug#12/61.5/8.8"))
+    }
+
+    @Test
     fun detectService_unknownUrl() {
         assertEquals(TrackUrlImporter.Service.UNKNOWN, TrackUrlImporter.detectService("https://example.com/something"))
     }

@@ -14,6 +14,7 @@ class TrackUrlImporter(
     private val stravaImporter by lazy { StravaImporter(client) }
     private val garminImporter by lazy { GarminImporter(client) }
     private val komootImporter by lazy { KomootImporter(client) }
+    private val utNoImporter by lazy { UtNoImporter(client) }
 
     suspend fun importFromUrl(
         input: String,
@@ -25,6 +26,7 @@ class TrackUrlImporter(
             Service.STRAVA -> stravaImporter.importFromUrl(input, addElevation)
             Service.GARMIN -> garminImporter.importFromUrl(input, addElevation)
             Service.KOMOOT -> komootImporter.importFromUrl(input, addElevation)
+            Service.UT_NO -> utNoImporter.importFromUrl(input, addElevation)
             Service.UNKNOWN -> {
                 Logger.e("Could not detect service from URL: $input")
                 null
@@ -32,7 +34,7 @@ class TrackUrlImporter(
         }
     }
 
-    enum class Service { STRAVA, GARMIN, KOMOOT, UNKNOWN }
+    enum class Service { STRAVA, GARMIN, KOMOOT, UT_NO, UNKNOWN }
 
     companion object {
         fun detectService(input: String): Service {
@@ -43,6 +45,7 @@ class TrackUrlImporter(
                 trimmed.contains("strava.app.link", ignoreCase = true) -> Service.STRAVA
                 trimmed.contains("komoot.com", ignoreCase = true) -> Service.KOMOOT
                 trimmed.contains("komoot.de", ignoreCase = true) -> Service.KOMOOT
+                trimmed.contains("ut.no", ignoreCase = true) -> Service.UT_NO
                 // Bare numeric IDs: assume Strava (more common for sharing)
                 StravaImporter.parseStravaUrl(trimmed) != null -> Service.STRAVA
                 else -> Service.UNKNOWN
