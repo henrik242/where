@@ -1,6 +1,6 @@
 [versions]
 activityCompose = "1.12.4"
-agp = "9.0.1"
+agp = "9.1.0"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
 composeMultiplatform = "1.10.1"
 composeMaterial3 = "1.11.0-alpha03" # see release notes for matching version
