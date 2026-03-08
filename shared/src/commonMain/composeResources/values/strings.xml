@@ -157,6 +157,7 @@
     <string name="layer_osm_desc">Community-sourced street maps</string>
     <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
+    <string name="layer_avalanchezones_desc">Avalanche runout zones from NVE</string>
 
     <!-- Map Screen snackbars -->
     <string name="recording_snackbar">Recording\u2026</string>

@@ -295,6 +295,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 val osmDesc = stringResource(Res.string.layer_osm_desc)
                 val opentopomapDesc = stringResource(Res.string.layer_opentopomap_desc)
                 val waymarkedtrailsDesc = stringResource(Res.string.layer_waymarkedtrails_desc)
+                val avalanchezonesDesc = stringResource(Res.string.layer_avalanchezones_desc)
 
                 val descriptionMap = remember(kartverketDesc) {
                     mapOf(
@@ -305,6 +306,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         "osm" to osmDesc,
                         "opentopomap" to opentopomapDesc,
                         "waymarkedtrails" to waymarkedtrailsDesc,
+                        "avalanchezones" to avalanchezonesDesc,
                     )
                 }
 

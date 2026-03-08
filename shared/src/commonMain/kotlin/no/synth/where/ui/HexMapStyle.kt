@@ -6,17 +6,29 @@ import no.synth.where.data.HexGrid
 const val EMPTY_HEX_GEOJSON = """{"type":"FeatureCollection","features":[]}"""
 
 fun buildHexMapStyle(layerId: String, hexGeoJson: String): String {
-    val tileUrl = DownloadLayers.tileUrlForLayer(layerId)
+    val layer = DownloadLayers.all.find { it.id == layerId }
+    val tileUrl = layer?.tileUrl ?: DownloadLayers.tileUrlForLayer(layerId)
+    val isOverlay = layer?.isOverlay == true
+    val osmSource = if (isOverlay) """
+    "osm": {
+      "type": "raster",
+      "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "minzoom": 0,
+      "maxzoom": 18
+    },""" else ""
+    val osmLayer = if (isOverlay) """
+    {"id":"osm-base","type":"raster","source":"osm"},""" else ""
     return """
 {
   "version": 8,
-  "sources": {
+  "sources": {$osmSource
     "$layerId": {
       "type": "raster",
       "tiles": ["$tileUrl"],
       "tileSize": 256,
-      "minzoom": 0,
-      "maxzoom": 18
+      "minzoom": ${layer?.minZoom ?: 0},
+      "maxzoom": ${layer?.maxZoom ?: 18}
     },
     "hexgrid": {
       "type": "geojson",
@@ -24,7 +36,7 @@ fun buildHexMapStyle(layerId: String, hexGeoJson: String): String {
     }
   },
   "layers": [
-    {"id":"background","type":"background","paint":{"background-color":"#e8e8e8"}},
+    {"id":"background","type":"background","paint":{"background-color":"#e8e8e8"}},$osmLayer
     {"id":"base","type":"raster","source":"$layerId"},
     {
       "id": "hex-fill",

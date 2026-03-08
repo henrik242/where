@@ -37,6 +37,7 @@ fun DownloadScreen(
     val osmDesc = stringResource(R.string.layer_osm_desc)
     val opentopomapDesc = stringResource(R.string.layer_opentopomap_desc)
     val waymarkedtrailsDesc = stringResource(R.string.layer_waymarkedtrails_desc)
+    val avalanchezonesDesc = stringResource(R.string.layer_avalanchezones_desc)
 
     val descriptionMap = remember(kartverketDesc) {
         mapOf(
@@ -47,6 +48,7 @@ fun DownloadScreen(
             "osm" to osmDesc,
             "opentopomap" to opentopomapDesc,
             "waymarkedtrails" to waymarkedtrailsDesc,
+            "avalanchezones" to avalanchezonesDesc,
         )
     }
 

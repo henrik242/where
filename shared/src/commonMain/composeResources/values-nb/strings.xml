@@ -157,6 +157,7 @@
     <string name="layer_osm_desc">Brukergenererte gatekart</string>
     <string name="layer_opentopomap_desc">Topografiske kart med turstier</string>
     <string name="layer_waymarkedtrails_desc">Kartlag med merkede stier</string>
+    <string name="layer_avalanchezones_desc">Utløpssoner for snøskred fra NVE</string>
 
     <!-- Map Screen snackbars -->
     <string name="recording_snackbar">Tar opp\u2026</string>

@@ -8,7 +8,7 @@ class DownloadLayersTest {
 
     @Test
     fun hasSevenLayers() {
-        assertEquals(7, DownloadLayers.all.size)
+        assertEquals(8, DownloadLayers.all.size)
     }
 
     @Test
