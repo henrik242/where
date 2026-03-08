@@ -17,11 +17,12 @@ import java.util.concurrent.TimeUnit
  */
 class KomootFetchTest {
 
-    private val komootUrl: String = System.getenv("KOMOOT_URL") ?: ""
+    private val komootUrls: List<String> = (System.getenv("KOMOOT_URL") ?: "")
+        .split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
     @Before
     fun setUp() {
-        require(komootUrl.isNotEmpty()) { "KOMOOT_URL must be set in local.properties or environment" }
+        require(komootUrls.isNotEmpty()) { "KOMOOT_URL must be set in local.properties or environment" }
         if (Timber.treeCount == 0) {
             Timber.plant(object : Timber.Tree() {
                 override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -44,9 +45,11 @@ class KomootFetchTest {
     @Test
     fun importTour_getsTrackWithPoints() = runBlocking {
         val importer = KomootImporter(makeClient())
-        val track = importer.importFromUrl(komootUrl, addElevation = false)
-        println("Track: name=${track?.name}, points=${track?.points?.size}")
-        checkNotNull(track) { "Expected to import track but got null" }
-        assertTrue("Expected track to have points", track.points.isNotEmpty())
+        for (url in komootUrls) {
+            val track = importer.importFromUrl(url, addElevation = false)
+            println("Track ($url): name=${track?.name}, points=${track?.points?.size}")
+            checkNotNull(track) { "Expected to import track from $url but got null" }
+            assertTrue("Expected track from $url to have points", track.points.isNotEmpty())
+        }
     }
 }

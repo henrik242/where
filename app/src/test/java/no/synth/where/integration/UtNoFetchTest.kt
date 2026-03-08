@@ -17,11 +17,12 @@ import java.util.concurrent.TimeUnit
  */
 class UtNoFetchTest {
 
-    private val utNoUrl: String = System.getenv("UT_NO_URL") ?: ""
+    private val utNoUrls: List<String> = (System.getenv("UT_NO_URL") ?: "")
+        .split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
     @Before
     fun setUp() {
-        require(utNoUrl.isNotEmpty()) { "UT_NO_URL must be set in local.properties or environment" }
+        require(utNoUrls.isNotEmpty()) { "UT_NO_URL must be set in local.properties or environment" }
         if (Timber.treeCount == 0) {
             Timber.plant(object : Timber.Tree() {
                 override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
@@ -44,9 +45,11 @@ class UtNoFetchTest {
     @Test
     fun importRoute_getsTrackWithPoints() = runBlocking {
         val importer = UtNoImporter(makeClient())
-        val track = importer.importFromUrl(utNoUrl, addElevation = false)
-        println("Track: name=${track?.name}, points=${track?.points?.size}")
-        checkNotNull(track) { "Expected to import track but got null" }
-        assertTrue("Expected track to have points", track.points.isNotEmpty())
+        for (url in utNoUrls) {
+            val track = importer.importFromUrl(url, addElevation = false)
+            println("Track ($url): name=${track?.name}, points=${track?.points?.size}")
+            checkNotNull(track) { "Expected to import track from $url but got null" }
+            assertTrue("Expected track from $url to have points", track.points.isNotEmpty())
+        }
     }
 }
