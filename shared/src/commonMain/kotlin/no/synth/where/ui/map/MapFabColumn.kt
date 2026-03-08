@@ -1,11 +1,15 @@
 package no.synth.where.ui.map
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,7 +33,9 @@ internal fun LayerMenuItem(
 ) {
     DropdownMenuItem(
         text = { Text((if (isSelected) "\u2713 " else "") + text) },
-        onClick = onClick
+        onClick = onClick,
+        modifier = Modifier.height(36.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
     )
 }
 
@@ -38,7 +44,7 @@ internal fun MenuSection(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelSmall,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
@@ -76,18 +82,20 @@ fun MapFabColumn(
 
         Spacer(modifier = Modifier.size(8.dp))
 
-        SmallFloatingActionButton(
-            onClick = { onLayerMenuToggle(true) },
-            modifier = Modifier.size(48.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Icon(painterResource(Res.drawable.ic_layers), contentDescription = stringResource(Res.string.layers_and_overlays))
-        }
+        Box {
+            SmallFloatingActionButton(
+                onClick = { onLayerMenuToggle(true) },
+                modifier = Modifier.size(48.dp),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Icon(painterResource(Res.drawable.ic_layers), contentDescription = stringResource(Res.string.layers_and_overlays))
+            }
 
-        DropdownMenu(
-            expanded = showLayerMenu,
-            onDismissRequest = { onLayerMenuToggle(false) }
-        ) {
+            DropdownMenu(
+                expanded = showLayerMenu,
+                onDismissRequest = { onLayerMenuToggle(false) },
+                offset = DpOffset(x = (-200).dp, y = 48.dp)
+            ) {
             MenuSection(stringResource(Res.string.map_layers))
             LayerMenuItem(stringResource(Res.string.kartverket_norway), selectedLayer == MapLayer.KARTVERKET) { onLayerSelected(MapLayer.KARTVERKET) }
             LayerMenuItem(stringResource(Res.string.kartverket_toporaster), selectedLayer == MapLayer.TOPORASTER) { onLayerSelected(MapLayer.TOPORASTER) }
@@ -101,6 +109,7 @@ fun MapFabColumn(
             LayerMenuItem(stringResource(Res.string.avalanche_zones_nve), showAvalancheZones) { onAvalancheZonesToggle() }
             LayerMenuItem(stringResource(Res.string.county_borders_norway), showCountyBorders) { onCountyBordersToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
+            }
         }
 
         Spacer(modifier = Modifier.size(8.dp))
