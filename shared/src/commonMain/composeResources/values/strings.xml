@@ -100,7 +100,7 @@
     <!-- Settings Screen -->
     <string name="go_to_online_tracking">Go to Online Tracking</string>
     <string name="saved_tracks">Saved Tracks</string>
-    <string name="saved_tracks_description">Import from GPX, Strava, Garmin or Komoot, export and manage tracks</string>
+    <string name="saved_tracks_description">Import from GPX, Garmin or Komoot, export and manage tracks</string>
     <string name="go_to_saved_tracks">Go to Saved Tracks</string>
     <string name="go_to_saved_points">Go to Saved Points</string>
     <string name="offline_maps">Offline Maps</string>
@@ -120,7 +120,7 @@
     <string name="import_gpx">Import GPX</string>
     <string name="import_strava">Strava</string>
     <string name="import_url">Import URL</string>
-    <string name="import_url_hint">Strava, Garmin Connect or Komoot URL</string>
+    <string name="import_url_hint">Ut.no, Garmin Connect or Komoot URL</string>
     <string name="importing">Importing\u2026</string>
     <string name="import_label">Import</string>
     <string name="import_url_error">Could not import from URL. The activity or route may be private, or the URL is not recognized.</string>

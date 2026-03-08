@@ -100,7 +100,7 @@
     <!-- Settings Screen -->
     <string name="go_to_online_tracking">Gå til Direktesporing</string>
     <string name="saved_tracks">Lagrede spor</string>
-    <string name="saved_tracks_description">Importer fra GPX, Strava, Garmin eller Komoot, eksporter og administrer spor</string>
+    <string name="saved_tracks_description">Importer fra GPX, Garmin eller Komoot, eksporter og administrer spor</string>
     <string name="go_to_saved_tracks">Gå til Lagrede spor</string>
     <string name="go_to_saved_points">Gå til Lagrede punkter</string>
     <string name="offline_maps">Frakoblede kart</string>
@@ -120,7 +120,7 @@
     <string name="import_gpx">Importer GPX</string>
     <string name="import_strava">Strava</string>
     <string name="import_url">Importer URL</string>
-    <string name="import_url_hint">Strava-, Garmin Connect- eller Komoot-URL</string>
+    <string name="import_url_hint">Ut.no, Garmin Connect- eller Komoot-URL</string>
     <string name="importing">Importerer\u2026</string>
     <string name="import_label">Importer</string>
     <string name="import_url_error">Kunne ikke importere fra URL. Aktiviteten eller ruten kan være privat, eller URLen gjenkjennes ikke.</string>
