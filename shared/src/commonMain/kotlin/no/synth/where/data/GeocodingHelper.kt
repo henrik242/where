@@ -53,4 +53,50 @@ object GeocodingHelper {
             null
         }
     }
+
+    private val areaNameCache = mutableMapOf<String, String>()
+
+    private fun areaCacheKey(latLng: LatLng): String =
+        "${latLng.latitude.toBits()}_${latLng.longitude.toBits()}"
+
+    suspend fun reverseGeocodeArea(latLng: LatLng): String? = withContext(Dispatchers.Default) {
+        val key = areaCacheKey(latLng)
+        areaNameCache[key]?.let { return@withContext it }
+        val name = try {
+            val url = "https://nominatim.openstreetmap.org/reverse?lat=${latLng.latitude}&lon=${latLng.longitude}&format=json&addressdetails=1&zoom=10"
+            val response = client.get(url) {
+                header("User-Agent", "Where-App/1.0")
+            }
+            if (response.status.value !in 200..299) {
+                null
+            } else {
+                val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+                val address = json["address"]?.jsonObject
+
+                if (address != null) {
+                    val place = address["village"]?.jsonPrimitive?.content
+                        ?: address["town"]?.jsonPrimitive?.content
+                        ?: address["city"]?.jsonPrimitive?.content
+                        ?: address["hamlet"]?.jsonPrimitive?.content
+                        ?: address["suburb"]?.jsonPrimitive?.content
+                    val municipality = address["municipality"]?.jsonPrimitive?.content
+                    val county = address["county"]?.jsonPrimitive?.content
+
+                    when {
+                        place != null && municipality != null && place != municipality -> "$place, $municipality"
+                        place != null && county != null -> "$place, $county"
+                        municipality != null -> municipality
+                        place != null -> place
+                        county != null -> county
+                        else -> null
+                    }
+                } else null
+            }
+        } catch (e: Exception) {
+            Logger.e(e, "Error reverse geocoding area")
+            null
+        }
+        if (name != null) areaNameCache[key] = name
+        name
+    }
 }

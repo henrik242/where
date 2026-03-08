@@ -16,6 +16,7 @@ import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.synth.where.data.DownloadLayers
+import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.HexGrid
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.RegionTileInfo
@@ -41,6 +42,8 @@ fun IosLayerHexMapScreen(
     var downloadedHexIds by remember { mutableStateOf(emptySet<String>()) }
     var selectedHex by remember { mutableStateOf<HexGrid.Hex?>(null) }
     var selectedHexInfo by remember { mutableStateOf<RegionTileInfo?>(null) }
+    var selectedHexName by remember { mutableStateOf<String?>(null) }
+    var isLoadingHexName by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
@@ -67,6 +70,7 @@ fun IosLayerHexMapScreen(
         }
         val hexGeoJson = buildHexGeoJson(allHexes, downloadedHexIds, downloadingHexId)
         hexMapViewProvider.setStyle(buildHexMapStyle(layerId, hexGeoJson))
+        hexMapViewProvider.setShowsUserLocation(true)
     }
 
     DisposableEffect(Unit) {
@@ -76,13 +80,22 @@ fun IosLayerHexMapScreen(
                 if (selectedHex == hex) {
                     selectedHex = null
                     selectedHexInfo = null
+                    selectedHexName = null
+                    isLoadingHexName = false
                 } else {
                     selectedHex = hex
                     selectedHexInfo = null
+                    selectedHexName = null
+                    isLoadingHexName = true
                     scope.launch {
                         selectedHexInfo = downloadManager.getRegionTileInfo(
                             HexGrid.hexToRegion(hex), layerId
                         )
+                    }
+                    scope.launch {
+                        val center = HexGrid.hexCenter(hex)
+                        selectedHexName = GeocodingHelper.reverseGeocodeArea(center)
+                        isLoadingHexName = false
                     }
                 }
             }
@@ -104,6 +117,8 @@ fun IosLayerHexMapScreen(
         currentLayerId = layerId,
         downloadProgress = downloadState.progress,
         selectedHexInfo = hexTileInfo,
+        selectedHexName = selectedHexName,
+        isLoadingHexName = isLoadingHexName,
         isHexSelected = currentHex != null,
         isHexDownloaded = isHexDownloaded,
         isHexPartiallyDownloaded = isHexPartial,
@@ -122,6 +137,7 @@ fun IosLayerHexMapScreen(
             }
             selectedHex = null
             selectedHexInfo = null
+            selectedHexName = null
         },
         onDeleteHexRequest = { showDeleteDialog = true },
         onConfirmDelete = {
@@ -131,6 +147,7 @@ fun IosLayerHexMapScreen(
                     showDeleteDialog = false
                     selectedHex = null
                     selectedHexInfo = null
+                    selectedHexName = null
                     refreshTrigger++
                 }
             }
@@ -142,6 +159,7 @@ fun IosLayerHexMapScreen(
         onDismissHex = {
             selectedHex = null
             selectedHexInfo = null
+            selectedHexName = null
         },
         mapContent = {
             UIKitView(

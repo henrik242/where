@@ -1,5 +1,7 @@
 package no.synth.where.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -14,16 +16,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import no.synth.where.data.DownloadLayers
+import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.HexGrid
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.RegionTileInfo
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.service.MapDownloadService
+import no.synth.where.ui.map.MapRenderUtils
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -45,10 +50,17 @@ fun LayerHexMapScreen(
     val downloadManager = remember { MapDownloadManager(context) }
     val downloadState by MapDownloadService.downloadState.collectAsState()
 
+    val hasLocationPermission = remember {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    }
+
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
     var downloadedHexIds by remember { mutableStateOf(emptySet<String>()) }
     var selectedHex by remember { mutableStateOf<HexGrid.Hex?>(null) }
     var selectedHexInfo by remember { mutableStateOf<RegionTileInfo?>(null) }
+    var selectedHexName by remember { mutableStateOf<String?>(null) }
+    var isLoadingHexName by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
@@ -71,7 +83,9 @@ fun LayerHexMapScreen(
         val info = downloadManager.getDownloadedRegionsForLayer(layerId)
         downloadedHexIds = info.keys.toSet()
         val geoJson = buildHexGeoJson(allHexes, downloadedHexIds, downloadingHexId)
-        map.setStyle(Style.Builder().fromJson(buildHexMapStyle(layerId, geoJson)))
+        map.setStyle(Style.Builder().fromJson(buildHexMapStyle(layerId, geoJson))) { style ->
+            MapRenderUtils.enableLocationComponent(map, style, context, hasLocationPermission)
+        }
     }
 
     val currentHex = selectedHex
@@ -86,6 +100,8 @@ fun LayerHexMapScreen(
         currentLayerId = layerId,
         downloadProgress = downloadState.progress,
         selectedHexInfo = hexTileInfo,
+        selectedHexName = selectedHexName,
+        isLoadingHexName = isLoadingHexName,
         isHexSelected = currentHex != null,
         isHexDownloaded = isHexDownloaded,
         isHexPartiallyDownloaded = isHexPartial,
@@ -105,6 +121,7 @@ fun LayerHexMapScreen(
             }
             selectedHex = null
             selectedHexInfo = null
+            selectedHexName = null
         },
         onDeleteHexRequest = { showDeleteDialog = true },
         onConfirmDelete = {
@@ -114,6 +131,7 @@ fun LayerHexMapScreen(
                     showDeleteDialog = false
                     selectedHex = null
                     selectedHexInfo = null
+                    selectedHexName = null
                     refreshTrigger++
                 }
             }
@@ -125,6 +143,7 @@ fun LayerHexMapScreen(
         onDismissHex = {
             selectedHex = null
             selectedHexInfo = null
+            selectedHexName = null
         },
         mapContent = {
             HexMapView(
@@ -140,13 +159,22 @@ fun LayerHexMapScreen(
                     if (selectedHex == hex) {
                         selectedHex = null
                         selectedHexInfo = null
+                        selectedHexName = null
+                        isLoadingHexName = false
                     } else {
                         selectedHex = hex
                         selectedHexInfo = null
+                        selectedHexName = null
+                        isLoadingHexName = true
                         scope.launch {
                             selectedHexInfo = downloadManager.getRegionTileInfo(
                                 HexGrid.hexToRegion(hex), layerId
                             )
+                        }
+                        scope.launch {
+                            val center = HexGrid.hexCenter(hex)
+                            selectedHexName = GeocodingHelper.reverseGeocodeArea(center)
+                            isLoadingHexName = false
                         }
                     }
                 }

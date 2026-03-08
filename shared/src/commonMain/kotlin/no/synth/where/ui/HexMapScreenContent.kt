@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +58,8 @@ fun HexMapScreenContent(
     currentLayerId: String,
     downloadProgress: Int,
     selectedHexInfo: RegionTileInfo?,
+    selectedHexName: String?,
+    isLoadingHexName: Boolean,
     isHexSelected: Boolean,
     isHexDownloaded: Boolean,
     isHexPartiallyDownloaded: Boolean,
@@ -191,7 +194,16 @@ fun HexMapScreenContent(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Map area", style = MaterialTheme.typography.titleMedium)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(selectedHexName ?: "Map area", style = MaterialTheme.typography.titleMedium)
+                                if (isLoadingHexName) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                }
+                            }
                             IconButton(onClick = onDismissHex) {
                                 Icon(
                                     painterResource(Res.drawable.ic_close),
