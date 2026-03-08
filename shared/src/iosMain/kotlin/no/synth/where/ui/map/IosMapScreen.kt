@@ -59,6 +59,7 @@ fun IosMapScreen(
     selectedLayer: MapLayer = MapLayer.KARTVERKET,
     showWaymarkedTrails: Boolean = false,
     showCountyBorders: Boolean = false,
+    showAvalancheZones: Boolean = false,
     viewingPoint: SavedPoint? = null,
     onClearViewingPoint: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
@@ -75,6 +76,7 @@ fun IosMapScreen(
     var currentLayer by remember { mutableStateOf(selectedLayer) }
     var waymarkedTrails by remember { mutableStateOf(showWaymarkedTrails) }
     var countyBorders by remember { mutableStateOf(showCountyBorders) }
+    var avalancheZones by remember { mutableStateOf(showAvalancheZones) }
     var showSavedPoints by remember { mutableStateOf(true) }
     val snackbarHostState = remember { SnackbarHostState() }
     var rulerState by remember { mutableStateOf(RulerState()) }
@@ -133,11 +135,12 @@ fun IosMapScreen(
     }
     val regions = remember { RegionsRepository.getRegions(cacheDir) }
 
-    val styleJson = remember(currentLayer, waymarkedTrails, countyBorders, regions) {
+    val styleJson = remember(currentLayer, waymarkedTrails, countyBorders, avalancheZones, regions) {
         MapStyle.getStyle(
             selectedLayer = currentLayer,
             showCountyBorders = countyBorders,
             showWaymarkedTrails = waymarkedTrails,
+            showAvalancheZones = avalancheZones,
             regions = regions
         )
     }
@@ -376,6 +379,7 @@ fun IosMapScreen(
         showWaymarkedTrails = waymarkedTrails,
         showCountyBorders = countyBorders,
         showSavedPoints = showSavedPoints,
+        showAvalancheZones = avalancheZones,
         offlineModeEnabled = offlineModeEnabled,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
@@ -391,6 +395,7 @@ fun IosMapScreen(
         onLayerMenuToggle = { showLayerMenu = it },
         onLayerSelected = { currentLayer = it },
         onWaymarkedTrailsToggle = { waymarkedTrails = !waymarkedTrails },
+        onAvalancheZonesToggle = { avalancheZones = !avalancheZones },
         onCountyBordersToggle = { countyBorders = !countyBorders },
         onSavedPointsToggle = { showSavedPoints = !showSavedPoints },
         onRecordStopClick = {

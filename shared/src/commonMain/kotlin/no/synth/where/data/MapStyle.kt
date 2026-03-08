@@ -7,6 +7,7 @@ object MapStyle {
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
         showCountyBorders: Boolean = true,
         showWaymarkedTrails: Boolean = false,
+        showAvalancheZones: Boolean = false,
         regions: List<Region> = emptyList()
     ): String {
         val activeRegions = if (showCountyBorders) regions else emptyList()
@@ -68,6 +69,18 @@ object MapStyle {
       "attribution": "© Waymarked Trails, OSM"
     }""")
             }
+            if (showAvalancheZones) {
+                append(""",
+    "avalanchezones": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": ["https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}"],
+      "tileSize": 256,
+      "attribution": "NVE",
+      "minzoom": 6,
+      "maxzoom": 19
+    }""")
+            }
             append(""",
     "regions": {
       "type": "geojson",
@@ -95,6 +108,17 @@ object MapStyle {
         "raster-opacity": 1.0
       }
     }""")
+            if (showAvalancheZones) {
+                append(""",
+    {
+      "id": "avalanchezones-layer",
+      "type": "raster",
+      "source": "avalanchezones",
+      "paint": {
+        "raster-opacity": 0.6
+      }
+    }""")
+            }
             if (showWaymarkedTrails) {
                 append(""",
     {

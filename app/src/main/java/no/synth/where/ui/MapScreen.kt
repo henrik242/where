@@ -101,6 +101,7 @@ fun MapScreen(
     var selectedLayer by rememberSaveable { mutableStateOf(MapLayer.KARTVERKET) }
     var showLayerMenu by remember { mutableStateOf(false) }
     var showWaymarkedTrails by rememberSaveable { mutableStateOf(false) }
+    var showAvalancheZones by rememberSaveable { mutableStateOf(false) }
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasBackgroundLocationPermission by remember {
         mutableStateOf(
@@ -254,6 +255,7 @@ fun MapScreen(
         showWaymarkedTrails = showWaymarkedTrails,
         showCountyBorders = showCountyBorders,
         showSavedPoints = showSavedPoints,
+        showAvalancheZones = showAvalancheZones,
         offlineModeEnabled = offlineModeEnabled,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
@@ -270,6 +272,9 @@ fun MapScreen(
         onLayerSelected = { selectedLayer = it; showLayerMenu = false },
         onWaymarkedTrailsToggle = {
             showWaymarkedTrails = !showWaymarkedTrails; showLayerMenu = false
+        },
+        onAvalancheZonesToggle = {
+            showAvalancheZones = !showAvalancheZones; showLayerMenu = false
         },
         onCountyBordersToggle = {
             onShowCountyBordersChange(!showCountyBorders); showLayerMenu = false
@@ -349,6 +354,7 @@ fun MapScreen(
                 hasLocationPermission = hasLocationPermission,
                 showCountyBorders = showCountyBorders,
                 showWaymarkedTrails = showWaymarkedTrails,
+                showAvalancheZones = showAvalancheZones,
                 showSavedPoints = showSavedPoints,
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,
@@ -594,6 +600,7 @@ private fun MapScreenFullPreview() {
             showWaymarkedTrails = false,
             showCountyBorders = false,
             showSavedPoints = true,
+            showAvalancheZones = false,
             onlineTrackingEnabled = false,
             recordingDistance = 2450.0,
             viewingTrackName = "Bymarka → Lian",
@@ -608,6 +615,7 @@ private fun MapScreenFullPreview() {
             onLayerMenuToggle = {},
             onLayerSelected = {},
             onWaymarkedTrailsToggle = {},
+            onAvalancheZonesToggle = {},
             onCountyBordersToggle = {},
             onSavedPointsToggle = {},
             onRecordStopClick = {},

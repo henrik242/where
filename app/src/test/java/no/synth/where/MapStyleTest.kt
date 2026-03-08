@@ -79,4 +79,55 @@ class MapStyleTest {
         val withoutTrails = MapStyle.getStyle(showWaymarkedTrails = false)
         assertFalse("Should not contain waymarkedtrails", withoutTrails.contains("\"waymarkedtrails\""))
     }
+
+    @Test
+    fun testAvalancheZonesIncludedWhenEnabled() {
+        val withZones = MapStyle.getStyle(showAvalancheZones = true)
+        assertTrue("Should contain avalanchezones", withZones.contains("\"avalanchezones\""))
+        assertTrue("Should contain NVE tile URL", withZones.contains("gis3.nve.no"))
+        assertTrue("Should contain avalanche layer", withZones.contains("\"avalanchezones-layer\""))
+        assertTrue("Should set raster-opacity", withZones.contains("\"raster-opacity\""))
+
+        val withoutZones = MapStyle.getStyle(showAvalancheZones = false)
+        assertFalse("Should not contain avalanchezones", withoutZones.contains("\"avalanchezones\""))
+    }
+
+    @Test
+    fun testAllOverlaysCanBeEnabledTogether() {
+        val style = MapStyle.getStyle(
+            showWaymarkedTrails = true,
+            showAvalancheZones = true,
+            showCountyBorders = true,
+            regions = regions
+        )
+        assertTrue("Should contain waymarkedtrails source", style.contains("\"waymarkedtrails\""))
+        assertTrue("Should contain avalanchezones source", style.contains("\"avalanchezones\""))
+        assertTrue("Should contain regions source", style.contains("\"regions\""))
+        assertTrue("Should contain waymarkedtrails layer", style.contains("\"waymarkedtrails-layer\""))
+        assertTrue("Should contain avalanchezones layer", style.contains("\"avalanchezones-layer\""))
+        assertTrue("Should contain regions outline", style.contains("\"regions-outline\""))
+    }
+
+    @Test
+    fun testAvalancheZonesLayerOrdering() {
+        val style = MapStyle.getStyle(
+            showWaymarkedTrails = true,
+            showAvalancheZones = true,
+            showCountyBorders = true,
+            regions = regions
+        )
+        // Avalanche zones (semi-transparent) should render below waymarked trails (opaque)
+        val avalancheIdx = style.indexOf("avalanchezones-layer")
+        val waymarkedIdx = style.indexOf("waymarkedtrails-layer")
+        val regionsIdx = style.indexOf("regions-outline")
+        assertTrue("Avalanche zones should appear before waymarked trails", avalancheIdx < waymarkedIdx)
+        assertTrue("Waymarked trails should appear before regions", waymarkedIdx < regionsIdx)
+    }
+
+    @Test
+    fun testAvalancheZonesOpacity() {
+        val style = MapStyle.getStyle(showAvalancheZones = true)
+        // Verify the opacity is set to 0.6 for readability
+        assertTrue("Avalanche layer opacity should be 0.6", style.contains("0.6"))
+    }
 }

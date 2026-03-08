@@ -41,6 +41,7 @@ fun MapLibreMapView(
     hasLocationPermission: Boolean = false,
     showCountyBorders: Boolean = true,
     showWaymarkedTrails: Boolean = false,
+    showAvalancheZones: Boolean = false,
     showSavedPoints: Boolean = true,
     savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
     currentTrack: Track? = null,
@@ -99,6 +100,7 @@ fun MapLibreMapView(
         selectedLayer,
         showCountyBorders,
         showWaymarkedTrails,
+        showAvalancheZones,
         showSavedPoints,
         savedPoints.size,
         isOnline,
@@ -112,6 +114,7 @@ fun MapLibreMapView(
                     selectedLayer,
                     showCountyBorders,
                     showWaymarkedTrails,
+                    showAvalancheZones,
                     regions = regions
                 )
                 val viewing = viewingTrack
@@ -181,6 +184,7 @@ fun MapLibreMapView(
                     selectedLayer,
                     showCountyBorders,
                     showWaymarkedTrails,
+                    showAvalancheZones,
                     regions = regions
                 )
                 val viewing = viewingTrack
@@ -300,6 +304,7 @@ fun MapLibreMapView(
                             selectedLayer,
                             showCountyBorders,
                             showWaymarkedTrails,
+                            showAvalancheZones,
                             regions = regions
                         )
                         val viewing = viewingTrack

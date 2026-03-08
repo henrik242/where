@@ -10,7 +10,7 @@ Free offline hiking maps for Norway. A lightweight alternative to the discontinu
 - Save and revisit tracks and points of interest
 - GPX import/export — compatible with other hiking and navigation apps
 - Distance measurement tool
-- Map overlays: hiking trails from Waymarked Trails (OSM), county borders
+- Map overlays: hiking trails (Waymarked Trails), avalanche runout zones (NVE), county borders
 - Lightweight and always free
 
 ## Building
