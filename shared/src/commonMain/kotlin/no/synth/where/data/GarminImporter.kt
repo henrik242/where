@@ -77,26 +77,31 @@ class GarminImporter(
         return tryApiEndpoint(ref)
     }
 
+    private data class GarminSession(val csrfToken: String, val cookieHeader: String)
+
+    private suspend fun getSession(ref: GarminRef): GarminSession? {
+        val pageUrl = "https://connect.garmin.com/modern/${ref.type}/${ref.id}"
+        val pageResponse = client.get(pageUrl) {
+            header("User-Agent", "Mozilla/5.0")
+        }
+        val pageHtml = pageResponse.bodyAsText()
+        val csrfToken = Regex("""<meta name="csrf-token" content="([^"]+)"""")
+            .find(pageHtml)?.groupValues?.get(1) ?: return null
+        val cookieHeader = pageResponse.headers.getAll("set-cookie")
+            ?.joinToString("; ") { it.substringBefore(";") } ?: ""
+        return GarminSession(csrfToken, cookieHeader)
+    }
+
     private suspend fun tryApiEndpoint(ref: GarminRef): PageData? {
         return try {
-            // Step 1: load the page to obtain session cookies and CSRF token
-            val pageUrl = "https://connect.garmin.com/modern/${ref.type}/${ref.id}"
-            val pageResponse = client.get(pageUrl) {
-                header("User-Agent", "Mozilla/5.0")
-            }
-            val pageHtml = pageResponse.bodyAsText()
-            val csrfToken = Regex("""<meta name="csrf-token" content="([^"]+)"""")
-                .find(pageHtml)?.groupValues?.get(1) ?: return null
-            val cookieHeader = pageResponse.headers.getAll("set-cookie")
-                ?.joinToString("; ") { it.substringBefore(";") } ?: ""
+            val session = getSession(ref) ?: return null
 
-            // Step 2: call gc-api with the CSRF token and session cookies
             val servicePath = if (ref.type == "course") "course-service/course" else "activity-service/activity"
             val apiUrl = "https://connect.garmin.com/gc-api/$servicePath/${ref.id}"
             val responseText = client.get(apiUrl) {
                 header("User-Agent", "Mozilla/5.0")
-                header("connect-csrf-token", csrfToken)
-                if (cookieHeader.isNotEmpty()) header("Cookie", cookieHeader)
+                header("connect-csrf-token", session.csrfToken)
+                if (session.cookieHeader.isNotEmpty()) header("Cookie", session.cookieHeader)
             }.bodyAsText()
 
             val json = lenientJson.parseToJsonElement(responseText).jsonObject
@@ -139,9 +144,59 @@ class GarminImporter(
                 }
             }
 
+            // Fallback: activity details endpoint with metrics containing lat/lon
+            if (ref.type == "activity") {
+                val detailsData = tryDetailsEndpoint(ref, session, name)
+                if (detailsData != null) return detailsData
+            }
+
             if (name != null) PageData(points = emptyList(), altitudes = emptyList(), name = name) else null
         } catch (e: Exception) {
             Logger.d("Garmin API endpoint not available: ${e.message}")
+            null
+        }
+    }
+
+    private suspend fun tryDetailsEndpoint(ref: GarminRef, session: GarminSession, name: String?): PageData? {
+        return try {
+            val apiUrl = "https://connect.garmin.com/gc-api/activity-service/activity/${ref.id}/details"
+            val responseText = client.get(apiUrl) {
+                header("User-Agent", "Mozilla/5.0")
+                header("connect-csrf-token", session.csrfToken)
+                if (session.cookieHeader.isNotEmpty()) header("Cookie", session.cookieHeader)
+            }.bodyAsText()
+
+            val json = lenientJson.parseToJsonElement(responseText).jsonObject
+            val descriptors = json["metricDescriptors"]?.jsonArray ?: return null
+            var latIdx = -1
+            var lonIdx = -1
+            var elevIdx = -1
+            for (desc in descriptors) {
+                val obj = desc.jsonObject
+                val idx = obj["metricsIndex"]?.jsonPrimitive?.content?.toIntOrNull() ?: continue
+                when (obj["key"]?.jsonPrimitive?.content) {
+                    "directLatitude" -> latIdx = idx
+                    "directLongitude" -> lonIdx = idx
+                    "directElevation" -> elevIdx = idx
+                }
+            }
+            if (latIdx == -1 || lonIdx == -1) return null
+
+            val metrics = json["activityDetailMetrics"]?.jsonArray ?: return null
+            val points = mutableListOf<LatLng>()
+            val altitudes = mutableListOf<Double?>()
+            for (entry in metrics) {
+                val arr = entry.jsonObject["metrics"]?.jsonArray ?: continue
+                val lat = arr.getOrNull(latIdx)?.jsonPrimitive?.doubleOrNull ?: continue
+                val lon = arr.getOrNull(lonIdx)?.jsonPrimitive?.doubleOrNull ?: continue
+                points.add(LatLng(lat, lon))
+                altitudes.add(if (elevIdx >= 0) arr.getOrNull(elevIdx)?.jsonPrimitive?.doubleOrNull else null)
+            }
+            if (points.isEmpty()) return null
+            Logger.d("Extracted ${points.size} points from Garmin details endpoint for ${ref.type} ${ref.id}")
+            PageData(points = points, altitudes = altitudes, name = name)
+        } catch (e: Exception) {
+            Logger.d("Garmin details endpoint not available: ${e.message}")
             null
         }
     }
