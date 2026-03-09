@@ -164,7 +164,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"$SRCROOT/..\"\nCOMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo \"1\")\nSHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo \"unknown\")\nBUILD_DATE=$(date +%Y-%m-%d)\n\necho \"CURRENT_PROJECT_VERSION = $COMMIT_COUNT\" > \"$SRCROOT/Where/Generated.xcconfig\"\necho \"MARKETING_VERSION = 1.0.$COMMIT_COUNT\" >> \"$SRCROOT/Where/Generated.xcconfig\"\n\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "cd \"$SRCROOT/..\"\nCOMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo \"1\")\nSHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo \"unknown\")\nBUILD_DATE=$(date +%Y-%m-%d)\n\necho \"CURRENT_PROJECT_VERSION = $COMMIT_COUNT\" > \"$SRCROOT/Where/Generated.xcconfig\"\necho \"MARKETING_VERSION = 1.0.$COMMIT_COUNT\" >> \"$SRCROOT/Where/Generated.xcconfig\"\n\nif [ \"$SKIP_KOTLIN_BUILD\" != \"1\" ]; then\n    ./gradlew :shared:embedAndSignAppleFrameworkForXcode\nfi\n";
 		};
 		A60002 /* Copy Firebase Config */ = {
 			isa = PBXShellScriptBuildPhase;
