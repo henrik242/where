@@ -104,7 +104,7 @@ kotlin {
             api(libs.room.runtime)
             api(libs.androidx.datastore.preferences)
             implementation(libs.compose.material3)
-            implementation(libs.compose.components.resources)
+            api(libs.compose.components.resources)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

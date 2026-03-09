@@ -48,7 +48,7 @@
     <string name="kartverket_sjokart">Kartverket sjøkart</string>
     <string name="overlays">Overlegg</string>
     <string name="waymarked_trails_osm">Merkede stier (OSM)</string>
-    <string name="avalanche_zones_nve">Utfallssoner (NVE)</string>
+    <string name="avalanche_zones_nve">Brattkart (NVE)</string>
     <string name="county_borders_norway">Fylkesgrenser (Norge)</string>
     <string name="saved_points">Lagrede punkter</string>
     <string name="stop_recording">Stopp opptak</string>
@@ -96,6 +96,9 @@
     <string name="regenerate_client_id_title">Generere ny klient-ID?</string>
     <string name="regenerate_client_id_message">Dette vil opprette en ny klient-ID. Din gamle ID (%1$s) vil ikke lenger være tilknyttet sporene dine på serveren.</string>
     <string name="regenerate">Generer ny</string>
+    <string name="share_tracking_message">Følg posisjonen min: %1$s</string>
+    <string name="live_location_tracking">Direkte posisjonssporing</string>
+    <string name="share_tracking_chooser">Del sporingslenke</string>
 
     <!-- Settings Screen -->
     <string name="go_to_online_tracking">Gå til Direktesporing</string>
@@ -124,11 +127,20 @@
     <string name="importing">Importerer\u2026</string>
     <string name="import_label">Importer</string>
     <string name="import_url_error">Kunne ikke importere fra URL. Aktiviteten eller ruten kan være privat, eller URLen gjenkjennes ikke.</string>
+    <string name="import_from_title">Importer spor?</string>
+    <string name="import_from_message">Importer spor fra %1$s?</string>
+    <string name="import_gpx_corrupted">Kunne ikke importere GPX-fil. Filen kan være skadet eller i et format som ikke støttes.</string>
+    <string name="import_gpx_read_failed">Kunne ikke lese GPX-fil.</string>
+    <string name="import_gpx_error">Feil ved import av GPX-fil: %1$s</string>
     <string name="no_saved_tracks">Ingen lagrede spor ennå</string>
     <string name="delete_track_title">Slette spor?</string>
     <string name="delete_track_confirm">Er du sikker på at du vil slette «%1$s»?</string>
     <string name="import_failed">Importering feilet</string>
     <string name="rename_track">Gi nytt navn til spor</string>
+    <string name="share_track_chooser">Del spor</string>
+    <string name="saved_to_path">Lagret til %1$s</string>
+    <string name="failed_to_save_track">Kunne ikke lagre spor: %1$s</string>
+    <string name="open_track_chooser">Åpne spor med</string>
     <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d punkter</string>
     <string name="duration_hours_minutes">%1$dt %2$dm</string>
     <string name="duration_minutes">%1$dm</string>
@@ -157,7 +169,7 @@
     <string name="layer_osm_desc">Brukergenererte gatekart</string>
     <string name="layer_opentopomap_desc">Topografiske kart med turstier</string>
     <string name="layer_waymarkedtrails_desc">Kartlag med merkede stier</string>
-    <string name="layer_avalanchezones_desc">Utløpssoner for snøskred fra NVE</string>
+    <string name="layer_avalanchezones_desc">Brattkart fra NVE</string>
 
     <!-- Map Screen snackbars -->
     <string name="recording_snackbar">Tar opp\u2026</string>
@@ -171,8 +183,4 @@
     <string name="saved_as_track_name">Lagret som spor: %1$s</string>
     <string name="location_permission_required">Posisjonstillatelse kreves</string>
     <string name="unnamed_point">Navnløst punkt</string>
-
-    <!-- GPX import errors -->
-    <string name="import_gpx_corrupted">Kunne ikke importere GPX-fil. Filen kan være skadet eller i et format som ikke støttes.</string>
-    <string name="import_gpx_error">Feil ved import av GPX-fil: %1$s</string>
 </resources>

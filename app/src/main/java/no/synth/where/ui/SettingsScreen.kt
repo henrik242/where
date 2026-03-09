@@ -4,11 +4,12 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.res.stringResource
 import androidx.core.os.LocaleListCompat
 import no.synth.where.BuildInfo
-import no.synth.where.R
 import no.synth.where.data.UserPreferences
+import no.synth.where.resources.Res
+import no.synth.where.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SettingsScreen(
@@ -23,7 +24,7 @@ fun SettingsScreen(
     highlightOfflineMode: Boolean = false
 ) {
     val languages = listOf(
-        LanguageOption(null, stringResource(R.string.system_default)),
+        LanguageOption(null, stringResource(Res.string.system_default)),
         LanguageOption("en", "English"),
         LanguageOption("nb", "Norsk bokmål")
     )
@@ -34,9 +35,9 @@ fun SettingsScreen(
         ?: languages.first().displayName
 
     val themeOptions = listOf(
-        LanguageOption("system", stringResource(R.string.theme_system)),
-        LanguageOption("light", stringResource(R.string.theme_light)),
-        LanguageOption("dark", stringResource(R.string.theme_dark))
+        LanguageOption("system", stringResource(Res.string.theme_system)),
+        LanguageOption("light", stringResource(Res.string.theme_light)),
+        LanguageOption("dark", stringResource(Res.string.theme_dark))
     )
 
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()

@@ -28,14 +28,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import no.synth.where.R
 import no.synth.where.data.PlaceSearchClient
+import no.synth.where.resources.Res
+import no.synth.where.resources.*
+import org.jetbrains.compose.resources.stringResource
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
 import no.synth.where.service.LocationTrackingService
@@ -123,14 +124,14 @@ fun MapScreen(
     var savedCameraZoom by rememberSaveable { mutableDoubleStateOf(5.0) }
 
     // Pre-resolve string resources for use in lambdas
-    val recordingMsg = stringResource(R.string.recording_snackbar)
-    val trackDiscardedMsg = stringResource(R.string.track_discarded)
-    val trackSavedMsg = stringResource(R.string.track_saved)
-    val pointSavedMsg = stringResource(R.string.point_saved)
-    val pointDeletedMsg = stringResource(R.string.point_deleted)
-    val pointUpdatedMsg = stringResource(R.string.point_updated)
-    val onlineEnabledMsg = stringResource(R.string.online_tracking_enabled)
-    val onlineDisabledMsg = stringResource(R.string.online_tracking_disabled)
+    val recordingMsg = stringResource(Res.string.recording_snackbar)
+    val trackDiscardedMsg = stringResource(Res.string.track_discarded)
+    val trackSavedMsg = stringResource(Res.string.track_saved)
+    val pointSavedMsg = stringResource(Res.string.point_saved)
+    val pointDeletedMsg = stringResource(Res.string.point_deleted)
+    val pointUpdatedMsg = stringResource(Res.string.point_updated)
+    val onlineEnabledMsg = stringResource(Res.string.online_tracking_enabled)
+    val onlineDisabledMsg = stringResource(Res.string.online_tracking_disabled)
 
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -472,7 +473,7 @@ fun MapScreen(
     }
 
     if (showSaveRulerAsTrackDialog) {
-        val savedAsTrackMsg = stringResource(R.string.saved_as_track, rulerTrackName)
+        val savedAsTrackMsg = stringResource(Res.string.saved_as_track_name, rulerTrackName)
         MapDialogs.SaveRulerAsTrackDialog(
             trackName = rulerTrackName,
             rulerState = rulerState,

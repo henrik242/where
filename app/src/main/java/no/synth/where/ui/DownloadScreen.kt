@@ -11,9 +11,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import no.synth.where.R
 import no.synth.where.data.DownloadLayers
+import no.synth.where.resources.Res
+import no.synth.where.resources.*
+import org.jetbrains.compose.resources.stringResource
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.service.MapDownloadService
 import java.io.File
@@ -30,14 +31,14 @@ fun DownloadScreen(
     var cacheSize by remember { mutableLongStateOf(0L) }
     val downloadState by MapDownloadService.downloadState.collectAsState()
 
-    val kartverketDesc = stringResource(R.string.layer_kartverket_desc)
-    val toporasterDesc = stringResource(R.string.layer_toporaster_desc)
-    val sjokartrasterDesc = stringResource(R.string.layer_sjokartraster_desc)
-    val mapantDesc = stringResource(R.string.layer_mapant_desc)
-    val osmDesc = stringResource(R.string.layer_osm_desc)
-    val opentopomapDesc = stringResource(R.string.layer_opentopomap_desc)
-    val waymarkedtrailsDesc = stringResource(R.string.layer_waymarkedtrails_desc)
-    val avalanchezonesDesc = stringResource(R.string.layer_avalanchezones_desc)
+    val kartverketDesc = stringResource(Res.string.layer_kartverket_desc)
+    val toporasterDesc = stringResource(Res.string.layer_toporaster_desc)
+    val sjokartrasterDesc = stringResource(Res.string.layer_sjokartraster_desc)
+    val mapantDesc = stringResource(Res.string.layer_mapant_desc)
+    val osmDesc = stringResource(Res.string.layer_osm_desc)
+    val opentopomapDesc = stringResource(Res.string.layer_opentopomap_desc)
+    val waymarkedtrailsDesc = stringResource(Res.string.layer_waymarkedtrails_desc)
+    val avalanchezonesDesc = stringResource(Res.string.layer_avalanchezones_desc)
 
     val descriptionMap = remember(kartverketDesc) {
         mapOf(

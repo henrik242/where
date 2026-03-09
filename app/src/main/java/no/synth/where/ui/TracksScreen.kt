@@ -12,9 +12,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import no.synth.where.R
 import no.synth.where.data.Track
+import no.synth.where.resources.Res
+import no.synth.where.resources.*
 import no.synth.where.util.Logger
+import org.jetbrains.compose.resources.stringResource
 import java.io.File
 
 @Composable
@@ -37,8 +39,17 @@ fun TracksScreen(
     var showImportError by remember { mutableStateOf(false) }
     var importErrorMessage by remember { mutableStateOf("") }
 
-    val resources = context.resources
     var urlToConfirm by remember { mutableStateOf<String?>(null) }
+
+    // Pre-resolve strings for use in non-composable lambdas
+    val importUrlErrorStr = stringResource(Res.string.import_url_error)
+    val importGpxCorruptedStr = stringResource(Res.string.import_gpx_corrupted)
+    val importGpxReadFailedStr = stringResource(Res.string.import_gpx_read_failed)
+    val importGpxErrorFmt = stringResource(Res.string.import_gpx_error)
+    val shareTrackChooserStr = stringResource(Res.string.share_track_chooser)
+    val openTrackChooserStr = stringResource(Res.string.open_track_chooser)
+    val savedToPathFmt = stringResource(Res.string.saved_to_path)
+    val failedToSaveTrackFmt = stringResource(Res.string.failed_to_save_track)
 
     LaunchedEffect(pendingImportUrl) {
         if (pendingImportUrl != null) urlToConfirm = pendingImportUrl
@@ -47,22 +58,22 @@ fun TracksScreen(
     urlToConfirm?.let { url ->
         AlertDialog(
             onDismissRequest = { urlToConfirm = null },
-            title = { Text(resources.getString(R.string.import_from_title)) },
-            text = { Text(resources.getString(R.string.import_from_message, friendlySourceName(url))) },
+            title = { Text(stringResource(Res.string.import_from_title)) },
+            text = { Text(stringResource(Res.string.import_from_message, friendlySourceName(url))) },
             confirmButton = {
                 TextButton(onClick = {
                     urlToConfirm = null
                     viewModel.importFromUrl(url) { track ->
                         if (track == null) {
-                            importErrorMessage = resources.getString(R.string.import_url_error)
+                            importErrorMessage = importUrlErrorStr
                             showImportError = true
                         }
                     }
-                }) { Text(resources.getString(R.string.import_label)) }
+                }) { Text(stringResource(Res.string.import_label)) }
             },
             dismissButton = {
                 TextButton(onClick = { urlToConfirm = null }) {
-                    Text(resources.getString(R.string.cancel))
+                    Text(stringResource(Res.string.cancel))
                 }
             }
         )
@@ -80,15 +91,15 @@ fun TracksScreen(
                 if (gpxContent != null) {
                     val importedTrack = viewModel.importTrack(gpxContent)
                     if (importedTrack == null) {
-                        importErrorMessage = resources.getString(R.string.import_gpx_corrupted)
+                        importErrorMessage = importGpxCorruptedStr
                         showImportError = true
                     }
                 } else {
-                    importErrorMessage = resources.getString(R.string.import_gpx_read_failed)
+                    importErrorMessage = importGpxReadFailedStr
                     showImportError = true
                 }
             } catch (e: Exception) {
-                importErrorMessage = resources.getString(R.string.import_gpx_error, e.message)
+                importErrorMessage = String.format(importGpxErrorFmt, e.message)
                 showImportError = true
             }
         }
@@ -109,14 +120,14 @@ fun TracksScreen(
         onUrlImport = { url ->
             viewModel.importFromUrl(url) { track ->
                 if (track == null) {
-                    importErrorMessage = resources.getString(R.string.import_url_error)
+                    importErrorMessage = importUrlErrorStr
                     showImportError = true
                 }
             }
         },
-        onExport = { track -> shareTrack(context, track) },
-        onSave = { track -> saveTrackToDownloads(context, track) },
-        onOpen = { track -> openTrack(context, track) },
+        onExport = { track -> shareTrack(context, track, shareTrackChooserStr) },
+        onSave = { track -> saveTrackToDownloads(context, track, savedToPathFmt, failedToSaveTrackFmt) },
+        onOpen = { track -> openTrack(context, track, openTrackChooserStr, shareTrackChooserStr) },
         onDeleteRequest = { track -> trackToDelete = track },
         onConfirmDelete = {
             trackToDelete?.let { viewModel.deleteTrack(it) }
@@ -152,7 +163,7 @@ private fun friendlySourceName(url: String): String {
     }
 }
 
-private fun shareTrack(context: android.content.Context, track: Track) {
+private fun shareTrack(context: android.content.Context, track: Track, chooserTitle: String) {
     try {
         val gpxContent = track.toGPX()
         val fileName = "${track.name.replace(" ", "_").replace(":", "-")}.gpx"
@@ -172,13 +183,13 @@ private fun shareTrack(context: android.content.Context, track: Track) {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
 
-        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_track_chooser)))
+        context.startActivity(Intent.createChooser(shareIntent, chooserTitle))
     } catch (e: Exception) {
         Logger.e(e, "Track operation error")
     }
 }
 
-private fun saveTrackToDownloads(context: android.content.Context, track: Track) {
+private fun saveTrackToDownloads(context: android.content.Context, track: Track, savedToPathFmt: String, failedToSaveFmt: String) {
     try {
         val gpxContent = track.toGPX()
         val fileName = "${track.name.replace(" ", "_").replace(":", "-")}.gpx"
@@ -193,20 +204,20 @@ private fun saveTrackToDownloads(context: android.content.Context, track: Track)
 
         android.widget.Toast.makeText(
             context,
-            context.getString(R.string.saved_to_path, file.absolutePath),
+            String.format(savedToPathFmt, file.absolutePath),
             android.widget.Toast.LENGTH_LONG
         ).show()
     } catch (e: Exception) {
         Logger.e(e, "Track operation error")
         android.widget.Toast.makeText(
             context,
-            context.getString(R.string.failed_to_save_track, e.message),
+            String.format(failedToSaveFmt, e.message),
             android.widget.Toast.LENGTH_SHORT
         ).show()
     }
 }
 
-private fun openTrack(context: android.content.Context, track: Track) {
+private fun openTrack(context: android.content.Context, track: Track, chooserTitle: String, shareChooserTitle: String) {
     try {
         val gpxContent = track.toGPX()
         val fileName = "${track.name.replace(" ", "_").replace(":", "-")}.gpx"
@@ -226,9 +237,9 @@ private fun openTrack(context: android.content.Context, track: Track) {
         }
 
         try {
-            context.startActivity(Intent.createChooser(openIntent, context.getString(R.string.open_track_chooser)))
+            context.startActivity(Intent.createChooser(openIntent, chooserTitle))
         } catch (_: android.content.ActivityNotFoundException) {
-            shareTrack(context, track)
+            shareTrack(context, track, shareChooserTitle)
         }
     } catch (e: Exception) {
         Logger.e(e, "Track operation error")

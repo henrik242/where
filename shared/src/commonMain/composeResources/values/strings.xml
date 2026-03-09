@@ -96,6 +96,9 @@
     <string name="regenerate_client_id_title">Regenerate Client ID?</string>
     <string name="regenerate_client_id_message">This will create a new client ID. Your old ID (%1$s) will no longer be associated with your tracks on the server.</string>
     <string name="regenerate">Regenerate</string>
+    <string name="share_tracking_message">Track my location: %1$s</string>
+    <string name="live_location_tracking">Live Location Tracking</string>
+    <string name="share_tracking_chooser">Share tracking link</string>
 
     <!-- Settings Screen -->
     <string name="go_to_online_tracking">Go to Online Tracking</string>
@@ -124,11 +127,20 @@
     <string name="importing">Importing\u2026</string>
     <string name="import_label">Import</string>
     <string name="import_url_error">Could not import from URL. The activity or route may be private, or the URL is not recognized.</string>
+    <string name="import_from_title">Import Track?</string>
+    <string name="import_from_message">Import track from %1$s?</string>
+    <string name="import_gpx_corrupted">Failed to import GPX file. The file may be corrupted or in an unsupported format.</string>
+    <string name="import_gpx_read_failed">Failed to read GPX file.</string>
+    <string name="import_gpx_error">Error importing GPX file: %1$s</string>
     <string name="no_saved_tracks">No saved tracks yet</string>
     <string name="delete_track_title">Delete Track?</string>
     <string name="delete_track_confirm">Are you sure you want to delete \'%1$s\'?</string>
     <string name="import_failed">Import Failed</string>
     <string name="rename_track">Rename Track</string>
+    <string name="share_track_chooser">Share Track</string>
+    <string name="saved_to_path">Saved to %1$s</string>
+    <string name="failed_to_save_track">Failed to save track: %1$s</string>
+    <string name="open_track_chooser">Open Track With</string>
     <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d points</string>
     <string name="duration_hours_minutes">%1$dh %2$dm</string>
     <string name="duration_minutes">%1$dm</string>
@@ -157,7 +169,7 @@
     <string name="layer_osm_desc">Community-sourced street maps</string>
     <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
-    <string name="layer_avalanchezones_desc">Avalanche runout zones from NVE</string>
+    <string name="layer_avalanchezones_desc">Avalanche zones from NVE</string>
 
     <!-- Map Screen snackbars -->
     <string name="recording_snackbar">Recording\u2026</string>
@@ -171,8 +183,4 @@
     <string name="saved_as_track_name">Saved as track: %1$s</string>
     <string name="location_permission_required">Location permission required</string>
     <string name="unnamed_point">Unnamed point</string>
-
-    <!-- GPX import errors -->
-    <string name="import_gpx_corrupted">Failed to import GPX file. The file may be corrupted or in an unsupported format.</string>
-    <string name="import_gpx_error">Error importing GPX file: %1$s</string>
 </resources>
