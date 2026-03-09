@@ -47,12 +47,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-konan-
 
-    - name: Cache Kotlin framework
-      uses: actions/cache@v4
-      with:
-        path: shared/build/xcode-frameworks
-        key: ${{ runner.os }}-kotlin-framework-${{ hashFiles('shared/src/**', 'shared/build.gradle.kts', 'gradle/libs.versions.toml') }}
-
     - name: Create local.properties
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
@@ -71,8 +65,11 @@ jobs:
     - name: Build Kotlin framework
       run: |
         ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
-        mkdir -p shared/build/xcode-frameworks/Debug/iphonesimulator
-        cp -a shared/build/bin/iosSimulatorArm64/debugFramework/shared.framework shared/build/xcode-frameworks/Debug/iphonesimulator/
+        SDK_NAME=iphonesimulator$(xcrun --sdk iphonesimulator --show-sdk-version)
+        echo "Resolved SDK_NAME: $SDK_NAME"
+        mkdir -p "shared/build/xcode-frameworks/Debug/${SDK_NAME}"
+        cp -a shared/build/bin/iosSimulatorArm64/debugFramework/Shared.framework "shared/build/xcode-frameworks/Debug/${SDK_NAME}/"
+        ls -la "shared/build/xcode-frameworks/Debug/${SDK_NAME}/"
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
@@ -95,9 +92,10 @@ jobs:
         xcodebuild build \
           -project iosApp/Where.xcodeproj \
           -scheme Where \
-          -destination 'generic/platform=iOS Simulator' \
+          -sdk iphonesimulator \
           -derivedDataPath iosApp/spm-derived-data \
           SKIP_KOTLIN_BUILD=1 \
+          EXCLUDED_ARCHS=x86_64 \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO
 
