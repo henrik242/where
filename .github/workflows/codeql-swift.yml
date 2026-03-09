@@ -69,16 +69,10 @@ jobs:
         echo "MARKETING_VERSION = 1.0.1" >> iosApp/Where/Generated.xcconfig
 
     - name: Build Kotlin framework
-      run: ./gradlew :shared:embedAndSignAppleFrameworkForXcode
-      env:
-        CONFIGURATION: Debug
-        SDK_NAME: iphonesimulator
-        ARCHS: arm64
-        NATIVE_ARCH: arm64
-        TARGET_BUILD_DIR: ${{ github.workspace }}/shared/build/xcode-frameworks/Debug/iphonesimulator
-        FRAMEWORKS_FOLDER_PATH: ''
-        EXPANDED_CODE_SIGN_IDENTITY: '-'
-        EXPANDED_CODE_SIGN_IDENTITY_NAME: '-'
+      run: |
+        ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+        mkdir -p shared/build/xcode-frameworks/Debug/iphonesimulator
+        cp -a shared/build/bin/iosSimulatorArm64/debugFramework/shared.framework shared/build/xcode-frameworks/Debug/iphonesimulator/
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
