@@ -7,6 +7,7 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.data.geo.LatLng
@@ -14,6 +15,19 @@ import no.synth.where.util.Logger
 
 object GeocodingHelper {
     var client: HttpClient = createDefaultHttpClient()
+
+    private suspend fun searchNearbyPeak(latLng: LatLng): String? {
+        val delta = 0.005 // ~500m
+        val viewbox = "${latLng.longitude - delta},${latLng.latitude - delta},${latLng.longitude + delta},${latLng.latitude + delta}"
+        val url = "https://nominatim.openstreetmap.org/search?q=%5Bnatural%3Dpeak%5D&format=json&limit=1&viewbox=$viewbox&bounded=1"
+        val response = client.get(url) {
+            header("User-Agent", "Where-App/1.0")
+        }
+        if (response.status.value !in 200..299) return null
+        val results = Json.parseToJsonElement(response.bodyAsText()).jsonArray
+        if (results.isEmpty()) return null
+        return results[0].jsonObject["name"]?.jsonPrimitive?.content
+    }
 
     suspend fun reverseGeocode(latLng: LatLng): String? = withContext(Dispatchers.Default) {
         try {
@@ -26,17 +40,35 @@ object GeocodingHelper {
             val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
             val address = json["address"]?.jsonObject ?: return@withContext null
 
-            val road = address["road"]?.jsonPrimitive?.content
-            if (!road.isNullOrEmpty()) return@withContext road
+            val specific = address["road"]?.jsonPrimitive?.content
+                ?: address["hamlet"]?.jsonPrimitive?.content
+                ?: address["isolated_dwelling"]?.jsonPrimitive?.content
+                ?: address["farm"]?.jsonPrimitive?.content
+                ?: address["neighbourhood"]?.jsonPrimitive?.content
+                ?: address["suburb"]?.jsonPrimitive?.content
 
-            val village = address["village"]?.jsonPrimitive?.content
-            if (!village.isNullOrEmpty()) return@withContext village
+            val locality = address["locality"]?.jsonPrimitive?.content
 
-            val town = address["town"]?.jsonPrimitive?.content
-            if (!town.isNullOrEmpty()) return@withContext town
+            val broad = address["village"]?.jsonPrimitive?.content
+                ?: address["town"]?.jsonPrimitive?.content
+                ?: address["city"]?.jsonPrimitive?.content
+                ?: address["municipality"]?.jsonPrimitive?.content
 
-            val city = address["city"]?.jsonPrimitive?.content
-            if (!city.isNullOrEmpty()) return@withContext city
+            if (specific != null && broad != null && specific != broad) return@withContext "$specific, $broad"
+            if (specific != null) return@withContext specific
+
+            // No precise name — check for a nearby peak before using locality
+            if (specific == null) {
+                try {
+                    val peak = searchNearbyPeak(latLng)
+                    if (peak != null && broad != null) return@withContext "$peak, $broad"
+                    if (peak != null) return@withContext peak
+                } catch (_: Exception) { }
+            }
+
+            if (locality != null && broad != null && locality != broad) return@withContext "$locality, $broad"
+            if (locality != null) return@withContext locality
+            if (broad != null) return@withContext broad
 
             val county = address["county"]?.jsonPrimitive?.content
             if (!county.isNullOrEmpty()) return@withContext county

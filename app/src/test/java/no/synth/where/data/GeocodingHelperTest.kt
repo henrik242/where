@@ -3,6 +3,7 @@ package no.synth.where.data
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.respondBadRequest
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -24,7 +25,7 @@ class GeocodingHelperTest {
     }
 
     @Test
-    fun reverseGeocode_returnsRoad() = runBlocking {
+    fun reverseGeocode_combinesRoadAndCity() = runBlocking {
         originalClient = GeocodingHelper.client
         GeocodingHelper.client = HttpClient(MockEngine {
             respond(
@@ -34,18 +35,22 @@ class GeocodingHelperTest {
             )
         })
         val result = GeocodingHelper.reverseGeocode(LatLng(59.9139, 10.7522))
-        assertEquals("Karl Johans gate", result)
+        assertEquals("Karl Johans gate, Oslo", result)
     }
 
     @Test
     fun reverseGeocode_fallsToVillage_whenNoRoad() = runBlocking {
         originalClient = GeocodingHelper.client
-        GeocodingHelper.client = HttpClient(MockEngine {
-            respond(
-                content = """{"address":{"village":"Rjukan"},"display_name":"Rjukan, Tinn"}""",
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
-            )
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath.contains("search")) {
+                respond("[]", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            } else {
+                respond(
+                    content = """{"address":{"village":"Rjukan"},"display_name":"Rjukan, Tinn"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
         })
         val result = GeocodingHelper.reverseGeocode(LatLng(59.88, 8.59))
         assertEquals("Rjukan", result)
@@ -54,12 +59,16 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_fallsToCity_whenNoRoadOrVillage() = runBlocking {
         originalClient = GeocodingHelper.client
-        GeocodingHelper.client = HttpClient(MockEngine {
-            respond(
-                content = """{"address":{"city":"Bergen"},"display_name":"Bergen, Vestland"}""",
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
-            )
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath.contains("search")) {
+                respond("[]", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            } else {
+                respond(
+                    content = """{"address":{"city":"Bergen"},"display_name":"Bergen, Vestland"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
         })
         val result = GeocodingHelper.reverseGeocode(LatLng(60.39, 5.32))
         assertEquals("Bergen", result)
@@ -68,12 +77,16 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_fallsToDisplayName_whenNoAddress() = runBlocking {
         originalClient = GeocodingHelper.client
-        GeocodingHelper.client = HttpClient(MockEngine {
-            respond(
-                content = """{"address":{},"display_name":"Somewhere, Norway"}""",
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
-            )
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath.contains("search")) {
+                respond("[]", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            } else {
+                respond(
+                    content = """{"address":{},"display_name":"Somewhere, Norway"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
         })
         val result = GeocodingHelper.reverseGeocode(LatLng(62.0, 10.0))
         assertEquals("Somewhere", result)
@@ -90,6 +103,114 @@ class GeocodingHelperTest {
         })
         val result = GeocodingHelper.reverseGeocode(LatLng(59.9, 10.7))
         assertNull(result)
+    }
+
+    @Test
+    fun reverseGeocode_combinesHamletAndVillage() = runBlocking {
+        originalClient = GeocodingHelper.client
+        GeocodingHelper.client = HttpClient(MockEngine {
+            respond(
+                content = """{"address":{"hamlet":"Skinnarbu","village":"Rjukan","county":"Vestfold og Telemark"},"display_name":"Skinnarbu, Rjukan"}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        })
+        val result = GeocodingHelper.reverseGeocode(LatLng(59.88, 8.59))
+        assertEquals("Skinnarbu, Rjukan", result)
+    }
+
+    @Test
+    fun reverseGeocode_combinesLocalityAndMunicipality_whenNoPeakNearby() = runBlocking {
+        originalClient = GeocodingHelper.client
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath.contains("search")) {
+                respond("[]", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            } else {
+                respond(
+                    content = """{"address":{"locality":"Kråfjellet","municipality":"Luster","county":"Vestland"},"display_name":"Kråfjellet, Luster, Vestland, Norge"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        })
+        val result = GeocodingHelper.reverseGeocode(LatLng(61.69, 7.21))
+        assertEquals("Kråfjellet, Luster", result)
+    }
+
+    @Test
+    fun reverseGeocode_prefersPeakOverLocality() = runBlocking {
+        originalClient = GeocodingHelper.client
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath.contains("search")) {
+                respond(
+                    content = """[{"name":"Dueskardhøgdi"}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            } else {
+                respond(
+                    content = """{"address":{"locality":"Galdarabb","municipality":"Sogndal","county":"Vestland"},"display_name":"Galdarabb, Sogndal, Vestland, Norge"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        })
+        val result = GeocodingHelper.reverseGeocode(LatLng(61.15, 7.036))
+        assertEquals("Dueskardhøgdi, Sogndal", result)
+    }
+
+    @Test
+    fun reverseGeocode_returnsMunicipality_whenOnlyBroadAndNoPeak() = runBlocking {
+        originalClient = GeocodingHelper.client
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath.contains("search")) {
+                respond("[]", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+            } else {
+                respond(
+                    content = """{"address":{"municipality":"Tinn","county":"Vestfold og Telemark"},"display_name":"Tinn, Vestfold og Telemark"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        })
+        val result = GeocodingHelper.reverseGeocode(LatLng(59.88, 8.59))
+        assertEquals("Tinn", result)
+    }
+
+    @Test
+    fun reverseGeocode_findsNearbyPeak_whenOnlyBroadAvailable() = runBlocking {
+        originalClient = GeocodingHelper.client
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.encodedPath.contains("search")) {
+                respond(
+                    content = """[{"name":"Dueskardhøgdi","lat":"61.15","lon":"7.036","class":"natural","type":"peak"}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            } else {
+                respond(
+                    content = """{"address":{"municipality":"Sogndal","county":"Vestland"},"display_name":"Sogndal, Vestland, Norge"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        })
+        val result = GeocodingHelper.reverseGeocode(LatLng(61.15, 7.036))
+        assertEquals("Dueskardhøgdi, Sogndal", result)
+    }
+
+    @Test
+    fun reverseGeocode_returnsRoadOnly_whenNoBroadContext() = runBlocking {
+        originalClient = GeocodingHelper.client
+        GeocodingHelper.client = HttpClient(MockEngine {
+            respond(
+                content = """{"address":{"road":"Fv40"},"display_name":"Fv40, Norway"}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        })
+        val result = GeocodingHelper.reverseGeocode(LatLng(59.88, 8.59))
+        assertEquals("Fv40", result)
     }
 
     @Test
