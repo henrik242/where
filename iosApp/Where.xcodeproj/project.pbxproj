@@ -308,7 +308,6 @@
 		};
 		A70004 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A20009 /* Generated.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_DISPLAY_NAME = "Where? (debug)";
@@ -344,7 +343,6 @@
 		};
 		A70005 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A20009 /* Generated.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_DISPLAY_NAME = "Where?";
