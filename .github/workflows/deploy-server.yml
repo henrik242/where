@@ -39,7 +39,7 @@ jobs:
         GIT_SHORT_SHA=$(git rev-parse --short HEAD)
         BUILD_DATE=$(date +%Y-%m-%d)
         VERSION_STRING="${GIT_COMMIT_COUNT}.${GIT_SHORT_SHA} ${BUILD_DATE}"
-        echo "VERSION_STRING=$VERSION_STRING" >> $GITHUB_ENV
+        echo "VERSION_STRING=$VERSION_STRING" >> "$GITHUB_ENV"
         echo "Generated version: $VERSION_STRING"
 
     - name: Build client TypeScript
