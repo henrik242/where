@@ -26,7 +26,7 @@ interface TracksResponse {
 }
 
 interface WebSocketMessage {
-  type: 'track_update' | 'track_stopped' | 'track_started';
+  type: 'track_update' | 'track_stopped' | 'track_started' | 'track_deleted';
   trackId: string;
   userId: string;
   name?: string;
@@ -524,19 +524,44 @@ function zoomToClientTracks(): void {
   }
 }
 
-// Setup WebSocket
+// Setup WebSocket with exponential backoff reconnection
+let wsReconnectDelay = 1000;
+
 function setupWebSocket(): void {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
+  ws.onopen = () => {
+    wsReconnectDelay = 1000;
+    fetchTracks();
+  };
+
   ws.onmessage = (event) => {
-    const data: WebSocketMessage = JSON.parse(event.data);
+    let data: WebSocketMessage;
+    try {
+      data = JSON.parse(event.data);
+    } catch (e) {
+      console.error('Failed to parse WebSocket message:', e);
+      return;
+    }
 
-    if (data.type === 'track_update') {
-      if (clientFilters.length > 0 && !clientFilters.includes(data.userId)) {
-        return;
-      }
+    if (clientFilters.length > 0 && !clientFilters.includes(data.userId)) {
+      return;
+    }
 
+    if (data.type === 'track_started') {
+      tracks[data.trackId] = {
+        id: data.trackId,
+        userId: data.userId,
+        name: data.name || 'Unnamed Track',
+        points: data.point ? [data.point] : [],
+        startTime: data.point?.timestamp || Date.now(),
+        isActive: true,
+        color: data.color
+      };
+      updateTracksList();
+      updateMap();
+    } else if (data.type === 'track_update') {
       if (!tracks[data.trackId]) {
         tracks[data.trackId] = {
           id: data.trackId,
@@ -558,6 +583,13 @@ function setupWebSocket(): void {
         tracks[data.trackId].isActive = false;
         updateTracksList();
       }
+    } else if (data.type === 'track_deleted') {
+      if (tracks[data.trackId]) {
+        cleanupTrackLayers(data.trackId);
+        delete tracks[data.trackId];
+        if (selectedTrackId === data.trackId) selectedTrackId = null;
+        updateTracksList();
+      }
     }
   };
 
@@ -566,8 +598,9 @@ function setupWebSocket(): void {
   };
 
   ws.onclose = () => {
-    console.log('WebSocket connection closed, attempting to reconnect...');
-    setTimeout(() => location.reload(), 5000);
+    console.log(`WebSocket closed, reconnecting in ${wsReconnectDelay / 1000}s...`);
+    setTimeout(setupWebSocket, wsReconnectDelay);
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000);
   };
 }
 

@@ -1,4 +1,4 @@
-import { Track } from './types';
+import { Track, TrackPoint } from './types';
 
 class TrackStore {
   private tracks = new Map<string, Track>();
@@ -77,6 +77,14 @@ class TrackStore {
     };
     this.tracks.set(trackId, updatedTrack);
     return updatedTrack;
+  }
+
+  addPoint(trackId: string, point: TrackPoint, updates: Partial<Track> = {}): Track | undefined {
+    const track = this.tracks.get(trackId);
+    if (!track) return undefined;
+    track.points.push(point);
+    Object.assign(track, updates, { color: track.color });
+    return track;
   }
 
   deleteTrack(trackId: string): boolean {

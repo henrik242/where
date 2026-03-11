@@ -1,6 +1,6 @@
 import { trackStore } from './store';
 import type { Track } from './types';
-import { verifyHmacSignature } from './utils';
+import { verifyHmacSignature, validatePoint } from './utils';
 import { enrichTrack, broadcastToAll } from './tracking';
 import { CONFIG } from './config';
 
@@ -26,8 +26,8 @@ export async function handleAPI(req: Request): Promise<Response> {
 
   try {
     // Verify HMAC for mutating requests
-    if (req.method === 'POST' || req.method === 'PUT') {
-      const bodyText = await req.text();
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
+      const bodyText = req.method === 'DELETE' ? '' : await req.text();
       const signature = req.headers.get('X-Signature');
 
       if (!(await verifyHmacSignature(bodyText, signature))) {
@@ -38,7 +38,9 @@ export async function handleAPI(req: Request): Promise<Response> {
         );
       }
 
-      (req as any).parsedBody = JSON.parse(bodyText);
+      if (bodyText) {
+        (req as any).parsedBody = JSON.parse(bodyText);
+      }
     }
 
     // Route to handlers
@@ -59,11 +61,11 @@ export async function handleAPI(req: Request): Promise<Response> {
     }
 
     if (path.match(/^\/api\/tracks\/[^\/]+\/stop$/) && req.method === 'PUT') {
-      return handleStopTrack(path);
+      return handleStopTrack(path, req);
     }
 
     if (path.match(/^\/api\/tracks\/[^\/]+$/) && req.method === 'DELETE') {
-      return handleDeleteTrack(path);
+      return handleDeleteTrack(path, req);
     }
 
     return jsonResponse({ error: 'Not found' }, 404);
@@ -147,13 +149,18 @@ async function handleCreateTrack(req: Request): Promise<Response> {
     return jsonResponse({ error: 'Unauthorized' }, 401);
   }
 
+  const initialPoints = body.points || [];
+  if (initialPoints.some((p: any) => !validatePoint(p))) {
+    return jsonResponse({ error: 'Invalid point data' }, 400);
+  }
+
   let trackName = body.name || '';
 
   const track: Track = {
-    id: body.id || crypto.randomUUID(),
+    id: crypto.randomUUID(),
     userId: body.userId,
     name: trackName,
-    points: body.points || [],
+    points: initialPoints,
     startTime: Date.now(),
     isActive: true,
     lastUpdateTime: Date.now(),
@@ -179,6 +186,10 @@ async function handleAddPoint(path: string, req: Request): Promise<Response> {
   const trackId = path.split('/')[3];
   const point = (req as any).parsedBody;
 
+  if (!validatePoint(point)) {
+    return jsonResponse({ error: 'Invalid point data' }, 400);
+  }
+
   const track = trackStore.getTrack(trackId);
   if (!track) {
     return jsonResponse({ error: 'Track not found' }, 404);
@@ -186,11 +197,15 @@ async function handleAddPoint(path: string, req: Request): Promise<Response> {
 
   const wasInactive = !track.isActive;
 
-  const updatedTrack = trackStore.updateTrack(trackId, {
-    points: [...track.points, point],
+  const updates: Partial<Track> = {
     isActive: true,
     lastUpdateTime: Date.now(),
-  });
+  };
+  if (wasInactive) {
+    updates.endTime = undefined;
+  }
+
+  const updatedTrack = trackStore.addPoint(trackId, point, updates);
 
   broadcastToAll({
     type: 'track_update',
@@ -215,20 +230,33 @@ async function handleAddPoint(path: string, req: Request): Promise<Response> {
   return jsonResponse(updatedTrack);
 }
 
+function isAuthorized(req: Request, track: Track): boolean {
+  const clientId = req.headers.get('X-Client-Id');
+  const adminKey = req.headers.get('X-Admin-Key');
+  if (clientId === track.userId) return true;
+  if (CONFIG.ADMIN_KEY && adminKey === CONFIG.ADMIN_KEY) return true;
+  return false;
+}
+
 /**
  * PUT /api/tracks/:trackId/stop - Stop a track
  */
-async function handleStopTrack(path: string): Promise<Response> {
+async function handleStopTrack(path: string, req: Request): Promise<Response> {
   const trackId = path.split('/')[3];
+  const track = trackStore.getTrack(trackId);
+
+  if (!track) {
+    return jsonResponse({ error: 'Track not found' }, 404);
+  }
+
+  if (!isAuthorized(req, track)) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
 
   const updatedTrack = trackStore.updateTrack(trackId, {
     isActive: false,
     endTime: Date.now(),
   });
-
-  if (!updatedTrack) {
-    return jsonResponse({ error: 'Track not found' }, 404);
-  }
 
   broadcastToAll({
     type: 'track_stopped',
@@ -241,13 +269,25 @@ async function handleStopTrack(path: string): Promise<Response> {
 /**
  * DELETE /api/tracks/:trackId - Delete a track
  */
-async function handleDeleteTrack(path: string): Promise<Response> {
+async function handleDeleteTrack(path: string, req: Request): Promise<Response> {
   const trackId = path.split('/')[3];
-  const deleted = trackStore.deleteTrack(trackId);
+  const track = trackStore.getTrack(trackId);
 
-  if (!deleted) {
+  if (!track) {
     return jsonResponse({ error: 'Track not found' }, 404);
   }
+
+  if (!isAuthorized(req, track)) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+
+  trackStore.deleteTrack(trackId);
+
+  broadcastToAll({
+    type: 'track_deleted',
+    trackId,
+    userId: track.userId,
+  });
 
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import type { TrackPoint } from './types';
 import { CONFIG } from './config';
 
@@ -70,15 +71,25 @@ export async function verifyHmacSignature(
       encoder.encode(body)
     );
 
-    const expectedSignature = btoa(
-      String.fromCharCode(...new Uint8Array(signatureBytes))
-    );
-
-    return signature === expectedSignature;
+    const expected = Buffer.from(new Uint8Array(signatureBytes));
+    const actual = Buffer.from(signature, 'base64');
+    if (expected.byteLength !== actual.byteLength) return false;
+    return timingSafeEqual(expected, actual);
   } catch (error) {
     console.error('HMAC verification error:', error);
     return false;
   }
+}
+
+export function validatePoint(point: any): point is TrackPoint {
+  if (!point || typeof point !== 'object') return false;
+  return (
+    typeof point.lat === 'number' && point.lat >= -90 && point.lat <= 90 &&
+    typeof point.lon === 'number' && point.lon >= -180 && point.lon <= 180 &&
+    typeof point.timestamp === 'number' && point.timestamp > 0 &&
+    (point.altitude === undefined || typeof point.altitude === 'number') &&
+    (point.accuracy === undefined || typeof point.accuracy === 'number')
+  );
 }
 
 /**
