@@ -1,6 +1,12 @@
 import { handleAPI } from './src/api';
 import { CONFIG } from './src/config';
-import { setServerInstance, startStaleTrackChecker } from './src/tracking';
+import { trackStore } from './src/store';
+import { enrichTrack, addSubscribedClient, removeSubscribedClient, startStaleTrackChecker } from './src/tracking';
+
+interface WsData {
+  clients: string[];
+  admin: boolean;
+}
 
 const server = Bun.serve({
   port: CONFIG.PORT,
@@ -42,22 +48,45 @@ const server = Bun.serve({
   websocket: {
     open(ws) {
       console.log('WebSocket client connected');
-      ws.subscribe('tracking');
+      ws.data = { clients: [], admin: false } as WsData;
     },
 
     message(ws, message) {
-      console.log('WebSocket message:', message);
+      try {
+        const msg = JSON.parse(String(message));
+        if (msg.type === 'subscribe') {
+          const clients: string[] = Array.isArray(msg.clients) ? msg.clients : [];
+          const isAdmin = !!(CONFIG.ADMIN_KEY && msg.adminKey === CONFIG.ADMIN_KEY);
+          const includeHistorical = msg.historical === true;
+          ws.data = { clients, admin: isAdmin } as WsData;
+          addSubscribedClient(ws);
+
+          let tracks;
+          if (isAdmin) {
+            tracks = includeHistorical ? trackStore.getAllTracks() : trackStore.getAllActiveTracks();
+          } else if (clients.length === 0) {
+            tracks = [];
+          } else {
+            tracks = trackStore.getTracksByClientIds(clients, includeHistorical);
+          }
+
+          ws.send(JSON.stringify({
+            type: 'initial_state',
+            tracks: tracks.map(enrichTrack),
+            admin: isAdmin,
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to parse WebSocket message:', e);
+      }
     },
 
     close(ws) {
       console.log('WebSocket client disconnected');
-      ws.unsubscribe('tracking');
+      removeSubscribedClient(ws);
     },
   },
 });
-
-// Set server instance for broadcasting
-setServerInstance(server);
 
 // Start background job for stale track checking
 startStaleTrackChecker();

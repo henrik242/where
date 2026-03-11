@@ -1,96 +1,343 @@
-import { Track, TrackPoint } from './types';
+import { Database } from 'bun:sqlite';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import type { Track, TrackPoint } from './types';
 
-class TrackStore {
-  private tracks = new Map<string, Track>();
-  private clientColors = new Map<string, string>();
+const COLORS = [
+  '#FF5722', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+  '#2196F3', '#00BCD4', '#009688', '#4CAF50', '#8BC34A',
+  '#CDDC39', '#FFC107', '#FF9800', '#FF5722', '#795548'
+];
 
-  private generateColor(userId: string): string {
-    if (this.clientColors.has(userId)) {
-      return this.clientColors.get(userId)!;
+function generateColor(userId: string): string {
+  const hash = userId.split('').reduce((acc, char) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc);
+  }, 0);
+  return COLORS[Math.abs(hash) % COLORS.length];
+}
+
+interface TrackRow {
+  id: string;
+  userId: string;
+  name: string;
+  startTime: number;
+  endTime: number | null;
+  isActive: number;
+  lastUpdateTime: number;
+  color: string | null;
+}
+
+interface PointRow {
+  id: number;
+  trackId: string;
+  lat: number;
+  lon: number;
+  timestamp: number;
+  altitude: number | null;
+  accuracy: number | null;
+}
+
+function rowToTrack(row: TrackRow, points: TrackPoint[]): Track {
+  return {
+    id: row.id,
+    userId: row.userId,
+    name: row.name,
+    startTime: row.startTime,
+    endTime: row.endTime ?? undefined,
+    isActive: row.isActive === 1,
+    lastUpdateTime: row.lastUpdateTime,
+    color: row.color ?? undefined,
+    points,
+  };
+}
+
+function rowToPoint(row: PointRow): TrackPoint {
+  return {
+    lat: row.lat,
+    lon: row.lon,
+    timestamp: row.timestamp,
+    altitude: row.altitude ?? undefined,
+    accuracy: row.accuracy ?? undefined,
+  };
+}
+
+export class TrackStore {
+  private db: Database;
+  private stmts: ReturnType<TrackStore['prepareStatements']>;
+
+  constructor(dbPath: string = './data/tracking.db') {
+    if (dbPath !== ':memory:') {
+      mkdirSync(dirname(dbPath), { recursive: true });
     }
 
-    const colors = [
-      '#FF5722', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-      '#2196F3', '#00BCD4', '#009688', '#4CAF50', '#8BC34A',
-      '#CDDC39', '#FFC107', '#FF9800', '#FF5722', '#795548'
-    ];
+    this.db = new Database(dbPath);
+    this.db.exec('PRAGMA journal_mode = WAL');
+    this.db.exec('PRAGMA foreign_keys = ON');
+    this.createTables();
+    this.stmts = this.prepareStatements();
+  }
 
-    const hash = userId.split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);
+  private createTables() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS tracks (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        startTime INTEGER NOT NULL,
+        endTime INTEGER,
+        isActive INTEGER NOT NULL DEFAULT 1,
+        lastUpdateTime INTEGER NOT NULL,
+        color TEXT
+      );
 
-    const colorIndex = Math.abs(hash) % colors.length;
-    const color = colors[colorIndex];
-    this.clientColors.set(userId, color);
-    return color;
+      CREATE TABLE IF NOT EXISTS points (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trackId TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+        lat REAL NOT NULL,
+        lon REAL NOT NULL,
+        timestamp INTEGER NOT NULL,
+        altitude REAL,
+        accuracy REAL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_points_trackId ON points(trackId);
+      CREATE INDEX IF NOT EXISTS idx_tracks_userId ON tracks(userId);
+      CREATE INDEX IF NOT EXISTS idx_tracks_startTime ON tracks(startTime);
+    `);
+  }
+
+  private prepareStatements() {
+    return {
+      insertTrack: this.db.prepare<void, [string, string, string, number, number | null, number, number, string | null]>(
+        `INSERT OR REPLACE INTO tracks (id, userId, name, startTime, endTime, isActive, lastUpdateTime, color)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ),
+      getTrack: this.db.prepare<TrackRow, [string]>(
+        'SELECT * FROM tracks WHERE id = ?'
+      ),
+      getPoints: this.db.prepare<PointRow, [string]>(
+        'SELECT * FROM points WHERE trackId = ? ORDER BY timestamp'
+      ),
+      getActiveTracks: this.db.prepare<TrackRow, []>(
+        'SELECT * FROM tracks WHERE isActive = 1'
+      ),
+      getRecentTracks: this.db.prepare<TrackRow, [number]>(
+        'SELECT * FROM tracks WHERE startTime >= ?'
+      ),
+      insertPoint: this.db.prepare<void, [string, number, number, number, number | null, number | null]>(
+        `INSERT INTO points (trackId, lat, lon, timestamp, altitude, accuracy)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ),
+      deleteTrack: this.db.prepare<void, [string]>(
+        'DELETE FROM tracks WHERE id = ?'
+      ),
+      getActiveByUser: this.db.prepare<TrackRow, [string]>(
+        'SELECT * FROM tracks WHERE userId = ? AND isActive = 1'
+      ),
+      cleanupOld: this.db.prepare<TrackRow, [number]>(
+        'SELECT * FROM tracks WHERE isActive = 0 AND lastUpdateTime < ?'
+      ),
+      deleteOld: this.db.prepare<void, [number]>(
+        'DELETE FROM tracks WHERE isActive = 0 AND lastUpdateTime < ?'
+      ),
+    };
   }
 
   saveTrack(track: Track): void {
-    const trackWithColor = {
-      ...track,
-      color: this.generateColor(track.userId)
-    };
-    this.tracks.set(track.id, trackWithColor);
+    const color = track.color || generateColor(track.userId);
+    this.stmts.insertTrack.run(
+      track.id,
+      track.userId,
+      track.name,
+      track.startTime,
+      track.endTime ?? null,
+      track.isActive ? 1 : 0,
+      track.lastUpdateTime ?? track.startTime,
+      color,
+    );
+
+    if (track.points.length > 0) {
+      const insertMany = this.db.transaction(() => {
+        for (const p of track.points) {
+          this.stmts.insertPoint.run(
+            track.id, p.lat, p.lon, p.timestamp,
+            p.altitude ?? null, p.accuracy ?? null,
+          );
+        }
+      });
+      insertMany();
+    }
   }
 
   getTrack(trackId: string): Track | undefined {
-    return this.tracks.get(trackId);
+    const row = this.stmts.getTrack.get(trackId);
+    if (!row) return undefined;
+    const points = this.stmts.getPoints.all(trackId).map(rowToPoint);
+    return rowToTrack(row, points);
   }
 
-  getActiveTracksByUser(userId: string): Track[] {
-    return Array.from(this.tracks.values())
-      .filter(track => track.userId === userId && track.isActive);
+  private buildTracksWithPoints(rows: TrackRow[]): Track[] {
+    if (rows.length === 0) return [];
+    const trackIds = rows.map(r => r.id);
+    const placeholders = trackIds.map(() => '?').join(',');
+    const allPoints = this.db.prepare<PointRow, any[]>(
+      `SELECT * FROM points WHERE trackId IN (${placeholders}) ORDER BY timestamp`
+    ).all(...trackIds);
+
+    const pointsByTrack = new Map<string, TrackPoint[]>();
+    for (const p of allPoints) {
+      const list = pointsByTrack.get(p.trackId);
+      if (list) list.push(rowToPoint(p));
+      else pointsByTrack.set(p.trackId, [rowToPoint(p)]);
+    }
+
+    return rows.map(row => rowToTrack(row, pointsByTrack.get(row.id) || []));
   }
 
   getAllActiveTracks(): Track[] {
-    return Array.from(this.tracks.values())
-      .filter(track => track.isActive);
+    const rows = this.stmts.getActiveTracks.all();
+    return this.buildTracksWithPoints(rows);
   }
 
   getAllTracks(): Track[] {
-    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-    return Array.from(this.tracks.values())
-      .filter(track => track.startTime >= twentyFourHoursAgo);
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const rows = this.stmts.getRecentTracks.all(cutoff);
+    return this.buildTracksWithPoints(rows);
   }
 
   getTracksByClientIds(clientIds: string[], includeHistorical: boolean = false): Track[] {
     if (clientIds.length === 0) {
       return includeHistorical ? this.getAllTracks() : this.getAllActiveTracks();
     }
-    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
-    return Array.from(this.tracks.values())
-      .filter(track => {
-        const matchesClient = clientIds.includes(track.userId);
-        const isRecent = track.startTime >= twentyFourHoursAgo;
-        return matchesClient && (includeHistorical ? isRecent : track.isActive);
-      });
+
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const placeholders = clientIds.map(() => '?').join(',');
+
+    let sql: string;
+    let params: any[];
+    if (includeHistorical) {
+      sql = `SELECT * FROM tracks WHERE userId IN (${placeholders}) AND startTime >= ?`;
+      params = [...clientIds, cutoff];
+    } else {
+      sql = `SELECT * FROM tracks WHERE userId IN (${placeholders}) AND isActive = 1`;
+      params = clientIds;
+    }
+
+    const rows = this.db.prepare<TrackRow, any[]>(sql).all(...params);
+    return this.buildTracksWithPoints(rows);
   }
 
   updateTrack(trackId: string, updates: Partial<Track>): Track | undefined {
-    const track = this.tracks.get(trackId);
-    if (!track) return undefined;
+    const existing = this.stmts.getTrack.get(trackId);
+    if (!existing) return undefined;
 
-    const updatedTrack = {
-      ...track,
-      ...updates,
-      color: track.color // Preserve the color
-    };
-    this.tracks.set(trackId, updatedTrack);
-    return updatedTrack;
+    const setClauses: string[] = [];
+    const values: any[] = [];
+
+    if (updates.name !== undefined) {
+      setClauses.push('name = ?');
+      values.push(updates.name);
+    }
+    if (updates.isActive !== undefined) {
+      setClauses.push('isActive = ?');
+      values.push(updates.isActive ? 1 : 0);
+    }
+    if (updates.endTime !== undefined) {
+      setClauses.push('endTime = ?');
+      values.push(updates.endTime);
+    } else if ('endTime' in updates && updates.endTime === undefined) {
+      setClauses.push('endTime = NULL');
+    }
+    if (updates.lastUpdateTime !== undefined) {
+      setClauses.push('lastUpdateTime = ?');
+      values.push(updates.lastUpdateTime);
+    }
+
+    if (setClauses.length > 0) {
+      values.push(trackId);
+      this.db.prepare(`UPDATE tracks SET ${setClauses.join(', ')} WHERE id = ?`).run(...values);
+    }
+
+    // Handle points replacement if provided in updates
+    if (updates.points !== undefined) {
+      this.db.prepare('DELETE FROM points WHERE trackId = ?').run(trackId);
+      if (updates.points.length > 0) {
+        const insertMany = this.db.transaction(() => {
+          for (const p of updates.points!) {
+            this.stmts.insertPoint.run(
+              trackId, p.lat, p.lon, p.timestamp,
+              p.altitude ?? null, p.accuracy ?? null,
+            );
+          }
+        });
+        insertMany();
+      }
+    }
+
+    return this.getTrack(trackId);
   }
 
   addPoint(trackId: string, point: TrackPoint, updates: Partial<Track> = {}): Track | undefined {
-    const track = this.tracks.get(trackId);
-    if (!track) return undefined;
-    track.points.push(point);
-    Object.assign(track, updates, { color: track.color });
-    return track;
+    const existing = this.stmts.getTrack.get(trackId);
+    if (!existing) return undefined;
+
+    this.db.transaction(() => {
+      this.stmts.insertPoint.run(
+        trackId, point.lat, point.lon, point.timestamp,
+        point.altitude ?? null, point.accuracy ?? null,
+      );
+
+      const setClauses: string[] = [];
+      const values: any[] = [];
+
+      if (updates.isActive !== undefined) {
+        setClauses.push('isActive = ?');
+        values.push(updates.isActive ? 1 : 0);
+      }
+      if (updates.lastUpdateTime !== undefined) {
+        setClauses.push('lastUpdateTime = ?');
+        values.push(updates.lastUpdateTime);
+      }
+      if (updates.endTime !== undefined) {
+        setClauses.push('endTime = ?');
+        values.push(updates.endTime);
+      } else if ('endTime' in updates && updates.endTime === undefined) {
+        setClauses.push('endTime = NULL');
+      }
+
+      if (setClauses.length > 0) {
+        values.push(trackId);
+        this.db.prepare(`UPDATE tracks SET ${setClauses.join(', ')} WHERE id = ?`).run(...values);
+      }
+    })();
+
+    return this.getTrack(trackId);
   }
 
   deleteTrack(trackId: string): boolean {
-    return this.tracks.delete(trackId);
+    const existing = this.stmts.getTrack.get(trackId);
+    if (!existing) return false;
+    this.stmts.deleteTrack.run(trackId);
+    return true;
+  }
+
+  getActiveTracksByUser(userId: string): Track[] {
+    const rows = this.stmts.getActiveByUser.all(userId);
+    return this.buildTracksWithPoints(rows);
+  }
+
+  cleanupOldTracks(): { id: string; userId: string }[] {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const rows = this.stmts.cleanupOld.all(cutoff);
+    if (rows.length > 0) {
+      this.stmts.deleteOld.run(cutoff);
+    }
+    return rows.map(r => ({ id: r.id, userId: r.userId }));
+  }
+
+  close(): void {
+    this.db.close();
   }
 }
 
 export const trackStore = new TrackStore();
-

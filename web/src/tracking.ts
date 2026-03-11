@@ -15,17 +15,28 @@ export function enrichTrack(track: Track) {
 }
 
 /**
- * Broadcast message to all WebSocket clients
+ * Broadcast message to subscribed WebSocket clients
  */
-let serverInstance: any = null;
+const subscribedClients = new Set<any>();
 
-export function setServerInstance(server: any) {
-  serverInstance = server;
+export function addSubscribedClient(ws: any) {
+  subscribedClients.add(ws);
 }
 
-export function broadcastToAll(message: any) {
-  if (serverInstance) {
-    serverInstance.publish('tracking', JSON.stringify(message));
+export function removeSubscribedClient(ws: any) {
+  subscribedClients.delete(ws);
+}
+
+export function broadcastToAll(message: any, userId?: string) {
+  const payload = JSON.stringify(message);
+  for (const ws of subscribedClients) {
+    const data = ws.data as { clients?: string[]; admin?: boolean };
+    if (!data) continue;
+    if (data.admin) {
+      ws.send(payload);
+    } else if (userId && data.clients?.includes(userId)) {
+      ws.send(payload);
+    }
   }
 }
 
@@ -74,7 +85,7 @@ export function checkStaleTracks() {
           type: 'track_stopped',
           trackId: track.id,
           userId: track.userId,
-        });
+        }, track.userId);
       }
     }
   });
@@ -85,16 +96,37 @@ export function checkStaleTracks() {
 }
 
 /**
+ * Delete tracks (and cascading points) older than 24 hours
+ */
+export function cleanupOldTracks() {
+  const deleted = trackStore.cleanupOldTracks();
+  for (const { id, userId } of deleted) {
+    broadcastToAll({
+      type: 'track_deleted',
+      trackId: id,
+      userId,
+    }, userId);
+  }
+  if (deleted.length > 0) {
+    console.log(`🗑️  Cleaned up ${deleted.length} old track(s)`);
+  }
+}
+
+/**
  * Start the stale track checker
  */
 export function startStaleTrackChecker() {
   // Run check every minute
   setInterval(checkStaleTracks, CONFIG.STALE_CHECK_INTERVAL);
 
+  // Run cleanup every hour
+  setInterval(cleanupOldTracks, 60 * 60 * 1000);
+
   // Run initial check after 10 seconds
   setTimeout(() => {
     console.log('🔍 Running initial stale track check...');
     checkStaleTracks();
+    cleanupOldTracks();
   }, CONFIG.INITIAL_CHECK_DELAY);
 }
 

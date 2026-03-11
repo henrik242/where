@@ -1,173 +1,183 @@
-import {trackStore} from './src/store';
-import type {Track} from './src/types';
+import { TrackStore } from './src/store';
+import type { Track } from './src/types';
+import { validatePoint } from './src/utils';
 
 export function createTestServer(port: number = 0) {
+  const trackStore = new TrackStore(':memory:');
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-Admin-Key, X-Signature',
+  };
+
+  function jsonResponse(data: any, status = 200): Response {
+    return new Response(JSON.stringify(data), { status, headers });
+  }
+
+  function isAuthorized(req: Request, track: Track): boolean {
+    const clientId = req.headers.get('X-Client-Id');
+    if (clientId === track.userId) return true;
+    return false;
+  }
+
   async function handleAPI(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
-
-    const headers = {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Id, X-Admin-Key',
-    };
 
     if (req.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers });
     }
 
     try {
-      // GET /api/tracks - Get all active tracks (or filtered by client IDs)
-      if (path === '/api/tracks' && req.method === 'GET') {
-        const clientIds = url.searchParams.get('clients')?.split(',').filter(Boolean) || [];
-        const tracks = clientIds.length > 0
-          ? trackStore.getTracksByClientIds(clientIds)
-          : trackStore.getAllActiveTracks();
-        return new Response(JSON.stringify(tracks), { headers });
+      // Parse body for mutating requests (skip HMAC in test server)
+      if (req.method === 'POST' || req.method === 'PUT') {
+        const bodyText = await req.text();
+        if (bodyText) {
+          (req as any).parsedBody = JSON.parse(bodyText);
+        }
       }
 
-      // GET /api/tracks/:trackId - Get specific track
+      // GET /api/tracks
+      if (path === '/api/tracks' && req.method === 'GET') {
+        const clientIds = url.searchParams.get('clients')?.split(',').filter(Boolean) || [];
+        const includeHistorical = url.searchParams.get('historical') === 'true';
+
+        let tracks: Track[];
+        if (clientIds.length > 0) {
+          tracks = trackStore.getTracksByClientIds(clientIds, includeHistorical);
+        } else {
+          tracks = [];
+        }
+        return jsonResponse(tracks);
+      }
+
+      // GET /api/tracks/:trackId
       if (path.match(/^\/api\/tracks\/[^\/]+$/) && req.method === 'GET') {
         const trackId = path.split('/')[3];
         const track = trackStore.getTrack(trackId);
-
-        if (!track) {
-          return new Response(JSON.stringify({ error: 'Track not found' }), {
-            status: 404,
-            headers
-          });
-        }
-
-        return new Response(JSON.stringify(track), { headers });
+        if (!track) return jsonResponse({ error: 'Track not found' }, 404);
+        return jsonResponse(track);
       }
 
-      // POST /api/tracks - Create new track
+      // POST /api/tracks
       if (path === '/api/tracks' && req.method === 'POST') {
-        const body = await req.json() as Partial<Track>;
+        const body = (req as any).parsedBody as Partial<Track>;
 
         if (!body.userId) {
-          return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-            status: 400,
-            headers
-          });
+          return jsonResponse({ error: 'Missing required fields' }, 400);
         }
 
-        // Verify client ID in header matches userId in body
         const clientIdHeader = req.headers.get('X-Client-Id');
         if (!clientIdHeader || clientIdHeader !== body.userId) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-            status: 401,
-            headers
-          });
+          return jsonResponse({ error: 'Unauthorized' }, 401);
+        }
+
+        const initialPoints = body.points || [];
+        if (initialPoints.some((p: any) => !validatePoint(p))) {
+          return jsonResponse({ error: 'Invalid point data' }, 400);
         }
 
         const track: Track = {
-          id: body.id || crypto.randomUUID(),
+          id: crypto.randomUUID(),
           userId: body.userId,
-          name: body.name || 'Unnamed Track',
-          points: body.points || [],
+          name: body.name || '',
+          points: initialPoints,
           startTime: Date.now(),
-          isActive: true
+          isActive: true,
+          lastUpdateTime: Date.now(),
         };
 
         trackStore.saveTrack(track);
-
-        return new Response(JSON.stringify(track), {
-          status: 201,
-          headers
-        });
+        const savedTrack = trackStore.getTrack(track.id);
+        return jsonResponse(savedTrack ?? track, 201);
       }
 
-      // POST /api/tracks/:trackId/points - Add point to track
+      // POST /api/tracks/:trackId/points
       if (path.match(/^\/api\/tracks\/[^\/]+\/points$/) && req.method === 'POST') {
         const trackId = path.split('/')[3];
-        const point = await req.json();
+        const point = (req as any).parsedBody;
 
-        const track = trackStore.getTrack(trackId);
-        if (!track) {
-          return new Response(JSON.stringify({ error: 'Track not found' }), {
-            status: 404,
-            headers
-          });
+        if (!validatePoint(point)) {
+          return jsonResponse({ error: 'Invalid point data' }, 400);
         }
 
-        const updatedTrack = trackStore.updateTrack(trackId, {
-          points: [...track.points, point]
-        });
+        const track = trackStore.getTrack(trackId);
+        if (!track) return jsonResponse({ error: 'Track not found' }, 404);
 
-        return new Response(JSON.stringify(updatedTrack), { headers });
+        if (!isAuthorized(req, track)) {
+          return jsonResponse({ error: 'Unauthorized' }, 401);
+        }
+
+        const updates: Partial<Track> = {
+          isActive: true,
+          lastUpdateTime: Date.now(),
+        };
+        if (!track.isActive) {
+          updates.endTime = undefined;
+        }
+
+        const updatedTrack = trackStore.addPoint(trackId, point, updates);
+        return jsonResponse(updatedTrack);
       }
 
-      // PUT /api/tracks/:trackId/stop - Stop a track
+      // PUT /api/tracks/:trackId/stop
       if (path.match(/^\/api\/tracks\/[^\/]+\/stop$/) && req.method === 'PUT') {
         const trackId = path.split('/')[3];
+        const track = trackStore.getTrack(trackId);
+        if (!track) return jsonResponse({ error: 'Track not found' }, 404);
+
+        if (!isAuthorized(req, track)) {
+          return jsonResponse({ error: 'Unauthorized' }, 401);
+        }
 
         const updatedTrack = trackStore.updateTrack(trackId, {
           isActive: false,
-          endTime: Date.now()
+          endTime: Date.now(),
         });
-
-        if (!updatedTrack) {
-          return new Response(JSON.stringify({ error: 'Track not found' }), {
-            status: 404,
-            headers
-          });
-        }
-
-        return new Response(JSON.stringify(updatedTrack), { headers });
+        return jsonResponse(updatedTrack);
       }
 
-      // DELETE /api/tracks/:trackId - Delete a track
+      // DELETE /api/tracks/:trackId
       if (path.match(/^\/api\/tracks\/[^\/]+$/) && req.method === 'DELETE') {
         const trackId = path.split('/')[3];
-        const deleted = trackStore.deleteTrack(trackId);
+        const track = trackStore.getTrack(trackId);
+        if (!track) return jsonResponse({ error: 'Track not found' }, 404);
 
-        if (!deleted) {
-          return new Response(JSON.stringify({ error: 'Track not found' }), {
-            status: 404,
-            headers
-          });
+        if (!isAuthorized(req, track)) {
+          return jsonResponse({ error: 'Unauthorized' }, 401);
         }
 
+        trackStore.deleteTrack(trackId);
         return new Response(null, { status: 204, headers });
       }
 
-      return new Response(JSON.stringify({ error: 'Not found' }), {
-        status: 404,
-        headers
-      });
-
+      return jsonResponse({ error: 'Not found' }, 404);
     } catch (error) {
       console.error('API Error:', error);
-      return new Response(JSON.stringify({ error: 'Internal server error' }), {
-        status: 500,
-        headers
-      });
+      return jsonResponse({ error: 'Internal server error' }, 500);
     }
   }
 
   return Bun.serve({
-    port, // port 0 = random available port
+    port,
 
     async fetch(req, server) {
       const url = new URL(req.url);
 
-      // WebSocket upgrade
       if (url.pathname === '/ws') {
         const upgraded = server.upgrade(req);
         if (!upgraded) {
-          return new Response('WebSocket upgrade failed', {status: 400});
+          return new Response('WebSocket upgrade failed', { status: 400 });
         }
         return undefined;
       }
 
-      // API Routes
       if (url.pathname.startsWith('/api')) {
         return handleAPI(req);
       }
 
-      // Serve static files
       const filePath = url.pathname === '/' ? '/index.html' : url.pathname;
       const file = Bun.file(`${import.meta.dir}/src/public${filePath}`);
 
@@ -175,17 +185,13 @@ export function createTestServer(port: number = 0) {
         return new Response(file);
       }
 
-      return new Response('Not Found', {status: 404});
+      return new Response('Not Found', { status: 404 });
     },
 
     websocket: {
-      open(ws) {
-      },
-      message(ws, message) {
-      },
-      close(ws) {
-      }
-    }
+      open(ws) {},
+      message(ws, message) {},
+      close(ws) {},
+    },
   });
 }
-

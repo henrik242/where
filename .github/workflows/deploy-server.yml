@@ -65,7 +65,7 @@ jobs:
         REMOTE_USER: ${{ secrets.REMOTE_USER }}
         SOURCE: "web/"
         TARGET: ${{ secrets.REMOTE_TARGET }}
-        EXCLUDE: "/node_modules/, /bun.lockb, /.env, *.log, *.pid"
+        EXCLUDE: "/node_modules/, /bun.lockb, /.env, /data/, *.log, *.pid"
 
     - name: Deployment status
       if: always()

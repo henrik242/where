@@ -167,16 +167,17 @@ async function handleCreateTrack(req: Request): Promise<Response> {
   };
 
   trackStore.saveTrack(track);
+  const savedTrack = trackStore.getTrack(track.id);
 
   broadcastToAll({
     type: 'track_started',
     trackId: track.id,
     userId: track.userId,
     name: track.name,
-    color: track.color,
-  });
+    color: savedTrack?.color,
+  }, track.userId);
 
-  return jsonResponse(track, 201);
+  return jsonResponse(savedTrack ?? track, 201);
 }
 
 /**
@@ -195,6 +196,10 @@ async function handleAddPoint(path: string, req: Request): Promise<Response> {
     return jsonResponse({ error: 'Track not found' }, 404);
   }
 
+  if (!isAuthorized(req, track)) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+
   const wasInactive = !track.isActive;
 
   const updates: Partial<Track> = {
@@ -207,25 +212,25 @@ async function handleAddPoint(path: string, req: Request): Promise<Response> {
 
   const updatedTrack = trackStore.addPoint(trackId, point, updates);
 
-  broadcastToAll({
-    type: 'track_update',
-    trackId,
-    userId: track.userId,
-    name: track.name,
-    point,
-    color: track.color,
-  });
-
-  // Broadcast reactivation if track was inactive
+  // Broadcast reactivation before the point update so clients know the track is active
   if (wasInactive) {
     broadcastToAll({
       type: 'track_started',
       trackId,
       userId: track.userId,
       name: track.name,
-      color: track.color,
-    });
+      color: updatedTrack?.color ?? track.color,
+    }, track.userId);
   }
+
+  broadcastToAll({
+    type: 'track_update',
+    trackId,
+    userId: track.userId,
+    name: track.name,
+    point,
+    color: updatedTrack?.color ?? track.color,
+  }, track.userId);
 
   return jsonResponse(updatedTrack);
 }
@@ -261,7 +266,8 @@ async function handleStopTrack(path: string, req: Request): Promise<Response> {
   broadcastToAll({
     type: 'track_stopped',
     trackId,
-  });
+    userId: track.userId,
+  }, track.userId);
 
   return jsonResponse(updatedTrack);
 }
@@ -287,7 +293,7 @@ async function handleDeleteTrack(path: string, req: Request): Promise<Response> 
     type: 'track_deleted',
     trackId,
     userId: track.userId,
-  });
+  }, track.userId);
 
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }

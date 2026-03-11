@@ -175,6 +175,25 @@ describe('API Integration Tests', () => {
       const data = await response.json();
       expect(Array.isArray(data)).toBe(true);
     });
+
+    test('should return empty array without client IDs', async () => {
+      // Create a track first
+      await fetch(`${SERVER_URL}/api/tracks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'hidden1'
+        },
+        body: JSON.stringify({ userId: 'hidden1', name: 'Hidden Track' })
+      });
+
+      // Request without any client filter should return empty
+      const response = await fetch(`${SERVER_URL}/api/tracks`);
+      expect(response.status).toBe(200);
+
+      const data = await response.json();
+      expect(data).toEqual([]);
+    });
   });
 
   describe('GET /api/tracks/:trackId', () => {
@@ -215,7 +234,10 @@ describe('API Integration Tests', () => {
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/points`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'pointtest'
+        },
         body: JSON.stringify({
           lat: 59.9139,
           lon: 10.7522,
@@ -234,7 +256,10 @@ describe('API Integration Tests', () => {
     test('should return 404 for non-existent track', async () => {
       const response = await fetch(`${SERVER_URL}/api/tracks/non-existent/points`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'someone'
+        },
         body: JSON.stringify({
           lat: 59.9,
           lon: 10.7,
@@ -243,6 +268,58 @@ describe('API Integration Tests', () => {
       });
 
       expect(response.status).toBe(404);
+    });
+
+    test('should return 401 when adding point to another users track', async () => {
+      const track = await fetch(`${SERVER_URL}/api/tracks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'owner1'
+        },
+        body: JSON.stringify({ userId: 'owner1', name: 'Owned Track' })
+      }).then(r => r.json());
+
+      const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/points`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'attacker'
+        },
+        body: JSON.stringify({
+          lat: 59.9,
+          lon: 10.7,
+          timestamp: Date.now()
+        })
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    test('should return 400 for invalid point data', async () => {
+      const track = await fetch(`${SERVER_URL}/api/tracks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'validtest'
+        },
+        body: JSON.stringify({ userId: 'validtest', name: 'Validation Test' })
+      }).then(r => r.json());
+
+      const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/points`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'validtest'
+        },
+        body: JSON.stringify({
+          lat: 999,
+          lon: 10.7,
+          timestamp: Date.now()
+        })
+      });
+
+      expect(response.status).toBe(400);
     });
   });
 
@@ -258,13 +335,32 @@ describe('API Integration Tests', () => {
       }).then(r => r.json());
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/stop`, {
-        method: 'PUT'
+        method: 'PUT',
+        headers: { 'X-Client-Id': 'stoptest' }
       });
 
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.isActive).toBe(false);
       expect(data.endTime).toBeDefined();
+    });
+
+    test('should return 401 when stopping another users track', async () => {
+      const track = await fetch(`${SERVER_URL}/api/tracks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'stopowner'
+        },
+        body: JSON.stringify({ userId: 'stopowner', name: 'Stop Auth Test' })
+      }).then(r => r.json());
+
+      const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/stop`, {
+        method: 'PUT',
+        headers: { 'X-Client-Id': 'notowner' }
+      });
+
+      expect(response.status).toBe(401);
     });
 
     test('should return 404 for non-existent track', async () => {
@@ -288,7 +384,8 @@ describe('API Integration Tests', () => {
       }).then(r => r.json());
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'X-Client-Id': 'deletetest' }
       });
 
       expect(response.status).toBe(204);
@@ -296,6 +393,28 @@ describe('API Integration Tests', () => {
       // Verify deletion
       const getResponse = await fetch(`${SERVER_URL}/api/tracks/${track.id}`);
       expect(getResponse.status).toBe(404);
+    });
+
+    test('should return 401 when deleting another users track', async () => {
+      const track = await fetch(`${SERVER_URL}/api/tracks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'delowner'
+        },
+        body: JSON.stringify({ userId: 'delowner', name: 'Delete Auth Test' })
+      }).then(r => r.json());
+
+      const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}`, {
+        method: 'DELETE',
+        headers: { 'X-Client-Id': 'notowner' }
+      });
+
+      expect(response.status).toBe(401);
+
+      // Verify track still exists
+      const getResponse = await fetch(`${SERVER_URL}/api/tracks/${track.id}`);
+      expect(getResponse.status).toBe(200);
     });
 
     test('should return 404 for non-existent track', async () => {

@@ -5,6 +5,9 @@ dist/
 .DS_Store
 bun.lockb
 
+# Database
+data/
+
 # Build artifacts
 src/public/app.js
 src/public/app.js.map

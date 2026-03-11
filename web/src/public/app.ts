@@ -26,12 +26,19 @@ interface TracksResponse {
 }
 
 interface WebSocketMessage {
-  type: 'track_update' | 'track_stopped' | 'track_started' | 'track_deleted';
+  type: 'track_update' | 'track_stopped' | 'track_started' | 'track_deleted' | 'initial_state';
   trackId: string;
   userId: string;
   name?: string;
   point?: Point;
   color?: string;
+  tracks?: Track[];
+  admin?: boolean;
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // Global state
@@ -150,12 +157,15 @@ function updateClientTags(): void {
   if (!tagsContainer) return;
 
   if (clientFilters.length !== 0) {
-    tagsContainer.innerHTML = clientFilters.map(clientId => `
-      <div class="client-tag" onclick="removeClientFilter('${clientId}')">
-        ${clientId}
+    tagsContainer.innerHTML = clientFilters.map(clientId => {
+      const safe = escapeHtml(clientId);
+      return `
+      <div class="client-tag" onclick="removeClientFilter('${safe}')">
+        ${safe}
         <span class="remove">×</span>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
   updateURL();
 }
@@ -169,7 +179,7 @@ function addClientFilter(): void {
   if (clientId && clientId.length === 6 && !clientFilters.includes(clientId)) {
     clientFilters.push(clientId);
     updateClientTags();
-    fetchTracks();
+    sendSubscribe();
     input.value = '';
   }
 }
@@ -178,14 +188,14 @@ function addClientFilter(): void {
 function removeClientFilter(clientId: string): void {
   clientFilters = clientFilters.filter(id => id !== clientId);
   updateClientTags();
-  fetchTracks();
+  sendSubscribe();
 }
 
 // Toggle historical tracks
 function toggleHistorical(): void {
   const checkbox = document.getElementById('historical-toggle') as HTMLInputElement;
   showHistorical = checkbox?.checked || false;
-  fetchTracks();
+  sendSubscribe();
 }
 
 // Disable admin
@@ -193,7 +203,7 @@ function disableAdmin(): void {
   admin = false;
   adminKey = undefined;
   updateAdminIndicator(false);
-  fetchTracks();
+  sendSubscribe();
 }
 
 // Update URL with current filters
@@ -242,10 +252,10 @@ function renderTrackItem(track: Track, isHistorical = false): string {
   const pointCount = track.pointCount || track.points.length;
 
   return `
-    <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${track.id}')" ${isHistorical ? 'style="opacity: 0.7;"' : ''}>
+    <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${escapeHtml(track.id)}')" ${isHistorical ? 'style="opacity: 0.7;"' : ''}>
       <div class="track-name">
-        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${track.color || '#FF5722'}; margin-right: 8px;"></span>
-        ${track.userId} - ${track.name}
+        <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${escapeHtml(track.color || '#FF5722')}; margin-right: 8px;"></span>
+        ${escapeHtml(track.userId)} - ${escapeHtml(track.name)}
       </div>
       <div class="track-info">${pointCount} points · ${isHistorical ? formatTime(track.startTime) + ' - ' + formatTime(track.endTime || track.startTime) : 'Started ' + formatTime(track.startTime)}</div>
       <div class="track-distance">${formatDistance(distance)}</div>
@@ -524,16 +534,30 @@ function zoomToClientTracks(): void {
   }
 }
 
+// Send subscribe message to server with current filters
+function sendSubscribe(): void {
+  if (!currentWs || currentWs.readyState !== WebSocket.OPEN) return;
+  const msg: any = {
+    type: 'subscribe',
+    clients: clientFilters,
+    historical: showHistorical,
+  };
+  if (adminKey) msg.adminKey = adminKey;
+  currentWs.send(JSON.stringify(msg));
+}
+
 // Setup WebSocket with exponential backoff reconnection
 let wsReconnectDelay = 1000;
+let currentWs: WebSocket | null = null;
 
 function setupWebSocket(): void {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+  currentWs = ws;
 
   ws.onopen = () => {
     wsReconnectDelay = 1000;
-    fetchTracks();
+    sendSubscribe();
   };
 
   ws.onmessage = (event) => {
@@ -545,7 +569,24 @@ function setupWebSocket(): void {
       return;
     }
 
-    if (clientFilters.length > 0 && !clientFilters.includes(data.userId)) {
+    if (data.type === 'initial_state') {
+      updateAdminIndicator(data.admin === true);
+
+      const oldTrackIds = Object.keys(tracks);
+      const newTracks: Record<string, Track> = {};
+      (data.tracks || []).forEach(track => {
+        newTracks[track.id] = track;
+      });
+
+      oldTrackIds.forEach(trackId => {
+        if (!newTracks[trackId]) cleanupTrackLayers(trackId);
+      });
+
+      tracks = newTracks;
+      updateTracksList();
+      updateMap();
+
+      if (clientFilters.length > 0) zoomToClientTracks();
       return;
     }
 
@@ -598,6 +639,7 @@ function setupWebSocket(): void {
   };
 
   ws.onclose = () => {
+    currentWs = null;
     console.log(`WebSocket closed, reconnecting in ${wsReconnectDelay / 1000}s...`);
     setTimeout(setupWebSocket, wsReconnectDelay);
     wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000);
@@ -639,10 +681,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  fetchTracks();
   setupWebSocket();
-
-  // Refresh every 30 seconds as backup
-  setInterval(fetchTracks, 30000);
 });
 
