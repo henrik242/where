@@ -58,13 +58,11 @@ object GeocodingHelper {
             if (specific != null) return@withContext specific
 
             // No precise name — check for a nearby peak before using locality
-            if (specific == null) {
-                try {
-                    val peak = searchNearbyPeak(latLng)
-                    if (peak != null && broad != null) return@withContext "$peak, $broad"
-                    if (peak != null) return@withContext peak
-                } catch (_: Exception) { }
-            }
+            try {
+                val peak = searchNearbyPeak(latLng)
+                if (peak != null && broad != null) return@withContext "$peak, $broad"
+                if (peak != null) return@withContext peak
+            } catch (_: Exception) { }
 
             if (locality != null && broad != null && locality != broad) return@withContext "$locality, $broad"
             if (locality != null) return@withContext locality
