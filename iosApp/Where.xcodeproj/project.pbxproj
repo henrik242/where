@@ -13,6 +13,7 @@
 		A10004 /* OfflineMapFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20006 /* OfflineMapFactory.swift */; };
 		A10005 /* StyleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20007 /* StyleServer.swift */; };
 		A10006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20008 /* Assets.xcassets */; };
+		A10009 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A2000C /* LaunchScreen.storyboard */; };
 		A10008 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = A80003 /* FirebaseCrashlytics */; };
 		AF3CE3122F447F6300661CE0 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = A80001 /* MapLibre */; };
 /* End PBXBuildFile section */
@@ -29,6 +30,7 @@
 		A20009 /* Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Generated.xcconfig; sourceTree = "<group>"; };
 		A2000A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		A2000B /* GoogleService-debug-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-debug-Info.plist"; sourceTree = "<group>"; };
+		A2000C /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,6 +67,7 @@
 				A20004 /* Info.plist */,
 				A2000A /* GoogleService-Info.plist */,
 				A2000B /* GoogleService-debug-Info.plist */,
+				A2000C /* LaunchScreen.storyboard */,
 			);
 			path = Where;
 			sourceTree = "<group>";
@@ -141,6 +144,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10006 /* Assets.xcassets in Resources */,
+				A10009 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
