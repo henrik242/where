@@ -10,8 +10,7 @@ on:
       - 'app/**'
       - 'shared/**'
       - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradlew'
+      - '*gradle*'
       - '.github/workflows/build-android.yml'
   pull_request:
     branches: [ main ]
@@ -19,7 +18,7 @@ on:
       - 'app/**'
       - 'shared/**'
       - 'gradle/**'
-      - '*.gradle.kts'
+      - '*gradle*'
       - 'gradlew'
   workflow_dispatch:
 

@@ -9,16 +9,14 @@ on:
     paths:
       - 'shared/**'
       - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradlew'
+      - '*gradle*'
       - '.github/workflows/build-ios.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'shared/**'
       - 'gradle/**'
-      - '*.gradle.kts'
-      - 'gradlew'
+      - '*gradle*'
   workflow_dispatch:
 
 jobs:
