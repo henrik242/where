@@ -1,14 +1,14 @@
 [versions]
-activityCompose = "1.12.4"
+activityCompose = "1.13.0"
 agp = "9.1.0"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
-composeMultiplatform = "1.11.0-alpha03"
-composeMaterial3 = "1.11.0-alpha03" # see release notes for matching version
+composeMultiplatform = "1.11.0-alpha04"
+composeMaterial3 = "1.11.0-alpha04" # see release notes for matching version
 appcompat = "1.7.1"
-composeBom = "2026.02.01"
+composeBom = "2026.03.00"
 core = "1.7.0"
-coreKtx = "1.17.0"
-datastorePreferences = "1.2.0"
+coreKtx = "1.18.0"
+datastorePreferences = "1.2.1"
 crashlyticsPlugin = "3.0.6"
 espressoCore = "3.7.0"
 firebaseBom = "34.10.0"
@@ -25,11 +25,12 @@ material = "1.13.0"
 mockk = "1.14.9"
 mockkAndroid = "1.14.9"
 navigationCompose = "2.9.7"
-kmpZip = "0.7.2"
+kmpZip = "0.8.0"
 playServicesLocation = "21.3.0"
 room = "2.8.4"
 timber = "5.0.1"
-uiTestJunit4 = "1.10.4"
+uiTestJunit4 = "1.10.5"
+dependencyUpdates = "0.53.0"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -83,3 +84,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+dependency-updates = { id = "com.github.ben-manes.versions", version.ref = "dependencyUpdates" }
