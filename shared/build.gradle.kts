@@ -83,7 +83,7 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
-    androidLibrary {
+    android {
         namespace = "no.synth.where.shared"
         compileSdk = 36
         minSdk = 33
