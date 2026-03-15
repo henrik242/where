@@ -3,6 +3,28 @@ import { CONFIG } from './src/config';
 import { trackStore } from './src/store';
 import { enrichTrack, addSubscribedClient, removeSubscribedClient, startStaleTrackChecker } from './src/tracking';
 
+const OG_META = `<meta name="description" content="Free, open-source outdoor navigation with offline maps, GPS tracking, and live location sharing. Available for iOS and Android.">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Where? - Outdoor Navigation & Live Tracking">
+    <meta property="og:description" content="Free, open-source outdoor navigation with offline maps, GPS tracking, and live location sharing. Available for iOS and Android.">
+    <meta property="og:image" content="https://where.synth.no/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Where? app — free, open-source outdoor navigation with offline maps, GPS tracking, and live sharing">
+    <meta property="og:url" content="https://where.synth.no/about">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Where?">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Where? - Outdoor Navigation & Live Tracking">
+    <meta name="twitter:description" content="Free, open-source outdoor navigation with offline maps, GPS tracking, and live location sharing. Available for iOS and Android.">
+    <meta name="twitter:image" content="https://where.synth.no/og-image.png">
+    <meta name="twitter:image:alt" content="Where? app — free, open-source outdoor navigation with offline maps, GPS tracking, and live sharing">
+
+    <meta name="theme-color" content="#1a73e8">`;
+
 interface WsData {
   clients: string[];
   admin: boolean;
@@ -50,6 +72,12 @@ const server = Bun.serve({
     const file = Bun.file(`${import.meta.dir}/src/public${filePath}`);
 
     if (await file.exists()) {
+      if (filePath.endsWith('.html')) {
+        const html = await file.text();
+        return new Response(html.replace('<!-- OG_META -->', OG_META), {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        });
+      }
       return new Response(file);
     }
 
