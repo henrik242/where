@@ -96,5 +96,5 @@ console.log(`🚀 Where Web running at http://localhost:${server.port}`);
 console.log(`📡 WebSocket available at ws://localhost:${server.port}/ws`);
 console.log(`🌐 Web interface at http://localhost:${server.port}`);
 console.log(`🔑 Admin: ${CONFIG.ADMIN_KEY ? 'ENABLED' : 'DISABLED'}`);
-console.log(`🔒 HMAC verification: ${CONFIG.TRACKING_HMAC_SECRET ? 'ENABLED' : 'DISABLED'}`);
+console.log(`🔒 HMAC verification: ${CONFIG.TRACKING_HINT ? 'ENABLED' : 'DISABLED'}`);
 console.log(`⏱️  Auto-stop inactive tracks after 10 minutes`);

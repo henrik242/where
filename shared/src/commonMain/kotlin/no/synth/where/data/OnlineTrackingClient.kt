@@ -30,7 +30,7 @@ import kotlin.math.min
 class OnlineTrackingClient(
     private val serverUrl: String,
     private val clientId: String,
-    private val hmacSecret: String,
+    private val trackingHint: String,
     val client: HttpClient = createDefaultHttpClient(),
     private val canSend: () -> Boolean = { true }
 ) {
@@ -69,7 +69,7 @@ class OnlineTrackingClient(
                 put("name", trackName)
             }.toString()
 
-            val signature = HmacUtils.generateSignature(jsonBody, hmacSecret)
+            val signature = HmacUtils.generateSignature(jsonBody, trackingHint)
 
             val response = client.post("$serverUrl/api/tracks") {
                 header("X-Client-Id", clientId)
@@ -124,7 +124,7 @@ class OnlineTrackingClient(
                     }
                 }.toString()
 
-                val signature = HmacUtils.generateSignature(jsonBody, hmacSecret)
+                val signature = HmacUtils.generateSignature(jsonBody, trackingHint)
 
                 val response = client.post("$serverUrl/api/tracks") {
                     header("X-Client-Id", clientId)
@@ -179,7 +179,7 @@ class OnlineTrackingClient(
                 accuracy?.let { put("accuracy", it.toDouble()) }
             }.toString()
 
-            val signature = HmacUtils.generateSignature(jsonBody, hmacSecret)
+            val signature = HmacUtils.generateSignature(jsonBody, trackingHint)
 
             val response = client.post("$serverUrl/api/tracks/$trackId/points") {
                 header("X-Client-Id", clientId)
@@ -238,7 +238,7 @@ class OnlineTrackingClient(
                     point.accuracy?.let { put("accuracy", it.toDouble()) }
                 }.toString()
 
-                val signature = HmacUtils.generateSignature(jsonBody, hmacSecret)
+                val signature = HmacUtils.generateSignature(jsonBody, trackingHint)
 
                 val response = client.post("$serverUrl/api/tracks/$trackId/points") {
                     header("X-Client-Id", clientId)
@@ -315,7 +315,7 @@ class OnlineTrackingClient(
 
             try {
                 val body = "{}"
-                val signature = HmacUtils.generateSignature(body, hmacSecret)
+                val signature = HmacUtils.generateSignature(body, trackingHint)
 
                 val response = client.put("$serverUrl/api/tracks/$trackId/stop") {
                     header("X-Client-Id", clientId)

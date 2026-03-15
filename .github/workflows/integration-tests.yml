@@ -30,7 +30,7 @@ jobs:
       run: |
         cat > local.properties <<EOF
         sdk.dir=$ANDROID_HOME
-        TRACKING_HMAC_SECRET=${{ secrets.TRACKING_HMAC_SECRET }}
+        TRACKING_HINT=${{ secrets.TRACKING_HINT }}
         STRAVA_URL=${{ vars.INTEGRATION_STRAVA_URL }}
         GARMIN_URL=${{ vars.INTEGRATION_GARMIN_URL }}
         KOMOOT_URL=${{ vars.INTEGRATION_KOMOOT_URL }}

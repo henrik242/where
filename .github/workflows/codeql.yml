@@ -30,7 +30,7 @@ jobs:
     - name: Create local.properties
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
-        echo "TRACKING_HMAC_SECRET=codeql-dummy-hmac-secret" >> local.properties
+        echo "TRACKING_HINT=codeql-dummy-tracking-hint" >> local.properties
 
     - name: Create google-services.json
       run: cp .github/dummy/google-services-dummy.json app/google-services.json

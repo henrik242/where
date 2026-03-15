@@ -444,7 +444,7 @@ fun IosMapScreen(
                         val client = OnlineTrackingClient(
                             serverUrl = trackingServerUrl,
                             clientId = clientId,
-                            hmacSecret = BuildInfo.TRACKING_HMAC_SECRET,
+                            trackingHint = BuildInfo.TRACKING_HINT,
                             canSend = { !userPreferences.offlineModeEnabled.value }
                         )
                         client.startTrack("Track")
@@ -527,7 +527,7 @@ fun IosMapScreen(
                         val client = OnlineTrackingClient(
                             serverUrl = trackingServerUrl,
                             clientId = clientId,
-                            hmacSecret = BuildInfo.TRACKING_HMAC_SECRET,
+                            trackingHint = BuildInfo.TRACKING_HINT,
                             canSend = { !userPreferences.offlineModeEnabled.value }
                         )
                         val track = currentTrack

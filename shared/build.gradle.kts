@@ -16,7 +16,7 @@ abstract class GenerateBuildInfoTask : DefaultTask() {
     abstract val outputDir: DirectoryProperty
 
     @get:Input
-    abstract val trackingHmacSecret: Property<String>
+    abstract val trackingHint: Property<String>
 
     private fun execGit(vararg args: String): String {
         return try {
@@ -49,7 +49,7 @@ abstract class GenerateBuildInfoTask : DefaultTask() {
             |    const val GIT_SHORT_SHA = "$gitShortSha"
             |    const val BUILD_DATE = "$buildDate"
             |    const val VERSION_INFO = "$gitCommitCount.$gitShortSha $buildDate"
-            |    const val TRACKING_HMAC_SECRET = "${trackingHmacSecret.get()}"
+            |    const val TRACKING_HINT = "${trackingHint.get()}"
             |}
             """.trimMargin()
         )
@@ -57,15 +57,15 @@ abstract class GenerateBuildInfoTask : DefaultTask() {
 }
 
 val localPropertiesFile = rootProject.file("local.properties")
-val trackingSecret = providers.environmentVariable("TRACKING_HMAC_SECRET").orElse(
+val trackingSecret = providers.environmentVariable("TRACKING_HINT").orElse(
     providers.provider {
         val props = Properties()
         if (localPropertiesFile.exists()) props.load(localPropertiesFile.inputStream())
-        props.getProperty("TRACKING_HMAC_SECRET")
+        props.getProperty("TRACKING_HINT")
             ?: throw GradleException(
-                "TRACKING_HMAC_SECRET is not set!\n" +
+                "TRACKING_HINT is not set!\n" +
                     "Add it to local.properties:\n" +
-                    "  TRACKING_HMAC_SECRET=your-secret-key\n" +
+                    "  TRACKING_HINT=your-secret-key\n" +
                     "Or set it as an environment variable.\n" +
                     "Generate a key with: openssl rand -base64 32"
             )
@@ -74,7 +74,7 @@ val trackingSecret = providers.environmentVariable("TRACKING_HMAC_SECRET").orEls
 
 val generateBuildInfo by tasks.registering(GenerateBuildInfoTask::class) {
     outputDir.set(layout.buildDirectory.dir("generated/buildinfo"))
-    trackingHmacSecret.set(trackingSecret)
+    trackingHint.set(trackingSecret)
     outputs.upToDateWhen { false }
 }
 

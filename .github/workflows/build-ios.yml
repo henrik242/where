@@ -52,8 +52,8 @@ jobs:
     - name: Validate secrets
       if: github.actor != 'dependabot[bot]'
       run: |
-        if [ -z "${{ secrets.TRACKING_HMAC_SECRET }}" ]; then
-          echo "ERROR: TRACKING_HMAC_SECRET is not set in GitHub secrets"
+        if [ -z "${{ secrets.TRACKING_HINT }}" ]; then
+          echo "ERROR: TRACKING_HINT is not set in GitHub secrets"
           exit 1
         fi
         if [ -z "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" ]; then
@@ -68,7 +68,7 @@ jobs:
     - name: Create local.properties
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
-        echo "TRACKING_HMAC_SECRET=${{ github.actor != 'dependabot[bot]' && secrets.TRACKING_HMAC_SECRET || 'dependabot-dummy-hmac-secret' }}" >> local.properties
+        echo "TRACKING_HINT=${{ github.actor != 'dependabot[bot]' && secrets.TRACKING_HINT || 'dependabot-dummy-tracking-hint' }}" >> local.properties
 
     - name: Create GoogleService-Info.plist
       if: github.actor != 'dependabot[bot]'

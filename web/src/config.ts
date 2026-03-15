@@ -4,7 +4,7 @@
 
 export const CONFIG = {
   ADMIN_KEY: process.env.ADMIN_KEY,
-  TRACKING_HMAC_SECRET: process.env.TRACKING_HMAC_SECRET,
+  TRACKING_HINT: process.env.TRACKING_HINT,
   PORT: process.env.PORT || 3000,
   STALE_TRACK_TIMEOUT: 10 * 60 * 1000, // 10 minutes
   STALE_CHECK_INTERVAL: 60 * 1000, // 1 minute
@@ -13,7 +13,7 @@ export const CONFIG = {
 } as const;
 
 // Validate required configuration
-if (!CONFIG.TRACKING_HMAC_SECRET) {
-  console.warn('⚠️  WARNING: TRACKING_HMAC_SECRET not set! All tracking requests will be rejected.');
+if (!CONFIG.TRACKING_HINT) {
+  console.warn('⚠️  WARNING: TRACKING_HINT not set! All tracking requests will be rejected.');
 }
 

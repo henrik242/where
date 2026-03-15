@@ -78,7 +78,7 @@ class LocationTrackingService : Service() {
             onlineTrackingClient = OnlineTrackingClient(
                 serverUrl = userPreferences.trackingServerUrl.value,
                 clientId = clientId,
-                hmacSecret = BuildInfo.TRACKING_HMAC_SECRET,
+                trackingHint = BuildInfo.TRACKING_HINT,
                 canSend = { !userPreferences.offlineModeEnabled.value }
             )
 

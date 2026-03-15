@@ -51,7 +51,7 @@ export async function verifyHmacSignature(
   body: string,
   signature: string | null
 ): Promise<boolean> {
-  if (!CONFIG.TRACKING_HMAC_SECRET || !signature) {
+  if (!CONFIG.TRACKING_HINT || !signature) {
     return false;
   }
 
@@ -59,7 +59,7 @@ export async function verifyHmacSignature(
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
       'raw',
-      encoder.encode(CONFIG.TRACKING_HMAC_SECRET),
+      encoder.encode(CONFIG.TRACKING_HINT),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']

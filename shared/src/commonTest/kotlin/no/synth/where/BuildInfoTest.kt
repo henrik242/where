@@ -20,7 +20,7 @@ class BuildInfoTest {
     }
 
     @Test
-    fun trackingHmacSecretIsNotBlank() {
-        assertTrue(BuildInfo.TRACKING_HMAC_SECRET.isNotBlank())
+    fun trackingHintIsNotBlank() {
+        assertTrue(BuildInfo.TRACKING_HINT.isNotBlank())
     }
 }

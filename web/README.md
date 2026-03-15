@@ -45,12 +45,12 @@ Toggle "Show historical (24h)" checkbox to include stopped tracks.
 ### Environment Variables
 
 ```bash
-TRACKING_HMAC_SECRET=your-secret  # Required for HMAC verification
+TRACKING_HINT=your-secret  # Required for HMAC verification
 ADMIN_KEY=your-secret-key         # Optional - for admin access to view all tracks
 PORT=3000                          # Default: 3000
 ```
 
-**Important:** `TRACKING_HMAC_SECRET` must be set or all tracking requests will be rejected.
+**Important:** `TRACKING_HINT` must be set or all tracking requests will be rejected.
 
 ## Setup
 
@@ -64,7 +64,7 @@ PORT=3000                          # Default: 3000
    openssl rand -base64 32
    ```
 
-3. Edit `.env` and set `TRACKING_HMAC_SECRET` to the generated key
+3. Edit `.env` and set `TRACKING_HINT` to the generated key
 
 4. Start the server:
    ```bash
