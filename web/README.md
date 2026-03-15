@@ -1,4 +1,4 @@
-# Where Server
+# Where? Server
 
 Backend component for the Where? Android navigation app. Provides live tracking visualization on a web interface.
 
