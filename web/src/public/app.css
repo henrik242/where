@@ -312,9 +312,9 @@ body {
 }
 
 .menu-version {
-    padding: 8px 16px;
-    font-size: 11px;
-    color: #999;
+    padding: 6px 16px;
+    font-size: 9px;
+    color: #bbb;
     font-family: monospace;
     border-top: 1px solid #eee;
 }
