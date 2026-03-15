@@ -2,7 +2,7 @@ package no.synth.where.data
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
-import io.ktor.client.request.header
+
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,7 +21,7 @@ object GeocodingHelper {
         val viewbox = "${latLng.longitude - delta},${latLng.latitude - delta},${latLng.longitude + delta},${latLng.latitude + delta}"
         val url = "https://nominatim.openstreetmap.org/search?q=%5Bnatural%3Dpeak%5D&format=json&limit=1&viewbox=$viewbox&bounded=1"
         val response = client.get(url) {
-            header("User-Agent", "Where-App/1.0")
+
         }
         if (response.status.value !in 200..299) return null
         val results = Json.parseToJsonElement(response.bodyAsText()).jsonArray
@@ -33,7 +33,7 @@ object GeocodingHelper {
         try {
             val url = "https://nominatim.openstreetmap.org/reverse?lat=${latLng.latitude}&lon=${latLng.longitude}&format=json&addressdetails=1"
             val response = client.get(url) {
-                header("User-Agent", "Where-App/1.0")
+    
             }
             if (response.status.value !in 200..299) return@withContext null
 
@@ -95,7 +95,7 @@ object GeocodingHelper {
         val name = try {
             val url = "https://nominatim.openstreetmap.org/reverse?lat=${latLng.latitude}&lon=${latLng.longitude}&format=json&addressdetails=1&zoom=10"
             val response = client.get(url) {
-                header("User-Agent", "Where-App/1.0")
+    
             }
             if (response.status.value !in 200..299) {
                 null
