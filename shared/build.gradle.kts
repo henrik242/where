@@ -11,43 +11,32 @@ plugins {
     alias(libs.plugins.room)
 }
 
-fun execGit(command: Array<String>): String {
-    return try {
-        val process = Runtime.getRuntime().exec(command)
-        val output = process.inputStream.bufferedReader().readText().trim()
-        process.waitFor()
-        output
-    } catch (e: Exception) {
-        println("Warning: Failed to execute '${command.joinToString(" ")}': ${e.message}")
-        ""
-    }
-}
+abstract class GenerateBuildInfoTask : DefaultTask() {
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
 
-val generateBuildInfo by tasks.registering {
-    val outputDir = layout.buildDirectory.dir("generated/buildinfo")
-    outputs.dir(outputDir)
-    // Always re-run so git info stays current
-    outputs.upToDateWhen { false }
+    @get:Input
+    abstract val trackingHmacSecret: Property<String>
 
-    doLast {
-        val gitCommitCount = execGit(arrayOf("git", "rev-list", "--count", "HEAD")).ifEmpty { "0" }
-        val gitShortSha = execGit(arrayOf("git", "rev-parse", "--short", "HEAD")).ifEmpty { "unknown" }
-        val buildDate = LocalDate.now().toString()
-
-        val localProperties = Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            localProperties.load(localPropertiesFile.inputStream())
+    private fun execGit(vararg args: String): String {
+        return try {
+            val process = ProcessBuilder(*args)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().readText().trim()
+            process.waitFor()
+            output
+        } catch (e: Exception) {
+            logger.warn("Failed to execute '${args.joinToString(" ")}': ${e.message}")
+            ""
         }
-        val trackingHmacSecret = System.getenv("TRACKING_HMAC_SECRET")
-            ?: localProperties.getProperty("TRACKING_HMAC_SECRET")
-            ?: throw GradleException(
-                "TRACKING_HMAC_SECRET is not set!\n" +
-                    "Add it to local.properties:\n" +
-                    "  TRACKING_HMAC_SECRET=your-secret-key\n" +
-                    "Or set it as an environment variable.\n" +
-                    "Generate a key with: openssl rand -base64 32"
-            )
+    }
+
+    @TaskAction
+    fun generate() {
+        val gitCommitCount = execGit("git", "rev-list", "--count", "HEAD").ifEmpty { "0" }
+        val gitShortSha = execGit("git", "rev-parse", "--short", "HEAD").ifEmpty { "unknown" }
+        val buildDate = LocalDate.now().toString()
 
         val dir = outputDir.get().asFile.resolve("no/synth/where")
         dir.mkdirs()
@@ -60,11 +49,33 @@ val generateBuildInfo by tasks.registering {
             |    const val GIT_SHORT_SHA = "$gitShortSha"
             |    const val BUILD_DATE = "$buildDate"
             |    const val VERSION_INFO = "$gitCommitCount.$gitShortSha $buildDate"
-            |    const val TRACKING_HMAC_SECRET = "$trackingHmacSecret"
+            |    const val TRACKING_HMAC_SECRET = "${trackingHmacSecret.get()}"
             |}
             """.trimMargin()
         )
     }
+}
+
+val localPropertiesFile = rootProject.file("local.properties")
+val trackingSecret = providers.environmentVariable("TRACKING_HMAC_SECRET").orElse(
+    providers.provider {
+        val props = Properties()
+        if (localPropertiesFile.exists()) props.load(localPropertiesFile.inputStream())
+        props.getProperty("TRACKING_HMAC_SECRET")
+            ?: throw GradleException(
+                "TRACKING_HMAC_SECRET is not set!\n" +
+                    "Add it to local.properties:\n" +
+                    "  TRACKING_HMAC_SECRET=your-secret-key\n" +
+                    "Or set it as an environment variable.\n" +
+                    "Generate a key with: openssl rand -base64 32"
+            )
+    }
+)
+
+val generateBuildInfo by tasks.registering(GenerateBuildInfoTask::class) {
+    outputDir.set(layout.buildDirectory.dir("generated/buildinfo"))
+    trackingHmacSecret.set(trackingSecret)
+    outputs.upToDateWhen { false }
 }
 
 kotlin {

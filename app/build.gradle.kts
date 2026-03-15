@@ -10,6 +10,14 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+val gitCommitCount = providers.exec {
+    commandLine("git", "rev-list", "--count", "HEAD")
+}.standardOutput.asText.map { it.trim().ifEmpty { "0" } }.orElse("0")
+
+val gitShortSha = providers.exec {
+    commandLine("git", "rev-parse", "--short", "HEAD")
+}.standardOutput.asText.map { it.trim().ifEmpty { "unknown" } }.orElse("unknown")
+
 android {
     namespace = "no.synth.where"
     compileSdk = 36
@@ -48,29 +56,15 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Generate version info from git
-        fun execGit(command: Array<String>): String {
-            return try {
-                val process = Runtime.getRuntime().exec(command)
-                val output = process.inputStream.bufferedReader().readText().trim()
-                process.waitFor()
-                output
-            } catch (e: Exception) {
-                println("Warning: Failed to execute '$command': ${e.message}")
-                ""
-            }
-        }
-
-        val gitCommitCount = execGit(arrayOf("git", "rev-list", "--count", "HEAD")).ifEmpty { "0" }
-        val gitShortSha =
-            execGit(arrayOf("git", "rev-parse", "--short", "HEAD")).ifEmpty { "unknown" }
+        val commitCount = gitCommitCount.get()
+        val shortSha = gitShortSha.get()
         val buildDate = LocalDate.now().toString()
 
-        versionCode = gitCommitCount.toInt()
-        versionName = "$gitCommitCount.$gitShortSha $buildDate"
+        versionCode = commitCount.toInt()
+        versionName = "$commitCount.$shortSha $buildDate"
 
-        buildConfigField("String", "GIT_COMMIT_COUNT", "\"$gitCommitCount\"")
-        buildConfigField("String", "GIT_SHORT_SHA", "\"$gitShortSha\"")
+        buildConfigField("String", "GIT_COMMIT_COUNT", "\"$commitCount\"")
+        buildConfigField("String", "GIT_SHORT_SHA", "\"$shortSha\"")
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
     }
 
