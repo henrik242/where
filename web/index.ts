@@ -28,6 +28,14 @@ const server = Bun.serve({
       return handleAPI(req);
     }
 
+    // Redirects
+    if (url.pathname === '/ios') {
+      return Response.redirect('https://apps.apple.com/app/where/id6760362061', 302);
+    }
+    if (url.pathname === '/android') {
+      return Response.redirect('https://play.google.com/store/apps/details?id=no.synth.where', 302);
+    }
+
     // Serve static files
     let filePath = url.pathname;
     if (filePath === '/') {
@@ -35,6 +43,9 @@ const server = Bun.serve({
     }
     if (filePath === '/privacy') {
       filePath = '/privacy.html';
+    }
+    if (filePath === '/about') {
+      filePath = '/about.html';
     }
     const file = Bun.file(`${import.meta.dir}/src/public${filePath}`);
 

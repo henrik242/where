@@ -674,11 +674,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Display version info if available
   const versionInfo = document.getElementById('version-info');
   const versionDisplay = document.getElementById('version-display');
-  if (versionInfo && versionDisplay) {
-    const version = versionInfo.textContent?.trim();
-    if (version) {
-      versionDisplay.textContent = version;
-    }
+  if (versionDisplay) {
+    const version = versionInfo?.textContent?.trim();
+    versionDisplay.textContent = version || 'dev';
   }
 
   setupWebSocket();

@@ -16,8 +16,19 @@
 </head>
 <body>
     <div id="map"></div>
-    <div class="version-display" id="version-display"></div>
     <!-- VERSION_PLACEHOLDER -->
+    <div class="menu-wrapper">
+        <button class="menu-btn" onclick="this.parentElement.classList.toggle('open')" title="Menu">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/>
+            </svg>
+        </button>
+        <div class="menu-dropdown">
+            <a href="/about">About Where</a>
+            <a href="https://github.com/henrik242/where">GitHub</a>
+            <div class="menu-version" id="version-display"></div>
+        </div>
+    </div>
     <button id="show-panel-btn" class="show-panel-btn" onclick="showPanel()">
         📍 Live Tracks
     </button>
@@ -53,6 +64,7 @@
     </div>
 
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script>document.addEventListener('click', e => { if (!e.target.closest('.menu-wrapper')) document.querySelector('.menu-wrapper')?.classList.remove('open'); });</script>
     <script src="app.js"></script>
 </body>
 </html>
