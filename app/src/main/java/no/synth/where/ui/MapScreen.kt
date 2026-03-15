@@ -99,6 +99,7 @@ fun MapScreen(
     val isResolvingRulerName by viewModel.isResolvingRulerName.collectAsState()
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
+    var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
     var selectedLayer by rememberSaveable { mutableStateOf(MapLayer.KARTVERKET) }
     var showLayerMenu by remember { mutableStateOf(false) }
     var showWaymarkedTrails by rememberSaveable { mutableStateOf(false) }
@@ -342,12 +343,24 @@ fun MapScreen(
         onCloseViewingPoint = onClearViewingPoint,
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
         onSearchResultClick = { result ->
+            highlightedSearchResult = null
             mapInstance?.animateCamera(
                 org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(result.latLng.toMapLibre(), 14.0)
             )
             viewModel.onSearchResultClicked()
         },
-        onSearchClose = { viewModel.closeSearch() },
+        onSearchResultHover = { result ->
+            highlightedSearchResult = result
+            if (result != null) {
+                mapInstance?.animateCamera(
+                    org.maplibre.android.camera.CameraUpdateFactory.newLatLng(result.latLng.toMapLibre())
+                )
+            }
+        },
+        onSearchClose = {
+            highlightedSearchResult = null
+            viewModel.closeSearch()
+        },
         mapContent = {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
@@ -364,6 +377,8 @@ fun MapScreen(
                 savedCameraLon = savedCameraLon,
                 savedCameraZoom = savedCameraZoom,
                 rulerState = rulerState,
+                searchResults = searchResults,
+                highlightedSearchResult = highlightedSearchResult,
                 regionsLoadedTrigger = regionsLoadedTrigger,
                 onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },

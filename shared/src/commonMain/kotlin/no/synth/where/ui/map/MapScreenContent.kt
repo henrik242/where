@@ -61,6 +61,7 @@ fun MapScreenContent(
     onCloseViewingPoint: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
+    onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit,
     // Map slot
     mapContent: @Composable () -> Unit
@@ -124,6 +125,7 @@ fun MapScreenContent(
                 onCloseViewingPoint = onCloseViewingPoint,
                 onSearchQueryChange = onSearchQueryChange,
                 onSearchResultClick = onSearchResultClick,
+                onSearchResultHover = onSearchResultHover,
                 onSearchClose = onSearchClose
             )
         }

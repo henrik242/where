@@ -1,5 +1,6 @@
 package no.synth.where.ui.map
 
+import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.TrackPoint
@@ -30,6 +31,15 @@ fun buildRulerLineGeoJson(points: List<RulerPoint>): String {
 fun buildRulerPointsGeoJson(points: List<RulerPoint>): String {
     val features = points.joinToString(",") { point ->
         """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]}}"""
+    }
+    return """{"type":"FeatureCollection","features":[$features]}"""
+}
+
+fun buildSearchResultsGeoJson(results: List<PlaceSearchClient.SearchResult>): String {
+    val features = results.joinToString(",") { result ->
+        val name = result.name.replace("\"", "\\\"")
+        val type = result.type.replace("\"", "\\\"")
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${result.latLng.longitude},${result.latLng.latitude}]},"properties":{"name":"$name","type":"$type"}}"""
     }
     return """{"type":"FeatureCollection","features":[$features]}"""
 }

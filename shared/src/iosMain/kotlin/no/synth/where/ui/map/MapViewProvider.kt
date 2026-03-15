@@ -14,6 +14,7 @@ interface MapViewProvider {
     fun createMapView(): UIView
     fun setStyle(json: String)
     fun setCamera(latitude: Double, longitude: Double, zoom: Double)
+    fun panTo(latitude: Double, longitude: Double)
     fun setShowsUserLocation(show: Boolean)
     fun zoomIn()
     fun zoomOut()
@@ -27,5 +28,9 @@ interface MapViewProvider {
     fun setOnMapClickCallback(callback: MapClickCallback?)
     fun updateRuler(lineGeoJson: String, pointsGeoJson: String)
     fun clearRuler()
+    fun updateSearchResults(geoJson: String)
+    fun clearSearchResults()
+    fun highlightSearchResult(geoJson: String)
+    fun clearHighlightedSearchResult()
     fun setConnected(connected: Boolean)
 }

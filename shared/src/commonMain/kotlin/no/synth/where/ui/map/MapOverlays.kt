@@ -325,6 +325,7 @@ fun BoxScope.MapOverlays(
     onOfflineIndicatorClick: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit,
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
+    onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit
 ) {
     val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null)
@@ -433,6 +434,7 @@ fun BoxScope.MapOverlays(
             results = searchResults,
             focusRequester = searchFocusRequester,
             onResultClick = onSearchResultClick,
+            onResultHover = onSearchResultHover,
             onClose = onSearchClose
         )
     }

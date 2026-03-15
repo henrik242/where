@@ -11,6 +11,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingSavedPointsGeoJson: String?
     private var pendingRulerLineGeoJson: String?
     private var pendingRulerPointsGeoJson: String?
+    private var pendingSearchResultsGeoJson: String?
+    private var pendingSearchHighlightGeoJson: String?
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
@@ -24,6 +26,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let rulerLineLayerId = "ruler-line-layer"
     private let rulerPointSourceId = "ruler-point-source"
     private let rulerPointLayerId = "ruler-point-layer"
+    private let searchResultsSourceId = "search-results-source"
+    private let searchResultsLayerId = "search-results-layer"
+    private let searchHighlightSourceId = "search-highlight-source"
+    private let searchHighlightLayerId = "search-highlight-layer"
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -108,6 +114,14 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         )
     }
 
+    func panTo(latitude: Double, longitude: Double) {
+        guard let mapView = self.mapView else { return }
+        mapView.setCenter(
+            CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            animated: true
+        )
+    }
+
     func setShowsUserLocation(show: Bool) {
         guard let mapView = self.mapView else { return }
         mapView.showsUserLocation = show
@@ -179,6 +193,34 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         removeRuler(style: style)
     }
 
+    func updateSearchResults(geoJson: String) {
+        guard let mapView = self.mapView, let style = mapView.style else {
+            pendingSearchResultsGeoJson = geoJson
+            return
+        }
+        applySearchResults(style: style, geoJson: geoJson)
+    }
+
+    func clearSearchResults() {
+        pendingSearchResultsGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeSearchResults(style: style)
+    }
+
+    func highlightSearchResult(geoJson: String) {
+        guard let mapView = self.mapView, let style = mapView.style else {
+            pendingSearchHighlightGeoJson = geoJson
+            return
+        }
+        applySearchHighlight(style: style, geoJson: geoJson)
+    }
+
+    func clearHighlightedSearchResult() {
+        pendingSearchHighlightGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeSearchHighlight(style: style)
+    }
+
     func setConnected(connected: Bool) {
         isMapConnected = connected
         MLNNetworkConfiguration.sharedManager.delegate = connected ? nil : self
@@ -210,6 +252,12 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
         if let lineGeoJson = pendingRulerLineGeoJson, let pointsGeoJson = pendingRulerPointsGeoJson {
             applyRuler(style: style, lineGeoJson: lineGeoJson, pointsGeoJson: pointsGeoJson)
+        }
+        if let geoJson = pendingSearchResultsGeoJson {
+            applySearchResults(style: style, geoJson: geoJson)
+        }
+        if let geoJson = pendingSearchHighlightGeoJson {
+            applySearchHighlight(style: style, geoJson: geoJson)
         }
     }
 
@@ -319,6 +367,62 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let source = style.source(withIdentifier: rulerLineSourceId) { style.removeSource(source) }
         if let layer = style.layer(withIdentifier: rulerPointLayerId) { style.removeLayer(layer) }
         if let source = style.source(withIdentifier: rulerPointSourceId) { style.removeSource(source) }
+    }
+
+    private func applySearchResults(style: MLNStyle, geoJson: String) {
+        removeSearchResults(style: style)
+
+        guard let data = geoJson.data(using: .utf8),
+              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+            print("Failed to parse search results GeoJSON")
+            return
+        }
+
+        let source = MLNShapeSource(identifier: searchResultsSourceId, shape: shape, options: nil)
+        style.addSource(source)
+
+        let layer = MLNCircleStyleLayer(identifier: searchResultsLayerId, source: source)
+        layer.circleRadius = NSExpression(forConstantValue: 7)
+        layer.circleColor = NSExpression(forConstantValue: UIColor(hex: "#E91E63"))
+        layer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+        layer.circleStrokeWidth = NSExpression(forConstantValue: 2)
+        layer.circleOpacity = NSExpression(forConstantValue: 0.9)
+        style.addLayer(layer)
+
+        pendingSearchResultsGeoJson = geoJson
+    }
+
+    private func removeSearchResults(style: MLNStyle) {
+        if let layer = style.layer(withIdentifier: searchResultsLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: searchResultsSourceId) { style.removeSource(source) }
+    }
+
+    private func applySearchHighlight(style: MLNStyle, geoJson: String) {
+        removeSearchHighlight(style: style)
+
+        guard let data = geoJson.data(using: .utf8),
+              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+            print("Failed to parse search highlight GeoJSON")
+            return
+        }
+
+        let source = MLNShapeSource(identifier: searchHighlightSourceId, shape: shape, options: nil)
+        style.addSource(source)
+
+        let layer = MLNCircleStyleLayer(identifier: searchHighlightLayerId, source: source)
+        layer.circleRadius = NSExpression(forConstantValue: 11)
+        layer.circleColor = NSExpression(forConstantValue: UIColor(hex: "#E91E63"))
+        layer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+        layer.circleStrokeWidth = NSExpression(forConstantValue: 3)
+        layer.circleOpacity = NSExpression(forConstantValue: 1.0)
+        style.addLayer(layer)
+
+        pendingSearchHighlightGeoJson = geoJson
+    }
+
+    private func removeSearchHighlight(style: MLNStyle) {
+        if let layer = style.layer(withIdentifier: searchHighlightLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: searchHighlightSourceId) { style.removeSource(source) }
     }
 }
 

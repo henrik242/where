@@ -2,6 +2,7 @@ package no.synth.where.ui.map
 
 import android.content.Context
 import android.location.Location
+import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.Track
 import no.synth.where.data.RulerState
 import org.maplibre.android.location.LocationComponent
@@ -156,6 +157,87 @@ object MapRenderUtils {
                     ),
                     PropertyFactory.circleStrokeWidth(2f),
                     PropertyFactory.circleStrokeColor("#FFFFFF")
+                )
+                style.addLayer(circleLayer)
+            }
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
+    /**
+     * Update search results visualization on the map.
+     */
+    fun updateSearchResultsOnMap(
+        style: Style,
+        results: List<PlaceSearchClient.SearchResult>
+    ) {
+        try {
+            val sourceId = "search-results-source"
+            val layerId = "search-results-layer"
+
+            style.getLayer(layerId)?.let { style.removeLayer(it) }
+            style.getSource(sourceId)?.let { style.removeSource(it) }
+
+            if (results.isNotEmpty()) {
+                val features = results.map { result ->
+                    Feature.fromGeometry(
+                        Point.fromLngLat(result.latLng.longitude, result.latLng.latitude)
+                    ).apply {
+                        addStringProperty("name", result.name)
+                    }
+                }
+
+                val source = GeoJsonSource(
+                    sourceId,
+                    FeatureCollection.fromFeatures(features)
+                )
+                style.addSource(source)
+
+                val circleLayer = CircleLayer(layerId, sourceId).withProperties(
+                    PropertyFactory.circlePitchAlignment("viewport"),
+                    PropertyFactory.circleRadius(7f),
+                    PropertyFactory.circleColor("#E91E63"),
+                    PropertyFactory.circleStrokeWidth(2f),
+                    PropertyFactory.circleStrokeColor("#FFFFFF"),
+                    PropertyFactory.circleOpacity(0.9f)
+                )
+                style.addLayer(circleLayer)
+            }
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
+    /**
+     * Update highlighted search result on the map.
+     */
+    fun updateHighlightedSearchResult(
+        style: Style,
+        result: PlaceSearchClient.SearchResult?
+    ) {
+        try {
+            val sourceId = "search-highlight-source"
+            val layerId = "search-highlight-layer"
+
+            style.getLayer(layerId)?.let { style.removeLayer(it) }
+            style.getSource(sourceId)?.let { style.removeSource(it) }
+
+            if (result != null) {
+                val feature = Feature.fromGeometry(
+                    Point.fromLngLat(result.latLng.longitude, result.latLng.latitude)
+                )
+
+                val source = GeoJsonSource(sourceId, feature)
+                style.addSource(source)
+
+                val circleLayer = CircleLayer(layerId, sourceId).withProperties(
+                    PropertyFactory.circlePitchAlignment("viewport"),
+                    PropertyFactory.circleRadius(11f),
+                    PropertyFactory.circleColor("#E91E63"),
+                    PropertyFactory.circleStrokeWidth(3f),
+                    PropertyFactory.circleStrokeColor("#FFFFFF"),
+                    PropertyFactory.circleOpacity(1f)
                 )
                 style.addLayer(circleLayer)
             }

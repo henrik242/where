@@ -21,6 +21,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import no.synth.where.data.MapStyle
 import no.synth.where.data.PlatformFile
+import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointUtils
@@ -50,6 +51,8 @@ fun MapLibreMapView(
     savedCameraLon: Double = 10.0,
     savedCameraZoom: Double = 5.0,
     rulerState: RulerState = RulerState(),
+    searchResults: List<PlaceSearchClient.SearchResult> = emptyList(),
+    highlightedSearchResult: PlaceSearchClient.SearchResult? = null,
     regionsLoadedTrigger: Int = 0,
     onRulerPointAdded: (LatLng) -> Unit = {},
     onLongPress: (LatLng) -> Unit = {},
@@ -239,6 +242,18 @@ fun MapLibreMapView(
                     Logger.e(e, "Map screen error")
                 }
             }
+        }
+    }
+
+    LaunchedEffect(searchResults, map) {
+        map?.getStyle { style ->
+            MapRenderUtils.updateSearchResultsOnMap(style, searchResults)
+        }
+    }
+
+    LaunchedEffect(highlightedSearchResult, map) {
+        map?.getStyle { style ->
+            MapRenderUtils.updateHighlightedSearchResult(style, highlightedSearchResult)
         }
     }
 

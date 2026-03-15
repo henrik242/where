@@ -111,6 +111,7 @@ fun IosMapScreen(
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<PlaceSearchClient.SearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
+    var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
 
     // Save point state (long press)
     var showSavePointDialog by remember { mutableStateOf(false) }
@@ -552,6 +553,7 @@ fun IosMapScreen(
         onCloseViewingPoint = { onClearViewingPoint() },
         onSearchQueryChange = { searchQuery = it },
         onSearchResultClick = { result ->
+            highlightedSearchResult = null
             mapViewProvider.setCamera(
                 latitude = result.latLng.latitude,
                 longitude = result.latLng.longitude,
@@ -561,7 +563,17 @@ fun IosMapScreen(
             searchQuery = ""
             searchResults = emptyList()
         },
+        onSearchResultHover = { result ->
+            highlightedSearchResult = result
+            if (result != null) {
+                mapViewProvider.panTo(
+                    latitude = result.latLng.latitude,
+                    longitude = result.latLng.longitude
+                )
+            }
+        },
         onSearchClose = {
+            highlightedSearchResult = null
             showSearch = false
             searchQuery = ""
             searchResults = emptyList()
@@ -595,6 +607,23 @@ fun IosMapScreen(
                         mapViewProvider.updateSavedPoints(geoJson)
                     } else {
                         mapViewProvider.clearSavedPoints()
+                    }
+
+                    // Search results rendering
+                    if (searchResults.isNotEmpty()) {
+                        val geoJson = buildSearchResultsGeoJson(searchResults)
+                        mapViewProvider.updateSearchResults(geoJson)
+                    } else {
+                        mapViewProvider.clearSearchResults()
+                    }
+
+                    // Search result highlight
+                    val highlighted = highlightedSearchResult
+                    if (highlighted != null) {
+                        val highlightGeoJson = buildSearchResultsGeoJson(listOf(highlighted))
+                        mapViewProvider.highlightSearchResult(highlightGeoJson)
+                    } else {
+                        mapViewProvider.clearHighlightedSearchResult()
                     }
 
                     // Ruler rendering
