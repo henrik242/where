@@ -81,6 +81,12 @@ export async function verifyHmacSignature(
   }
 }
 
+export function detectPlatform(userAgent: string): string | null {
+  if (/iPhone|iPad|iOS/i.test(userAgent)) return 'ios';
+  if (/Android/i.test(userAgent)) return 'android';
+  return null;
+}
+
 export function validatePoint(point: any): point is TrackPoint {
   if (!point || typeof point !== 'object') return false;
   return (

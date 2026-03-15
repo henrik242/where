@@ -1,6 +1,6 @@
 import { TrackStore } from './src/store';
 import type { Track } from './src/types';
-import { validatePoint } from './src/utils';
+import { validatePoint, detectPlatform } from './src/utils';
 
 export function createTestServer(port: number = 0) {
   const trackStore = new TrackStore(':memory:');
@@ -53,6 +53,11 @@ export function createTestServer(port: number = 0) {
         return jsonResponse(tracks);
       }
 
+      // GET /api/session-stats
+      if (path === '/api/session-stats' && req.method === 'GET') {
+        return jsonResponse(trackStore.getSessionStats());
+      }
+
       // GET /api/tracks/:trackId
       if (path.match(/^\/api\/tracks\/[^\/]+$/) && req.method === 'GET') {
         const trackId = path.split('/')[3];
@@ -90,6 +95,10 @@ export function createTestServer(port: number = 0) {
         };
 
         trackStore.saveTrack(track);
+
+        const platform = detectPlatform(req.headers.get('User-Agent') || '');
+        if (platform) trackStore.incrementSessionCount(platform);
+
         const savedTrack = trackStore.getTrack(track.id);
         return jsonResponse(savedTrack ?? track, 201);
       }

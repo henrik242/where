@@ -103,6 +103,13 @@ export class TrackStore {
       CREATE INDEX IF NOT EXISTS idx_points_trackId ON points(trackId);
       CREATE INDEX IF NOT EXISTS idx_tracks_userId ON tracks(userId);
       CREATE INDEX IF NOT EXISTS idx_tracks_startTime ON tracks(startTime);
+
+      CREATE TABLE IF NOT EXISTS session_counts (
+        date TEXT NOT NULL,
+        platform TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (date, platform)
+      );
     `);
   }
 
@@ -122,7 +129,7 @@ export class TrackStore {
         'SELECT * FROM tracks WHERE isActive = 1'
       ),
       getRecentTracks: this.db.prepare<TrackRow, [number]>(
-        'SELECT * FROM tracks WHERE startTime >= ?'
+        'SELECT * FROM tracks WHERE lastUpdateTime >= ? OR isActive = 1'
       ),
       insertPoint: this.db.prepare<void, [string, number, number, number, number | null, number | null]>(
         `INSERT INTO points (trackId, lat, lon, timestamp, altitude, accuracy)
@@ -216,7 +223,7 @@ export class TrackStore {
     let sql: string;
     let params: any[];
     if (includeHistorical) {
-      sql = `SELECT * FROM tracks WHERE userId IN (${placeholders}) AND startTime >= ?`;
+      sql = `SELECT * FROM tracks WHERE userId IN (${placeholders}) AND (lastUpdateTime >= ? OR isActive = 1)`;
       params = [...clientIds, cutoff];
     } else {
       sql = `SELECT * FROM tracks WHERE userId IN (${placeholders}) AND isActive = 1`;
@@ -333,6 +340,38 @@ export class TrackStore {
       this.stmts.deleteOld.run(cutoff);
     }
     return rows.map(r => ({ id: r.id, userId: r.userId }));
+  }
+
+  incrementSessionCount(platform: string): void {
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    this.db.prepare(
+      `INSERT INTO session_counts (date, platform, count) VALUES (?, ?, 1)
+       ON CONFLICT(date, platform) DO UPDATE SET count = count + 1`
+    ).run(date, platform);
+  }
+
+  getSessionStats(): { day: Record<string, number>; week: Record<string, number>; month: Record<string, number> } {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const sumByRange = (since: string) => {
+      const rows = this.db.prepare<{ platform: string; total: number }, [string]>(
+        'SELECT platform, SUM(count) as total FROM session_counts WHERE date >= ? GROUP BY platform'
+      ).all(since);
+      const result: Record<string, number> = {};
+      for (const row of rows) {
+        result[row.platform] = row.total;
+      }
+      return result;
+    };
+
+    return {
+      day: sumByRange(today),
+      week: sumByRange(weekAgo),
+      month: sumByRange(monthAgo),
+    };
   }
 
   close(): void {

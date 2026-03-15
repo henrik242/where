@@ -426,6 +426,99 @@ describe('API Integration Tests', () => {
     });
   });
 
+  describe('Session counting', () => {
+    test('should count iOS sessions from User-Agent', async () => {
+      // Get baseline stats
+      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const iosBefore = before.day?.ios || 0;
+
+      await fetch(`${SERVER_URL}/api/tracks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'ios001',
+          'User-Agent': 'Where/1.0 (iPhone; iOS 17.0)'
+        },
+        body: JSON.stringify({ userId: 'ios001', name: 'iOS Track' })
+      });
+
+      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      expect(after.day.ios).toBe(iosBefore + 1);
+    });
+
+    test('should count Android sessions from User-Agent', async () => {
+      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const androidBefore = before.day?.android || 0;
+
+      await fetch(`${SERVER_URL}/api/tracks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'and001',
+          'User-Agent': 'Where/1.0 (Linux; Android 14)'
+        },
+        body: JSON.stringify({ userId: 'and001', name: 'Android Track' })
+      });
+
+      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      expect(after.day.android).toBe(androidBefore + 1);
+    });
+
+    test('should not count sessions for unknown User-Agent', async () => {
+      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const iosBefore = before.day?.ios || 0;
+      const androidBefore = before.day?.android || 0;
+
+      await fetch(`${SERVER_URL}/api/tracks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Client-Id': 'desk01',
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) Chrome/120'
+        },
+        body: JSON.stringify({ userId: 'desk01', name: 'Desktop Track' })
+      });
+
+      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      expect(after.day?.ios || 0).toBe(iosBefore);
+      expect(after.day?.android || 0).toBe(androidBefore);
+    });
+
+    test('should accumulate multiple sessions', async () => {
+      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const iosBefore = before.day?.ios || 0;
+
+      for (let i = 0; i < 3; i++) {
+        const id = `iosm0${i}`;
+        await fetch(`${SERVER_URL}/api/tracks`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Client-Id': id,
+            'User-Agent': 'Where/1.0 (iPad; iOS 17.0)'
+          },
+          body: JSON.stringify({ userId: id, name: `iOS Track ${i}` })
+        });
+      }
+
+      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      expect(after.day.ios).toBe(iosBefore + 3);
+    });
+
+    test('should return stats with week and month aggregations', async () => {
+      const stats = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      expect(stats).toHaveProperty('day');
+      expect(stats).toHaveProperty('week');
+      expect(stats).toHaveProperty('month');
+      // Week and month should be >= day values
+      const iosDay = stats.day?.ios || 0;
+      const iosWeek = stats.week?.ios || 0;
+      const iosMonth = stats.month?.ios || 0;
+      expect(iosWeek).toBeGreaterThanOrEqual(iosDay);
+      expect(iosMonth).toBeGreaterThanOrEqual(iosWeek);
+    });
+  });
+
   describe('CORS', () => {
     test('should handle OPTIONS request', async () => {
       const response = await fetch(`${SERVER_URL}/api/tracks`, {

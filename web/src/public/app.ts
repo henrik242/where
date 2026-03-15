@@ -25,6 +25,12 @@ interface TracksResponse {
   tracks: Track[];
 }
 
+interface SessionStats {
+  day: Record<string, number>;
+  week: Record<string, number>;
+  month: Record<string, number>;
+}
+
 interface WebSocketMessage {
   type: 'track_update' | 'track_stopped' | 'track_started' | 'track_deleted' | 'initial_state';
   trackId: string;
@@ -34,6 +40,7 @@ interface WebSocketMessage {
   color?: string;
   tracks?: Track[];
   admin?: boolean;
+  sessionStats?: SessionStats;
 }
 
 // Escape HTML to prevent XSS
@@ -137,6 +144,25 @@ function updateAdminIndicator(isActive: boolean): void {
     section.classList.remove('active');
     admin = false;
   }
+}
+
+// Update session stats display
+function updateSessionStats(stats: SessionStats): void {
+  const el = document.getElementById('session-stats');
+  if (!el) return;
+
+  const fmt = (counts: Record<string, number>) => {
+    const ios = counts['ios'] || 0;
+    const android = counts['android'] || 0;
+    return `iOS: ${ios}, Android: ${android}`;
+  };
+
+  el.innerHTML = `
+    <div style="margin-bottom: 4px; font-weight: 600;">Tracking Sessions</div>
+    <div>24h: ${fmt(stats.day)}</div>
+    <div>7d: ${fmt(stats.week)}</div>
+    <div>30d: ${fmt(stats.month)}</div>
+  `;
 }
 
 // Format distance
@@ -571,6 +597,7 @@ function setupWebSocket(): void {
 
     if (data.type === 'initial_state') {
       updateAdminIndicator(data.admin === true);
+      if (data.sessionStats) updateSessionStats(data.sessionStats);
 
       const oldTrackIds = Object.keys(tracks);
       const newTracks: Record<string, Track> = {};

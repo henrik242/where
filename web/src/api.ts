@@ -1,6 +1,6 @@
 import { trackStore } from './store';
 import type { Track } from './types';
-import { verifyHmacSignature, validatePoint } from './utils';
+import { verifyHmacSignature, validatePoint, detectPlatform } from './utils';
 import { enrichTrack, broadcastToAll } from './tracking';
 import { CONFIG } from './config';
 
@@ -167,6 +167,10 @@ async function handleCreateTrack(req: Request): Promise<Response> {
   };
 
   trackStore.saveTrack(track);
+
+  const platform = detectPlatform(req.headers.get('User-Agent') || '');
+  if (platform) trackStore.incrementSessionCount(platform);
+
   const savedTrack = trackStore.getTrack(track.id);
 
   broadcastToAll({

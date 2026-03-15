@@ -81,11 +81,15 @@ const server = Bun.serve({
             tracks = trackStore.getTracksByClientIds(clients, includeHistorical);
           }
 
-          ws.send(JSON.stringify({
+          const payload: any = {
             type: 'initial_state',
             tracks: tracks.map(enrichTrack),
             admin: isAdmin,
-          }));
+          };
+          if (isAdmin) {
+            payload.sessionStats = trackStore.getSessionStats();
+          }
+          ws.send(JSON.stringify(payload));
         }
       } catch (e) {
         console.error('Failed to parse WebSocket message:', e);
