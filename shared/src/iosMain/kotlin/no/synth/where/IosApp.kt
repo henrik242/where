@@ -22,6 +22,7 @@ import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
+import no.synth.where.ui.AttributionsScreenContent
 import no.synth.where.ui.DownloadScreenContent
 import no.synth.where.ui.LanguageOption
 import no.synth.where.ui.LayerInfo

@@ -194,7 +194,7 @@ fun IosMapScreen(
         if (crosshairActive && centerLatLng == null) {
             val center = mapViewProvider.getCameraCenter()
             if (center != null && center.size >= 2) {
-                centerLatLng = LatLng(center[0].toDouble(), center[1].toDouble())
+                centerLatLng = LatLng(center[0], center[1])
             }
         }
     }
