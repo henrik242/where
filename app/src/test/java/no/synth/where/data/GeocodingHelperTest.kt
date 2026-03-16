@@ -35,6 +35,7 @@ class GeocodingHelperTest {
 
     private fun isOverpass(url: io.ktor.http.Url) = url.host == "overpass-api.de"
     private fun isPoi(url: io.ktor.http.Url) = url.parameters.contains("layer", "poi,natural")
+    private fun isPeakSearch(url: io.ktor.http.Url) = url.encodedPath.contains("search")
 
     @Test
     fun reverseGeocode_combinesRoadAndCity() = runBlocking {
@@ -45,7 +46,7 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_fallsToVillage_whenNoRoad() = runBlocking {
         mockClient { url ->
-            if (isOverpass(url)) respond(EMPTY_OVERPASS, HttpStatusCode.OK, JSON_HEADERS)
+            if (isPeakSearch(url)) respond("[]", HttpStatusCode.OK, JSON_HEADERS)
             else respond("""{"address":{"village":"Rjukan"}}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Rjukan", GeocodingHelper.reverseGeocode(LatLng(59.88, 8.59)))
@@ -54,7 +55,7 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_fallsToCity_whenNoRoadOrVillage() = runBlocking {
         mockClient { url ->
-            if (isOverpass(url)) respond(EMPTY_OVERPASS, HttpStatusCode.OK, JSON_HEADERS)
+            if (isPeakSearch(url)) respond("[]", HttpStatusCode.OK, JSON_HEADERS)
             else respond("""{"address":{"city":"Bergen"}}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Bergen", GeocodingHelper.reverseGeocode(LatLng(60.39, 5.32)))
@@ -63,7 +64,7 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_fallsToDisplayName_whenEmptyAddress() = runBlocking {
         mockClient { url ->
-            if (isOverpass(url)) respond(EMPTY_OVERPASS, HttpStatusCode.OK, JSON_HEADERS)
+            if (isPeakSearch(url)) respond("[]", HttpStatusCode.OK, JSON_HEADERS)
             else respond("""{"address":{},"display_name":"Somewhere, Norway"}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Somewhere", GeocodingHelper.reverseGeocode(LatLng(62.0, 10.0)))
@@ -84,7 +85,7 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_combinesLocalityAndMunicipality_whenNoPeak() = runBlocking {
         mockClient { url ->
-            if (isOverpass(url)) respond(EMPTY_OVERPASS, HttpStatusCode.OK, JSON_HEADERS)
+            if (isPeakSearch(url)) respond("[]", HttpStatusCode.OK, JSON_HEADERS)
             else respond("""{"address":{"locality":"Kråfjellet","municipality":"Luster"}}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Kråfjellet, Luster", GeocodingHelper.reverseGeocode(LatLng(61.69, 7.21)))
@@ -93,10 +94,7 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_prefersPeakOverLocality() = runBlocking {
         mockClient { url ->
-            if (isOverpass(url)) respond(
-                """{"elements":[{"type":"node","tags":{"name":"Dueskardhøgdi"}}]}""",
-                HttpStatusCode.OK, JSON_HEADERS
-            )
+            if (isPeakSearch(url)) respond("""[{"name":"Dueskardhøgdi"}]""", HttpStatusCode.OK, JSON_HEADERS)
             else respond("""{"address":{"locality":"Galdarabb","municipality":"Sogndal"}}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Dueskardhøgdi, Sogndal", GeocodingHelper.reverseGeocode(LatLng(61.15, 7.036)))
@@ -105,7 +103,7 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_returnsMunicipality_whenNoPeak() = runBlocking {
         mockClient { url ->
-            if (isOverpass(url)) respond(EMPTY_OVERPASS, HttpStatusCode.OK, JSON_HEADERS)
+            if (isPeakSearch(url)) respond("[]", HttpStatusCode.OK, JSON_HEADERS)
             else respond("""{"address":{"municipality":"Tinn"}}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Tinn", GeocodingHelper.reverseGeocode(LatLng(59.88, 8.59)))
@@ -114,10 +112,7 @@ class GeocodingHelperTest {
     @Test
     fun reverseGeocode_findsNearbyPeak() = runBlocking {
         mockClient { url ->
-            if (isOverpass(url)) respond(
-                """{"elements":[{"type":"node","tags":{"name":"Dueskardhøgdi"}}]}""",
-                HttpStatusCode.OK, JSON_HEADERS
-            )
+            if (isPeakSearch(url)) respond("""[{"name":"Dueskardhøgdi"}]""", HttpStatusCode.OK, JSON_HEADERS)
             else respond("""{"address":{"municipality":"Sogndal"}}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Dueskardhøgdi, Sogndal", GeocodingHelper.reverseGeocode(LatLng(61.15, 7.036)))
@@ -174,6 +169,7 @@ class GeocodingHelperTest {
                 HttpStatusCode.OK, JSON_HEADERS
             )
             else if (isOverpass(url)) respond(EMPTY_OVERPASS, HttpStatusCode.OK, JSON_HEADERS)
+            else if (isPeakSearch(url)) respond("[]", HttpStatusCode.OK, JSON_HEADERS)
             else respond("""{"address":{"road":"Storgata","city":"Oslo","municipality":"Oslo"}}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Storgata, Oslo", GeocodingHelper.reverseGeocode(LatLng(59.914, 10.752)))

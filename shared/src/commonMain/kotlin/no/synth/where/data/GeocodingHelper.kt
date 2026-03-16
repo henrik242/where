@@ -49,13 +49,13 @@ object GeocodingHelper {
     }
 
     private suspend fun searchNearbyPeak(latLng: LatLng): String? {
-        val elements = overpassQuery(
-            "[out:json][timeout:10];" +
-                "node(around:500,${latLng.latitude},${latLng.longitude})[\"natural\"=\"peak\"][\"name\"];" +
-                "out tags 1;"
-        )
-        if (elements.isEmpty()) return null
-        return elements[0]["tags"]?.jsonObject?.string("name")
+        val delta = 0.005 // ~500m
+        val viewbox = "${latLng.longitude - delta},${latLng.latitude + delta},${latLng.longitude + delta},${latLng.latitude - delta}"
+        val response = client.get("$NOMINATIM/search?q=%5Bnatural%3Dpeak%5D&format=json&limit=1&viewbox=$viewbox&bounded=1")
+        if (response.status.value !in 200..299) return null
+        val results = Json.parseToJsonElement(response.bodyAsText()).jsonArray
+        if (results.isEmpty()) return null
+        return results[0].jsonObject["name"]?.jsonPrimitive?.content
     }
 
     private suspend fun searchEnclosingBuilding(latLng: LatLng): String? {
