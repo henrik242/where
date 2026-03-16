@@ -45,6 +45,7 @@ fun MapScreenContent(
     showSearch: Boolean,
     searchQuery: String,
     searchResults: List<PlaceSearchClient.SearchResult>,
+    searchHistory: List<PlaceSearchClient.SearchResult> = emptyList(),
     isSearching: Boolean,
     // FAB callbacks
     onSearchClick: () -> Unit,
@@ -128,6 +129,7 @@ fun MapScreenContent(
                 showSearch = showSearch,
                 searchQuery = searchQuery,
                 searchResults = searchResults,
+                searchHistory = searchHistory,
                 isSearching = isSearching,
                 showViewingPoint = showViewingPoint,
                 onZoomIn = onZoomIn,

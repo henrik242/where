@@ -12,7 +12,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import no.synth.where.data.geo.CoordFormat
+import no.synth.where.data.geo.LatLng
 
 class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -38,6 +47,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _coordFormat = MutableStateFlow(CoordFormat.LATLNG)
     val coordFormat: StateFlow<CoordFormat> = _coordFormat.asStateFlow()
 
+    private val _searchHistory = MutableStateFlow<List<PlaceSearchClient.SearchResult>>(emptyList())
+    val searchHistory: StateFlow<List<PlaceSearchClient.SearchResult>> = _searchHistory.asStateFlow()
+
     init {
         scope.launch {
             dataStore.data.collect { prefs ->
@@ -48,6 +60,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _offlineModeEnabled.value = prefs[OFFLINE_MODE_ENABLED] ?: false
                 _themeMode.value = prefs[THEME_MODE] ?: "system"
                 _coordFormat.value = try { CoordFormat.valueOf(prefs[COORD_FORMAT] ?: "LATLNG") } catch (_: Exception) { CoordFormat.LATLNG }
+                _searchHistory.value = deserializeSearchHistory(prefs[SEARCH_HISTORY])
             }
         }
     }
@@ -94,7 +107,52 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    fun addSearchHistoryEntry(result: PlaceSearchClient.SearchResult) {
+        val current = _searchHistory.value.toMutableList()
+        current.removeAll { it.name == result.name && it.municipality == result.municipality }
+        current.add(0, result)
+        val updated = current.take(MAX_SEARCH_HISTORY)
+        _searchHistory.value = updated
+        scope.launch {
+            dataStore.edit { it[SEARCH_HISTORY] = serializeSearchHistory(updated) }
+        }
+    }
+
+    private fun serializeSearchHistory(results: List<PlaceSearchClient.SearchResult>): String =
+        buildJsonArray {
+            for (r in results) {
+                add(buildJsonObject {
+                    put("name", r.name)
+                    put("type", r.type)
+                    put("municipality", r.municipality)
+                    put("lat", r.latLng.latitude)
+                    put("lon", r.latLng.longitude)
+                })
+            }
+        }.toString()
+
+    private fun deserializeSearchHistory(json: String?): List<PlaceSearchClient.SearchResult> {
+        if (json.isNullOrBlank()) return emptyList()
+        return try {
+            Json.parseToJsonElement(json).jsonArray.map { element ->
+                val obj = element.jsonObject
+                PlaceSearchClient.SearchResult(
+                    name = obj["name"]?.jsonPrimitive?.content ?: "",
+                    type = obj["type"]?.jsonPrimitive?.content ?: "",
+                    municipality = obj["municipality"]?.jsonPrimitive?.content ?: "",
+                    latLng = LatLng(
+                        obj["lat"]?.jsonPrimitive?.double ?: 0.0,
+                        obj["lon"]?.jsonPrimitive?.double ?: 0.0
+                    )
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     companion object {
+        private const val MAX_SEARCH_HISTORY = 10
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
@@ -102,5 +160,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val OFFLINE_MODE_ENABLED = booleanPreferencesKey("offline_mode_enabled")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val COORD_FORMAT = stringPreferencesKey("coord_format")
+        private val SEARCH_HISTORY = stringPreferencesKey("search_history")
     }
 }

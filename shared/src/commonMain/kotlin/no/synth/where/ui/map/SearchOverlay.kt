@@ -49,12 +49,14 @@ fun SearchOverlay(
     onQueryChange: (String) -> Unit,
     isSearching: Boolean,
     results: List<PlaceSearchClient.SearchResult>,
+    searchHistory: List<PlaceSearchClient.SearchResult> = emptyList(),
     focusRequester: FocusRequester = remember { FocusRequester() },
     onResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onClose: () -> Unit
 ) {
     var collapsed by remember { mutableStateOf(false) }
+    val displayResults = if (query.isBlank() && results.isEmpty()) searchHistory else results
 
     Column(modifier = modifier) {
         Card(
@@ -87,7 +89,7 @@ fun SearchOverlay(
                         }
                     }
                 )
-                if (results.isNotEmpty()) {
+                if (displayResults.isNotEmpty()) {
                     IconButton(onClick = { collapsed = !collapsed }) {
                         Icon(
                             painterResource(if (collapsed) Res.drawable.ic_expand_more else Res.drawable.ic_expand_less),
@@ -101,7 +103,7 @@ fun SearchOverlay(
             }
         }
 
-        if (results.isNotEmpty() && !collapsed) {
+        if (displayResults.isNotEmpty() && !collapsed) {
             Spacer(modifier = Modifier.height(4.dp))
             Card(
                 colors = CardDefaults.cardColors(
@@ -109,7 +111,7 @@ fun SearchOverlay(
                 )
             ) {
                 LazyColumn {
-                    items(results) { result ->
+                    items(displayResults) { result ->
                         val interactionSource = remember { MutableInteractionSource() }
                         val isPressed by interactionSource.collectIsPressedAsState()
                         val isHovered by interactionSource.collectIsHoveredAsState()
@@ -141,7 +143,7 @@ fun SearchOverlay(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        if (result != results.last()) {
+                        if (result != displayResults.last()) {
                             HorizontalDivider()
                         }
                     }

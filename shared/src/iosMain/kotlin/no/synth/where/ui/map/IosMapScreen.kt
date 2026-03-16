@@ -111,6 +111,7 @@ fun IosMapScreen(
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<PlaceSearchClient.SearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
+    val searchHistory by userPreferences.searchHistory.collectAsState()
     var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
 
     // Save point state (long press)
@@ -438,6 +439,7 @@ fun IosMapScreen(
         showSearch = showSearch,
         searchQuery = searchQuery,
         searchResults = searchResults,
+        searchHistory = searchHistory,
         isSearching = isSearching,
         onSearchClick = { showSearch = true },
         onLayerMenuToggle = { showLayerMenu = it },
@@ -606,6 +608,7 @@ fun IosMapScreen(
                 longitude = result.latLng.longitude,
                 zoom = 14.0
             )
+            userPreferences.addSearchHistoryEntry(result)
             showSearch = false
             searchQuery = ""
             searchResults = emptyList()

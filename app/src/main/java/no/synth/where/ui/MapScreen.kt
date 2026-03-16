@@ -88,6 +88,7 @@ fun MapScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
+    val searchHistory by viewModel.userPreferences.searchHistory.collectAsState()
     val showStopTrackDialog by viewModel.showStopTrackDialog.collectAsState()
     val trackNameInput by viewModel.trackNameInput.collectAsState()
     val isResolvingTrackName by viewModel.isResolvingTrackName.collectAsState()
@@ -307,6 +308,7 @@ fun MapScreen(
         showSearch = showSearch,
         searchQuery = searchQuery,
         searchResults = searchResults,
+        searchHistory = searchHistory,
         isSearching = isSearching,
         onSearchClick = { viewModel.openSearch() },
         onLayerMenuToggle = { showLayerMenu = it },
@@ -386,6 +388,7 @@ fun MapScreen(
             mapInstance?.animateCamera(
                 org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(result.latLng.toMapLibre(), 14.0)
             )
+            viewModel.userPreferences.addSearchHistoryEntry(result)
             viewModel.onSearchResultClicked()
         },
         onSearchResultHover = { result ->
