@@ -214,6 +214,50 @@ class GeocodingHelperTest {
     }
 
     @Test
+    fun reverseGeocode_prefersPoiName_overRoad() = runBlocking {
+        originalClient = GeocodingHelper.client
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.parameters.contains("layer", "poi")) {
+                respond(
+                    content = """{"name":"Skansebakken","address":{"historic":"Skansebakken","road":"Ospeskogveien","city":"Oslo","municipality":"Oslo"},"display_name":"Skansebakken, Ospeskogveien, Oslo"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            } else {
+                respond(
+                    content = """{"address":{"road":"Ospeskogveien","city":"Oslo","municipality":"Oslo"},"display_name":"Ospeskogveien, Oslo"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        })
+        val result = GeocodingHelper.reverseGeocode(LatLng(60.018, 10.583))
+        assertEquals("Skansebakken, Oslo", result)
+    }
+
+    @Test
+    fun reverseGeocode_fallsBackToAddress_whenPoiHasNoName() = runBlocking {
+        originalClient = GeocodingHelper.client
+        GeocodingHelper.client = HttpClient(MockEngine { request ->
+            if (request.url.parameters.contains("layer", "poi")) {
+                respond(
+                    content = """{"name":"","address":{}}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            } else {
+                respond(
+                    content = """{"address":{"road":"Ospeskogveien","city":"Oslo","municipality":"Oslo"},"display_name":"Ospeskogveien, Oslo"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        })
+        val result = GeocodingHelper.reverseGeocode(LatLng(60.018, 10.583))
+        assertEquals("Ospeskogveien, Oslo", result)
+    }
+
+    @Test
     fun reverseGeocode_returnsNull_onMissingAddress() = runBlocking {
         originalClient = GeocodingHelper.client
         GeocodingHelper.client = HttpClient(MockEngine {
