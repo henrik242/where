@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import no.synth.where.data.geo.CoordFormat
 
 class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -34,6 +35,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _themeMode = MutableStateFlow("system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
+    private val _coordFormat = MutableStateFlow(CoordFormat.LATLNG)
+    val coordFormat: StateFlow<CoordFormat> = _coordFormat.asStateFlow()
+
     init {
         scope.launch {
             dataStore.data.collect { prefs ->
@@ -43,6 +47,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
                 _offlineModeEnabled.value = prefs[OFFLINE_MODE_ENABLED] ?: false
                 _themeMode.value = prefs[THEME_MODE] ?: "system"
+                _coordFormat.value = try { CoordFormat.valueOf(prefs[COORD_FORMAT] ?: "LATLNG") } catch (_: Exception) { CoordFormat.LATLNG }
             }
         }
     }
@@ -82,6 +87,13 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    fun updateCoordFormat(value: CoordFormat) {
+        _coordFormat.value = value
+        scope.launch {
+            dataStore.edit { it[COORD_FORMAT] = value.name }
+        }
+    }
+
     companion object {
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
@@ -89,5 +101,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")
         private val OFFLINE_MODE_ENABLED = booleanPreferencesKey("offline_mode_enabled")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val COORD_FORMAT = stringPreferencesKey("coord_format")
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,15 +30,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
+import no.synth.where.data.geo.CoordFormat
+import no.synth.where.data.geo.CoordinateFormatter
+import no.synth.where.data.geo.LatLng
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
 import androidx.compose.foundation.shape.RoundedCornerShape
+import kotlin.math.roundToInt
 import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -299,8 +308,103 @@ fun ViewingPointBanner(
 }
 
 @Composable
+fun CrosshairOverlay(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxSize().drawBehind {
+            val cx = size.width / 2
+            val cy = size.height / 2
+            val armLen = 16.dp.toPx()
+            val gap = 4.dp.toPx()
+            val strokeWidth = 2.dp.toPx()
+
+            // Shadow
+            val shadowColor = Color.Black.copy(alpha = 0.4f)
+            val shadowStroke = Stroke(width = strokeWidth + 1.dp.toPx())
+            drawLine(shadowColor, Offset(cx - armLen, cy), Offset(cx - gap, cy), strokeWidth = shadowStroke.width)
+            drawLine(shadowColor, Offset(cx + gap, cy), Offset(cx + armLen, cy), strokeWidth = shadowStroke.width)
+            drawLine(shadowColor, Offset(cx, cy - armLen), Offset(cx, cy - gap), strokeWidth = shadowStroke.width)
+            drawLine(shadowColor, Offset(cx, cy + gap), Offset(cx, cy + armLen), strokeWidth = shadowStroke.width)
+
+            // Crosshair lines
+            val lineColor = Color.White
+            drawLine(lineColor, Offset(cx - armLen, cy), Offset(cx - gap, cy), strokeWidth = strokeWidth)
+            drawLine(lineColor, Offset(cx + gap, cy), Offset(cx + armLen, cy), strokeWidth = strokeWidth)
+            drawLine(lineColor, Offset(cx, cy - armLen), Offset(cx, cy - gap), strokeWidth = strokeWidth)
+            drawLine(lineColor, Offset(cx, cy + gap), Offset(cx, cy + armLen), strokeWidth = strokeWidth)
+        }
+    )
+}
+
+@Composable
+fun CrosshairInfoCard(
+    modifier: Modifier = Modifier,
+    centerLatLng: LatLng?,
+    crosshairInfo: CrosshairInfo,
+    coordFormat: CoordFormat,
+    onToggleCoordFormat: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            if (centerLatLng != null) {
+                Text(
+                    text = when (coordFormat) {
+                        CoordFormat.UTM -> CoordinateFormatter.formatUtm(centerLatLng)
+                        CoordFormat.MGRS -> CoordinateFormatter.formatMgrs(centerLatLng)
+                        CoordFormat.LATLNG -> CoordinateFormatter.formatLatLng(centerLatLng)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { onToggleCoordFormat() }
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                val elevText = when {
+                    crosshairInfo.isLoading -> stringResource(Res.string.loading_dots)
+                    crosshairInfo.elevation != null -> stringResource(
+                        Res.string.elevation_format,
+                        crosshairInfo.elevation.roundToInt().toString()
+                    )
+                    else -> stringResource(Res.string.no_data)
+                }
+                val slopeText = when {
+                    crosshairInfo.isLoading -> stringResource(Res.string.loading_dots)
+                    crosshairInfo.slopeDegrees != null -> stringResource(
+                        Res.string.slope_format,
+                        crosshairInfo.slopeDegrees.roundToInt().toString()
+                    )
+                    else -> stringResource(Res.string.no_data)
+                }
+                Text(
+                    text = elevText,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = slopeText,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun BoxScope.MapOverlays(
     offlineModeEnabled: Boolean = false,
+    crosshairActive: Boolean = false,
+    crosshairInfo: CrosshairInfo = CrosshairInfo(),
+    centerLatLng: LatLng? = null,
+    coordFormat: CoordFormat = CoordFormat.LATLNG,
+    onToggleCoordFormat: () -> Unit = {},
     rulerState: RulerState,
     isRecording: Boolean,
     recordingDistance: Double?,
@@ -368,13 +472,21 @@ fun BoxScope.MapOverlays(
         }
     }
 
-    if (rulerState.isActive || isRecording) {
+    if (rulerState.isActive || isRecording || crosshairActive) {
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 16.dp, end = 80.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (crosshairActive) {
+                CrosshairInfoCard(
+                    centerLatLng = centerLatLng,
+                    crosshairInfo = crosshairInfo,
+                    coordFormat = coordFormat,
+                    onToggleCoordFormat = onToggleCoordFormat
+                )
+            }
             if (rulerState.isActive) {
                 RulerCard(
                     rulerState = rulerState,
@@ -437,5 +549,9 @@ fun BoxScope.MapOverlays(
             onResultHover = onSearchResultHover,
             onClose = onSearchClose
         )
+    }
+
+    if (crosshairActive) {
+        CrosshairOverlay()
     }
 }

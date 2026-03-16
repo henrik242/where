@@ -33,12 +33,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
+import no.synth.where.data.TerrainClient
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.stringResource
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
+import no.synth.where.data.geo.CoordFormat
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.map.MapDialogs
 import no.synth.where.ui.map.MapLayer
@@ -116,6 +119,12 @@ fun MapScreen(
     var pendingRecordStart by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Crosshair state
+    var crosshairActive by rememberSaveable { mutableStateOf(false) }
+    var crosshairInfo by remember { mutableStateOf(CrosshairInfo()) }
+    val coordFormat by viewModel.userPreferences.coordFormat.collectAsState()
+    var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
 
     var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
 
@@ -200,7 +209,31 @@ fun MapScreen(
                 savedCameraLat = target.latitude
                 savedCameraLon = target.longitude
                 savedCameraZoom = map.cameraPosition.zoom
+                centerLatLng = LatLng(target.latitude, target.longitude)
             }
+        }
+    }
+
+    // Initialize center position when crosshair is activated
+    LaunchedEffect(crosshairActive) {
+        if (crosshairActive && centerLatLng == null) {
+            mapInstance?.cameraPosition?.target?.let { target ->
+                centerLatLng = LatLng(target.latitude, target.longitude)
+            }
+        }
+    }
+
+    // Debounced terrain info fetch when crosshair is active
+    LaunchedEffect(crosshairActive, centerLatLng) {
+        val latLng = centerLatLng ?: return@LaunchedEffect
+        if (!crosshairActive) return@LaunchedEffect
+        crosshairInfo = CrosshairInfo(isLoading = true)
+        delay(500)
+        val info = TerrainClient.getTerrainInfo(latLng)
+        crosshairInfo = if (info != null) {
+            CrosshairInfo(elevation = info.elevation, slopeDegrees = info.slopeDegrees)
+        } else {
+            CrosshairInfo()
         }
     }
 
@@ -258,6 +291,12 @@ fun MapScreen(
         showCountyBorders = showCountyBorders,
         showSavedPoints = showSavedPoints,
         showAvalancheZones = showAvalancheZones,
+        crosshairActive = crosshairActive,
+        crosshairInfo = crosshairInfo,
+        centerLatLng = centerLatLng,
+        coordFormat = coordFormat,
+        onToggleCoordFormat = { viewModel.userPreferences.updateCoordFormat(coordFormat.next()) },
+        onCrosshairToggle = { crosshairActive = !crosshairActive },
         offlineModeEnabled = offlineModeEnabled,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),

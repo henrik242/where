@@ -183,4 +183,11 @@
     <string name="saved_as_track_name">Lagret som spor: %1$s</string>
     <string name="location_permission_required">Posisjonstillatelse kreves</string>
     <string name="unnamed_point">Navnløst punkt</string>
+
+    <!-- Crosshair -->
+    <string name="crosshair">Kryssmarkør</string>
+    <string name="elevation_format">%1$s m</string>
+    <string name="slope_format">%1$s°</string>
+    <string name="loading_dots">…</string>
+    <string name="no_data">Ingen data</string>
 </resources>

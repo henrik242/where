@@ -16,6 +16,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
+    private var cameraMoveCallback: MapCameraMoveCallback?
     private var styleVersion = 0
 
     private let trackSourceId = "track-source"
@@ -234,6 +235,17 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         return request
     }
 
+    func getCameraCenter() -> [KotlinDouble]? {
+        guard let mapView = self.mapView else { return nil }
+        let center = mapView.centerCoordinate
+        return [KotlinDouble(value: center.latitude),
+                KotlinDouble(value: center.longitude)]
+    }
+
+    func setOnCameraMoveCallback(callback: MapCameraMoveCallback?) {
+        self.cameraMoveCallback = callback
+    }
+
     func getUserLocation() -> [KotlinDouble]? {
         guard let mapView = self.mapView,
               let location = mapView.userLocation?.location else { return nil }
@@ -242,6 +254,11 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     }
 
     // MARK: - MLNMapViewDelegate
+
+    func mapViewRegionDidChange(_ mapView: MLNMapView, animated: Bool) {
+        let center = mapView.centerCoordinate
+        cameraMoveCallback?.onCameraMove(latitude: center.latitude, longitude: center.longitude)
+    }
 
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
         if let geoJson = pendingTrackGeoJson, let color = pendingTrackColor {

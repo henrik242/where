@@ -3,6 +3,7 @@ package no.synth.where.ui.map
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -18,15 +19,18 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import no.synth.where.BuildInfo
+import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.MapStyle
 import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.PlaceSearchClient
+import no.synth.where.data.TerrainClient
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointUtils
+import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
 import no.synth.where.di.AppDependencies
 import no.synth.where.location.IosLocationTracker
@@ -119,6 +123,12 @@ fun IosMapScreen(
     var showPointInfoDialog by remember { mutableStateOf(false) }
     var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
+    // Crosshair state
+    var crosshairActive by remember { mutableStateOf(false) }
+    var crosshairInfo by remember { mutableStateOf(CrosshairInfo()) }
+    val coordFormat by userPreferences.coordFormat.collectAsState()
+    var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
+
     // Save ruler as track state
     var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
     var rulerTrackName by remember { mutableStateOf("") }
@@ -167,6 +177,40 @@ fun IosMapScreen(
                 searchResults = PlaceSearchClient.search(query)
                 isSearching = false
             }
+    }
+
+    // Camera move callback for crosshair
+    DisposableEffect(Unit) {
+        mapViewProvider.setOnCameraMoveCallback(object : MapCameraMoveCallback {
+            override fun onCameraMove(latitude: Double, longitude: Double) {
+                centerLatLng = LatLng(latitude, longitude)
+            }
+        })
+        onDispose { mapViewProvider.setOnCameraMoveCallback(null) }
+    }
+
+    // Initialize center position when crosshair is activated
+    LaunchedEffect(crosshairActive) {
+        if (crosshairActive && centerLatLng == null) {
+            val center = mapViewProvider.getCameraCenter()
+            if (center != null && center.size >= 2) {
+                centerLatLng = LatLng(center[0].toDouble(), center[1].toDouble())
+            }
+        }
+    }
+
+    // Debounced terrain info fetch
+    LaunchedEffect(crosshairActive, centerLatLng) {
+        val latLng = centerLatLng ?: return@LaunchedEffect
+        if (!crosshairActive) return@LaunchedEffect
+        crosshairInfo = CrosshairInfo(isLoading = true)
+        kotlinx.coroutines.delay(500)
+        val info = TerrainClient.getTerrainInfo(latLng)
+        crosshairInfo = if (info != null) {
+            CrosshairInfo(elevation = info.elevation, slopeDegrees = info.slopeDegrees)
+        } else {
+            CrosshairInfo()
+        }
     }
 
     // Animate camera to viewing point
@@ -377,6 +421,12 @@ fun IosMapScreen(
         showCountyBorders = countyBorders,
         showSavedPoints = showSavedPoints,
         showAvalancheZones = avalancheZones,
+        crosshairActive = crosshairActive,
+        crosshairInfo = crosshairInfo,
+        centerLatLng = centerLatLng,
+        coordFormat = coordFormat,
+        onToggleCoordFormat = { userPreferences.updateCoordFormat(coordFormat.next()) },
+        onCrosshairToggle = { crosshairActive = !crosshairActive },
         offlineModeEnabled = offlineModeEnabled,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),

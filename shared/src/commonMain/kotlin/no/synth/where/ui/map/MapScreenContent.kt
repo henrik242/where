@@ -9,8 +9,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
+import no.synth.where.data.geo.CoordFormat
+import no.synth.where.data.geo.LatLng
 
 @Composable
 fun MapScreenContent(
@@ -24,6 +27,13 @@ fun MapScreenContent(
     showCountyBorders: Boolean,
     showSavedPoints: Boolean,
     showAvalancheZones: Boolean,
+    // Crosshair state
+    crosshairActive: Boolean = false,
+    crosshairInfo: CrosshairInfo = CrosshairInfo(),
+    centerLatLng: LatLng? = null,
+    coordFormat: CoordFormat = CoordFormat.LATLNG,
+    onToggleCoordFormat: () -> Unit = {},
+    onCrosshairToggle: () -> Unit = {},
     // Overlay state
     offlineModeEnabled: Boolean = false,
     onlineTrackingEnabled: Boolean,
@@ -72,6 +82,7 @@ fun MapScreenContent(
             MapFabColumn(
                 isRecording = isRecording,
                 rulerActive = rulerState.isActive,
+                crosshairActive = crosshairActive,
                 showLayerMenu = showLayerMenu,
                 selectedLayer = selectedLayer,
                 showWaymarkedTrails = showWaymarkedTrails,
@@ -88,6 +99,7 @@ fun MapScreenContent(
                 onRecordStopClick = onRecordStopClick,
                 onMyLocationClick = onMyLocationClick,
                 onRulerToggle = onRulerToggle,
+                onCrosshairToggle = onCrosshairToggle,
                 onSettingsClick = onSettingsClick
             )
         }
@@ -101,6 +113,11 @@ fun MapScreenContent(
 
             MapOverlays(
                 offlineModeEnabled = offlineModeEnabled,
+                crosshairActive = crosshairActive,
+                crosshairInfo = crosshairInfo,
+                centerLatLng = centerLatLng,
+                coordFormat = coordFormat,
+                onToggleCoordFormat = onToggleCoordFormat,
                 rulerState = rulerState,
                 isRecording = isRecording,
                 recordingDistance = recordingDistance,

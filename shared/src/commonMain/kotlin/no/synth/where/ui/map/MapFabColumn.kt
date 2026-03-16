@@ -53,6 +53,7 @@ internal fun MenuSection(title: String) {
 fun MapFabColumn(
     isRecording: Boolean,
     rulerActive: Boolean,
+    crosshairActive: Boolean = false,
     showLayerMenu: Boolean,
     selectedLayer: MapLayer,
     showWaymarkedTrails: Boolean,
@@ -69,6 +70,7 @@ fun MapFabColumn(
     onRecordStopClick: () -> Unit,
     onMyLocationClick: () -> Unit,
     onRulerToggle: () -> Unit,
+    onCrosshairToggle: () -> Unit = {},
     onSettingsClick: () -> Unit
 ) {
     Column(horizontalAlignment = Alignment.End) {
@@ -109,6 +111,7 @@ fun MapFabColumn(
             LayerMenuItem(stringResource(Res.string.avalanche_zones_nve), showAvalancheZones) { onAvalancheZonesToggle() }
             LayerMenuItem(stringResource(Res.string.county_borders_norway), showCountyBorders) { onCountyBordersToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
+            LayerMenuItem(stringResource(Res.string.crosshair), crosshairActive) { onCrosshairToggle() }
             }
         }
 

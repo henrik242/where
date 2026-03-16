@@ -10,6 +10,10 @@ interface MapClickCallback {
     fun onMapClick(latitude: Double, longitude: Double)
 }
 
+interface MapCameraMoveCallback {
+    fun onCameraMove(latitude: Double, longitude: Double)
+}
+
 interface MapViewProvider {
     fun createMapView(): UIView
     fun setStyle(json: String)
@@ -33,4 +37,6 @@ interface MapViewProvider {
     fun highlightSearchResult(geoJson: String)
     fun clearHighlightedSearchResult()
     fun setConnected(connected: Boolean)
+    fun getCameraCenter(): List<Double>?
+    fun setOnCameraMoveCallback(callback: MapCameraMoveCallback?)
 }
