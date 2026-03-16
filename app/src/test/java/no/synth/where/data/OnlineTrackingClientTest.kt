@@ -44,7 +44,7 @@ class OnlineTrackingClientTest {
         delay(500)
 
         assertNotNull(capturedBody)
-        val json = Json.parseToJsonElement(capturedBody!!).jsonObject
+        val json = Json.parseToJsonElement(requireNotNull(capturedBody)).jsonObject
         assertEquals("test-client", json["userId"]?.jsonPrimitive?.content)
         assertEquals("Morning Hike", json["name"]?.jsonPrimitive?.content)
         assertEquals(HttpMethod.Post, capturedMethod)
@@ -73,7 +73,7 @@ class OnlineTrackingClientTest {
         delay(500)
 
         assertNotNull("Signature header should be present", capturedSignature)
-        assertTrue("Signature should be non-empty", capturedSignature!!.isNotBlank())
+        assertTrue("Signature should be non-empty", requireNotNull(capturedSignature).isNotBlank())
     }
 
     @Test
@@ -112,6 +112,6 @@ class OnlineTrackingClientTest {
         delay(500)
 
         assertEquals(HttpMethod.Put, capturedStopMethod)
-        assertTrue(capturedStopUrl!!.contains("/api/tracks/track-789/stop"))
+        assertTrue(requireNotNull(capturedStopUrl).contains("/api/tracks/track-789/stop"))
     }
 }

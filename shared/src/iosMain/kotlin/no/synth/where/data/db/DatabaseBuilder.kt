@@ -10,7 +10,7 @@ import platform.Foundation.NSUserDomainMask
 
 fun getDatabaseBuilder(): RoomDatabase.Builder<WhereDatabase> {
     val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
-    val documentsDir = (paths.first() as NSURL).path!!
+    val documentsDir = requireNotNull((paths.first() as NSURL).path) { "Documents directory not found" }
     val dbFilePath = "$documentsDir/where_database"
     return Room.databaseBuilder<WhereDatabase>(name = dbFilePath)
         .setDriver(BundledSQLiteDriver())

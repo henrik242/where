@@ -450,7 +450,7 @@ fun MapScreen(
     }
 
     if (showSavePointDialog && savePointLatLng != null) {
-        val latLng = savePointLatLng!!
+        val latLng = savePointLatLng ?: return
         MapDialogs.SavePointDialog(
             pointName = savePointName,
             onPointNameChange = { viewModel.updateSavePointName(it) },
@@ -469,9 +469,10 @@ fun MapScreen(
     }
 
     if (showPointInfoDialog && clickedPoint != null) {
-        var editName by remember { mutableStateOf(clickedPoint!!.name) }
-        var editDescription by remember { mutableStateOf(clickedPoint!!.description ?: "") }
-        var editColor by remember { mutableStateOf(clickedPoint!!.color ?: "#FF5722") }
+        val point = clickedPoint ?: return
+        var editName by remember { mutableStateOf(point.name) }
+        var editDescription by remember { mutableStateOf(point.description ?: "") }
+        var editColor by remember { mutableStateOf(point.color ?: "#FF5722") }
 
         val colors = listOf(
             "#FF5722" to "Red",
@@ -489,8 +490,8 @@ fun MapScreen(
             pointDescription = editDescription,
             pointColor = editColor,
             coordinates = "${
-                clickedPoint!!.latLng.latitude.toString().take(10)
-            }, ${clickedPoint!!.latLng.longitude.toString().take(10)}",
+                point.latLng.latitude.toString().take(10)
+            }, ${point.latLng.longitude.toString().take(10)}",
             availableColors = colors,
             onNameChange = { editName = it },
             onDescriptionChange = { editDescription = it },

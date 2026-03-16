@@ -79,7 +79,7 @@ class OnlineTrackingClient(
             }
             if (response.status.value in 200..299) {
                 val responseJson = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-                val trackId = responseJson["id"]!!.jsonPrimitive.content
+                val trackId = responseJson["id"]?.jsonPrimitive?.content ?: return
                 currentTrackId = trackId
                 pendingTrackName = null
                 startTrackBackoffMs = 5_000L
@@ -134,7 +134,7 @@ class OnlineTrackingClient(
                 }
                 if (response.status.value in 200..299) {
                     val responseJson = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-                    val trackId = responseJson["id"]!!.jsonPrimitive.content
+                    val trackId = responseJson["id"]?.jsonPrimitive?.content ?: return@launch
                     currentTrackId = trackId
                     Logger.d("Track synced: %s", trackId)
 

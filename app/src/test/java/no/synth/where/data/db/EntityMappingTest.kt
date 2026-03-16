@@ -60,8 +60,8 @@ class EntityMappingTest {
         assertEquals(63.4305, entity.latitude, 0.0001)
         assertEquals(10.3951, entity.longitude, 0.0001)
         assertEquals(5000L, entity.timestamp)
-        assertEquals(150.0, entity.altitude!!, 0.01)
-        assertEquals(3.5f, entity.accuracy!!, 0.01f)
+        assertEquals(150.0, requireNotNull(entity.altitude), 0.01)
+        assertEquals(3.5f, requireNotNull(entity.accuracy), 0.01f)
         assertEquals(0, entity.orderIndex)
     }
 

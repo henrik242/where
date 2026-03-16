@@ -34,7 +34,7 @@ fun SavedPointsScreen(
             editingPoint = null
         },
         onSaveEdit = { name, description, color ->
-            viewModel.updatePoint(editingPoint!!.id, name, description, color)
+            editingPoint?.let { viewModel.updatePoint(it.id, name, description, color) }
             showEditDialog = false
             editingPoint = null
         }

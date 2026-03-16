@@ -11,7 +11,7 @@ import platform.Foundation.NSUserDomainMask
 
 fun createDataStore(name: String): DataStore<Preferences> {
     val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
-    val documentsDir = (paths.first() as NSURL).path!!
+    val documentsDir = requireNotNull((paths.first() as NSURL).path) { "Documents directory not found" }
     return PreferenceDataStoreFactory.createWithPath(
         produceFile = { "$documentsDir/$name.preferences_pb".toPath() }
     )

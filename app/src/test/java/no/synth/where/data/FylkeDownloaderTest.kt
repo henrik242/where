@@ -32,7 +32,7 @@ class FylkeDownloaderTest {
         File(tempFolder.root, "norske_fylker_cached.json").writeText("{}")
         val result = FylkeDownloader.getCachedFile(PlatformFile(tempFolder.root))
         assertNotNull(result)
-        assertTrue(result!!.exists())
+        assertTrue(requireNotNull(result).exists())
         assertEquals("{}", result.readText())
     }
 }

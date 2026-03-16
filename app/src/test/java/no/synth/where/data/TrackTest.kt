@@ -90,7 +90,7 @@ class TrackTest {
 
         val track = Track.fromGPX(gpx)
         assertNotNull(track)
-        assertEquals("Hike", track!!.name)
+        assertEquals("Hike", requireNotNull(track).name)
     }
 
     @Test
@@ -101,7 +101,7 @@ class TrackTest {
             <trkpt lat="63.4310" lon="10.3960"><time>2025-01-01T12:01:00Z</time></trkpt>
             </trkseg></trk></gpx>"""
 
-        val track = Track.fromGPX(gpx)!!
+        val track = requireNotNull(Track.fromGPX(gpx))
         assertEquals(2, track.points.size)
         assertEquals(63.4305, track.points[0].latLng.latitude, 0.0001)
         assertEquals(10.3951, track.points[0].latLng.longitude, 0.0001)
@@ -114,8 +114,8 @@ class TrackTest {
             <trkpt lat="59.9" lon="10.7"><ele>100.5</ele><time>2025-01-01T12:00:00Z</time></trkpt>
             </trkseg></trk></gpx>"""
 
-        val track = Track.fromGPX(gpx)!!
-        assertEquals(100.5, track.points[0].altitude!!, 0.01)
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(100.5, requireNotNull(track.points[0].altitude), 0.01)
     }
 
     @Test
@@ -144,13 +144,13 @@ class TrackTest {
         )
 
         val gpx = original.toGPX()
-        val parsed = Track.fromGPX(gpx)!!
+        val parsed = requireNotNull(Track.fromGPX(gpx))
 
         assertEquals(original.name, parsed.name)
         assertEquals(original.points.size, parsed.points.size)
         assertEquals(original.points[0].latLng.latitude, parsed.points[0].latLng.latitude, 0.0001)
         assertEquals(original.points[0].latLng.longitude, parsed.points[0].latLng.longitude, 0.0001)
-        assertEquals(original.points[0].altitude!!, parsed.points[0].altitude!!, 0.01)
+        assertEquals(requireNotNull(original.points[0].altitude), requireNotNull(parsed.points[0].altitude), 0.01)
     }
 
     @Test
@@ -194,7 +194,7 @@ class TrackTest {
             <trkpt lat="59.9" lon="10.7"><time>2025-01-01T12:00:00.500Z</time></trkpt>
             </trkseg></trk></gpx>"""
 
-        val track = Track.fromGPX(gpx)!!
+        val track = requireNotNull(Track.fromGPX(gpx))
         assertEquals(1735732800500L, track.points[0].timestamp)
     }
 
@@ -205,7 +205,7 @@ class TrackTest {
             <trkpt lat="59.9" lon="10.7"><time>2025-01-01T13:00:00+01:00</time></trkpt>
             </trkseg></trk></gpx>"""
 
-        val track = Track.fromGPX(gpx)!!
+        val track = requireNotNull(Track.fromGPX(gpx))
         assertEquals(1735732800000L, track.points[0].timestamp)
     }
 
@@ -221,7 +221,7 @@ class TrackTest {
         )
 
         val gpx = original.toGPX()
-        val parsed = Track.fromGPX(gpx)!!
+        val parsed = requireNotNull(Track.fromGPX(gpx))
 
         assertEquals(original.points[0].timestamp, parsed.points[0].timestamp)
     }

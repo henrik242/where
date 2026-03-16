@@ -24,7 +24,7 @@ fun startApp() {
     val database = getDatabaseBuilder().build()
 
     val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
-    val documentsDir = (paths.first() as NSURL).path!!
+    val documentsDir = requireNotNull((paths.first() as NSURL).path) { "Documents directory not found" }
 
     AppDependencies.trackRepository = TrackRepository(PlatformFile(documentsDir), database.trackDao())
     AppDependencies.savedPointsRepository = SavedPointsRepository(PlatformFile(documentsDir), database.savedPointDao())
