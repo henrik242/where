@@ -125,6 +125,7 @@ fun MapFabColumn(
             Icon(
                 if (isRecording) painterResource(Res.drawable.ic_stop) else painterResource(Res.drawable.ic_fiber_manual_record),
                 contentDescription = if (isRecording) stringResource(Res.string.stop_recording) else stringResource(Res.string.start_recording),
+                modifier = if (isRecording) Modifier else Modifier.size(18.dp),
                 tint = if (isRecording) Color.White else Color.Red
             )
         }
