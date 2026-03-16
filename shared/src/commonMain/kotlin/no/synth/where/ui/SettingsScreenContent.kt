@@ -59,6 +59,7 @@ fun SettingsScreenContent(
     currentThemeLabel: String = "",
     themeOptions: List<LanguageOption> = emptyList(),
     onThemeSelected: (String) -> Unit = {},
+    onAttributionsClick: () -> Unit = {},
     highlightOfflineMode: Boolean = false
 ) {
     var flashOfflineMode by remember { mutableStateOf(highlightOfflineMode) }
@@ -296,6 +297,26 @@ fun SettingsScreenContent(
 
                     HorizontalDivider()
                 }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onAttributionsClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.attributions),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Icon(
+                        painterResource(Res.drawable.ic_chevron_right),
+                        contentDescription = stringResource(Res.string.go_to_attributions)
+                    )
+                }
+
+                HorizontalDivider()
 
                 Row(
                     modifier = Modifier

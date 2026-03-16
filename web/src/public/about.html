@@ -134,6 +134,36 @@
             font-size: 14px;
             color: #999;
         }
+        .data-sources {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 48px 24px;
+            border-top: 1px solid #e8eaed;
+        }
+        .data-sources h2 {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 24px;
+            color: #1a73e8;
+        }
+        .data-sources ul {
+            list-style: none;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .data-sources li {
+            padding: 8px 0;
+            font-size: 15px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .data-sources a {
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .data-sources a:hover { text-decoration: underline; }
         footer a { color: #666; }
         @media (max-width: 480px) {
             .hero { padding: 48px 16px 40px; }
@@ -192,6 +222,32 @@
                 <p>No accounts, no ads, no tracking. Your location data is anonymous and ephemeral.</p>
             </div>
         </div>
+    </div>
+
+    <div class="data-sources">
+        <h2>Data Sources</h2>
+        <ul>
+            <li><a href="https://www.kartverket.no">Kartverket</a> &ndash; Topographic maps, elevation data, and place names (CC BY 4.0)</li>
+            <li><a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &ndash; Map data (ODbL)</li>
+            <li><a href="https://opentopomap.org">OpenTopoMap</a> &ndash; Topographic map style (CC-BY-SA)</li>
+            <li><a href="https://mapant.no">MapAnt.no</a> &ndash; Orienteering maps</li>
+            <li><a href="https://waymarkedtrails.org">Waymarked Trails</a> &ndash; Hiking trail overlay (CC-BY-SA)</li>
+            <li><a href="https://www.nve.no">NVE</a> &ndash; Avalanche terrain data (NLOD)</li>
+            <li><a href="https://open-meteo.com">Open-Meteo</a> &ndash; Elevation data (CC BY 4.0)</li>
+            <li><a href="https://nominatim.openstreetmap.org">Nominatim</a> &ndash; Geocoding (ODbL)</li>
+        </ul>
+
+        <h2>Open Source Libraries</h2>
+        <ul>
+            <li><a href="https://maplibre.org">MapLibre</a> &ndash; Map rendering (BSD 3-Clause)</li>
+            <li><a href="https://www.jetbrains.com/compose-multiplatform/">Compose Multiplatform</a> &ndash; UI framework (Apache 2.0)</li>
+            <li><a href="https://ktor.io">Ktor</a> &ndash; HTTP client (Apache 2.0)</li>
+            <li><a href="https://developer.android.com/kotlin/multiplatform/room">Room</a> &ndash; Local database (Apache 2.0)</li>
+            <li><a href="https://github.com/Kotlin/kotlinx.serialization">kotlinx-serialization</a> &ndash; JSON parsing (Apache 2.0)</li>
+            <li><a href="https://firebase.google.com/products/crashlytics">Firebase Crashlytics</a> &ndash; Crash reporting (Apache 2.0)</li>
+            <li><a href="https://github.com/JakeWharton/timber">Timber</a> &ndash; Logging (Apache 2.0)</li>
+            <li><a href="https://protomaps.com">Protomaps</a> &ndash; Map font glyphs (BSD 3-Clause)</li>
+        </ul>
     </div>
 
     <div class="cta">

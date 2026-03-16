@@ -18,6 +18,7 @@ fun SettingsScreen(
     onTracksClick: () -> Unit,
     onSavedPointsClick: () -> Unit,
     onOnlineTrackingClick: () -> Unit,
+    onAttributionsClick: () -> Unit,
     crashReportingEnabled: Boolean,
     onCrashReportingChange: (Boolean) -> Unit,
     userPreferences: UserPreferences,
@@ -69,6 +70,7 @@ fun SettingsScreen(
         currentThemeLabel = currentThemeLabel,
         themeOptions = themeOptions,
         onThemeSelected = { userPreferences.updateThemeMode(it) },
+        onAttributionsClick = onAttributionsClick,
         highlightOfflineMode = highlightOfflineMode
     )
 }

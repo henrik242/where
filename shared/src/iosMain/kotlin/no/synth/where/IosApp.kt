@@ -52,7 +52,8 @@ enum class Screen {
     SAVED_POINTS,
     ONLINE_TRACKING,
     DOWNLOAD,
-    LAYER_REGIONS
+    LAYER_REGIONS,
+    ATTRIBUTIONS
 }
 
 @Composable
@@ -187,7 +188,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     },
                     themeOptions = themeOptions,
                     currentThemeLabel = currentThemeLabel,
-                    onThemeSelected = { userPreferences.updateThemeMode(it) }
+                    onThemeSelected = { userPreferences.updateThemeMode(it) },
+                    onAttributionsClick = { navigateTo(Screen.ATTRIBUTIONS) }
                 )
             }
 
@@ -365,6 +367,12 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         highlightOfflineMode = true
                         navigateTo(Screen.SETTINGS)
                     }
+                )
+            }
+
+            Screen.ATTRIBUTIONS -> {
+                AttributionsScreenContent(
+                    onBackClick = { navigateBack() }
                 )
             }
 

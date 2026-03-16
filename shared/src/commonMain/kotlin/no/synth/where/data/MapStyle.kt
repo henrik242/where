@@ -42,12 +42,12 @@ object MapStyle {
         data class TileSource(val id: String, val tiles: String, val attribution: String)
 
         val baseSource = when (selectedLayer) {
-            MapLayer.OSM -> TileSource("osm", "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© OpenStreetMap contributors")
-            MapLayer.KARTVERKET -> TileSource("kartverket", "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", "Kartverket")
-            MapLayer.TOPORASTER -> TileSource("toporaster", "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png", "Kartverket Toporaster")
-            MapLayer.SJOKARTRASTER -> TileSource("sjokartraster", "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png", "Kartverket Sjøkartraster")
-            MapLayer.OPENTOPOMAP -> TileSource("opentopomap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", "© OpenTopoMap (CC-BY-SA)")
-            MapLayer.MAPANT -> TileSource("mapant", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png", "© MapAnt.no")
+            MapLayer.OSM -> TileSource("osm", "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors")
+            MapLayer.KARTVERKET -> TileSource("kartverket", "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
+            MapLayer.TOPORASTER -> TileSource("toporaster", "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
+            MapLayer.SJOKARTRASTER -> TileSource("sjokartraster", "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
+            MapLayer.OPENTOPOMAP -> TileSource("opentopomap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", "© <a href='https://opentopomap.org'>OpenTopoMap</a> (CC-BY-SA)")
+            MapLayer.MAPANT -> TileSource("mapant", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png", "© <a href='https://mapant.no'>MapAnt.no</a>")
         }
 
         val sources = buildString {
@@ -66,7 +66,7 @@ object MapStyle {
       "scheme": "xyz",
       "tiles": ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
       "tileSize": 256,
-      "attribution": "© Waymarked Trails, OSM"
+      "attribution": "© <a href='https://waymarkedtrails.org'>Waymarked Trails</a> (CC-BY-SA)"
     }""")
             }
             if (showAvalancheZones) {
@@ -76,7 +76,7 @@ object MapStyle {
       "scheme": "xyz",
       "tiles": ["https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}"],
       "tileSize": 256,
-      "attribution": "NVE",
+      "attribution": "© <a href='https://www.nve.no'>NVE</a> (NLOD)",
       "minzoom": 6,
       "maxzoom": 19
     }""")

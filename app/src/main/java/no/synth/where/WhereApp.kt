@@ -135,12 +135,18 @@ fun WhereApp(
                 onTracksClick = { navController.navigate(TracksRoute()) },
                 onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
                 onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
+                onAttributionsClick = { navController.navigate(AttributionsRoute) },
                 crashReportingEnabled = crashReportingEnabled,
                 onCrashReportingChange = { enabled ->
                     userPreferences.updateCrashReportingEnabled(enabled)
                     CrashReporter.setEnabled(enabled)
                 },
                 userPreferences = userPreferences
+            )
+        }
+        composable<AttributionsRoute> {
+            AttributionsScreenContent(
+                onBackClick = { navController.popBackStack() }
             )
         }
         composable<OnlineTrackingRoute> {

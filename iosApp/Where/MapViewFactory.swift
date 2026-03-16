@@ -39,7 +39,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         let map = MLNMapView(frame: .zero)
         map.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         map.logoView.isHidden = true
-        map.attributionButton.isHidden = true
         map.delegate = self
         // Default camera: center of Norway
         map.setCenter(CLLocationCoordinate2D(latitude: 65.0, longitude: 14.0), zoomLevel: 4, animated: false)
