@@ -34,7 +34,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
@@ -313,24 +313,28 @@ fun CrosshairOverlay(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize().drawBehind {
             val cx = size.width / 2
             val cy = size.height / 2
-            val armLen = 16.dp.toPx()
-            val gap = 4.dp.toPx()
-            val strokeWidth = 2.dp.toPx()
+            val center = Offset(cx, cy)
+            val armLen = 20.dp.toPx()
+            val gap = 9.5.dp.toPx()
+            val dotRadius = 2.dp.toPx()
+            val strokeWidth = 1.5.dp.toPx()
+            val shadowWidth = strokeWidth + 2.dp.toPx()
+            val shadowColor = Color.White.copy(alpha = 0.5f)
+            val lineColor = Color.Black
 
             // Shadow
-            val shadowColor = Color.Black.copy(alpha = 0.4f)
-            val shadowStroke = Stroke(width = strokeWidth + 1.dp.toPx())
-            drawLine(shadowColor, Offset(cx - armLen, cy), Offset(cx - gap, cy), strokeWidth = shadowStroke.width)
-            drawLine(shadowColor, Offset(cx + gap, cy), Offset(cx + armLen, cy), strokeWidth = shadowStroke.width)
-            drawLine(shadowColor, Offset(cx, cy - armLen), Offset(cx, cy - gap), strokeWidth = shadowStroke.width)
-            drawLine(shadowColor, Offset(cx, cy + gap), Offset(cx, cy + armLen), strokeWidth = shadowStroke.width)
+            drawLine(shadowColor, Offset(cx - armLen, cy), Offset(cx - gap, cy), strokeWidth = shadowWidth, cap = StrokeCap.Round)
+            drawLine(shadowColor, Offset(cx + gap, cy), Offset(cx + armLen, cy), strokeWidth = shadowWidth, cap = StrokeCap.Round)
+            drawLine(shadowColor, Offset(cx, cy - armLen), Offset(cx, cy - gap), strokeWidth = shadowWidth, cap = StrokeCap.Round)
+            drawLine(shadowColor, Offset(cx, cy + gap), Offset(cx, cy + armLen), strokeWidth = shadowWidth, cap = StrokeCap.Round)
+            drawCircle(shadowColor, dotRadius + 1.dp.toPx(), center)
 
-            // Crosshair lines
-            val lineColor = Color.White
-            drawLine(lineColor, Offset(cx - armLen, cy), Offset(cx - gap, cy), strokeWidth = strokeWidth)
-            drawLine(lineColor, Offset(cx + gap, cy), Offset(cx + armLen, cy), strokeWidth = strokeWidth)
-            drawLine(lineColor, Offset(cx, cy - armLen), Offset(cx, cy - gap), strokeWidth = strokeWidth)
-            drawLine(lineColor, Offset(cx, cy + gap), Offset(cx, cy + armLen), strokeWidth = strokeWidth)
+            // Cross lines and dot
+            drawLine(lineColor, Offset(cx - armLen, cy), Offset(cx - gap, cy), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+            drawLine(lineColor, Offset(cx + gap, cy), Offset(cx + armLen, cy), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+            drawLine(lineColor, Offset(cx, cy - armLen), Offset(cx, cy - gap), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+            drawLine(lineColor, Offset(cx, cy + gap), Offset(cx, cy + armLen), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+            drawCircle(lineColor, dotRadius, center)
         }
     )
 }
