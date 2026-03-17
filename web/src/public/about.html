@@ -137,15 +137,16 @@
         .data-sources {
             max-width: 800px;
             margin: 0 auto;
-            padding: 48px 24px;
-            border-top: 1px solid #e8eaed;
+            padding: 24px 24px 16px;
         }
-        .data-sources h2 {
-            font-size: 24px;
-            font-weight: 700;
+        .data-sources h3 {
+            font-size: 14px;
+            font-weight: 600;
             text-align: center;
-            margin-bottom: 24px;
-            color: #1a73e8;
+            margin-bottom: 8px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .data-sources ul {
             list-style: none;
@@ -153,17 +154,16 @@
             margin: 0 auto;
         }
         .data-sources li {
-            padding: 8px 0;
-            font-size: 15px;
-            color: #666;
-            line-height: 1.5;
+            padding: 3px 0;
+            font-size: 13px;
+            color: #999;
+            line-height: 1.4;
         }
         .data-sources a {
-            color: #1a73e8;
+            color: #999;
             text-decoration: none;
-            font-weight: 600;
         }
-        .data-sources a:hover { text-decoration: underline; }
+        .data-sources a:hover { text-decoration: underline; color: #666; }
         footer a { color: #666; }
         @media (max-width: 480px) {
             .hero { padding: 48px 16px 40px; }
@@ -225,7 +225,7 @@
     </div>
 
     <div class="data-sources">
-        <h2>Data Sources</h2>
+        <h3>Data Sources</h3>
         <ul>
             <li><a href="https://www.kartverket.no">Kartverket</a> &ndash; Topographic maps, elevation data, and place names (CC BY 4.0)</li>
             <li><a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &ndash; Map data (ODbL)</li>
@@ -237,7 +237,7 @@
             <li><a href="https://nominatim.openstreetmap.org">Nominatim</a> &ndash; Geocoding (ODbL)</li>
         </ul>
 
-        <h2>Open Source Libraries</h2>
+        <h3>Open Source Libraries</h3>
         <ul>
             <li><a href="https://maplibre.org">MapLibre</a> &ndash; Map rendering (BSD 3-Clause)</li>
             <li><a href="https://www.jetbrains.com/compose-multiplatform/">Compose Multiplatform</a> &ndash; UI framework (Apache 2.0)</li>
