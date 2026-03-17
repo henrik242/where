@@ -66,10 +66,6 @@ fun MapScreen(
     onSettingsClick: () -> Unit,
     onOfflineSettingsClick: () -> Unit = {},
     onOnlineTrackingSettingsClick: () -> Unit = {},
-    showCountyBorders: Boolean,
-    onShowCountyBordersChange: (Boolean) -> Unit,
-    showSavedPoints: Boolean,
-    onShowSavedPointsChange: (Boolean) -> Unit,
     viewingPoint: no.synth.where.data.SavedPoint? = null,
     onClearViewingPoint: () -> Unit = {},
     regionsLoadedTrigger: Int = 0
@@ -83,6 +79,8 @@ fun MapScreen(
     val viewingTrack by viewModel.viewingTrack.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val offlineModeEnabled by viewModel.userPreferences.offlineModeEnabled.collectAsState()
+    val showCountyBorders by viewModel.userPreferences.showCountyBorders.collectAsState()
+    val showSavedPoints by viewModel.userPreferences.showSavedPoints.collectAsState()
     val rulerState by viewModel.rulerState.collectAsState()
     val showSearch by viewModel.showSearch.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -104,10 +102,10 @@ fun MapScreen(
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
     var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
-    var selectedLayer by rememberSaveable { mutableStateOf(MapLayer.KARTVERKET) }
+    val selectedLayer by viewModel.userPreferences.selectedMapLayer.collectAsState()
     var showLayerMenu by remember { mutableStateOf(false) }
-    var showWaymarkedTrails by rememberSaveable { mutableStateOf(false) }
-    var showAvalancheZones by rememberSaveable { mutableStateOf(false) }
+    val showWaymarkedTrails by viewModel.userPreferences.showWaymarkedTrails.collectAsState()
+    val showAvalancheZones by viewModel.userPreferences.showAvalancheZones.collectAsState()
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasBackgroundLocationPermission by remember {
         mutableStateOf(
@@ -121,8 +119,7 @@ fun MapScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Crosshair state
-    var crosshairActive by rememberSaveable { mutableStateOf(false) }
+    val crosshairActive by viewModel.userPreferences.crosshairActive.collectAsState()
     var crosshairInfo by remember { mutableStateOf(CrosshairInfo()) }
     val coordFormat by viewModel.userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
@@ -297,7 +294,7 @@ fun MapScreen(
         centerLatLng = centerLatLng,
         coordFormat = coordFormat,
         onToggleCoordFormat = { viewModel.userPreferences.updateCoordFormat(coordFormat.next()) },
-        onCrosshairToggle = { crosshairActive = !crosshairActive },
+        onCrosshairToggle = { viewModel.userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
@@ -312,17 +309,17 @@ fun MapScreen(
         isSearching = isSearching,
         onSearchClick = { viewModel.openSearch() },
         onLayerMenuToggle = { showLayerMenu = it },
-        onLayerSelected = { selectedLayer = it; showLayerMenu = false },
+        onLayerSelected = { viewModel.userPreferences.updateSelectedMapLayer(it); showLayerMenu = false },
         onWaymarkedTrailsToggle = {
-            showWaymarkedTrails = !showWaymarkedTrails; showLayerMenu = false
+            viewModel.userPreferences.updateShowWaymarkedTrails(!showWaymarkedTrails); showLayerMenu = false
         },
         onAvalancheZonesToggle = {
-            showAvalancheZones = !showAvalancheZones; showLayerMenu = false
+            viewModel.userPreferences.updateShowAvalancheZones(!showAvalancheZones); showLayerMenu = false
         },
         onCountyBordersToggle = {
-            onShowCountyBordersChange(!showCountyBorders); showLayerMenu = false
+            viewModel.userPreferences.updateShowCountyBorders(!showCountyBorders); showLayerMenu = false
         },
-        onSavedPointsToggle = { onShowSavedPointsChange(!showSavedPoints); showLayerMenu = false },
+        onSavedPointsToggle = { viewModel.userPreferences.updateShowSavedPoints(!showSavedPoints); showLayerMenu = false },
         onRecordStopClick = {
             if (isRecording) {
                 viewModel.openStopTrackDialog()

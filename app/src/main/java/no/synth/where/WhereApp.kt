@@ -35,9 +35,7 @@ fun WhereApp(
     val userPreferences = viewModel.userPreferences
     val trackRepository = viewModel.trackRepository
     val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
-    val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
-    var showSavedPoints by remember { mutableStateOf(true) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
     var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(PlatformFile(context.cacheDir))) }
     var isOnline by remember { mutableStateOf(false) }
@@ -117,10 +115,6 @@ fun WhereApp(
                 onSettingsClick = { navController.navigate(SettingsRoute()) },
                 onOfflineSettingsClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
                 onOnlineTrackingSettingsClick = { navController.navigate(OnlineTrackingRoute) },
-                showCountyBorders = showCountyBorders,
-                onShowCountyBordersChange = { userPreferences.updateShowCountyBorders(it) },
-                showSavedPoints = showSavedPoints,
-                onShowSavedPointsChange = { showSavedPoints = it },
                 viewingPoint = viewingPoint,
                 onClearViewingPoint = { viewingPoint = null },
                 regionsLoadedTrigger = regionsLoadedTrigger
@@ -136,12 +130,11 @@ fun WhereApp(
                 onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
                 onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
                 onAttributionsClick = { navController.navigate(AttributionsRoute) },
-                crashReportingEnabled = crashReportingEnabled,
+                userPreferences = userPreferences,
                 onCrashReportingChange = { enabled ->
                     userPreferences.updateCrashReportingEnabled(enabled)
                     CrashReporter.setEnabled(enabled)
-                },
-                userPreferences = userPreferences
+                }
             )
         }
         composable<AttributionsRoute> {

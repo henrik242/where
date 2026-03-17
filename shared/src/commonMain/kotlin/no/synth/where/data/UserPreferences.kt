@@ -22,6 +22,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
+import no.synth.where.ui.map.MapLayer
 
 class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -47,6 +48,21 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _coordFormat = MutableStateFlow(CoordFormat.LATLNG)
     val coordFormat: StateFlow<CoordFormat> = _coordFormat.asStateFlow()
 
+    private val _showWaymarkedTrails = MutableStateFlow(false)
+    val showWaymarkedTrails: StateFlow<Boolean> = _showWaymarkedTrails.asStateFlow()
+
+    private val _showSavedPoints = MutableStateFlow(true)
+    val showSavedPoints: StateFlow<Boolean> = _showSavedPoints.asStateFlow()
+
+    private val _showAvalancheZones = MutableStateFlow(false)
+    val showAvalancheZones: StateFlow<Boolean> = _showAvalancheZones.asStateFlow()
+
+    private val _crosshairActive = MutableStateFlow(false)
+    val crosshairActive: StateFlow<Boolean> = _crosshairActive.asStateFlow()
+
+    private val _selectedMapLayer = MutableStateFlow(MapLayer.KARTVERKET)
+    val selectedMapLayer: StateFlow<MapLayer> = _selectedMapLayer.asStateFlow()
+
     private val _searchHistory = MutableStateFlow<List<PlaceSearchClient.SearchResult>>(emptyList())
     val searchHistory: StateFlow<List<PlaceSearchClient.SearchResult>> = _searchHistory.asStateFlow()
 
@@ -54,6 +70,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         scope.launch {
             dataStore.data.collect { prefs ->
                 _showCountyBorders.value = prefs[SHOW_COUNTY_BORDERS] ?: false
+                _showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
+                _showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
+                _showAvalancheZones.value = prefs[SHOW_AVALANCHE_ZONES] ?: false
+                _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
+                _selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
@@ -70,6 +91,31 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         scope.launch {
             dataStore.edit { it[SHOW_COUNTY_BORDERS] = value }
         }
+    }
+
+    fun updateShowWaymarkedTrails(value: Boolean) {
+        _showWaymarkedTrails.value = value
+        scope.launch { dataStore.edit { it[SHOW_WAYMARKED_TRAILS] = value } }
+    }
+
+    fun updateShowSavedPoints(value: Boolean) {
+        _showSavedPoints.value = value
+        scope.launch { dataStore.edit { it[SHOW_SAVED_POINTS] = value } }
+    }
+
+    fun updateShowAvalancheZones(value: Boolean) {
+        _showAvalancheZones.value = value
+        scope.launch { dataStore.edit { it[SHOW_AVALANCHE_ZONES] = value } }
+    }
+
+    fun updateCrosshairActive(value: Boolean) {
+        _crosshairActive.value = value
+        scope.launch { dataStore.edit { it[CROSSHAIR_ACTIVE] = value } }
+    }
+
+    fun updateSelectedMapLayer(value: MapLayer) {
+        _selectedMapLayer.value = value
+        scope.launch { dataStore.edit { it[SELECTED_MAP_LAYER] = value.name } }
     }
 
     fun updateCrashReportingEnabled(value: Boolean) {
@@ -155,6 +201,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private const val MAX_SEARCH_HISTORY = 10
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
+        private val SHOW_WAYMARKED_TRAILS = booleanPreferencesKey("show_waymarked_trails")
+        private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
+        private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")
+        private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")
+        private val SELECTED_MAP_LAYER = stringPreferencesKey("selected_map_layer")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
         private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")
         private val OFFLINE_MODE_ENABLED = booleanPreferencesKey("offline_mode_enabled")

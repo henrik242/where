@@ -66,7 +66,6 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val downloadManager = remember { IosMapDownloadManager(offlineMapManager) }
 
     val themeMode by userPreferences.themeMode.collectAsState()
-    val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
@@ -127,7 +126,6 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
             Screen.MAP -> {
                 IosMapScreen(
                     mapViewProvider = mapViewProvider,
-                    showCountyBorders = showCountyBorders,
                     viewingPoint = viewingPoint,
                     onClearViewingPoint = { viewingPoint = null },
                     onSettingsClick = { navigateTo(Screen.SETTINGS) },

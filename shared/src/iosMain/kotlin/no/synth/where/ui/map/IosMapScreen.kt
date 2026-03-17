@@ -56,10 +56,6 @@ import platform.Foundation.NSUserDomainMask
 @Composable
 fun IosMapScreen(
     mapViewProvider: MapViewProvider,
-    selectedLayer: MapLayer = MapLayer.KARTVERKET,
-    showWaymarkedTrails: Boolean = false,
-    showCountyBorders: Boolean = false,
-    showAvalancheZones: Boolean = false,
     viewingPoint: SavedPoint? = null,
     onClearViewingPoint: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
@@ -73,11 +69,11 @@ fun IosMapScreen(
     val locationTracker = remember { IosLocationTracker(trackRepository) }
 
     var showLayerMenu by remember { mutableStateOf(false) }
-    var currentLayer by remember { mutableStateOf(selectedLayer) }
-    var waymarkedTrails by remember { mutableStateOf(showWaymarkedTrails) }
-    var countyBorders by remember { mutableStateOf(showCountyBorders) }
-    var avalancheZones by remember { mutableStateOf(showAvalancheZones) }
-    var showSavedPoints by remember { mutableStateOf(true) }
+    val currentLayer by userPreferences.selectedMapLayer.collectAsState()
+    val waymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
+    val countyBorders by userPreferences.showCountyBorders.collectAsState()
+    val avalancheZones by userPreferences.showAvalancheZones.collectAsState()
+    val showSavedPoints by userPreferences.showSavedPoints.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var rulerState by remember { mutableStateOf(RulerState()) }
     val scope = rememberCoroutineScope()
@@ -124,8 +120,7 @@ fun IosMapScreen(
     var showPointInfoDialog by remember { mutableStateOf(false) }
     var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
-    // Crosshair state
-    var crosshairActive by remember { mutableStateOf(false) }
+    val crosshairActive by userPreferences.crosshairActive.collectAsState()
     var crosshairInfo by remember { mutableStateOf(CrosshairInfo()) }
     val coordFormat by userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
@@ -428,7 +423,7 @@ fun IosMapScreen(
         centerLatLng = centerLatLng,
         coordFormat = coordFormat,
         onToggleCoordFormat = { userPreferences.updateCoordFormat(coordFormat.next()) },
-        onCrosshairToggle = { crosshairActive = !crosshairActive },
+        onCrosshairToggle = { userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
@@ -443,11 +438,11 @@ fun IosMapScreen(
         isSearching = isSearching,
         onSearchClick = { showSearch = true },
         onLayerMenuToggle = { showLayerMenu = it },
-        onLayerSelected = { currentLayer = it },
-        onWaymarkedTrailsToggle = { waymarkedTrails = !waymarkedTrails },
-        onAvalancheZonesToggle = { avalancheZones = !avalancheZones },
-        onCountyBordersToggle = { countyBorders = !countyBorders },
-        onSavedPointsToggle = { showSavedPoints = !showSavedPoints },
+        onLayerSelected = { userPreferences.updateSelectedMapLayer(it) },
+        onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!waymarkedTrails) },
+        onAvalancheZonesToggle = { userPreferences.updateShowAvalancheZones(!avalancheZones) },
+        onCountyBordersToggle = { userPreferences.updateShowCountyBorders(!countyBorders) },
+        onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {
             if (isRecording) {
                 showStopTrackDialog = true

@@ -19,9 +19,8 @@ fun SettingsScreen(
     onSavedPointsClick: () -> Unit,
     onOnlineTrackingClick: () -> Unit,
     onAttributionsClick: () -> Unit,
-    crashReportingEnabled: Boolean,
-    onCrashReportingChange: (Boolean) -> Unit,
     userPreferences: UserPreferences,
+    onCrashReportingChange: (Boolean) -> Unit,
     highlightOfflineMode: Boolean = false
 ) {
     val languages = listOf(
@@ -41,6 +40,7 @@ fun SettingsScreen(
         LanguageOption("dark", stringResource(Res.string.theme_dark))
     )
 
+    val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val themeMode by userPreferences.themeMode.collectAsState()
     val currentThemeLabel = themeOptions.find { it.tag == themeMode }?.displayName
