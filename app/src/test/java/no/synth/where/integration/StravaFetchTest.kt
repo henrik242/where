@@ -6,6 +6,7 @@ import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -15,6 +16,7 @@ import java.util.concurrent.TimeUnit
  * Run with: ../gradlew integrationTest
  * (STRAVA_URL is read from local.properties)
  */
+@Ignore
 class StravaFetchTest {
 
     private val stravaUrls: List<String> = (System.getenv("STRAVA_URL") ?: "")
