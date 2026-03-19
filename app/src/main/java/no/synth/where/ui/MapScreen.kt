@@ -339,15 +339,19 @@ fun MapScreen(
         },
         onMyLocationClick = {
             mapInstance?.let { map ->
-                val locationComponent = map.locationComponent
-                if (locationComponent.isLocationComponentEnabled) {
-                    locationComponent.lastKnownLocation?.let { location ->
-                        map.animateCamera(
-                            org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                                LatLng(location.latitude, location.longitude).toMapLibre(), 15.0
+                try {
+                    val locationComponent = map.locationComponent
+                    if (locationComponent.isLocationComponentEnabled) {
+                        locationComponent.lastKnownLocation?.let { location ->
+                            map.animateCamera(
+                                org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
+                                    LatLng(location.latitude, location.longitude).toMapLibre(), 15.0
+                                )
                             )
-                        )
+                        }
                     }
+                } catch (_: Exception) {
+                    Logger.w("Location component not initialized yet")
                 }
             }
         },
