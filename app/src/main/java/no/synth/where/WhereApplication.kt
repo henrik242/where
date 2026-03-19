@@ -3,7 +3,12 @@ package no.synth.where
 import android.app.Application
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
+import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
@@ -37,6 +42,10 @@ class WhereApplication : Application() {
         CrashReporter.setEnabled(userPreferences.crashReportingEnabled.value)
 
         MapLibre.getInstance(this)
+        OfflineTileReader.init(PlatformFile(cacheDir))
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            userPreferences.offlineModeEnabled.collect { OfflineTileReader.offlineOnly = it }
+        }
 
         val tilesDir = File(getExternalFilesDir(null), "maplibre-tiles")
         if (!tilesDir.exists()) {

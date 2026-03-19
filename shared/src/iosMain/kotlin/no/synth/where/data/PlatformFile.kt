@@ -42,6 +42,17 @@ actual class PlatformFile(val path: String = "") {
         return (date.timeIntervalSince1970 * 1000).toLong()
     }
 
+    actual fun readBytes(): ByteArray {
+        val nsData = NSData.create(contentsOfFile = path) ?: return ByteArray(0)
+        val size = nsData.length.toInt()
+        if (size == 0) return ByteArray(0)
+        val result = ByteArray(size)
+        result.usePinned { pinned ->
+            platform.posix.memcpy(pinned.addressOf(0), nsData.bytes, nsData.length)
+        }
+        return result
+    }
+
     actual fun writeBytes(bytes: ByteArray) {
         @Suppress("CAST_NEVER_SUCCEEDS")
         val parentDir = (path as NSString).stringByDeletingLastPathComponent
@@ -60,4 +71,19 @@ actual class PlatformFile(val path: String = "") {
     }
 
     actual fun delete(): Boolean = fileManager.removeItemAtPath(path, null)
+
+    actual fun mkdirs(): Boolean {
+        return fileManager.createDirectoryAtPath(path, true, null, null)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    actual fun listFiles(): List<PlatformFile> {
+        val contents = fileManager.contentsOfDirectoryAtPath(path, null) as? List<String> ?: return emptyList()
+        return contents.map { resolve(it) }
+    }
+
+    actual fun isDirectory(): Boolean {
+        val attrs = fileManager.attributesOfItemAtPath(path, null) ?: return false
+        return attrs["NSFileType"] == "NSFileTypeDirectory"
+    }
 }

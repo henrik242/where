@@ -19,12 +19,14 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
     val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
     private val scope = CoroutineScope(Dispatchers.Main)
     private var pollJob: Job? = null
+    private var demJob: Job? = null
 
     fun startDownload(
         region: Region,
         layerName: String,
         minZoom: Int = 5,
-        maxZoom: Int = 12
+        maxZoom: Int = 12,
+        downloadDem: Boolean = true
     ) {
         val regionName = "${region.name}-$layerName"
         val styleJson = DownloadLayers.getDownloadStyleJson(layerName)
@@ -34,8 +36,18 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
             region = region,
             layerName = layerName,
             progress = 0,
-            isDownloading = true
+            isDownloading = true,
+            demProgress = if (downloadDem) 0 else -1
         )
+
+        // Start DEM elevation tile download in parallel
+        if (downloadDem) {
+            demJob = scope.launch {
+                OfflineTileReader.downloadDemTilesForBounds(region.boundingBox) { demPercent ->
+                    _downloadState.value = _downloadState.value.copy(demProgress = demPercent)
+                }
+            }
+        }
 
         offlineMapManager.downloadRegion(
             regionName = regionName,
@@ -56,13 +68,25 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
                 override fun onComplete(success: Boolean) {
                     Logger.d("onComplete callback for %s: success=%s", regionName, success.toString())
                     pollJob?.cancel()
-                    _downloadState.value = DownloadState()
+                    scope.launch {
+                        demJob?.join()
+                        _downloadState.value = DownloadState()
+                    }
                 }
 
                 override fun onError(message: String) {
                     Logger.e("onError callback for %s: %s", regionName, message)
                     pollJob?.cancel()
-                    _downloadState.value = DownloadState()
+                    if (demJob?.isActive == true) {
+                        // Map tile download failed but DEM is still going — keep DEM progress visible
+                        _downloadState.value = _downloadState.value.copy(isDownloading = false)
+                        scope.launch {
+                            demJob?.join()
+                            _downloadState.value = DownloadState()
+                        }
+                    } else {
+                        _downloadState.value = DownloadState()
+                    }
                 }
             }
         )
@@ -90,6 +114,7 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
                         }
                         if (isComplete) {
                             Logger.d("Polling detected completion for %s", regionName)
+                            demJob?.join()
                             _downloadState.value = DownloadState()
                             break
                         }
@@ -128,6 +153,7 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
             Logger.d("stopDownload: %s", regionName)
             offlineMapManager.stopDownload(regionName)
         }
+        demJob?.cancel()
         pollJob?.cancel()
         _downloadState.value = DownloadState()
     }
@@ -183,6 +209,21 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         } catch (e: Exception) {
             Logger.e("getRegionTileInfo error for %s: %s", regionName, e.message ?: "unknown")
             RegionTileInfo(estimatedTileCount, 0, 0, false)
+        }
+    }
+
+    fun hasOtherLayersForRegion(regionHexId: String, excludeLayer: String): Boolean {
+        return try {
+            DownloadLayers.all
+                .filter { it.id != excludeLayer }
+                .any { layer ->
+                    val regionName = "$regionHexId-${layer.id}"
+                    val status = offlineMapManager.getRegionStatusEncoded(regionName)
+                    status.isNotEmpty() && status != "-1,-1,-1,-1" && status.split(",").getOrNull(0)?.toIntOrNull()?.let { it > 0 } == true
+                }
+        } catch (e: Exception) {
+            Logger.e("hasOtherLayersForRegion error: %s", e.message ?: "unknown")
+            false
         }
     }
 

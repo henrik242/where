@@ -43,6 +43,8 @@ import no.synth.where.resources.Res
 import no.synth.where.resources.ic_arrow_back
 import no.synth.where.resources.ic_cloud_off
 import no.synth.where.resources.ic_close
+import no.synth.where.resources.elevation_data
+import no.synth.where.resources.map_tiles
 import no.synth.where.resources.offline_mode
 import no.synth.where.ui.map.ZoomControls
 import no.synth.where.util.formatBytes
@@ -54,6 +56,7 @@ import org.jetbrains.compose.resources.stringResource
 fun HexMapScreenContent(
     layerDisplayName: String,
     isDownloading: Boolean,
+    demProgress: Int = -1,
     downloadLayerId: String?,
     currentLayerId: String,
     downloadProgress: Int,
@@ -138,7 +141,9 @@ fun HexMapScreenContent(
             }
 
             // Download progress banner
-            if (isDownloading && downloadLayerId == currentLayerId) {
+            val isDownloadingThisLayer = isDownloading && downloadLayerId == currentLayerId
+            val showDemProgress = demProgress in 0..99
+            if (isDownloadingThisLayer || showDemProgress) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -148,29 +153,31 @@ fun HexMapScreenContent(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Downloading…", style = MaterialTheme.typography.bodyMedium)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    "$downloadProgress%",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                TextButton(onClick = onStopDownload) {
-                                    Text("Stop")
-                                }
+                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        if (isDownloadingThisLayer) {
+                            Text(
+                                "Stop",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .align(Alignment.End)
+                                    .clickable { onStopDownload() }
+                                    .padding(bottom = 4.dp)
+                            )
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(stringResource(Res.string.map_tiles), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("$downloadProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                            LinearProgressIndicator(progress = { downloadProgress / 100f }, modifier = Modifier.fillMaxWidth())
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        LinearProgressIndicator(
-                            progress = { downloadProgress / 100f },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        if (showDemProgress) {
+                            if (isDownloadingThisLayer) Spacer(modifier = Modifier.height(4.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(stringResource(Res.string.elevation_data), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("$demProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            LinearProgressIndicator(progress = { demProgress / 100f }, modifier = Modifier.fillMaxWidth())
+                        }
                     }
                 }
             }

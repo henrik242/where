@@ -116,12 +116,13 @@ class MapDownloadManager(private val context: Context) {
 
                                     val isTemporaryError =
                                         errorMessage.contains("timeout", ignoreCase = true) ||
-                                                errorMessage.contains(
-                                                    "temporary",
-                                                    ignoreCase = true
-                                                ) ||
+                                                errorMessage.contains("temporary", ignoreCase = true) ||
+                                                errorMessage.contains("503", ignoreCase = true) ||
+                                                errorMessage.contains("429", ignoreCase = true) ||
+                                                errorMessage.contains("connection", ignoreCase = true) ||
                                                 reason.contains("CONNECTION", ignoreCase = true) ||
-                                                reason.contains("TIMEOUT", ignoreCase = true)
+                                                reason.contains("TIMEOUT", ignoreCase = true) ||
+                                                reason.contains("SERVER", ignoreCase = true)
 
                                     if (isTemporaryError) {
                                         Logger.w(
@@ -391,6 +392,27 @@ class MapDownloadManager(private val context: Context) {
                         })
                     }
                 }
+                override fun onError(error: String) {
+                    continuation.resume(false)
+                }
+            })
+        }
+
+    suspend fun hasOtherLayersForRegion(regionHexId: String, excludeLayer: String): Boolean =
+        suspendCancellableCoroutine { continuation ->
+            offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
+                override fun onList(offlineRegions: Array<OfflineRegion>?) {
+                    val hasOther = offlineRegions?.any { r ->
+                        try {
+                            val metadata = String(r.metadata)
+                            val json = Json.parseToJsonElement(metadata).jsonObject
+                            json["region"]?.jsonPrimitive?.content == regionHexId &&
+                                json["layer"]?.jsonPrimitive?.content != excludeLayer
+                        } catch (_: Exception) { false }
+                    } ?: false
+                    continuation.resume(hasOther)
+                }
+
                 override fun onError(error: String) {
                     continuation.resume(false)
                 }

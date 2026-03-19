@@ -122,6 +122,8 @@
     <string name="crash_reporting_description">Send anonymous crash reports to help improve the app</string>
     <string name="offline_mode">Offline Mode</string>
     <string name="offline_mode_description">Only use cached maps and data, no network requests</string>
+    <string name="download_elevation_data">Download elevation data</string>
+    <string name="download_elevation_data_description">Download altitude and slope data when downloading map tiles for offline use</string>
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Import GPX</string>
@@ -154,6 +156,9 @@
     <string name="tiles_loaded_automatically">Tiles loaded automatically while browsing</string>
     <string name="downloading_region">Downloading %1$s</string>
     <string name="downloading_region_ellipsis">Downloading %1$s\u2026</string>
+    <string name="downloading_elevation_data">Downloading elevation data\u2026</string>
+    <string name="map_tiles">Map tiles</string>
+    <string name="elevation_data">Elevation data</string>
     <string name="view_regions">View regions</string>
     <string name="download_regions">Download Regions</string>
     <string name="delete_region_title">Delete %1$s?</string>
@@ -174,8 +179,10 @@
     <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
     <string name="layer_avalanchezones_desc">Avalanche zones from NVE</string>
+    <string name="layer_terrain_desc">Terrain hillshade overlay</string>
 
     <!-- Crosshair -->
+    <string name="hillshade">Hillshade</string>
     <string name="crosshair">Crosshair</string>
     <string name="elevation_format">%1$s m</string>
     <string name="slope_format">%1$s°</string>

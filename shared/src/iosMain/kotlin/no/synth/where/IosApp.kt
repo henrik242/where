@@ -35,6 +35,8 @@ import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import no.synth.where.data.HexGrid
+import no.synth.where.data.OfflineTileReader
 import no.synth.where.di.AppDependencies
 import no.synth.where.util.CrashReporter
 import no.synth.where.util.Logger
@@ -68,6 +70,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val themeMode by userPreferences.themeMode.collectAsState()
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
+    val downloadElevationData by userPreferences.downloadElevationData.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val tracks by trackRepository.tracks.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
@@ -297,6 +300,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 val opentopomapDesc = stringResource(Res.string.layer_opentopomap_desc)
                 val waymarkedtrailsDesc = stringResource(Res.string.layer_waymarkedtrails_desc)
                 val avalanchezonesDesc = stringResource(Res.string.layer_avalanchezones_desc)
+                val terrainDesc = stringResource(Res.string.layer_terrain_desc)
 
                 val descriptionMap = remember(kartverketDesc) {
                     mapOf(
@@ -308,6 +312,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         "opentopomap" to opentopomapDesc,
                         "waymarkedtrails" to waymarkedtrailsDesc,
                         "avalanchezones" to avalanchezonesDesc,
+                        "terrain" to terrainDesc,
                     )
                 }
 
@@ -329,6 +334,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     layers = layers,
                     cacheSize = cacheSize,
                     isDownloading = downloadState.isDownloading,
+                    demProgress = downloadState.demProgress,
                     downloadRegionName = downloadState.region?.name,
                     downloadLayerName = downloadState.layerName,
                     downloadProgress = downloadState.progress,
@@ -340,7 +346,17 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onStopDownload = { downloadManager.stopDownload() },
                     onDeleteLayer = { layerId ->
                         scope.launch {
+                            val downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
                             downloadManager.deleteAllRegionsForLayer(layerId)
+                            for (hexId in downloadedHexIds) {
+                                val hasOther = downloadManager.hasOtherLayersForRegion(hexId, layerId)
+                                if (!hasOther) {
+                                    val hex = HexGrid.hexFromId(hexId)
+                                    if (hex != null) {
+                                        OfflineTileReader.deleteDemTilesForBounds(HexGrid.hexBounds(hex))
+                                    }
+                                }
+                            }
                             refreshTrigger++
                         }
                     },
@@ -348,6 +364,17 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         scope.launch {
                             downloadManager.clearAutoCache()
                             refreshTrigger++
+                        }
+                    },
+                    downloadElevationData = downloadElevationData,
+                    demCacheSize = remember(refreshTrigger) { OfflineTileReader.getDemCacheSize() },
+                    onDownloadElevationDataChange = { enabled ->
+                        userPreferences.updateDownloadElevationData(enabled)
+                        if (!enabled) {
+                            scope.launch {
+                                OfflineTileReader.clearAllDemTiles()
+                                refreshTrigger++
+                            }
                         }
                     },
                     getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },
@@ -361,6 +388,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onBackClick = { navigateBack() },
                     hexMapViewProvider = hexMapViewProvider,
                     downloadManager = downloadManager,
+                    downloadElevationData = downloadElevationData,
                     offlineModeEnabled = offlineModeEnabled,
                     onOfflineChipClick = {
                         highlightOfflineMode = true

@@ -106,6 +106,7 @@ fun MapScreen(
     var showLayerMenu by remember { mutableStateOf(false) }
     val showWaymarkedTrails by viewModel.userPreferences.showWaymarkedTrails.collectAsState()
     val showAvalancheZones by viewModel.userPreferences.showAvalancheZones.collectAsState()
+    val showHillshade by viewModel.userPreferences.showHillshade.collectAsState()
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasBackgroundLocationPermission by remember {
         mutableStateOf(
@@ -289,6 +290,7 @@ fun MapScreen(
         showCountyBorders = showCountyBorders,
         showSavedPoints = showSavedPoints,
         showAvalancheZones = showAvalancheZones,
+        showHillshade = showHillshade,
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
         centerLatLng = centerLatLng,
@@ -315,6 +317,9 @@ fun MapScreen(
         },
         onAvalancheZonesToggle = {
             viewModel.userPreferences.updateShowAvalancheZones(!showAvalancheZones); showLayerMenu = false
+        },
+        onHillshadeToggle = {
+            viewModel.userPreferences.updateShowHillshade(!showHillshade); showLayerMenu = false
         },
         onCountyBordersToggle = {
             viewModel.userPreferences.updateShowCountyBorders(!showCountyBorders); showLayerMenu = false
@@ -408,6 +413,7 @@ fun MapScreen(
                 showCountyBorders = showCountyBorders,
                 showWaymarkedTrails = showWaymarkedTrails,
                 showAvalancheZones = showAvalancheZones,
+                showHillshade = showHillshade,
                 showSavedPoints = showSavedPoints,
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,

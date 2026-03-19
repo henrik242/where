@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import no.synth.where.data.geo.LatLngBounds
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class TileUtilsTest {
@@ -28,5 +29,34 @@ class TileUtilsTest {
         val smallCount = TileUtils.estimateTileCount(small, 5, 10)
         val largeCount = TileUtils.estimateTileCount(large, 5, 10)
         assertTrue(largeCount > smallCount, "Larger region should produce more tiles")
+    }
+
+    @Test
+    fun latLngToTileCoordKnownValues() {
+        // At zoom 0, the entire world is one tile
+        val coord = TileUtils.latLngToTileCoord(0.0, 0.0, 0)
+        assertEquals(0, coord.z)
+        assertEquals(0, coord.x)
+        assertEquals(0, coord.y)
+    }
+
+    @Test
+    fun latLngToTileCoordPixelRange() {
+        val coord = TileUtils.latLngToTileCoord(63.43, 10.39, 15)
+        assertEquals(15, coord.z)
+        assertTrue(coord.pixelX in 0..255, "pixelX should be in tile range")
+        assertTrue(coord.pixelY in 0..255, "pixelY should be in tile range")
+    }
+
+    @Test
+    fun tileToLatLngRoundTrip() {
+        val lat = 63.43
+        val lng = 10.39
+        val zoom = 14
+        val coord = TileUtils.latLngToTileCoord(lat, lng, zoom)
+        val (backLat, backLng) = TileUtils.tileToLatLng(coord.z, coord.x, coord.y)
+        // Tile corner should be close to original point (within one tile's span)
+        assertTrue(kotlin.math.abs(backLat - lat) < 0.1, "Latitude round trip should be close")
+        assertTrue(kotlin.math.abs(backLng - lng) < 0.1, "Longitude round trip should be close")
     }
 }

@@ -1,5 +1,6 @@
 package no.synth.where.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -54,6 +56,7 @@ fun DownloadScreenContent(
     layers: List<LayerInfo>,
     cacheSize: Long,
     isDownloading: Boolean,
+    demProgress: Int = -1,
     downloadRegionName: String?,
     downloadLayerName: String?,
     downloadProgress: Int,
@@ -62,6 +65,9 @@ fun DownloadScreenContent(
     onStopDownload: () -> Unit,
     onDeleteLayer: (String) -> Unit,
     onClearAutoCache: () -> Unit,
+    downloadElevationData: Boolean = true,
+    demCacheSize: Long = 0L,
+    onDownloadElevationDataChange: (Boolean) -> Unit = {},
     getLayerStats: suspend (String) -> Pair<Long, Int>,
     refreshTrigger: Int
 ) {
@@ -172,43 +178,102 @@ fun DownloadScreenContent(
                 }
             }
 
-            if (isDownloading && downloadRegionName != null) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onDownloadElevationDataChange(!downloadElevationData) }
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(Res.string.download_elevation_data),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = stringResource(Res.string.download_elevation_data_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (demCacheSize > 0) {
+                            Text(
+                                text = formatBytes(demCacheSize),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Switch(
+                        modifier = Modifier.padding(start = 16.dp),
+                        checked = downloadElevationData,
+                        onCheckedChange = onDownloadElevationDataChange
+                    )
+                }
+            }
+
+            val showDemProgress = demProgress in 0..99
+            if ((isDownloading && downloadRegionName != null) || showDemProgress) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        stringResource(Res.string.downloading_region, downloadRegionName),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        downloadLayerName ?: "",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    if (downloadRegionName != null) {
+                                        Text(
+                                            stringResource(Res.string.downloading_region, downloadRegionName),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    if (downloadLayerName != null) {
+                                        Text(
+                                            downloadLayerName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                                 TextButton(onClick = onStopDownload) {
                                     Text(stringResource(Res.string.stop))
                                 }
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            LinearProgressIndicator(
-                                progress = { downloadProgress / 100f },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("$downloadProgress%", style = MaterialTheme.typography.bodySmall)
+                            if (isDownloading) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(stringResource(Res.string.map_tiles), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("$downloadProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                LinearProgressIndicator(
+                                    progress = { downloadProgress / 100f },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            if (showDemProgress) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(stringResource(Res.string.elevation_data), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("$demProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                LinearProgressIndicator(
+                                    progress = { demProgress / 100f },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }

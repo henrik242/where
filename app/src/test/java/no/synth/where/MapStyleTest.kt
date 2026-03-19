@@ -130,4 +130,32 @@ class MapStyleTest {
         // Verify the opacity is set to 0.6 for readability
         assertTrue("Avalanche layer opacity should be 0.6", style.contains("0.6"))
     }
+
+    @Test
+    fun testHillshadeIncludedWhenEnabled() {
+        val withHillshade = MapStyle.getStyle(showHillshade = true)
+        assertTrue("Should contain hillshade source", withHillshade.contains("\"hillshade\""))
+        assertTrue("Should contain hillshade layer", withHillshade.contains("\"hillshade-layer\""))
+        assertTrue("Should contain elevation-tiles-prod URL", withHillshade.contains("elevation-tiles-prod"))
+
+        val withoutHillshade = MapStyle.getStyle(showHillshade = false)
+        assertFalse("Should not contain hillshade source", withoutHillshade.contains("\"hillshade\""))
+        assertFalse("Should not contain hillshade layer", withoutHillshade.contains("\"hillshade-layer\""))
+    }
+
+    @Test
+    fun testHillshadeLayerOrdering() {
+        val style = MapStyle.getStyle(
+            showHillshade = true,
+            showAvalancheZones = true,
+            showWaymarkedTrails = true,
+            showCountyBorders = true,
+            regions = regions
+        )
+        val baseIdx = style.indexOf("base-layer")
+        val hillshadeIdx = style.indexOf("hillshade-layer")
+        val avalancheIdx = style.indexOf("avalanchezones-layer")
+        assertTrue("Hillshade should appear after base layer", hillshadeIdx > baseIdx)
+        assertTrue("Hillshade should appear before avalanche zones", hillshadeIdx < avalancheIdx)
+    }
 }

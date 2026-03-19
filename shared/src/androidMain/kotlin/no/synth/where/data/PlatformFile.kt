@@ -5,10 +5,14 @@ import java.io.File
 actual class PlatformFile(internal val file: File) {
     actual fun exists(): Boolean = file.exists()
     actual fun readText(): String = file.readText()
+    actual fun readBytes(): ByteArray = file.readBytes()
     actual fun renameTo(dest: PlatformFile): Boolean = file.renameTo(dest.file)
     actual fun resolve(child: String): PlatformFile = PlatformFile(File(file, child))
     actual fun lastModified(): Long = file.lastModified()
     actual fun writeBytes(bytes: ByteArray) = file.writeBytes(bytes)
     actual fun length(): Long = file.length()
     actual fun delete(): Boolean = file.delete()
+    actual fun mkdirs(): Boolean = file.mkdirs()
+    actual fun listFiles(): List<PlatformFile> = file.listFiles()?.map { PlatformFile(it) } ?: emptyList()
+    actual fun isDirectory(): Boolean = file.isDirectory
 }

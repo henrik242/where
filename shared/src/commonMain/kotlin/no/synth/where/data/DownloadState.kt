@@ -4,5 +4,6 @@ data class DownloadState(
     val region: Region? = null,
     val layerName: String? = null,
     val progress: Int = 0,
-    val isDownloading: Boolean = false
+    val isDownloading: Boolean = false,
+    val demProgress: Int = -1
 )

@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.HexGrid
+import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.RegionTileInfo
 import no.synth.where.data.geo.LatLngBounds
@@ -33,6 +34,7 @@ fun IosLayerHexMapScreen(
     onBackClick: () -> Unit,
     hexMapViewProvider: MapViewProvider,
     downloadManager: IosMapDownloadManager,
+    downloadElevationData: Boolean = true,
     offlineModeEnabled: Boolean = false,
     onOfflineChipClick: () -> Unit = {}
 ) {
@@ -113,6 +115,7 @@ fun IosLayerHexMapScreen(
     HexMapScreenContent(
         layerDisplayName = layerDisplayName,
         isDownloading = downloadState.isDownloading,
+        demProgress = downloadState.demProgress,
         downloadLayerId = downloadState.layerName,
         currentLayerId = layerId,
         downloadProgress = downloadState.progress,
@@ -132,7 +135,8 @@ fun IosLayerHexMapScreen(
                     region = HexGrid.hexToRegion(hex),
                     layerName = layerId,
                     minZoom = 5,
-                    maxZoom = 12
+                    maxZoom = 12,
+                    downloadDem = downloadElevationData
                 )
             }
             selectedHex = null
@@ -143,7 +147,12 @@ fun IosLayerHexMapScreen(
         onConfirmDelete = {
             currentHex?.let { hex ->
                 scope.launch {
-                    downloadManager.deleteRegionTiles(HexGrid.hexToRegion(hex), layerId)
+                    val region = HexGrid.hexToRegion(hex)
+                    val hasOther = downloadManager.hasOtherLayersForRegion(hex.id, layerId)
+                    downloadManager.deleteRegionTiles(region, layerId)
+                    if (!hasOther) {
+                        OfflineTileReader.deleteDemTilesForBounds(region.boundingBox)
+                    }
                     showDeleteDialog = false
                     selectedHex = null
                     selectedHexInfo = null

@@ -259,31 +259,35 @@ object MapRenderUtils {
         if (!hasPermission) return
 
         try {
+            // Check if any location provider has a fix before enabling,
+            // to avoid MapLibre's noisy internal "Last location unavailable" error log
+            val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
+            val hasLocationFix = locationManager?.let { lm ->
+                lm.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER) != null ||
+                    lm.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER) != null ||
+                    lm.getLastKnownLocation(android.location.LocationManager.FUSED_PROVIDER) != null
+            } ?: false
+
             val locationComponent = map.locationComponent
 
-            if (locationComponent.isLocationComponentActivated) {
-                locationComponent.isLocationComponentEnabled = true
-                locationComponent.renderMode = org.maplibre.android.location.modes.RenderMode.COMPASS
-                if (locationComponent.lastKnownLocation == null && DeviceUtils.isEmulator()) {
-                    forceLocationOnEmulator(locationComponent)
-                }
-                return
+            if (!locationComponent.isLocationComponentActivated) {
+                locationComponent.activateLocationComponent(
+                    org.maplibre.android.location.LocationComponentActivationOptions.builder(context, style)
+                        .useDefaultLocationEngine(true)
+                        .build()
+                )
             }
 
-            locationComponent.activateLocationComponent(
-                org.maplibre.android.location.LocationComponentActivationOptions.builder(context, style)
-                    .useDefaultLocationEngine(true)
-                    .build()
-            )
-
-            locationComponent.isLocationComponentEnabled = true
-            locationComponent.renderMode = org.maplibre.android.location.modes.RenderMode.COMPASS
-
-            if (locationComponent.lastKnownLocation == null && DeviceUtils.isEmulator()) {
+            if (!hasLocationFix && DeviceUtils.isEmulator()) {
                 forceLocationOnEmulator(locationComponent)
             }
+
+            if (hasLocationFix || locationComponent.lastKnownLocation != null) {
+                locationComponent.isLocationComponentEnabled = true
+                locationComponent.renderMode = org.maplibre.android.location.modes.RenderMode.COMPASS
+            }
         } catch (e: Exception) {
-            Logger.e(e, "Map render error")
+            Logger.d("Location component not ready: %s", e.message ?: "unknown")
         }
     }
 

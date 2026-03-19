@@ -12,6 +12,8 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +23,7 @@ import no.synth.where.MainActivity
 import no.synth.where.R
 import no.synth.where.data.DownloadState
 import no.synth.where.data.MapDownloadManager
+import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.Region
 import no.synth.where.data.RegionsRepository
@@ -57,6 +60,7 @@ class MapDownloadService : Service() {
                 val west = intent.getDoubleExtra(EXTRA_WEST, Double.NaN)
                 val north = intent.getDoubleExtra(EXTRA_NORTH, Double.NaN)
                 val east = intent.getDoubleExtra(EXTRA_EAST, Double.NaN)
+                val downloadDem = intent.getBooleanExtra(EXTRA_DOWNLOAD_DEM, true)
 
                 if (regionName != null && layerName != null) {
                     val region = if (!south.isNaN() && !west.isNaN() && !north.isNaN() && !east.isNaN()) {
@@ -65,7 +69,7 @@ class MapDownloadService : Service() {
                         RegionsRepository.getRegions(PlatformFile(cacheDir)).find { it.name == regionName }
                     }
                     if (region != null) {
-                        startDownload(region, layerName, minZoom, maxZoom)
+                        startDownload(region, layerName, minZoom, maxZoom, downloadDem)
                     }
                 }
             }
@@ -76,7 +80,7 @@ class MapDownloadService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startDownload(region: Region, layerName: String, minZoom: Int, maxZoom: Int) {
+    private fun startDownload(region: Region, layerName: String, minZoom: Int, maxZoom: Int, downloadDem: Boolean = true) {
         // Cancel any existing download
         currentDownloadJob?.cancel()
         currentRegionName?.let { downloadManager.stopDownload(it) }
@@ -95,6 +99,17 @@ class MapDownloadService : Service() {
         startForeground(NOTIFICATION_ID, createNotification(region.name, 0))
 
         currentDownloadJob = serviceScope.launch {
+            // Start DEM elevation tile download in parallel with map tiles
+            val demJob = if (downloadDem) {
+                _downloadState.value = _downloadState.value.copy(demProgress = 0)
+                async {
+                    OfflineTileReader.downloadDemTilesForBounds(region.boundingBox) { demPercent ->
+                        _downloadState.value = _downloadState.value.copy(demProgress = demPercent)
+                    }
+                }
+            } else null
+
+            val mapResult = CompletableDeferred<Boolean>()
             downloadManager.downloadRegion(
                 region = region,
                 layerName = layerName,
@@ -102,15 +117,9 @@ class MapDownloadService : Service() {
                 maxZoom = maxZoom,
                 onProgress = { progress ->
                     _downloadState.value = _downloadState.value.copy(progress = progress)
-                    // Throttle notification updates to avoid overwhelming the system
                     val now = System.currentTimeMillis()
                     val timeSinceLastUpdate = now - lastNotificationUpdate
                     val progressChange = kotlin.math.abs(progress - lastNotificationProgress)
-                    
-                    // Update notification if: 
-                    // - At least 1 second has passed since last update, OR
-                    // - Progress changed by 5% or more, OR
-                    // - Progress reached 100%
                     if (timeSinceLastUpdate >= 1000 || progressChange >= 5 || progress == 100) {
                         updateNotification(region.name, progress)
                         lastNotificationUpdate = now
@@ -118,11 +127,21 @@ class MapDownloadService : Service() {
                     }
                 },
                 onComplete = { success ->
-                    _downloadState.value = DownloadState()
                     currentRegionName = null
-                    stopSelf()
+                    mapResult.complete(success)
                 }
             )
+            val mapSuccess = mapResult.await()
+
+            if (!mapSuccess && demJob?.isActive == true) {
+                // Map tiles failed but DEM still running — keep DEM progress visible
+                _downloadState.value = _downloadState.value.copy(isDownloading = false)
+            }
+
+            demJob?.await()
+
+            _downloadState.value = DownloadState()
+            stopSelf()
         }
     }
 
@@ -209,6 +228,7 @@ class MapDownloadService : Service() {
         private const val EXTRA_WEST = "extra_west"
         private const val EXTRA_NORTH = "extra_north"
         private const val EXTRA_EAST = "extra_east"
+        private const val EXTRA_DOWNLOAD_DEM = "extra_download_dem"
 
         private val _downloadState = MutableStateFlow(DownloadState())
         val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
@@ -218,7 +238,8 @@ class MapDownloadService : Service() {
             region: Region,
             layerName: String,
             minZoom: Int = 5,
-            maxZoom: Int = 12
+            maxZoom: Int = 12,
+            downloadDem: Boolean = true
         ) {
             val intent = Intent(context, MapDownloadService::class.java).apply {
                 action = ACTION_START_DOWNLOAD
@@ -230,6 +251,7 @@ class MapDownloadService : Service() {
                 putExtra(EXTRA_WEST, region.boundingBox.west)
                 putExtra(EXTRA_NORTH, region.boundingBox.north)
                 putExtra(EXTRA_EAST, region.boundingBox.east)
+                putExtra(EXTRA_DOWNLOAD_DEM, downloadDem)
             }
             context.startForegroundService(intent)
         }

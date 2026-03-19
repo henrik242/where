@@ -25,6 +25,7 @@ import no.synth.where.data.DownloadLayers
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.HexGrid
 import no.synth.where.data.MapDownloadManager
+import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.RegionTileInfo
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.service.MapDownloadService
@@ -49,6 +50,8 @@ fun LayerHexMapScreen(
     val scope = rememberCoroutineScope()
     val downloadManager = remember { MapDownloadManager(context) }
     val downloadState by MapDownloadService.downloadState.collectAsState()
+    val app = context.applicationContext as no.synth.where.WhereApplication
+    val downloadElevationData by app.userPreferences.downloadElevationData.collectAsState()
 
     val hasLocationPermission = remember {
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -96,6 +99,7 @@ fun LayerHexMapScreen(
     HexMapScreenContent(
         layerDisplayName = layerDisplayName,
         isDownloading = downloadState.isDownloading,
+        demProgress = downloadState.demProgress,
         downloadLayerId = downloadState.layerName,
         currentLayerId = layerId,
         downloadProgress = downloadState.progress,
@@ -116,7 +120,8 @@ fun LayerHexMapScreen(
                     region = HexGrid.hexToRegion(hex),
                     layerName = layerId,
                     minZoom = 5,
-                    maxZoom = 12
+                    maxZoom = 12,
+                    downloadDem = downloadElevationData
                 )
             }
             selectedHex = null
@@ -127,7 +132,12 @@ fun LayerHexMapScreen(
         onConfirmDelete = {
             currentHex?.let { hex ->
                 scope.launch {
-                    downloadManager.deleteRegionTiles(HexGrid.hexToRegion(hex), layerId)
+                    val region = HexGrid.hexToRegion(hex)
+                    val hasOther = downloadManager.hasOtherLayersForRegion(hex.id, layerId)
+                    downloadManager.deleteRegionTiles(region, layerId)
+                    if (!hasOther) {
+                        OfflineTileReader.deleteDemTilesForBounds(region.boundingBox)
+                    }
                     showDeleteDialog = false
                     selectedHex = null
                     selectedHexInfo = null

@@ -73,6 +73,7 @@ fun IosMapScreen(
     val waymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
     val countyBorders by userPreferences.showCountyBorders.collectAsState()
     val avalancheZones by userPreferences.showAvalancheZones.collectAsState()
+    val hillshade by userPreferences.showHillshade.collectAsState()
     val showSavedPoints by userPreferences.showSavedPoints.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var rulerState by remember { mutableStateOf(RulerState()) }
@@ -138,12 +139,13 @@ fun IosMapScreen(
     }
     val regions = remember { RegionsRepository.getRegions(cacheDir) }
 
-    val styleJson = remember(currentLayer, waymarkedTrails, countyBorders, avalancheZones, regions) {
+    val styleJson = remember(currentLayer, waymarkedTrails, countyBorders, avalancheZones, hillshade, regions) {
         MapStyle.getStyle(
             selectedLayer = currentLayer,
             showCountyBorders = countyBorders,
             showWaymarkedTrails = waymarkedTrails,
             showAvalancheZones = avalancheZones,
+            showHillshade = hillshade,
             regions = regions
         )
     }
@@ -418,6 +420,7 @@ fun IosMapScreen(
         showCountyBorders = countyBorders,
         showSavedPoints = showSavedPoints,
         showAvalancheZones = avalancheZones,
+        showHillshade = hillshade,
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
         centerLatLng = centerLatLng,
@@ -441,6 +444,7 @@ fun IosMapScreen(
         onLayerSelected = { userPreferences.updateSelectedMapLayer(it) },
         onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!waymarkedTrails) },
         onAvalancheZonesToggle = { userPreferences.updateShowAvalancheZones(!avalancheZones) },
+        onHillshadeToggle = { userPreferences.updateShowHillshade(!hillshade) },
         onCountyBordersToggle = { userPreferences.updateShowCountyBorders(!countyBorders) },
         onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {

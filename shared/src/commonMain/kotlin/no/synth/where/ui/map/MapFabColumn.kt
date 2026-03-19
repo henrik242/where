@@ -60,6 +60,7 @@ fun MapFabColumn(
     showCountyBorders: Boolean,
     showSavedPoints: Boolean,
     showAvalancheZones: Boolean,
+    showHillshade: Boolean = false,
     onSearchClick: () -> Unit,
     onLayerMenuToggle: (Boolean) -> Unit,
     onLayerSelected: (MapLayer) -> Unit,
@@ -67,6 +68,7 @@ fun MapFabColumn(
     onCountyBordersToggle: () -> Unit,
     onSavedPointsToggle: () -> Unit,
     onAvalancheZonesToggle: () -> Unit,
+    onHillshadeToggle: () -> Unit = {},
     onRecordStopClick: () -> Unit,
     onMyLocationClick: () -> Unit,
     onRulerToggle: () -> Unit,
@@ -109,6 +111,7 @@ fun MapFabColumn(
             MenuSection(stringResource(Res.string.overlays))
             LayerMenuItem(stringResource(Res.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
             LayerMenuItem(stringResource(Res.string.avalanche_zones_nve), showAvalancheZones) { onAvalancheZonesToggle() }
+            LayerMenuItem(stringResource(Res.string.hillshade), showHillshade) { onHillshadeToggle() }
             LayerMenuItem(stringResource(Res.string.county_borders_norway), showCountyBorders) { onCountyBordersToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
             LayerMenuItem(stringResource(Res.string.crosshair), crosshairActive) { onCrosshairToggle() }

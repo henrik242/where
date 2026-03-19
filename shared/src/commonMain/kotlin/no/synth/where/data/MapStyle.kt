@@ -8,6 +8,7 @@ object MapStyle {
         showCountyBorders: Boolean = true,
         showWaymarkedTrails: Boolean = false,
         showAvalancheZones: Boolean = false,
+        showHillshade: Boolean = false,
         regions: List<Region> = emptyList()
     ): String {
         val activeRegions = if (showCountyBorders) regions else emptyList()
@@ -81,6 +82,17 @@ object MapStyle {
       "maxzoom": 19
     }""")
             }
+            if (showHillshade) {
+                append(""",
+    "hillshade": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": ["https://s3.amazonaws.com/elevation-tiles-prod/normal/{z}/{x}/{y}.png"],
+      "tileSize": 256,
+      "maxzoom": 15,
+      "attribution": "© <a href='https://github.com/tilezen/joerd'>Tilezen Joerd</a> (data from USGS, GMTED, SRTM, ETOPO1)"
+    }""")
+            }
             append(""",
     "regions": {
       "type": "geojson",
@@ -108,6 +120,17 @@ object MapStyle {
         "raster-opacity": 1.0
       }
     }""")
+            if (showHillshade) {
+                append(""",
+    {
+      "id": "hillshade-layer",
+      "type": "raster",
+      "source": "hillshade",
+      "paint": {
+        "raster-opacity": 0.3
+      }
+    }""")
+            }
             if (showAvalancheZones) {
                 append(""",
     {

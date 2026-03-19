@@ -12,6 +12,8 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import no.synth.where.data.DownloadLayers
+import no.synth.where.data.HexGrid
+import no.synth.where.data.OfflineTileReader
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -30,6 +32,8 @@ fun DownloadScreen(
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var cacheSize by remember { mutableLongStateOf(0L) }
     val downloadState by MapDownloadService.downloadState.collectAsState()
+    val app = context.applicationContext as no.synth.where.WhereApplication
+    val downloadElevationData by app.userPreferences.downloadElevationData.collectAsState()
 
     val kartverketDesc = stringResource(Res.string.layer_kartverket_desc)
     val toporasterDesc = stringResource(Res.string.layer_toporaster_desc)
@@ -39,6 +43,7 @@ fun DownloadScreen(
     val opentopomapDesc = stringResource(Res.string.layer_opentopomap_desc)
     val waymarkedtrailsDesc = stringResource(Res.string.layer_waymarkedtrails_desc)
     val avalanchezonesDesc = stringResource(Res.string.layer_avalanchezones_desc)
+    val terrainDesc = stringResource(Res.string.layer_terrain_desc)
 
     val descriptionMap = remember(kartverketDesc) {
         mapOf(
@@ -50,6 +55,7 @@ fun DownloadScreen(
             "opentopomap" to opentopomapDesc,
             "waymarkedtrails" to waymarkedtrailsDesc,
             "avalanchezones" to avalanchezonesDesc,
+            "terrain" to terrainDesc,
         )
     }
 
@@ -76,6 +82,7 @@ fun DownloadScreen(
         layers = layers,
         cacheSize = cacheSize,
         isDownloading = downloadState.isDownloading,
+        demProgress = downloadState.demProgress,
         downloadRegionName = downloadState.region?.name,
         downloadLayerName = downloadState.layerName,
         downloadProgress = downloadState.progress,
@@ -84,7 +91,17 @@ fun DownloadScreen(
         onStopDownload = { MapDownloadService.stopDownload(context) },
         onDeleteLayer = { layerId ->
             scope.launch {
+                val downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
                 downloadManager.deleteAllRegionsForLayer(layerId)
+                for (hexId in downloadedHexIds.keys) {
+                    val hasOther = downloadManager.hasOtherLayersForRegion(hexId, layerId)
+                    if (!hasOther) {
+                        val hex = HexGrid.hexFromId(hexId)
+                        if (hex != null) {
+                            OfflineTileReader.deleteDemTilesForBounds(HexGrid.hexBounds(hex))
+                        }
+                    }
+                }
                 refreshTrigger++
             }
         },
@@ -92,6 +109,17 @@ fun DownloadScreen(
             scope.launch {
                 downloadManager.clearAutoCache()
                 refreshTrigger++
+            }
+        },
+        downloadElevationData = downloadElevationData,
+        demCacheSize = remember(refreshTrigger) { OfflineTileReader.getDemCacheSize() },
+        onDownloadElevationDataChange = { enabled ->
+            app.userPreferences.updateDownloadElevationData(enabled)
+            if (!enabled) {
+                scope.launch {
+                    OfflineTileReader.clearAllDemTiles()
+                    refreshTrigger++
+                }
             }
         },
         getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },

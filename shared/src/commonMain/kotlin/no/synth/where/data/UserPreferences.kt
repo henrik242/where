@@ -42,6 +42,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _offlineModeEnabled = MutableStateFlow(false)
     val offlineModeEnabled: StateFlow<Boolean> = _offlineModeEnabled.asStateFlow()
 
+    private val _downloadElevationData = MutableStateFlow(true)
+    val downloadElevationData: StateFlow<Boolean> = _downloadElevationData.asStateFlow()
+
     private val _themeMode = MutableStateFlow("system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
@@ -56,6 +59,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
 
     private val _showAvalancheZones = MutableStateFlow(false)
     val showAvalancheZones: StateFlow<Boolean> = _showAvalancheZones.asStateFlow()
+
+    private val _showHillshade = MutableStateFlow(false)
+    val showHillshade: StateFlow<Boolean> = _showHillshade.asStateFlow()
 
     private val _crosshairActive = MutableStateFlow(false)
     val crosshairActive: StateFlow<Boolean> = _crosshairActive.asStateFlow()
@@ -73,12 +79,14 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
                 _showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
                 _showAvalancheZones.value = prefs[SHOW_AVALANCHE_ZONES] ?: false
+                _showHillshade.value = prefs[SHOW_HILLSHADE] ?: false
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
                 _selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
                 _offlineModeEnabled.value = prefs[OFFLINE_MODE_ENABLED] ?: false
+                _downloadElevationData.value = prefs[DOWNLOAD_ELEVATION_DATA] ?: true
                 _themeMode.value = prefs[THEME_MODE] ?: "system"
                 _coordFormat.value = try { CoordFormat.valueOf(prefs[COORD_FORMAT] ?: "LATLNG") } catch (_: Exception) { CoordFormat.LATLNG }
                 _searchHistory.value = deserializeSearchHistory(prefs[SEARCH_HISTORY])
@@ -106,6 +114,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     fun updateShowAvalancheZones(value: Boolean) {
         _showAvalancheZones.value = value
         scope.launch { dataStore.edit { it[SHOW_AVALANCHE_ZONES] = value } }
+    }
+
+    fun updateShowHillshade(value: Boolean) {
+        _showHillshade.value = value
+        scope.launch { dataStore.edit { it[SHOW_HILLSHADE] = value } }
     }
 
     fun updateCrosshairActive(value: Boolean) {
@@ -137,6 +150,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         scope.launch {
             dataStore.edit { it[OFFLINE_MODE_ENABLED] = value }
         }
+    }
+
+    fun updateDownloadElevationData(value: Boolean) {
+        _downloadElevationData.value = value
+        scope.launch { dataStore.edit { it[DOWNLOAD_ELEVATION_DATA] = value } }
     }
 
     fun updateThemeMode(value: String) {
@@ -204,11 +222,13 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val SHOW_WAYMARKED_TRAILS = booleanPreferencesKey("show_waymarked_trails")
         private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
         private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")
+        private val SHOW_HILLSHADE = booleanPreferencesKey("show_hillshade")
         private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")
         private val SELECTED_MAP_LAYER = stringPreferencesKey("selected_map_layer")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
         private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")
         private val OFFLINE_MODE_ENABLED = booleanPreferencesKey("offline_mode_enabled")
+        private val DOWNLOAD_ELEVATION_DATA = booleanPreferencesKey("download_elevation_data")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val COORD_FORMAT = stringPreferencesKey("coord_format")
         private val SEARCH_HISTORY = stringPreferencesKey("search_history")
