@@ -254,7 +254,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
     // MARK: - MLNMapViewDelegate
 
-    func mapViewRegionDidChange(_ mapView: MLNMapView, animated: Bool) {
+    func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
         let center = mapView.centerCoordinate
         cameraMoveCallback?.onCameraMove(latitude: center.latitude, longitude: center.longitude)
     }
