@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -93,14 +95,12 @@ fun SettingsScreenContent(
             )
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -372,14 +372,13 @@ fun SettingsScreenContent(
                         onCheckedChange = onCrashReportingChange
                     )
                 }
-            }
 
             Text(
                 text = versionInfo,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(Alignment.CenterHorizontally)
                     .padding(16.dp)
             )
         }
