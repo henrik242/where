@@ -4,6 +4,7 @@ Free offline hiking maps for Norway. A lightweight alternative to the discontinu
 
 <a href="https://apps.apple.com/app/where/id6760362061"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" width="151"></a>
 <a href="https://play.google.com/store/apps/details?id=no.synth.where"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" width="170"></a>
+<a href="https://buymeacoffee.com/henrik242"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="170"></a>
 
 ## Features
 
