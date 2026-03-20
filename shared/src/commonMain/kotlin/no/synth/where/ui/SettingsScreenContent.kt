@@ -60,6 +60,7 @@ fun SettingsScreenContent(
     themeOptions: List<LanguageOption> = emptyList(),
     onThemeSelected: (String) -> Unit = {},
     onAttributionsClick: () -> Unit = {},
+    onSponsorClick: () -> Unit = {},
     highlightOfflineMode: Boolean = false
 ) {
     var flashOfflineMode by remember { mutableStateOf(highlightOfflineMode) }
@@ -313,6 +314,34 @@ fun SettingsScreenContent(
                     Icon(
                         painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_attributions)
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSponsorClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(Res.string.sponsor),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = stringResource(Res.string.sponsor_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        painterResource(Res.drawable.ic_favorite),
+                        contentDescription = null,
+                        tint = Color(0xFFE91E63)
                     )
                 }
 

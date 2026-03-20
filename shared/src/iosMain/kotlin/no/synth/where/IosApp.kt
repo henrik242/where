@@ -191,7 +191,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     themeOptions = themeOptions,
                     currentThemeLabel = currentThemeLabel,
                     onThemeSelected = { userPreferences.updateThemeMode(it) },
-                    onAttributionsClick = { navigateTo(Screen.ATTRIBUTIONS) }
+                    onAttributionsClick = { navigateTo(Screen.ATTRIBUTIONS) },
+                    onSponsorClick = { IosPlatformActions.openUrl("https://buymeacoffee.com/henrik242") }
                 )
             }
 

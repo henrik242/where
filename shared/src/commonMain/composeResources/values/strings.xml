@@ -118,6 +118,8 @@
     <string name="go_to_attributions">Go to Attributions</string>
     <string name="data_sources">Data Sources</string>
     <string name="open_source_libraries">Open Source Libraries</string>
+    <string name="sponsor">Support the project</string>
+    <string name="sponsor_description">Buy me a coffee</string>
     <string name="crash_reporting">Crash Reporting</string>
     <string name="crash_reporting_description">Send anonymous crash reports to help improve the app</string>
     <string name="offline_mode">Offline Mode</string>

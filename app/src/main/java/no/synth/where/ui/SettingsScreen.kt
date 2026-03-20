@@ -1,9 +1,12 @@
 package no.synth.where.ui
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import androidx.core.os.LocaleListCompat
 import no.synth.where.BuildInfo
 import no.synth.where.data.UserPreferences
@@ -40,6 +43,7 @@ fun SettingsScreen(
         LanguageOption("dark", stringResource(Res.string.theme_dark))
     )
 
+    val context = LocalContext.current
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val themeMode by userPreferences.themeMode.collectAsState()
@@ -71,6 +75,9 @@ fun SettingsScreen(
         themeOptions = themeOptions,
         onThemeSelected = { userPreferences.updateThemeMode(it) },
         onAttributionsClick = onAttributionsClick,
+        onSponsorClick = {
+            context.startActivity(Intent(Intent.ACTION_VIEW, "https://buymeacoffee.com/henrik242".toUri()))
+        },
         highlightOfflineMode = highlightOfflineMode
     )
 }

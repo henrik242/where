@@ -114,6 +114,8 @@
     <string name="theme_system">Systemstandard</string>
     <string name="theme_light">Lyst</string>
     <string name="theme_dark">Mørkt</string>
+    <string name="sponsor">Støtt prosjektet</string>
+    <string name="sponsor_description">Kjøp meg en kaffe</string>
     <string name="crash_reporting">Krasjrapportering</string>
     <string name="crash_reporting_description">Send anonyme krasjrapporter for å hjelpe med å forbedre appen</string>
     <string name="offline_mode">Frakoblet modus</string>
