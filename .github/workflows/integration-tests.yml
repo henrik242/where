@@ -35,6 +35,8 @@ jobs:
         GARMIN_URL=${{ vars.INTEGRATION_GARMIN_URL }}
         KOMOOT_URL=${{ vars.INTEGRATION_KOMOOT_URL }}
         UT_NO_URL=${{ vars.INTEGRATION_UT_NO_URL }}
+        GPX_URL=${{ vars.INTEGRATION_GPX_URL }}
+        FIT_URL=${{ vars.INTEGRATION_FIT_URL }}
         EOF
 
     - name: Create google-services.json
