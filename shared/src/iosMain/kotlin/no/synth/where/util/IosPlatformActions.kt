@@ -18,6 +18,7 @@ import platform.UIKit.UIViewController
 import platform.UniformTypeIdentifiers.UTType
 import platform.UniformTypeIdentifiers.UTTypeXML
 import platform.darwin.NSObject
+import platform.posix.memcpy
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 object IosPlatformActions {
@@ -52,7 +53,7 @@ object IosPlatformActions {
         rootVC.presentViewController(activityVC, animated = true, completion = null)
     }
 
-    fun pickFile(types: List<String>, onResult: (String?) -> Unit) {
+    fun pickFile(types: List<String>, onResult: (ByteArray?) -> Unit) {
         val rootVC = topViewController() ?: run {
             onResult(null)
             return
@@ -82,7 +83,7 @@ object IosPlatformActions {
 
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     private class DocumentPickerDelegate(
-        private val onResult: (String?) -> Unit
+        private val onResult: (ByteArray?) -> Unit
     ) : NSObject(), platform.UIKit.UIDocumentPickerDelegateProtocol {
 
         override fun documentPicker(
@@ -97,12 +98,21 @@ object IosPlatformActions {
 
             val accessing = url.startAccessingSecurityScopedResource()
             try {
-                val data = NSData.create(contentsOfURL = url) ?: run {
+                val nsData = NSData.create(contentsOfURL = url) ?: run {
                     onResult(null)
                     return
                 }
-                val content = NSString.create(data = data, encoding = NSUTF8StringEncoding)?.toString()
-                onResult(content)
+                val length = nsData.length.toInt()
+                val ptr = nsData.bytes
+                if (length == 0 || ptr == null) {
+                    onResult(null)
+                    return
+                }
+                val bytes = ByteArray(length)
+                bytes.usePinned { pinned ->
+                    memcpy(pinned.addressOf(0), ptr, nsData.length)
+                }
+                onResult(bytes)
             } finally {
                 if (accessing) {
                     url.stopAccessingSecurityScopedResource()

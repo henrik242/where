@@ -208,6 +208,14 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         return trackWithUniqueName
     }
 
+    fun importTrackFromBytes(data: ByteArray): Track? {
+        val track = Track.fromBytes(data) ?: return null
+        val uniqueName = NamingUtils.makeUnique(track.name, _tracks.value.map { it.name })
+        val trackWithUniqueName = track.copy(name = uniqueName)
+        saveTrack(trackWithUniqueName)
+        return trackWithUniqueName
+    }
+
     fun createTrackFromPoints(name: String, rulerPoints: List<RulerPoint>) {
         val uniqueName = NamingUtils.makeUnique(name, _tracks.value.map { it.name })
         val trackPoints = rulerPoints.map { rulerPoint ->

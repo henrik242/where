@@ -68,6 +68,29 @@ $trackPointsXml
     }
 
     companion object {
+        fun fromFIT(data: ByteArray): Track? {
+            val points = FitParser.parse(data)
+            if (points.isEmpty()) return null
+            return Track(
+                name = "Imported Track",
+                points = points,
+                startTime = points.minOf { it.timestamp },
+                endTime = points.maxOf { it.timestamp },
+                isRecording = false
+            )
+        }
+
+        fun fromBytes(data: ByteArray): Track? {
+            if (data.isEmpty()) return null
+            return if (FitParser.isFitFile(data)) {
+                fromFIT(data)
+            } else {
+                val text = try { data.decodeToString() } catch (_: Exception) { return null }
+                if (!text.contains("<trkpt", ignoreCase = true)) return null
+                fromGPX(text)
+            }
+        }
+
         fun fromGPX(gpxContent: String): Track? {
             try {
                 val trackName = gpxContent

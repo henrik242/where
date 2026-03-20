@@ -61,6 +61,16 @@ class TrackUrlImporterTest {
     }
 
     @Test
+    fun detectService_fitUrl() {
+        assertEquals(TrackUrlImporter.Service.FIT_URL, TrackUrlImporter.detectService("https://example.com/activity.fit"))
+    }
+
+    @Test
+    fun detectService_fitUrlWithQueryParams() {
+        assertEquals(TrackUrlImporter.Service.FIT_URL, TrackUrlImporter.detectService("https://example.com/activity.fit?token=abc"))
+    }
+
+    @Test
     fun detectService_unknownUrl() {
         assertEquals(TrackUrlImporter.Service.UNKNOWN, TrackUrlImporter.detectService("https://example.com/something"))
     }

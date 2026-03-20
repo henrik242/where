@@ -84,12 +84,12 @@ fun TracksScreen(
     ) { uri: Uri? ->
         uri?.let {
             try {
-                val inputStream = context.contentResolver.openInputStream(it)
-                val gpxContent = inputStream?.bufferedReader()?.use { reader -> reader.readText() }
-                inputStream?.close()
+                val bytes = context.contentResolver.openInputStream(it)?.use { stream ->
+                    stream.readBytes()
+                }
 
-                if (gpxContent != null) {
-                    val importedTrack = viewModel.importTrack(gpxContent)
+                if (bytes != null) {
+                    val importedTrack = viewModel.importTrackFromBytes(bytes)
                     if (importedTrack == null) {
                         importErrorMessage = importGpxCorruptedStr
                         showImportError = true

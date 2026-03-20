@@ -39,6 +39,12 @@ class TracksScreenViewModel(
         }
     }
 
+    fun importTrackFromBytes(data: ByteArray): Track? {
+        return trackRepository.importTrackFromBytes(data)?.also {
+            _newlyImportedTrackId.value = it.id
+        }
+    }
+
     fun importFromUrl(input: String, onResult: (Track?) -> Unit) {
         viewModelScope.launch {
             _isImportingUrl.value = true

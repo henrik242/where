@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Where test fixture"
+  xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Unionsleden Karlstad - Moss</name>
+    <time>2021-05-26T12:59:58Z</time>
+  </metadata>
+  <trk>
+    <name>Unionsleden Karlstad - Moss</name>
+    <trkseg>
+      <trkpt lat="59.3803" lon="13.49668">
+        <ele>51.9</ele>
+        <time>2021-05-26T13:00:00Z</time>
+      </trkpt>
+      <trkpt lat="59.38027" lon="13.49385">
+        <ele>51.9</ele>
+        <time>2021-05-26T13:05:00Z</time>
+      </trkpt>
+      <trkpt lat="59.38055" lon="13.49074">
+        <ele>51.0</ele>
+        <time>2021-05-26T13:10:00Z</time>
+      </trkpt>
+      <trkpt lat="59.38042" lon="13.48974">
+        <ele>51.3</ele>
+        <time>2021-05-26T13:15:00Z</time>
+      </trkpt>
+      <trkpt lat="59.38032" lon="13.48861">
+        <ele>50.6</ele>
+        <time>2021-05-26T13:20:00Z</time>
+      </trkpt>
+      <trkpt lat="59.38001" lon="13.48753">
+        <ele>50.3</ele>
+        <time>2021-05-26T13:25:00Z</time>
+      </trkpt>
+      <trkpt lat="59.37978" lon="13.48678">
+        <ele>50.1</ele>
+        <time>2021-05-26T13:30:00Z</time>
+      </trkpt>
+      <trkpt lat="59.37944" lon="13.48591">
+        <ele>49.8</ele>
+        <time>2021-05-26T13:35:00Z</time>
+      </trkpt>
+      <trkpt lat="59.37921" lon="13.48513">
+        <ele>50.2</ele>
+        <time>2021-05-26T13:40:00Z</time>
+      </trkpt>
+      <trkpt lat="59.37895" lon="13.48432">
+        <ele>50.5</ele>
+        <time>2021-05-26T13:45:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

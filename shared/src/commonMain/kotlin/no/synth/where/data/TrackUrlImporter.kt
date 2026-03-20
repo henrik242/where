@@ -16,6 +16,7 @@ class TrackUrlImporter(
     private val komootImporter by lazy { KomootImporter(client) }
     private val utNoImporter by lazy { UtNoImporter(client) }
     private val gpxUrlImporter by lazy { GpxUrlImporter(client) }
+    private val fitUrlImporter by lazy { FitUrlImporter(client) }
 
     suspend fun importFromUrl(
         input: String,
@@ -29,6 +30,7 @@ class TrackUrlImporter(
             Service.KOMOOT -> komootImporter.importFromUrl(input, addElevation)
             Service.UT_NO -> utNoImporter.importFromUrl(input, addElevation)
             Service.GPX_URL -> gpxUrlImporter.importFromUrl(input, addElevation)
+            Service.FIT_URL -> fitUrlImporter.importFromUrl(input, addElevation)
             Service.UNKNOWN -> {
                 Logger.e("Could not detect service from URL: $input")
                 null
@@ -36,7 +38,7 @@ class TrackUrlImporter(
         }
     }
 
-    enum class Service { STRAVA, GARMIN, KOMOOT, UT_NO, GPX_URL, UNKNOWN }
+    enum class Service { STRAVA, GARMIN, KOMOOT, UT_NO, GPX_URL, FIT_URL, UNKNOWN }
 
     companion object {
         fun detectService(input: String): Service {
@@ -49,6 +51,7 @@ class TrackUrlImporter(
                 trimmed.contains("komoot.de", ignoreCase = true) -> Service.KOMOOT
                 trimmed.contains("ut.no", ignoreCase = true) -> Service.UT_NO
                 GpxUrlImporter.isGpxUrl(trimmed) -> Service.GPX_URL
+                FitUrlImporter.isFitUrl(trimmed) -> Service.FIT_URL
                 // Bare numeric IDs: assume Strava (more common for sharing)
                 StravaImporter.parseStravaUrl(trimmed) != null -> Service.STRAVA
                 else -> Service.UNKNOWN

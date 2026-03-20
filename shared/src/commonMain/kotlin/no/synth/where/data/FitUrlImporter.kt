@@ -1,11 +1,11 @@
 package no.synth.where.data
 
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import no.synth.where.util.Logger
 
-class GpxUrlImporter(
+class FitUrlImporter(
     private val client: HttpClient = createDefaultHttpClient()
 ) {
 
@@ -13,20 +13,20 @@ class GpxUrlImporter(
         url: String,
         addElevation: Boolean = true
     ): Track? {
-        val gpxContent = try {
-            client.get(url.trim()).bodyAsText()
+        val bytes: ByteArray = try {
+            client.get(url.trim()).body()
         } catch (e: Exception) {
-            Logger.e(e, "Failed to fetch GPX from URL: $url")
+            Logger.e(e, "Failed to fetch FIT from URL: $url")
             return null
         }
 
-        val track = Track.fromGPX(gpxContent)
+        val track = Track.fromFIT(bytes)
         if (track == null) {
-            Logger.e("Failed to parse GPX content from URL: $url")
+            Logger.e("Failed to parse FIT content from URL: $url")
             return null
         }
 
-        Logger.d("Parsed GPX from URL: ${track.points.size} points, name=${track.name}")
+        Logger.d("Parsed FIT from URL: ${track.points.size} points")
 
         val hasElevation = track.points.any { it.altitude != null }
         if (hasElevation || !addElevation) return track
@@ -42,8 +42,8 @@ class GpxUrlImporter(
     }
 
     companion object {
-        private val gpxUrlPattern = Regex("""^https?://.+/[^/]+\.gpx(\?.*)?$""", RegexOption.IGNORE_CASE)
+        private val fitUrlPattern = Regex("""^https?://.+/[^/]+\.fit(\?.*)?$""", RegexOption.IGNORE_CASE)
 
-        fun isGpxUrl(input: String): Boolean = gpxUrlPattern.matches(input.trim())
+        fun isFitUrl(input: String): Boolean = fitUrlPattern.matches(input.trim())
     }
 }

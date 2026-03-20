@@ -93,17 +93,17 @@ fun WhereApp(
     LaunchedEffect(pendingGpxUri) {
         pendingGpxUri?.let { uri ->
             try {
-                val gpxContent = context.contentResolver.openInputStream(uri)?.use {
-                    it.bufferedReader().readText()
+                val bytes = context.contentResolver.openInputStream(uri)?.use {
+                    it.readBytes()
                 }
-                if (gpxContent != null) {
-                    val importedTrack = trackRepository.importTrack(gpxContent)
+                if (bytes != null) {
+                    val importedTrack = trackRepository.importTrackFromBytes(bytes)
                     if (importedTrack != null) {
                         trackRepository.setViewingTrack(importedTrack)
                     }
                 }
             } catch (e: Exception) {
-                Logger.e(e, "GPX import error")
+                Logger.e(e, "Track import error")
             }
             onGpxHandled()
         }

@@ -214,10 +214,10 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     importErrorMessage = importErrorMessage,
                     onBackClick = { navigateBack() },
                     onImport = {
-                        IosPlatformActions.pickFile(listOf("public.xml", "org.topografix.gpx")) { content ->
-                            if (content == null) return@pickFile
+                        IosPlatformActions.pickFile(listOf("public.xml", "org.topografix.gpx", "public.data")) { bytes ->
+                            if (bytes == null) return@pickFile
                             try {
-                                val imported = trackRepository.importTrack(content)
+                                val imported = trackRepository.importTrackFromBytes(bytes)
                                 if (imported == null) {
                                     importErrorMessage = gpxCorruptedMsg
                                     showImportError = true
