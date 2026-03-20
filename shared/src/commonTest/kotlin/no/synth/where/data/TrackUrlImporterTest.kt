@@ -51,6 +51,16 @@ class TrackUrlImporterTest {
     }
 
     @Test
+    fun detectService_gpxUrl() {
+        assertEquals(TrackUrlImporter.Service.GPX_URL, TrackUrlImporter.detectService("https://example.com/track.gpx"))
+    }
+
+    @Test
+    fun detectService_gpxUrlWithQueryParams() {
+        assertEquals(TrackUrlImporter.Service.GPX_URL, TrackUrlImporter.detectService("https://example.com/track.gpx?key=val"))
+    }
+
+    @Test
     fun detectService_unknownUrl() {
         assertEquals(TrackUrlImporter.Service.UNKNOWN, TrackUrlImporter.detectService("https://example.com/something"))
     }

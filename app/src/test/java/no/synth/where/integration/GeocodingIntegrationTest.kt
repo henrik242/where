@@ -93,31 +93,28 @@ class GeocodingIntegrationTest {
 
     @Test
     fun munchmuseet_museum() {
-        val result = geocode(59.9056239, 10.7551554)
-        assertNotNull(result)
+        val result = geocode(59.9056239, 10.7551554) ?: ""
         assertTrue(
             "Expected Munchmuseet or road fallback, got: $result",
-            result!!.startsWith("Munchmuseet") || result.contains("Oslo")
+            result.startsWith("Munchmuseet") || result.contains("Oslo")
         )
     }
 
     @Test
     fun ljanskollen_peak() {
-        val result = geocode(59.8373838, 10.7741729)
-        assertNotNull(result)
+        val result = geocode(59.8373838, 10.7741729) ?: ""
         assertTrue(
             "Expected Ljanskollen or road fallback, got: $result",
-            result!!.startsWith("Ljanskollen") || result.contains("Oslo")
+            result.startsWith("Ljanskollen") || result.contains("Oslo")
         )
     }
 
     @Test
     fun kraketjernfjellet_peak() {
-        val result = geocode(60.6471842, 9.4447617)
-        assertNotNull(result)
+        val result = geocode(60.6471842, 9.4447617) ?: ""
         assertTrue(
             "Expected Kråketjernfjellet or road fallback, got: $result",
-            result!!.startsWith("Kråketjernfjellet") || result.contains("Sør-Aurdal")
+            result.startsWith("Kråketjernfjellet") || result.contains("Sør-Aurdal")
         )
     }
 }
