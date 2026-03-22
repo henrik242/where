@@ -16,21 +16,21 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
 
     - name: Set up JDK 21
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '21'
         distribution: 'temurin'
 
     - name: Set up Gradle
-      uses: gradle/actions/setup-gradle@v4
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Cache SPM packages
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: iosApp/spm-derived-data/SourcePackages
         key: ${{ runner.os }}-spm-${{ hashFiles('iosApp/Where.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
@@ -38,7 +38,7 @@ jobs:
           ${{ runner.os }}-spm-
 
     - name: Cache Konan
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           /Users/runner/.konan/kotlin-native-prebuilt-*
