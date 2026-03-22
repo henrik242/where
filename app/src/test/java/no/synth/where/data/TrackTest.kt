@@ -236,4 +236,209 @@ class TrackTest {
         )
         assertEquals(60000L, track.getDurationMillis())
     }
+
+    @Test
+    fun fromGPX_parsesWaypoints() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+            <wpt lat="59.9139" lon="10.7522"><ele>50.0</ele><time>2025-01-01T12:00:00Z</time></wpt>
+            <wpt lat="60.3913" lon="5.3221"><time>2025-01-01T13:00:00Z</time></wpt>
+            </gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(2, track.points.size)
+        assertEquals(59.9139, track.points[0].latLng.latitude, 0.0001)
+        assertEquals(50.0, requireNotNull(track.points[0].altitude), 0.01)
+    }
+
+    @Test
+    fun fromGPX_parsesRoutePoints() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+            <rte><name>My Route</name>
+            <rtept lat="59.9139" lon="10.7522"><time>2025-01-01T12:00:00Z</time></rtept>
+            <rtept lat="60.3913" lon="5.3221"><time>2025-01-01T13:00:00Z</time></rtept>
+            </rte></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals("My Route", track.name)
+        assertEquals(2, track.points.size)
+        assertEquals(60.3913, track.points[1].latLng.latitude, 0.0001)
+    }
+
+    @Test
+    fun fromGPX_parsesSelfClosingPoints() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+            <wpt lat="59.9139" lon="10.7522"/>
+            <wpt lat="60.3913" lon="5.3221" />
+            </gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(2, track.points.size)
+        assertEquals(59.9139, track.points[0].latLng.latitude, 0.0001)
+        assertEquals(60.3913, track.points[1].latLng.latitude, 0.0001)
+    }
+
+    @Test
+    fun fromGPX_prefersTrkptOverOtherTypes() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+            <wpt lat="59.0" lon="10.0"><time>2025-01-01T12:00:00Z</time></wpt>
+            <trk><trkseg>
+            <trkpt lat="60.0" lon="11.0"><time>2025-01-01T13:00:00Z</time></trkpt>
+            </trkseg></trk>
+            <rte><rtept lat="61.0" lon="12.0"><time>2025-01-01T14:00:00Z</time></rtept></rte>
+            </gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(1, track.points.size)
+        assertEquals(60.0, track.points[0].latLng.latitude, 0.0001)
+    }
+
+    @Test
+    fun fromGPX_fallsBackToRteptWhenNoTrkpt() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+            <wpt lat="59.0" lon="10.0"><time>2025-01-01T12:00:00Z</time></wpt>
+            <rte><rtept lat="61.0" lon="12.0"><time>2025-01-01T14:00:00Z</time></rtept></rte>
+            </gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(1, track.points.size)
+        assertEquals(61.0, track.points[0].latLng.latitude, 0.0001)
+    }
+
+    @Test
+    fun fromGPX_parsesMultipleTrackSegments() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1"><trk><name>Multi Seg</name>
+            <trkseg>
+            <trkpt lat="59.0" lon="10.0"><time>2025-01-01T12:00:00Z</time></trkpt>
+            </trkseg>
+            <trkseg>
+            <trkpt lat="60.0" lon="11.0"><time>2025-01-01T13:00:00Z</time></trkpt>
+            </trkseg>
+            </trk></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(2, track.points.size)
+    }
+
+    @Test
+    fun fromGPX_handlesPointsWithNoTime() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+            <wpt lat="59.9" lon="10.7"><name>Campsite</name></wpt>
+            </gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(1, track.points.size)
+        assertEquals(59.9, track.points[0].latLng.latitude, 0.0001)
+    }
+
+    @Test
+    fun fromGPX_prefersMetadataName() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+            <metadata><name>My Activity</name></metadata>
+            <trk><name>Track 1</name><trkseg>
+            <trkpt lat="59.9" lon="10.7"><time>2025-01-01T12:00:00Z</time></trkpt>
+            </trkseg></trk></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals("My Activity", track.name)
+    }
+
+    @Test
+    fun fromGPX_prefersTrackNameOverWaypointName() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+            <wpt lat="59.0" lon="10.0"><name>Campsite</name></wpt>
+            <trk><name>Day Hike</name><trkseg>
+            <trkpt lat="59.9" lon="10.7"><time>2025-01-01T12:00:00Z</time></trkpt>
+            </trkseg></trk></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals("Day Hike", track.name)
+    }
+
+    @Test
+    fun fromGPX_decodesXmlEntitiesInName() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1"><trk><name>Hike &amp; Bike &lt;3</name><trkseg>
+            <trkpt lat="59.9" lon="10.7"><time>2025-01-01T12:00:00Z</time></trkpt>
+            </trkseg></trk></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals("Hike & Bike <3", track.name)
+    }
+
+    @Test
+    fun toGPX_escapesXmlInName() {
+        val track = Track(
+            name = "Run < 5k & fast",
+            points = listOf(
+                TrackPoint(latLng = LatLng(59.9, 10.7), timestamp = 1000L)
+            ),
+            startTime = 1000L
+        )
+        val gpx = track.toGPX()
+        assertTrue(gpx.contains("<name>Run &lt; 5k &amp; fast</name>"))
+    }
+
+    @Test
+    fun toGPX_fromGPX_roundTrip_withSpecialCharsInName() {
+        val original = Track(
+            name = "Tom & Jerry's <Run>",
+            points = listOf(
+                TrackPoint(latLng = LatLng(59.9, 10.7), timestamp = 1704110400000L)
+            ),
+            startTime = 1704110400000L,
+            endTime = 1704110400000L
+        )
+
+        val gpx = original.toGPX()
+        val parsed = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(original.name, parsed.name)
+    }
+
+    @Test
+    fun fromGPX_skipsInvalidCoordinates() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1"><trk><trkseg>
+            <trkpt lat="999" lon="10.7"><time>2025-01-01T12:00:00Z</time></trkpt>
+            <trkpt lat="59.9" lon="10.7"><time>2025-01-01T12:01:00Z</time></trkpt>
+            </trkseg></trk></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(1, track.points.size)
+        assertEquals(59.9, track.points[0].latLng.latitude, 0.0001)
+    }
+
+    @Test
+    fun fromGPX_timelessPointsGetEarliestRealTimestamp() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1"><trk><trkseg>
+            <trkpt lat="59.9" lon="10.7"><time>2025-01-01T12:00:00Z</time></trkpt>
+            <trkpt lat="60.0" lon="11.0"/>
+            </trkseg></trk></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(2, track.points.size)
+        assertEquals(1735732800000L, track.points[0].timestamp)
+        assertEquals(1735732800000L, track.points[1].timestamp)
+    }
+
+    @Test
+    fun fromGPX_handlesSingleQuotedAttributes() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1"><trk><trkseg>
+            <trkpt lat='59.9' lon='10.7'><time>2025-01-01T12:00:00Z</time></trkpt>
+            </trkseg></trk></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertEquals(1, track.points.size)
+        assertEquals(59.9, track.points[0].latLng.latitude, 0.0001)
+    }
 }

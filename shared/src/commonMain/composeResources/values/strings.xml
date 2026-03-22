@@ -137,6 +137,7 @@
     <string name="import_url_error">Could not import from URL. The activity or route may be private, or the URL is not recognized.</string>
     <string name="import_from_title">Import Track?</string>
     <string name="import_from_message">Import track from %1$s?</string>
+    <string name="import_file_message">Import track from file %1$s?</string>
     <string name="import_gpx_corrupted">Failed to import file. The file may be corrupted or in an unsupported format.</string>
     <string name="import_gpx_read_failed">Failed to read file.</string>
     <string name="import_gpx_error">Error importing file: %1$s</string>
