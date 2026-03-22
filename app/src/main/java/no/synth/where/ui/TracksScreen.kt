@@ -22,6 +22,7 @@ import java.io.File
 @Composable
 fun TracksScreen(
     pendingImportUrl: String? = null,
+    pendingImportFileUri: String? = null,
     onBackClick: () -> Unit,
     onContinueTrack: (Track) -> Unit,
     onShowTrackOnMap: (Track) -> Unit
@@ -40,6 +41,7 @@ fun TracksScreen(
     var importErrorMessage by remember { mutableStateOf("") }
 
     var urlToConfirm by remember { mutableStateOf<String?>(null) }
+    var fileUriToConfirm by remember { mutableStateOf<String?>(null) }
 
     // Pre-resolve strings for use in non-composable lambdas
     val importUrlErrorStr = stringResource(Res.string.import_url_error)
@@ -53,6 +55,10 @@ fun TracksScreen(
 
     LaunchedEffect(pendingImportUrl) {
         if (pendingImportUrl != null) urlToConfirm = pendingImportUrl
+    }
+
+    LaunchedEffect(pendingImportFileUri) {
+        if (pendingImportFileUri != null) fileUriToConfirm = pendingImportFileUri
     }
 
     urlToConfirm?.let { url ->
@@ -73,6 +79,44 @@ fun TracksScreen(
             },
             dismissButton = {
                 TextButton(onClick = { urlToConfirm = null }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
+    fileUriToConfirm?.let { uriString ->
+        val fileName = Uri.parse(uriString).lastPathSegment ?: uriString
+        AlertDialog(
+            onDismissRequest = { fileUriToConfirm = null },
+            title = { Text(stringResource(Res.string.import_from_title)) },
+            text = { Text(stringResource(Res.string.import_file_message, fileName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val uri = Uri.parse(uriString)
+                    fileUriToConfirm = null
+                    try {
+                        val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
+                            stream.readBytes()
+                        }
+                        if (bytes != null) {
+                            val importedTrack = viewModel.importTrackFromBytes(bytes)
+                            if (importedTrack == null) {
+                                importErrorMessage = importGpxCorruptedStr
+                                showImportError = true
+                            }
+                        } else {
+                            importErrorMessage = importGpxReadFailedStr
+                            showImportError = true
+                        }
+                    } catch (e: Exception) {
+                        importErrorMessage = String.format(importGpxErrorFmt, e.message)
+                        showImportError = true
+                    }
+                }) { Text(stringResource(Res.string.import_label)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { fileUriToConfirm = null }) {
                     Text(stringResource(Res.string.cancel))
                 }
             }

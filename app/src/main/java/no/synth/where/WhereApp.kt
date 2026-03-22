@@ -17,7 +17,7 @@ import no.synth.where.data.SavedPoint
 import no.synth.where.navigation.*
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
-import no.synth.where.util.Logger
+
 
 @Composable
 fun WhereApp(
@@ -92,19 +92,7 @@ fun WhereApp(
 
     LaunchedEffect(pendingGpxUri) {
         pendingGpxUri?.let { uri ->
-            try {
-                val bytes = context.contentResolver.openInputStream(uri)?.use {
-                    it.readBytes()
-                }
-                if (bytes != null) {
-                    val importedTrack = trackRepository.importTrackFromBytes(bytes)
-                    if (importedTrack != null) {
-                        trackRepository.setViewingTrack(importedTrack)
-                    }
-                }
-            } catch (e: Exception) {
-                Logger.e(e, "Track import error")
-            }
+            navController.navigate(TracksRoute(importFileUri = uri.toString()))
             onGpxHandled()
         }
     }
@@ -160,6 +148,7 @@ fun WhereApp(
             val route = backStackEntry.toRoute<TracksRoute>()
             TracksScreen(
                 pendingImportUrl = route.importUrl,
+                pendingImportFileUri = route.importFileUri,
                 onBackClick = { navController.popBackStack() },
                 onContinueTrack = { track ->
                     trackRepository.continueTrack(track)
