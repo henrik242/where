@@ -122,6 +122,12 @@ jobs:
         echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
         echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
 
+    - name: Configure signing for CI
+      run: |
+        sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' iosApp/Where.xcodeproj/project.pbxproj
+        sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development"/CODE_SIGN_IDENTITY = "iPhone Distribution"/g' iosApp/Where.xcodeproj/project.pbxproj
+        sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \"\"/PROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_NAME\"/g" iosApp/Where.xcodeproj/project.pbxproj
+
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
