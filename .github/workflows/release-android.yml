@@ -133,14 +133,13 @@ jobs:
         echo "Tagging $VERSION_TAG"
         git tag "$VERSION_TAG" 2>/dev/null || true
         git push origin "$VERSION_TAG" 2>/dev/null || true
-        if gh release view "$VERSION_TAG" &>/dev/null; then
-          gh release upload "$VERSION_TAG" app/build/outputs/bundle/release/app-release.aab --clobber
-        else
+        gh release view "$VERSION_TAG" &>/dev/null && \
+          gh release upload "$VERSION_TAG" app/build/outputs/bundle/release/app-release.aab --clobber || \
           gh release create "$VERSION_TAG" \
+            --target "$(git rev-parse HEAD)" \
             --title "$VERSION_TAG" \
             --notes "Release $VERSION_TAG" \
             app/build/outputs/bundle/release/app-release.aab
-        fi
 
     - name: Cleanup secrets
       if: always()
