@@ -76,7 +76,7 @@ jobs:
         EOF
 
     - name: Run shared tests
-      run: ./gradlew :shared:testDebugUnitTest
+      run: ./gradlew :shared:iosSimulatorArm64Test
 
     - name: Upload test results
       if: always()
