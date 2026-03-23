@@ -21,9 +21,6 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Select Xcode
-      run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
-
     - name: Set up JDK 21
       uses: actions/setup-java@v5
       with:
