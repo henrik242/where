@@ -103,12 +103,8 @@ jobs:
         path: app/build/outputs/mapping/release/mapping.txt
         retention-days: 90
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.3'
-        bundler-cache: true
-        working-directory: fastlane
+    - name: Install Fastlane
+      run: brew install fastlane
 
     - name: Decode Play Store service account key
       env:
@@ -118,7 +114,7 @@ jobs:
     - name: Upload to Play Store
       env:
         GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH: /tmp/play-service-account.json
-      run: bundle exec --gemfile=fastlane/Gemfile fastlane android deploy
+      run: fastlane android deploy
 
     - name: Compute version tag
       id: version

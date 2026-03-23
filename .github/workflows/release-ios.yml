@@ -146,12 +146,8 @@ jobs:
         echo "Provisioning profiles:"
         ls ~/Library/MobileDevice/Provisioning\ Profiles/
 
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.3'
-        bundler-cache: true
-        working-directory: fastlane
+    - name: Install Fastlane
+      run: brew install fastlane
 
     - name: Build and sign IPA
       env:
@@ -159,7 +155,7 @@ jobs:
         PROFILE_NAME: ${{ env.PROFILE_NAME }}
         KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
         FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 60
-      run: bundle exec --gemfile=fastlane/Gemfile fastlane ios build
+      run: fastlane ios build
 
     - name: Upload IPA
       uses: actions/upload-artifact@v7
@@ -173,14 +169,8 @@ jobs:
         ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
-      run: |
-        mkdir -p ~/.appstoreconnect/private_keys
-        echo "$ASC_KEY_CONTENT" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-        xcrun altool --upload-app \
-          --type ios \
-          --file "${{ runner.temp }}/export/Where.ipa" \
-          --apiKey "$ASC_KEY_ID" \
-          --apiIssuer "$ASC_ISSUER_ID"
+        IPA_PATH: ${{ runner.temp }}/export/Where.ipa
+      run: fastlane ios deploy
 
     - name: Create version tag and release
       env:
