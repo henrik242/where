@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-26
+    runs-on: macos-15
     environment: production
 
     steps:
