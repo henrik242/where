@@ -112,8 +112,9 @@ jobs:
         security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
         security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
         security import "$CERTIFICATE_PATH" -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
         security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+        security default-keychain -s "$KEYCHAIN_PATH"
 
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PROFILE_PATH"))
@@ -124,9 +125,15 @@ jobs:
 
     - name: Configure signing for CI
       run: |
-        sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' iosApp/Where.xcodeproj/project.pbxproj
-        sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development"/CODE_SIGN_IDENTITY = "iPhone Distribution"/g' iosApp/Where.xcodeproj/project.pbxproj
-        sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \"\"/PROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_NAME\"/g" iosApp/Where.xcodeproj/project.pbxproj
+        PBXPROJ="iosApp/Where.xcodeproj/project.pbxproj"
+        # Switch target-level signing from Automatic to Manual
+        sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' "$PBXPROJ"
+        # Set signing identity to full distribution cert name
+        sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development"/CODE_SIGN_IDENTITY = "iPhone Distribution: Henrik Aronsen (358L7UXVJ4)"/g' "$PBXPROJ"
+        # Set provisioning profile specifier
+        sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \"\"/PROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_NAME\"/g" "$PBXPROJ"
+        # Fix project-level DEVELOPMENT_TEAM to match target
+        sed -i '' 's/DEVELOPMENT_TEAM = U9DK75CHGD/DEVELOPMENT_TEAM = 358L7UXVJ4/g' "$PBXPROJ"
 
     - name: Verify signing setup
       run: |
@@ -150,7 +157,7 @@ jobs:
       env:
         OUTPUT_DIR: ${{ runner.temp }}/export
         PROFILE_NAME: ${{ env.PROFILE_NAME }}
-        GYM_KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+        KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
         FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 60
       run: bundle exec --gemfile=fastlane/Gemfile fastlane ios build
 
