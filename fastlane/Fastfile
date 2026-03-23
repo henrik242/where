@@ -3,6 +3,7 @@ default_platform(:ios)
 platform :android do
   lane :deploy do
     upload_to_play_store(
+      package_name: "no.synth.where",
       track: "production",
       aab: "app/build/outputs/bundle/release/app-release.aab",
       json_key: ENV["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH"],
@@ -22,6 +23,7 @@ platform :ios do
     )
     upload_to_testflight(
       api_key: api_key,
+      app_identifier: "no.synth.where",
       ipa: ENV["IPA_PATH"],
       skip_waiting_for_build_processing: true
     )
