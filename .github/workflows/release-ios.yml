@@ -72,16 +72,19 @@ jobs:
         MARKETING_VERSION = 1.0.${{ steps.version.outputs.commit_count }}
         EOF
 
-    - name: Run shared tests
-      run: ./gradlew :shared:iosSimulatorArm64Test
+    - name: Run tests
+      run: ./gradlew testDebugUnitTest
 
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v7
       with:
         name: test-results
-        path: shared/build/reports/tests/
+        path: app/build/reports/tests/
         retention-days: 14
+
+    - name: Compile iOS test sources
+      run: ./gradlew :shared:compileTestKotlinIosSimulatorArm64
 
     - name: Build shared framework
       run: ./gradlew :shared:linkReleaseFrameworkIosArm64
