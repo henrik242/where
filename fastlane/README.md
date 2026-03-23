@@ -68,9 +68,9 @@ Note: The very first AAB must be uploaded manually via Play Console. Fastlane ca
 
 1. Open Keychain Access → Certificate Assistant → Request a Certificate From a Certificate Authority
 2. Save the `.certSigningRequest` file
-3. Go to Apple Developer → Certificates → + → Apple Distribution
+3. Go to Apple Developer → Certificates → + → iOS Distribution (App Store and Ad Hoc)
 4. Upload the CSR, download the certificate, double-click to install
-5. In Keychain Access → My Certificates → find "Apple Distribution" → right-click → Export as .p12
+5. In Keychain Access → My Certificates → find "iPhone Distribution" → right-click → Export as .p12
 6. Set a password (this becomes `DISTRIBUTION_CERTIFICATE_PASSWORD`)
 7. Encode: `base64 -i certificate.p12 | pbcopy` → save as `DISTRIBUTION_CERTIFICATE_BASE64`
 
