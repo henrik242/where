@@ -117,57 +117,10 @@ jobs:
 
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PROFILE_PATH"))
+        PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PROFILE_PATH"))
         cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
         echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
-
-    - name: Archive app
-      run: |
-        xcodebuild archive \
-          -project iosApp/Where.xcodeproj \
-          -scheme Where \
-          -destination "generic/platform=iOS" \
-          -archivePath $RUNNER_TEMP/Where.xcarchive \
-          CODE_SIGN_STYLE=Manual \
-          CODE_SIGN_IDENTITY="iPhone Distribution" \
-          DEVELOPMENT_TEAM=358L7UXVJ4 \
-          PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-          OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/app-signing.keychain-db"
-
-    - name: Export IPA
-      run: |
-        cat > $RUNNER_TEMP/ExportOptions.plist << PLIST
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-          <key>method</key>
-          <string>app-store</string>
-          <key>teamID</key>
-          <string>358L7UXVJ4</string>
-          <key>signingStyle</key>
-          <string>manual</string>
-          <key>uploadSymbols</key>
-          <true/>
-          <key>provisioningProfiles</key>
-          <dict>
-            <key>no.synth.where</key>
-            <string>${PROFILE_UUID}</string>
-          </dict>
-        </dict>
-        </plist>
-        PLIST
-
-        xcodebuild -exportArchive \
-          -archivePath $RUNNER_TEMP/Where.xcarchive \
-          -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-          -exportPath $RUNNER_TEMP/export
-
-    - name: Upload IPA
-      uses: actions/upload-artifact@v7
-      with:
-        name: release-ipa
-        path: ${{ runner.temp }}/export/Where.ipa
-        retention-days: 90
+        echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
 
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
@@ -175,6 +128,20 @@ jobs:
         ruby-version: '3.3'
         bundler-cache: true
         working-directory: fastlane
+
+    - name: Build and sign IPA
+      env:
+        OUTPUT_DIR: ${{ runner.temp }}/export
+        PROFILE_NAME: ${{ env.PROFILE_NAME }}
+        GYM_KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+      run: bundle exec --gemfile=fastlane/Gemfile fastlane ios build
+
+    - name: Upload IPA
+      uses: actions/upload-artifact@v7
+      with:
+        name: release-ipa
+        path: ${{ runner.temp }}/export/Where.ipa
+        retention-days: 90
 
     - name: Upload to App Store Connect
       env:

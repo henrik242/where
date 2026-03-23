@@ -15,6 +15,29 @@ platform :android do
 end
 
 platform :ios do
+  lane :build do
+    build_app(
+      project: "iosApp/Where.xcodeproj",
+      scheme: "Where",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: ENV["OUTPUT_DIR"] || "./build",
+      output_name: "Where.ipa",
+      destination: "generic/platform=iOS",
+      xcargs: "SKIP_KOTLIN_BUILD=1 DEVELOPMENT_TEAM=358L7UXVJ4 CODE_SIGN_IDENTITY='iPhone Distribution' CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER='#{ENV["PROFILE_NAME"]}'",
+      export_options: {
+        method: "app-store",
+        teamID: "358L7UXVJ4",
+        signingStyle: "manual",
+        signingCertificate: "iPhone Distribution",
+        uploadSymbols: true,
+        provisioningProfiles: {
+          "no.synth.where" => ENV["PROFILE_NAME"] || ""
+        }
+      }
+    )
+  end
+
   lane :deploy do
     api_key = app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
