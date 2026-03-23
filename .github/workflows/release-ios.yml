@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: macos-26
     environment: production
 
     steps:
@@ -173,8 +173,14 @@ jobs:
         ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
-        IPA_PATH: ${{ runner.temp }}/export/Where.ipa
-      run: bundle exec --gemfile=fastlane/Gemfile fastlane ios deploy
+      run: |
+        mkdir -p ~/.appstoreconnect/private_keys
+        echo "$ASC_KEY_CONTENT" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+        xcrun altool --upload-app \
+          --type ios \
+          --file "${{ runner.temp }}/export/Where.ipa" \
+          --apiKey "$ASC_KEY_ID" \
+          --apiIssuer "$ASC_ISSUER_ID"
 
     - name: Create version tag and release
       env:
