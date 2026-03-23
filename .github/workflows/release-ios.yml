@@ -16,14 +16,45 @@ jobs:
     environment: production
 
     steps:
-    - name: Validate ASC API key
+    - name: Validate secrets
       env:
+        TRACKING_HINT: ${{ secrets.TRACKING_HINT }}
+        GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+        GOOGLE_SERVICE_INFO_DEBUG_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_DEBUG_PLIST }}
+        GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}
+        DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
+        PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+        ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
       run: |
+        missing=()
+        [ -z "$TRACKING_HINT" ] && missing+=("TRACKING_HINT")
+        [ -z "$GOOGLE_SERVICE_INFO_PLIST" ] && missing+=("GOOGLE_SERVICE_INFO_PLIST")
+        [ -z "$GOOGLE_SERVICE_INFO_DEBUG_PLIST" ] && missing+=("GOOGLE_SERVICE_INFO_DEBUG_PLIST")
+        [ -z "$GOOGLE_SERVICES_JSON" ] && missing+=("GOOGLE_SERVICES_JSON")
+        [ -z "$DISTRIBUTION_CERTIFICATE_BASE64" ] && missing+=("DISTRIBUTION_CERTIFICATE_BASE64")
+        [ -z "$DISTRIBUTION_CERTIFICATE_PASSWORD" ] && missing+=("DISTRIBUTION_CERTIFICATE_PASSWORD")
+        [ -z "$PROVISIONING_PROFILE_BASE64" ] && missing+=("PROVISIONING_PROFILE_BASE64")
+        [ -z "$ASC_KEY_ID" ] && missing+=("ASC_KEY_ID")
+        [ -z "$ASC_ISSUER_ID" ] && missing+=("ASC_ISSUER_ID")
+        [ -z "$ASC_KEY_CONTENT" ] && missing+=("ASC_KEY_CONTENT")
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "ERROR: Missing secrets: ${missing[*]}"
+          exit 1
+        fi
         echo "$ASC_KEY_CONTENT" | base64 -d > /tmp/asc_key_test.p8
         openssl ec -in /tmp/asc_key_test.p8 -noout 2>/dev/null || { echo "ERROR: ASC_KEY_CONTENT is not a valid base64-encoded EC private key"; exit 1; }
         rm /tmp/asc_key_test.p8
-        echo "ASC API key validated"
+        echo "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 -d > /tmp/cert_test.p12
+        openssl pkcs12 -in /tmp/cert_test.p12 -nokeys -passin "pass:$DISTRIBUTION_CERTIFICATE_PASSWORD" > /dev/null 2>&1 || { echo "ERROR: DISTRIBUTION_CERTIFICATE_BASE64 is not a valid .p12 or password is wrong"; exit 1; }
+        rm /tmp/cert_test.p12
+        echo "$PROVISIONING_PROFILE_BASE64" | base64 -d > /tmp/profile_test.mobileprovision
+        /usr/bin/security cms -D -i /tmp/profile_test.mobileprovision > /dev/null 2>&1 || { echo "ERROR: PROVISIONING_PROFILE_BASE64 is not a valid provisioning profile"; exit 1; }
+        rm /tmp/profile_test.mobileprovision
+        echo "$GOOGLE_SERVICES_JSON" | base64 -d | jq . > /dev/null 2>&1 || { echo "ERROR: GOOGLE_SERVICES_JSON is not valid base64-encoded JSON"; exit 1; }
+        echo "All secrets validated"
 
     - name: Checkout code
       uses: actions/checkout@v6

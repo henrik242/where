@@ -16,21 +16,15 @@ jobs:
     environment: production
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-
-    - name: Set up JDK 21
-      uses: actions/setup-java@v5
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-
-    - name: Set up Gradle
-      uses: gradle/actions/setup-gradle@v5
-
     - name: Validate secrets
+      env:
+        TRACKING_HINT: ${{ secrets.TRACKING_HINT }}
+        GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+        SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
       run: |
         missing=()
         [ -z "$TRACKING_HINT" ] && missing+=("TRACKING_HINT")
@@ -44,14 +38,25 @@ jobs:
           echo "ERROR: Missing secrets: ${missing[*]}"
           exit 1
         fi
-      env:
-        TRACKING_HINT: ${{ secrets.TRACKING_HINT }}
-        GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-        SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-        SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-        SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > /dev/null 2>&1 || { echo "ERROR: SIGNING_KEYSTORE_BASE64 is not valid base64"; exit 1; }
+        echo "$GOOGLE_SERVICES_JSON" | base64 -d > /dev/null 2>&1 || { echo "ERROR: GOOGLE_SERVICES_JSON is not valid base64"; exit 1; }
+        echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 -d | jq . > /dev/null 2>&1 || { echo "ERROR: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is not valid base64-encoded JSON"; exit 1; }
+        echo "$GOOGLE_SERVICES_JSON" | base64 -d | jq . > /dev/null 2>&1 || { echo "ERROR: GOOGLE_SERVICES_JSON is not valid base64-encoded JSON"; exit 1; }
+        echo "All secrets validated"
+
+    - name: Checkout code
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v5
 
     - name: Create local.properties
       env:
