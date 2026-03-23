@@ -6,7 +6,7 @@ platform :android do
       package_name: "no.synth.where",
       track: "production",
       aab: "app/build/outputs/bundle/release/app-release.aab",
-      mapping_path: "app/build/outputs/mapping/release/mapping.txt",
+      mapping: "app/build/outputs/mapping/release/mapping.txt",
       json_key: ENV["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH"],
       skip_upload_metadata: true,
       skip_upload_images: true,
@@ -17,6 +17,9 @@ end
 
 platform :ios do
   lane :build do
+    profile_name = ENV["PROFILE_NAME"] || ""
+    keychain = ENV["KEYCHAIN_PATH"]
+
     build_app(
       project: "iosApp/Where.xcodeproj",
       scheme: "Where",
@@ -26,7 +29,8 @@ platform :ios do
       output_name: "Where.ipa",
       destination: "generic/platform=iOS",
       skip_profile_detection: true,
-      xcargs: "SKIP_KOTLIN_BUILD=1 DEVELOPMENT_TEAM=358L7UXVJ4 OTHER_CODE_SIGN_FLAGS='--keychain #{ENV["GYM_KEYCHAIN_PATH"]}'",
+      codesigning_identity: "iPhone Distribution: Henrik Aronsen (358L7UXVJ4)",
+      xcargs: "SKIP_KOTLIN_BUILD=1 DEVELOPMENT_TEAM=358L7UXVJ4 OTHER_CODE_SIGN_FLAGS='--keychain #{keychain}'",
       export_options: {
         method: "app-store",
         teamID: "358L7UXVJ4",
@@ -34,7 +38,7 @@ platform :ios do
         signingCertificate: "iPhone Distribution",
         uploadSymbols: true,
         provisioningProfiles: {
-          "no.synth.where" => ENV["PROFILE_NAME"] || ""
+          "no.synth.where" => profile_name
         }
       }
     )
