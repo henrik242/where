@@ -20,8 +20,8 @@ jobs:
       env:
         ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
       run: |
-        echo "$ASC_KEY_CONTENT" > /tmp/asc_key_test.p8
-        openssl ec -in /tmp/asc_key_test.p8 -noout 2>/dev/null || { echo "ERROR: ASC_KEY_CONTENT is not a valid EC private key"; exit 1; }
+        echo "$ASC_KEY_CONTENT" | base64 -d > /tmp/asc_key_test.p8
+        openssl ec -in /tmp/asc_key_test.p8 -noout 2>/dev/null || { echo "ERROR: ASC_KEY_CONTENT is not a valid base64-encoded EC private key"; exit 1; }
         rm /tmp/asc_key_test.p8
         echo "ASC API key validated"
 
@@ -181,7 +181,7 @@ jobs:
         ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
         IPA_PATH: ${{ runner.temp }}/export/Where.ipa
       run: |
-        echo "$ASC_KEY_CONTENT" > "$ASC_KEY_PATH"
+        echo "$ASC_KEY_CONTENT" | base64 -d > "$ASC_KEY_PATH"
         fastlane ios deploy
 
     - name: Create version tag and release
