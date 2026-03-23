@@ -25,6 +25,7 @@ platform :ios do
       output_directory: ENV["OUTPUT_DIR"] || "./build",
       output_name: "Where.ipa",
       destination: "generic/platform=iOS",
+      skip_profile_detection: true,
       xcargs: "SKIP_KOTLIN_BUILD=1 DEVELOPMENT_TEAM=358L7UXVJ4 CODE_SIGN_IDENTITY='iPhone Distribution' CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER='#{ENV["PROFILE_NAME"]}'",
       export_options: {
         method: "app-store",

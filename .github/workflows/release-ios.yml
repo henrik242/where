@@ -134,6 +134,7 @@ jobs:
         OUTPUT_DIR: ${{ runner.temp }}/export
         PROFILE_NAME: ${{ env.PROFILE_NAME }}
         GYM_KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+        FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 60
       run: bundle exec --gemfile=fastlane/Gemfile fastlane ios build
 
     - name: Upload IPA
