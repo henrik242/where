@@ -1,0 +1,32 @@
+default_platform(:ios)
+
+platform :android do
+  lane :deploy do
+    upload_to_play_store(
+      track: "production",
+      aab: "app/build/outputs/bundle/release/app-release.aab",
+      json_key: ENV["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH"],
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end
+
+platform :ios do
+  lane :deploy do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_CONTENT"]
+    )
+    upload_to_app_store(
+      api_key: api_key,
+      ipa: ENV["IPA_PATH"],
+      skip_metadata: true,
+      skip_screenshots: true,
+      force: true,
+      precheck_include_in_app_purchases: false
+    )
+  end
+end
