@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: macos-26
     environment: production
 
     steps:
@@ -125,7 +125,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.3'
+        ruby-version: '3.4'
         bundler-cache: true
         working-directory: fastlane
 
