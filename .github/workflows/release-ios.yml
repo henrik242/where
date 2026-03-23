@@ -169,8 +169,11 @@ jobs:
         ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+        ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
         IPA_PATH: ${{ runner.temp }}/export/Where.ipa
-      run: fastlane ios deploy
+      run: |
+        echo "$ASC_KEY_CONTENT" > "$ASC_KEY_PATH"
+        fastlane ios deploy
 
     - name: Create version tag and release
       env:
