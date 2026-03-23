@@ -26,7 +26,8 @@ platform :ios do
       output_name: "Where.ipa",
       destination: "generic/platform=iOS",
       skip_profile_detection: true,
-      xcargs: "SKIP_KOTLIN_BUILD=1 DEVELOPMENT_TEAM=358L7UXVJ4",
+      keychain_path: ENV["GYM_KEYCHAIN_PATH"],
+      xcargs: "SKIP_KOTLIN_BUILD=1 DEVELOPMENT_TEAM=358L7UXVJ4 OTHER_CODE_SIGN_FLAGS='--keychain #{ENV["GYM_KEYCHAIN_PATH"]}'",
       export_options: {
         method: "app-store",
         teamID: "358L7UXVJ4",
