@@ -129,7 +129,7 @@ jobs:
           -archivePath $RUNNER_TEMP/Where.xcarchive \
           CODE_SIGN_STYLE=Manual \
           PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-          CODE_SIGN_IDENTITY="Apple Distribution"
+          CODE_SIGN_IDENTITY="iPhone Distribution"
 
     - name: Export IPA
       run: |
