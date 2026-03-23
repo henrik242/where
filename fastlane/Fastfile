@@ -48,11 +48,16 @@ platform :ios do
       issuer_id: ENV["ASC_ISSUER_ID"],
       key_filepath: ENV["ASC_KEY_PATH"]
     )
-    upload_to_testflight(
+    upload_to_app_store(
       api_key: api_key,
       app_identifier: "no.synth.where",
       ipa: ENV["IPA_PATH"],
-      skip_waiting_for_build_processing: true
+      skip_metadata: true,
+      skip_screenshots: true,
+      force: true,
+      submit_for_review: true,
+      automatic_release: true,
+      precheck_include_in_app_purchases: false
     )
   end
 end
