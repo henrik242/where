@@ -6,6 +6,10 @@ permissions:
 on:
   workflow_dispatch:
 
+concurrency:
+  group: release-android
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -26,16 +30,56 @@ jobs:
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@v5
 
+    - name: Validate secrets
+      run: |
+        missing=()
+        [ -z "$TRACKING_HINT" ] && missing+=("TRACKING_HINT")
+        [ -z "$GOOGLE_SERVICES_JSON" ] && missing+=("GOOGLE_SERVICES_JSON")
+        [ -z "$SIGNING_KEYSTORE_BASE64" ] && missing+=("SIGNING_KEYSTORE_BASE64")
+        [ -z "$SIGNING_STORE_PASSWORD" ] && missing+=("SIGNING_STORE_PASSWORD")
+        [ -z "$SIGNING_KEY_ALIAS" ] && missing+=("SIGNING_KEY_ALIAS")
+        [ -z "$SIGNING_KEY_PASSWORD" ] && missing+=("SIGNING_KEY_PASSWORD")
+        [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ] && missing+=("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "ERROR: Missing secrets: ${missing[*]}"
+          exit 1
+        fi
+      env:
+        TRACKING_HINT: ${{ secrets.TRACKING_HINT }}
+        GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+        SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+
     - name: Create local.properties
+      env:
+        TRACKING_HINT: ${{ secrets.TRACKING_HINT }}
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
-        echo "TRACKING_HINT=${{ secrets.TRACKING_HINT }}" >> local.properties
+        echo "TRACKING_HINT=$TRACKING_HINT" >> local.properties
 
     - name: Create google-services.json
-      run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
+      env:
+        GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+
+    - name: Run tests
+      run: ./gradlew testDebugUnitTest
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: test-results
+        path: app/build/reports/tests/
+        retention-days: 14
 
     - name: Decode signing keystore
-      run: echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.jks
+      env:
+        SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+      run: echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > /tmp/release.jks
 
     - name: Build release AAB
       env:
@@ -43,10 +87,21 @@ jobs:
         SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
         SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-      run: ./gradlew bundleRelease --stacktrace
+      run: ./gradlew bundleRelease
 
-    - name: Run tests
-      run: ./gradlew testDebugUnitTest --stacktrace
+    - name: Upload AAB
+      uses: actions/upload-artifact@v7
+      with:
+        name: release-aab
+        path: app/build/outputs/bundle/release/app-release.aab
+        retention-days: 90
+
+    - name: Upload ProGuard mapping
+      uses: actions/upload-artifact@v7
+      with:
+        name: proguard-mapping
+        path: app/build/outputs/mapping/release/mapping.txt
+        retention-days: 90
 
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
@@ -56,16 +111,36 @@ jobs:
         working-directory: fastlane
 
     - name: Decode Play Store service account key
-      run: echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" | base64 -d > /tmp/play-service-account.json
+      env:
+        GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      run: echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 -d > /tmp/play-service-account.json
 
     - name: Upload to Play Store
       env:
         GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH: /tmp/play-service-account.json
       run: bundle exec --gemfile=fastlane/Gemfile fastlane android deploy
 
-    - name: Create version tag
+    - name: Compute version tag
+      id: version
+      run: echo "tag=v$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+
+    - name: Create version tag and release
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        VERSION_TAG="v$(git rev-list --count HEAD)"
+        VERSION_TAG="${{ steps.version.outputs.tag }}"
         echo "Tagging $VERSION_TAG"
-        git tag "$VERSION_TAG" || echo "Tag $VERSION_TAG already exists"
-        git push origin "$VERSION_TAG" || echo "Tag $VERSION_TAG already pushed"
+        git tag "$VERSION_TAG" 2>/dev/null || true
+        git push origin "$VERSION_TAG" 2>/dev/null || true
+        if gh release view "$VERSION_TAG" &>/dev/null; then
+          gh release upload "$VERSION_TAG" app/build/outputs/bundle/release/app-release.aab --clobber
+        else
+          gh release create "$VERSION_TAG" \
+            --title "$VERSION_TAG" \
+            --notes "Release $VERSION_TAG" \
+            app/build/outputs/bundle/release/app-release.aab
+        fi
+
+    - name: Cleanup secrets
+      if: always()
+      run: rm -f /tmp/release.jks /tmp/play-service-account.json app/google-services.json local.properties

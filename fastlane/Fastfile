@@ -20,13 +20,10 @@ platform :ios do
       issuer_id: ENV["ASC_ISSUER_ID"],
       key_content: ENV["ASC_KEY_CONTENT"]
     )
-    upload_to_app_store(
+    upload_to_testflight(
       api_key: api_key,
       ipa: ENV["IPA_PATH"],
-      skip_metadata: true,
-      skip_screenshots: true,
-      force: true,
-      precheck_include_in_app_purchases: false
+      skip_waiting_for_build_processing: true
     )
   end
 end

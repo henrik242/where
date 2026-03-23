@@ -24,3 +24,6 @@ xcuserdata/
 
 # Generated build config
 **/Where/Generated.xcconfig
+
+# Local Fastfile with credentials
+/Fastfile
