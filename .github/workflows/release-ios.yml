@@ -128,8 +128,10 @@ jobs:
           -destination "generic/platform=iOS" \
           -archivePath $RUNNER_TEMP/Where.xcarchive \
           CODE_SIGN_STYLE=Manual \
+          CODE_SIGN_IDENTITY="iPhone Distribution" \
+          DEVELOPMENT_TEAM=358L7UXVJ4 \
           PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-          CODE_SIGN_IDENTITY="iPhone Distribution"
+          OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/app-signing.keychain-db"
 
     - name: Export IPA
       run: |
