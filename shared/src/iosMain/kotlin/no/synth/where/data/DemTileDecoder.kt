@@ -1,8 +1,8 @@
 package no.synth.where.data
 
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
-import kotlinx.cinterop.get
 import kotlinx.cinterop.usePinned
 import platform.CoreGraphics.CGBitmapContextCreate
 import platform.CoreGraphics.CGColorSpaceCreateDeviceRGB
@@ -15,7 +15,7 @@ import platform.Foundation.NSData
 import platform.Foundation.create
 import platform.UIKit.UIImage
 
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
 actual object DemTileDecoder {
     actual fun decodeElevation(pngData: ByteArray, pixelX: Int, pixelY: Int): Double? {
         val nsData = pngData.usePinned { pinned ->
@@ -45,7 +45,11 @@ actual object DemTileDecoder {
             )
         } ?: return null
 
-        CGContextDrawImage(context, CGRectMake(0.0, 0.0, width.toDouble(), height.toDouble()), cgImage)
+        CGContextDrawImage(
+            context,
+            CGRectMake(0.0, 0.0, width.toDouble(), height.toDouble()),
+            cgImage
+        )
         CGContextRelease(context)
 
         val offset = (pixelY * bytesPerRow) + (pixelX * bytesPerPixel)
