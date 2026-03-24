@@ -84,6 +84,7 @@ fun IosMapScreen(
     val viewingTrack by trackRepository.viewingTrack.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
+    val hasSeenTrackingInfo by userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
 
@@ -128,6 +129,7 @@ fun IosMapScreen(
 
     // Save ruler as track state
     var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
+    var showTrackingInfoDialog by remember { mutableStateOf(false) }
     var rulerTrackName by remember { mutableStateOf("") }
     var isResolvingRulerName by remember { mutableStateOf(false) }
 
@@ -275,6 +277,17 @@ fun IosMapScreen(
                 }
             }
         })
+    }
+
+    if (showTrackingInfoDialog) {
+        MapDialogs.TrackingInfoDialog(
+            onConfirm = {
+                showTrackingInfoDialog = false
+                userPreferences.markTrackingInfoSeen()
+                userPreferences.updateOnlineTrackingEnabled(true)
+            },
+            onDismiss = { showTrackingInfoDialog = false }
+        )
     }
 
     if (showStopTrackDialog) {
@@ -567,6 +580,10 @@ fun IosMapScreen(
             }
         },
         onOnlineTrackingChange = { enabled ->
+            if (enabled && !hasSeenTrackingInfo) {
+                showTrackingInfoDialog = true
+                return@MapScreenContent
+            }
             userPreferences.updateOnlineTrackingEnabled(enabled)
             if (isRecording) {
                 if (enabled) {

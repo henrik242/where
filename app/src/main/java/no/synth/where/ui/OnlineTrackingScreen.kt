@@ -22,9 +22,11 @@ fun OnlineTrackingScreen(
     val app = context.applicationContext as no.synth.where.WhereApplication
     val viewModel: OnlineTrackingScreenViewModel = viewModel { OnlineTrackingScreenViewModel(app.userPreferences, app.clientIdManager) }
     val isTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
+    val hasSeenTrackingInfo by viewModel.hasSeenTrackingInfo.collectAsState()
     val clientId by viewModel.clientId.collectAsState()
     val trackingServerUrl by viewModel.trackingServerUrl.collectAsState()
     var showRegenerateDialog by remember { mutableStateOf(false) }
+    var showTrackingInfoDialog by remember { mutableStateOf(false) }
 
     // Pre-resolve strings for use in non-composable lambdas
     val shareTrackingChooserStr = stringResource(Res.string.share_tracking_chooser)
@@ -35,8 +37,15 @@ fun OnlineTrackingScreen(
         isTrackingEnabled = isTrackingEnabled,
         clientId = clientId,
         showRegenerateDialog = showRegenerateDialog,
+        showTrackingInfoDialog = showTrackingInfoDialog,
         onBackClick = onBackClick,
-        onToggleTracking = { viewModel.toggleTracking(it) },
+        onToggleTracking = { enabled ->
+            if (enabled && !hasSeenTrackingInfo) {
+                showTrackingInfoDialog = true
+            } else {
+                viewModel.toggleTracking(enabled)
+            }
+        },
         onViewOnWeb = {
             val url = "${trackingServerUrl}?clients=$clientId"
             context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
@@ -55,6 +64,12 @@ fun OnlineTrackingScreen(
             viewModel.regenerateClientId()
             showRegenerateDialog = false
         },
-        onDismissRegenerate = { showRegenerateDialog = false }
+        onDismissRegenerate = { showRegenerateDialog = false },
+        onConfirmTrackingInfo = {
+            showTrackingInfoDialog = false
+            viewModel.markTrackingInfoSeen()
+            viewModel.toggleTracking(true)
+        },
+        onDismissTrackingInfo = { showTrackingInfoDialog = false }
     )
 }

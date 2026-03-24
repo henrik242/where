@@ -78,6 +78,7 @@ fun MapScreen(
     val currentTrack by viewModel.currentTrack.collectAsState()
     val viewingTrack by viewModel.viewingTrack.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
+    val hasSeenTrackingInfo by viewModel.userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by viewModel.userPreferences.offlineModeEnabled.collectAsState()
     val showCountyBorders by viewModel.userPreferences.showCountyBorders.collectAsState()
     val showSavedPoints by viewModel.userPreferences.showSavedPoints.collectAsState()
@@ -117,6 +118,7 @@ fun MapScreen(
     }
     var showBackgroundLocationDisclosure by remember { mutableStateOf(false) }
     var pendingRecordStart by remember { mutableStateOf(false) }
+    var showTrackingInfoDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -377,13 +379,17 @@ fun MapScreen(
         onOfflineIndicatorClick = onOfflineSettingsClick,
         onOnlineTrackingClick = onOnlineTrackingSettingsClick,
         onOnlineTrackingChange = { newValue ->
-            viewModel.updateOnlineTracking(newValue)
-            if (newValue) {
-                LocationTrackingService.enableOnlineTracking(context)
-                scope.launch { snackbarHostState.showSnackbar(onlineEnabledMsg) }
+            if (newValue && !hasSeenTrackingInfo) {
+                showTrackingInfoDialog = true
             } else {
-                LocationTrackingService.disableOnlineTracking(context)
-                scope.launch { snackbarHostState.showSnackbar(onlineDisabledMsg) }
+                viewModel.updateOnlineTracking(newValue)
+                if (newValue) {
+                    LocationTrackingService.enableOnlineTracking(context)
+                    scope.launch { snackbarHostState.showSnackbar(onlineEnabledMsg) }
+                } else {
+                    LocationTrackingService.disableOnlineTracking(context)
+                    scope.launch { snackbarHostState.showSnackbar(onlineDisabledMsg) }
+                }
             }
         },
         onCloseViewingTrack = { viewModel.clearViewingTrack() },
@@ -435,6 +441,19 @@ fun MapScreen(
             )
         }
     )
+
+    if (showTrackingInfoDialog) {
+        MapDialogs.TrackingInfoDialog(
+            onConfirm = {
+                showTrackingInfoDialog = false
+                viewModel.userPreferences.markTrackingInfoSeen()
+                viewModel.updateOnlineTracking(true)
+                LocationTrackingService.enableOnlineTracking(context)
+                scope.launch { snackbarHostState.showSnackbar(onlineEnabledMsg) }
+            },
+            onDismiss = { showTrackingInfoDialog = false }
+        )
+    }
 
     if (showStopTrackDialog) {
         MapDialogs.StopTrackDialog(

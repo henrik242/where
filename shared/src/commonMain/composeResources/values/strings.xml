@@ -93,6 +93,9 @@
     <string name="regenerate_client_id">Regenerate Client ID</string>
     <string name="how_it_works">\u2139\uFE0F How it works</string>
     <string name="how_it_works_description">When you press record in map view and online tracking is enabled, your location is shared in real-time with anyone who has your Client ID. They can view your track on the web interface.</string>
+    <string name="tracking_info_title">Online Tracking</string>
+    <string name="tracking_info_message">Your location is only shared online when you press the record button in map view. Simply enabling this toggle does not start tracking.</string>
+    <string name="got_it">Got it</string>
     <string name="regenerate_client_id_title">Regenerate Client ID?</string>
     <string name="regenerate_client_id_message">This will create a new client ID. Your old ID (%1$s) will no longer be associated with your tracks on the server.</string>
     <string name="regenerate">Regenerate</string>

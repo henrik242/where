@@ -406,6 +406,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
 
             Screen.ONLINE_TRACKING -> {
                 var showRegenerateDialog by remember { mutableStateOf(false) }
+                var showTrackingInfoDialog by remember { mutableStateOf(false) }
+                val hasSeenTrackingInfo by userPreferences.hasSeenTrackingInfo.collectAsState()
                 val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
 
                 LaunchedEffect(Unit) {
@@ -418,8 +420,15 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     isTrackingEnabled = onlineTrackingEnabled,
                     clientId = clientId,
                     showRegenerateDialog = showRegenerateDialog,
+                    showTrackingInfoDialog = showTrackingInfoDialog,
                     onBackClick = { navigateBack() },
-                    onToggleTracking = { userPreferences.updateOnlineTrackingEnabled(it) },
+                    onToggleTracking = { enabled ->
+                        if (enabled && !hasSeenTrackingInfo) {
+                            showTrackingInfoDialog = true
+                        } else {
+                            userPreferences.updateOnlineTrackingEnabled(enabled)
+                        }
+                    },
                     onViewOnWeb = {
                         IosPlatformActions.openUrl("${trackingServerUrl}?clients=$clientId")
                     },
@@ -432,7 +441,13 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         scope.launch { clientId = clientIdManager.regenerateClientId() }
                         showRegenerateDialog = false
                     },
-                    onDismissRegenerate = { showRegenerateDialog = false }
+                    onDismissRegenerate = { showRegenerateDialog = false },
+                    onConfirmTrackingInfo = {
+                        showTrackingInfoDialog = false
+                        userPreferences.markTrackingInfoSeen()
+                        userPreferences.updateOnlineTrackingEnabled(true)
+                    },
+                    onDismissTrackingInfo = { showTrackingInfoDialog = false }
                 )
             }
         }

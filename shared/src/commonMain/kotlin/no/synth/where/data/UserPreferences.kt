@@ -33,6 +33,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _crashReportingEnabled = MutableStateFlow(true)
     val crashReportingEnabled: StateFlow<Boolean> = _crashReportingEnabled.asStateFlow()
 
+    private val _hasSeenTrackingInfo = MutableStateFlow(false)
+    val hasSeenTrackingInfo: StateFlow<Boolean> = _hasSeenTrackingInfo.asStateFlow()
+
     private val _onlineTrackingEnabled = MutableStateFlow(false)
     val onlineTrackingEnabled: StateFlow<Boolean> = _onlineTrackingEnabled.asStateFlow()
 
@@ -83,6 +86,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
                 _selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
+                _hasSeenTrackingInfo.value = prefs[HAS_SEEN_TRACKING_INFO] ?: false
                 _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
                 _offlineModeEnabled.value = prefs[OFFLINE_MODE_ENABLED] ?: false
@@ -136,6 +140,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         scope.launch {
             dataStore.edit { it[CRASH_REPORTING_ENABLED] = value }
         }
+    }
+
+    fun markTrackingInfoSeen() {
+        _hasSeenTrackingInfo.value = true
+        scope.launch { dataStore.edit { it[HAS_SEEN_TRACKING_INFO] = true } }
     }
 
     fun updateOnlineTrackingEnabled(value: Boolean) {
@@ -225,6 +234,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val SHOW_HILLSHADE = booleanPreferencesKey("show_hillshade")
         private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")
         private val SELECTED_MAP_LAYER = stringPreferencesKey("selected_map_layer")
+        private val HAS_SEEN_TRACKING_INFO = booleanPreferencesKey("has_seen_tracking_info")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
         private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")
         private val OFFLINE_MODE_ENABLED = booleanPreferencesKey("offline_mode_enabled")

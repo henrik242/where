@@ -40,13 +40,16 @@ fun OnlineTrackingScreenContent(
     isTrackingEnabled: Boolean,
     clientId: String,
     showRegenerateDialog: Boolean,
+    showTrackingInfoDialog: Boolean,
     onBackClick: () -> Unit,
     onToggleTracking: (Boolean) -> Unit,
     onViewOnWeb: () -> Unit,
     onShare: () -> Unit,
     onRegenerateClick: () -> Unit,
     onConfirmRegenerate: () -> Unit,
-    onDismissRegenerate: () -> Unit
+    onDismissRegenerate: () -> Unit,
+    onConfirmTrackingInfo: () -> Unit,
+    onDismissTrackingInfo: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -202,6 +205,19 @@ fun OnlineTrackingScreenContent(
                 }
             }
         }
+    }
+
+    if (showTrackingInfoDialog) {
+        AlertDialog(
+            onDismissRequest = onDismissTrackingInfo,
+            title = { Text(stringResource(Res.string.tracking_info_title)) },
+            text = { Text(stringResource(Res.string.tracking_info_message)) },
+            confirmButton = {
+                TextButton(onClick = onConfirmTrackingInfo) {
+                    Text(stringResource(Res.string.got_it))
+                }
+            }
+        )
     }
 
     if (showRegenerateDialog) {

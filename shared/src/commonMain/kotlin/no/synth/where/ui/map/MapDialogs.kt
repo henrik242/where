@@ -33,6 +33,23 @@ import org.jetbrains.compose.resources.stringResource
 object MapDialogs {
 
     @Composable
+    fun TrackingInfoDialog(
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(Res.string.tracking_info_title)) },
+            text = { Text(stringResource(Res.string.tracking_info_message)) },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text(stringResource(Res.string.got_it))
+                }
+            }
+        )
+    }
+
+    @Composable
     fun BackgroundLocationDisclosureDialog(
         onAllow: () -> Unit,
         onDeny: () -> Unit

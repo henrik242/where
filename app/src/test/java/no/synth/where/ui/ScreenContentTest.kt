@@ -32,17 +32,20 @@ class ScreenContentTest {
             "isTrackingEnabled",
             "clientId",
             "showRegenerateDialog",
+            "showTrackingInfoDialog",
             "onBackClick",
             "onToggleTracking",
             "onViewOnWeb",
             "onShare",
             "onRegenerateClick",
             "onConfirmRegenerate",
-            "onDismissRegenerate"
+            "onDismissRegenerate",
+            "onConfirmTrackingInfo",
+            "onDismissTrackingInfo"
         )
         assertEquals(
-            "OnlineTrackingScreenContent must have 10 parameters",
-            10,
+            "OnlineTrackingScreenContent must have 13 parameters",
+            13,
             requiredParameters.size
         )
     }

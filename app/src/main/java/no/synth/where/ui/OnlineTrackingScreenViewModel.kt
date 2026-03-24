@@ -15,6 +15,7 @@ class OnlineTrackingScreenViewModel(
 ) : ViewModel() {
 
     val onlineTrackingEnabled = userPreferences.onlineTrackingEnabled
+    val hasSeenTrackingInfo = userPreferences.hasSeenTrackingInfo
     val trackingServerUrl = userPreferences.trackingServerUrl
 
     private val _clientId = MutableStateFlow("")
@@ -28,6 +29,10 @@ class OnlineTrackingScreenViewModel(
 
     fun toggleTracking(enabled: Boolean) {
         userPreferences.updateOnlineTrackingEnabled(enabled)
+    }
+
+    fun markTrackingInfoSeen() {
+        userPreferences.markTrackingInfoSeen()
     }
 
     fun regenerateClientId() {

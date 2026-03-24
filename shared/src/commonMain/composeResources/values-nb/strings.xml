@@ -93,6 +93,9 @@
     <string name="regenerate_client_id">Generer ny klient-ID</string>
     <string name="how_it_works">\u2139\uFE0F Slik fungerer det</string>
     <string name="how_it_works_description">Når du trykker ta opp i kartvisningen og direktesporing er aktivert, deles posisjonen din i sanntid med alle som har din klient-ID. De kan se sporet ditt på nettsiden.</string>
+    <string name="tracking_info_title">Direktesporing</string>
+    <string name="tracking_info_message">Posisjonen din deles kun når du trykker på opptaksknappen i kartvisningen. Å aktivere denne bryteren starter ikke sporing i seg selv.</string>
+    <string name="got_it">Forstått</string>
     <string name="regenerate_client_id_title">Generere ny klient-ID?</string>
     <string name="regenerate_client_id_message">Dette vil opprette en ny klient-ID. Din gamle ID (%1$s) vil ikke lenger være tilknyttet sporene dine på serveren.</string>
     <string name="regenerate">Generer ny</string>
