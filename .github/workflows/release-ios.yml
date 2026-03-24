@@ -5,6 +5,15 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      whats_new_en:
+        description: "What's New (English)"
+        required: true
+        default: "Bug fixes and improvements."
+      whats_new_no:
+        description: "What's New (Norwegian)"
+        required: true
+        default: "Feilrettinger og forbedringer."
 
 concurrency:
   group: release-ios
@@ -195,6 +204,8 @@ jobs:
         ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
         ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
         IPA_PATH: ${{ runner.temp }}/export/Where.ipa
+        WHATS_NEW_EN: ${{ github.event.inputs.whats_new_en }}
+        WHATS_NEW_NO: ${{ github.event.inputs.whats_new_no }}
       run: |
         echo "$ASC_KEY_CONTENT" | base64 -d > "$ASC_KEY_PATH"
         fastlane ios deploy

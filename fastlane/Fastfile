@@ -48,16 +48,18 @@ platform :ios do
       issuer_id: ENV["ASC_ISSUER_ID"],
       key_filepath: ENV["ASC_KEY_PATH"]
     )
+    whats_new_en = ENV["WHATS_NEW_EN"] || "Bug fixes and improvements."
+    whats_new_no = ENV["WHATS_NEW_NO"] || "Feilrettinger og forbedringer."
     upload_to_app_store(
       api_key: api_key,
       app_identifier: "no.synth.where",
       ipa: ENV["IPA_PATH"],
-      skip_metadata: true,
       skip_screenshots: true,
       force: true,
       submit_for_review: true,
       automatic_release: true,
-      precheck_include_in_app_purchases: false
+      precheck_include_in_app_purchases: false,
+      release_notes: { "en-US" => whats_new_en, "no" => whats_new_no }
     )
   end
 end

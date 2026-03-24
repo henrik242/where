@@ -5,6 +5,15 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      whats_new_en:
+        description: "What's New (English)"
+        required: true
+        default: "Bug fixes and improvements."
+      whats_new_no:
+        description: "What's New (Norwegian)"
+        required: true
+        default: "Feilrettinger og forbedringer."
 
 concurrency:
   group: release-android
@@ -106,6 +115,13 @@ jobs:
       env:
         GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
       run: echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 -d > /tmp/play-service-account.json
+
+    - name: Create changelogs
+      run: |
+        mkdir -p fastlane/metadata/android/en-US/changelogs
+        mkdir -p fastlane/metadata/android/no-NO/changelogs
+        echo "${{ github.event.inputs.whats_new_en }}" > fastlane/metadata/android/en-US/changelogs/default.txt
+        echo "${{ github.event.inputs.whats_new_no }}" > fastlane/metadata/android/no-NO/changelogs/default.txt
 
     - name: Upload to Play Store
       env:
