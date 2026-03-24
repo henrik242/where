@@ -67,8 +67,7 @@ fun OnlineTrackingScreen(
         onDismissRegenerate = { showRegenerateDialog = false },
         onConfirmTrackingInfo = {
             showTrackingInfoDialog = false
-            viewModel.markTrackingInfoSeen()
-            viewModel.toggleTracking(true)
+            viewModel.confirmTrackingInfoAndEnable()
         },
         onDismissTrackingInfo = { showTrackingInfoDialog = false }
     )

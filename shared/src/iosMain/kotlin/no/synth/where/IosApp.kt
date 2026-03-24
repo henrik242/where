@@ -444,8 +444,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onDismissRegenerate = { showRegenerateDialog = false },
                     onConfirmTrackingInfo = {
                         showTrackingInfoDialog = false
-                        userPreferences.markTrackingInfoSeen()
-                        userPreferences.updateOnlineTrackingEnabled(true)
+                        userPreferences.confirmTrackingInfoAndEnable()
                     },
                     onDismissTrackingInfo = { showTrackingInfoDialog = false }
                 )

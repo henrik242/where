@@ -446,8 +446,7 @@ fun MapScreen(
         MapDialogs.TrackingInfoDialog(
             onConfirm = {
                 showTrackingInfoDialog = false
-                viewModel.userPreferences.markTrackingInfoSeen()
-                viewModel.updateOnlineTracking(true)
+                viewModel.userPreferences.confirmTrackingInfoAndEnable()
                 LocationTrackingService.enableOnlineTracking(context)
                 scope.launch { snackbarHostState.showSnackbar(onlineEnabledMsg) }
             },

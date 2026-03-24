@@ -73,6 +73,26 @@ class UserPreferencesTest {
     }
 
     @Test
+    fun defaults_hasSeenTrackingInfoIsFalse() {
+        assertEquals(false, prefs.hasSeenTrackingInfo.value)
+    }
+
+    @Test
+    fun confirmTrackingInfoAndEnable_marksSeenAndEnables() {
+        prefs.confirmTrackingInfoAndEnable()
+        assertEquals(true, prefs.hasSeenTrackingInfo.value)
+        assertEquals(true, prefs.onlineTrackingEnabled.value)
+    }
+
+    @Test
+    fun confirmTrackingInfoAndEnable_subsequentToggleSkipsDialog() {
+        prefs.confirmTrackingInfoAndEnable()
+        prefs.updateOnlineTrackingEnabled(false)
+        assertEquals(false, prefs.onlineTrackingEnabled.value)
+        assertEquals(true, prefs.hasSeenTrackingInfo.value)
+    }
+
+    @Test
     fun updatePersistsAndEmits() = runBlocking {
         prefs.updateShowCountyBorders(true)
         assertEquals(true, prefs.showCountyBorders.value)

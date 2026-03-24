@@ -283,8 +283,25 @@ fun IosMapScreen(
         MapDialogs.TrackingInfoDialog(
             onConfirm = {
                 showTrackingInfoDialog = false
-                userPreferences.markTrackingInfoSeen()
-                userPreferences.updateOnlineTrackingEnabled(true)
+                userPreferences.confirmTrackingInfoAndEnable()
+                if (isRecording) {
+                    scope.launch {
+                        val clientId = clientIdManager.getClientId()
+                        val client = OnlineTrackingClient(
+                            serverUrl = trackingServerUrl,
+                            clientId = clientId,
+                            trackingHint = BuildInfo.TRACKING_HINT,
+                            canSend = { !userPreferences.offlineModeEnabled.value }
+                        )
+                        val track = currentTrack
+                        if (track != null && track.isRecording) {
+                            client.syncExistingTrack(track)
+                        } else {
+                            client.startTrack(track?.name ?: "Track")
+                        }
+                        locationTracker.onlineTrackingClient = client
+                    }
+                }
             },
             onDismiss = { showTrackingInfoDialog = false }
         )

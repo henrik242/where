@@ -31,8 +31,8 @@ class OnlineTrackingScreenViewModel(
         userPreferences.updateOnlineTrackingEnabled(enabled)
     }
 
-    fun markTrackingInfoSeen() {
-        userPreferences.markTrackingInfoSeen()
+    fun confirmTrackingInfoAndEnable() {
+        userPreferences.confirmTrackingInfoAndEnable()
     }
 
     fun regenerateClientId() {

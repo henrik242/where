@@ -147,6 +147,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         scope.launch { dataStore.edit { it[HAS_SEEN_TRACKING_INFO] = true } }
     }
 
+    fun confirmTrackingInfoAndEnable() {
+        markTrackingInfoSeen()
+        updateOnlineTrackingEnabled(true)
+    }
+
     fun updateOnlineTrackingEnabled(value: Boolean) {
         _onlineTrackingEnabled.value = value
         scope.launch {
