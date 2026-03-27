@@ -29,7 +29,7 @@ kmpZip = "0.9.2"
 playServicesLocation = "21.3.0"
 room = "2.8.4"
 timber = "5.0.1"
-uiTestJunit4 = "1.10.5"
+uiTestJunit4 = "1.10.6"
 dependencyUpdates = "0.53.0"
 
 [libraries]
