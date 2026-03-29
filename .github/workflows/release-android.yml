@@ -14,6 +14,10 @@ on:
         description: "What's New (Norwegian)"
         required: true
         default: "Feilrettinger og forbedringer."
+      submit_for_review:
+        description: "Submit for review (uncheck to upload without releasing)"
+        type: boolean
+        default: true
 
 concurrency:
   group: release-android
@@ -126,6 +130,7 @@ jobs:
     - name: Upload to Play Store
       env:
         GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH: /tmp/play-service-account.json
+        SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review }}
       run: fastlane android deploy
 
     - name: Compute version tag

@@ -2,9 +2,11 @@ default_platform(:ios)
 
 platform :android do
   lane :deploy do
+    submit = ENV["SUBMIT_FOR_REVIEW"] != "false"
     upload_to_play_store(
       package_name: "no.synth.where",
       track: "production",
+      release_status: submit ? "completed" : "draft",
       aab: "app/build/outputs/bundle/release/app-release.aab",
       mapping: "app/build/outputs/mapping/release/mapping.txt",
       json_key: ENV["GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH"],
@@ -43,6 +45,7 @@ platform :ios do
   end
 
   lane :deploy do
+    submit = ENV["SUBMIT_FOR_REVIEW"] != "false"
     api_key = app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
@@ -55,9 +58,10 @@ platform :ios do
       app_identifier: "no.synth.where",
       ipa: ENV["IPA_PATH"],
       skip_screenshots: true,
+      skip_metadata: !submit,
       force: true,
-      submit_for_review: true,
-      automatic_release: true,
+      submit_for_review: submit,
+      automatic_release: submit,
       precheck_include_in_app_purchases: false,
       release_notes: { "en-US" => whats_new_en, "no" => whats_new_no }
     )
