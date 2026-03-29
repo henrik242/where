@@ -113,7 +113,10 @@ jobs:
         retention-days: 90
 
     - name: Install Fastlane
-      run: brew install fastlane
+      run: |
+        export NONINTERACTIVE=1
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        brew install fastlane
 
     - name: Decode Play Store service account key
       env:
