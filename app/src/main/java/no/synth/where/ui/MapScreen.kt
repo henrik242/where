@@ -102,6 +102,7 @@ fun MapScreen(
     val isResolvingRulerName by viewModel.isResolvingRulerName.collectAsState()
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
+    var isCompassVisible by remember { mutableStateOf(false) }
     var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
     val selectedLayer by viewModel.userPreferences.selectedMapLayer.collectAsState()
     var showLayerMenu by remember { mutableStateOf(false) }
@@ -212,6 +213,12 @@ fun MapScreen(
                 savedCameraZoom = map.cameraPosition.zoom
                 centerLatLng = LatLng(target.latitude, target.longitude)
             }
+            val bearing = map.cameraPosition.bearing
+            isCompassVisible = when {
+                bearing > 2.0 && bearing < 358.0 -> true
+                bearing < 0.5 || bearing > 359.5 -> false
+                else -> isCompassVisible
+            }
         }
     }
 
@@ -300,6 +307,7 @@ fun MapScreen(
         onToggleCoordFormat = { viewModel.userPreferences.updateCoordFormat(coordFormat.next()) },
         onCrosshairToggle = { viewModel.userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
+        isCompassVisible = isCompassVisible,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,

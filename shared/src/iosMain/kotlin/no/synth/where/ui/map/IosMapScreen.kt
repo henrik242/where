@@ -126,6 +126,7 @@ fun IosMapScreen(
     var crosshairInfo by remember { mutableStateOf(CrosshairInfo()) }
     val coordFormat by userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var isCompassVisible by remember { mutableStateOf(false) }
 
     // Save ruler as track state
     var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
@@ -182,8 +183,13 @@ fun IosMapScreen(
     // Camera move callback for crosshair
     DisposableEffect(Unit) {
         mapViewProvider.setOnCameraMoveCallback(object : MapCameraMoveCallback {
-            override fun onCameraMove(latitude: Double, longitude: Double) {
+            override fun onCameraMove(latitude: Double, longitude: Double, bearing: Double) {
                 centerLatLng = LatLng(latitude, longitude)
+                isCompassVisible = when {
+                    bearing > 2.0 && bearing < 358.0 -> true
+                    bearing < 0.5 || bearing > 359.5 -> false
+                    else -> isCompassVisible
+                }
             }
         })
         onDispose { mapViewProvider.setOnCameraMoveCallback(null) }
@@ -458,6 +464,7 @@ fun IosMapScreen(
         onToggleCoordFormat = { userPreferences.updateCoordFormat(coordFormat.next()) },
         onCrosshairToggle = { userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
+        isCompassVisible = isCompassVisible,
         onlineTrackingEnabled = onlineTrackingEnabled,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,

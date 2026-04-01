@@ -1,6 +1,7 @@
 package no.synth.where.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -35,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -67,6 +69,7 @@ fun HexMapScreenContent(
     isHexDownloaded: Boolean,
     isHexPartiallyDownloaded: Boolean,
     offlineModeEnabled: Boolean,
+    isCompassVisible: Boolean = false,
     showDeleteDialog: Boolean,
     onBackClick: () -> Unit,
     onStopDownload: () -> Unit,
@@ -95,6 +98,11 @@ fun HexMapScreenContent(
             )
         }
     ) { padding ->
+        val offlineChipEnd by animateDpAsState(
+            targetValue = if (isCompassVisible) 56.dp else 16.dp,
+            label = "offlineChipEnd"
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -115,7 +123,7 @@ fun HexMapScreenContent(
                     Row(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(16.dp)
+                            .padding(top = 16.dp, end = offlineChipEnd)
                             .background(
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
                                 shape = RoundedCornerShape(16.dp)

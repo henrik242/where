@@ -11,7 +11,7 @@ interface MapClickCallback {
 }
 
 interface MapCameraMoveCallback {
-    fun onCameraMove(latitude: Double, longitude: Double)
+    fun onCameraMove(latitude: Double, longitude: Double, bearing: Double)
 }
 
 interface MapViewProvider {
