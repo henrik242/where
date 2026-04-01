@@ -37,6 +37,7 @@ fun MapScreenContent(
     onCrosshairToggle: () -> Unit = {},
     // Overlay state
     offlineModeEnabled: Boolean = false,
+    isCompassVisible: Boolean = false,
     onlineTrackingEnabled: Boolean,
     recordingDistance: Double?,
     viewingTrackName: String?,
@@ -118,6 +119,7 @@ fun MapScreenContent(
 
             MapOverlays(
                 offlineModeEnabled = offlineModeEnabled,
+                isCompassVisible = isCompassVisible,
                 crosshairActive = crosshairActive,
                 crosshairInfo = crosshairInfo,
                 centerLatLng = centerLatLng,

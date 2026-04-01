@@ -25,8 +25,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -404,6 +406,7 @@ fun CrosshairInfoCard(
 @Composable
 fun BoxScope.MapOverlays(
     offlineModeEnabled: Boolean = false,
+    isCompassVisible: Boolean = false,
     crosshairActive: Boolean = false,
     crosshairInfo: CrosshairInfo = CrosshairInfo(),
     centerLatLng: LatLng? = null,
@@ -438,6 +441,10 @@ fun BoxScope.MapOverlays(
     onSearchClose: () -> Unit
 ) {
     val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null)
+    val offlineChipEnd by animateDpAsState(
+        targetValue = if (isCompassVisible) 56.dp else 16.dp,
+        label = "offlineChipEnd"
+    )
 
     if (!hasTopOverlay) {
         ZoomControls(
@@ -452,7 +459,7 @@ fun BoxScope.MapOverlays(
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .padding(top = 16.dp, end = offlineChipEnd)
                     .background(
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
                         shape = RoundedCornerShape(16.dp)
