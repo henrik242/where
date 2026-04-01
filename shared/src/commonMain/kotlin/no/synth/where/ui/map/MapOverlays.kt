@@ -347,12 +347,13 @@ fun CrosshairInfoCard(
     centerLatLng: LatLng?,
     crosshairInfo: CrosshairInfo,
     coordFormat: CoordFormat,
-    onToggleCoordFormat: () -> Unit
+    onToggleCoordFormat: () -> Unit,
+    userLocation: LatLng? = null
 ) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
         )
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
@@ -372,9 +373,10 @@ fun CrosshairInfoCard(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                val hasData = crosshairInfo.elevation != null || crosshairInfo.slopeDegrees != null
                 val elevText = when {
                     crosshairInfo.isLoading -> stringResource(Res.string.loading_dots)
-                    crosshairInfo.elevation != null -> stringResource(
+                    crosshairInfo.elevation != null -> "\u2191 " + stringResource(
                         Res.string.elevation_format,
                         crosshairInfo.elevation.roundToInt().toString()
                     )
@@ -388,16 +390,36 @@ fun CrosshairInfoCard(
                     )
                     else -> stringResource(Res.string.no_data)
                 }
+                val dataStyle = if (hasData) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium
+                val dataColor = if (hasData) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                 Text(
                     text = elevText,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = dataStyle,
+                    color = dataColor
                 )
                 Text(
                     text = slopeText,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = dataStyle,
+                    color = dataColor
                 )
+            }
+            if (userLocation != null && centerLatLng != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_my_location),
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = centerLatLng.distanceTo(userLocation).formatDistance(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -410,6 +432,7 @@ fun BoxScope.MapOverlays(
     crosshairActive: Boolean = false,
     crosshairInfo: CrosshairInfo = CrosshairInfo(),
     centerLatLng: LatLng? = null,
+    userLocation: LatLng? = null,
     coordFormat: CoordFormat = CoordFormat.LATLNG,
     onToggleCoordFormat: () -> Unit = {},
     rulerState: RulerState,
@@ -461,7 +484,7 @@ fun BoxScope.MapOverlays(
                     .align(Alignment.TopEnd)
                     .padding(top = 16.dp, end = offlineChipEnd)
                     .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
                         shape = RoundedCornerShape(16.dp)
                     )
                     .clickable { onOfflineIndicatorClick() }
@@ -496,7 +519,8 @@ fun BoxScope.MapOverlays(
                     centerLatLng = centerLatLng,
                     crosshairInfo = crosshairInfo,
                     coordFormat = coordFormat,
-                    onToggleCoordFormat = onToggleCoordFormat
+                    onToggleCoordFormat = onToggleCoordFormat,
+                    userLocation = userLocation
                 )
             }
             if (rulerState.isActive) {

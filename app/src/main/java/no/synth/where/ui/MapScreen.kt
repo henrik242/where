@@ -127,6 +127,7 @@ fun MapScreen(
     var crosshairInfo by remember { mutableStateOf(CrosshairInfo()) }
     val coordFormat by viewModel.userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var userLocation by remember { mutableStateOf<LatLng?>(null) }
 
     var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
 
@@ -231,6 +232,27 @@ fun MapScreen(
         }
     }
 
+    // Update user location periodically while crosshair is active
+    LaunchedEffect(crosshairActive, mapInstance) {
+        if (!crosshairActive) {
+            userLocation = null
+            return@LaunchedEffect
+        }
+        while (true) {
+            try {
+                val lc = mapInstance?.locationComponent
+                if (lc != null && lc.isLocationComponentEnabled) {
+                    lc.lastKnownLocation?.let { loc ->
+                        userLocation = LatLng(loc.latitude, loc.longitude)
+                    }
+                }
+            } catch (e: Exception) {
+                Logger.d("Could not read user location: %s", e.message ?: "unknown")
+            }
+            delay(3000)
+        }
+    }
+
     // Debounced terrain info fetch when crosshair is active
     LaunchedEffect(crosshairActive, centerLatLng) {
         val latLng = centerLatLng ?: return@LaunchedEffect
@@ -303,6 +325,7 @@ fun MapScreen(
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
         centerLatLng = centerLatLng,
+        userLocation = userLocation,
         coordFormat = coordFormat,
         onToggleCoordFormat = { viewModel.userPreferences.updateCoordFormat(coordFormat.next()) },
         onCrosshairToggle = { viewModel.userPreferences.updateCrosshairActive(!crosshairActive) },
