@@ -125,7 +125,7 @@ fun HexMapScreenContent(
                             .align(Alignment.TopEnd)
                             .padding(top = 16.dp, end = offlineChipEnd)
                             .background(
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
                                 shape = RoundedCornerShape(16.dp)
                             )
                             .clickable { onOfflineChipClick() }

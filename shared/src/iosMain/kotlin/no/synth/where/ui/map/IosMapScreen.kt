@@ -127,6 +127,7 @@ fun IosMapScreen(
     val coordFormat by userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
     var isCompassVisible by remember { mutableStateOf(false) }
+    var userLocation by remember { mutableStateOf<LatLng?>(null) }
 
     // Save ruler as track state
     var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
@@ -202,6 +203,21 @@ fun IosMapScreen(
             if (center != null && center.size >= 2) {
                 centerLatLng = LatLng(center[0], center[1])
             }
+        }
+    }
+
+    // Update user location periodically while crosshair is active
+    LaunchedEffect(crosshairActive) {
+        if (!crosshairActive) {
+            userLocation = null
+            return@LaunchedEffect
+        }
+        while (true) {
+            val loc = mapViewProvider.getUserLocation()
+            if (loc != null && loc.size >= 2) {
+                userLocation = LatLng(loc[0], loc[1])
+            }
+            kotlinx.coroutines.delay(3000)
         }
     }
 
@@ -460,6 +476,7 @@ fun IosMapScreen(
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
         centerLatLng = centerLatLng,
+        userLocation = userLocation,
         coordFormat = coordFormat,
         onToggleCoordFormat = { userPreferences.updateCoordFormat(coordFormat.next()) },
         onCrosshairToggle = { userPreferences.updateCrosshairActive(!crosshairActive) },
