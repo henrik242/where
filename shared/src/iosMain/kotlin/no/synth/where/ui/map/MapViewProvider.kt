@@ -14,6 +14,16 @@ interface MapCameraMoveCallback {
     fun onCameraMove(latitude: Double, longitude: Double, bearing: Double)
 }
 
+interface MapTwoFingerTouchCallback {
+    fun onTwoFingerTouch(
+        screenX1: Float, screenY1: Float,
+        screenX2: Float, screenY2: Float,
+        lat1: Double, lng1: Double,
+        lat2: Double, lng2: Double
+    )
+    fun onTwoFingerRelease()
+}
+
 interface MapViewProvider {
     fun createMapView(): UIView
     fun setStyle(json: String)
@@ -39,4 +49,5 @@ interface MapViewProvider {
     fun setConnected(connected: Boolean)
     fun getCameraCenter(): List<Double>?
     fun setOnCameraMoveCallback(callback: MapCameraMoveCallback?)
+    fun setOnTwoFingerTouchCallback(callback: MapTwoFingerTouchCallback?)
 }
