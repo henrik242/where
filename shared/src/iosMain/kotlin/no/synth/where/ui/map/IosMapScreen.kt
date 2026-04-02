@@ -361,6 +361,7 @@ fun IosMapScreen(
             onTrackNameChange = { trackNameInput = it },
             onDiscard = {
                 locationTracker.onlineTrackingClient?.stopTrack()
+                locationTracker.onlineTrackingClient?.close()
                 locationTracker.onlineTrackingClient = null
                 trackRepository.discardRecording()
                 locationTracker.stopTracking()
@@ -371,6 +372,7 @@ fun IosMapScreen(
             },
             onSave = {
                 locationTracker.onlineTrackingClient?.stopTrack()
+                locationTracker.onlineTrackingClient?.close()
                 locationTracker.onlineTrackingClient = null
                 val current = currentTrack
                 val name = trackNameInput

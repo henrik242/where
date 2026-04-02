@@ -11,6 +11,7 @@ import io.ktor.http.contentType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -307,6 +308,12 @@ class OnlineTrackingClient(
         }
     }
 
+    fun close() {
+        viewerCountTracker.stopPolling()
+        scope.cancel()
+        client.close()
+    }
+
     fun stopTrack() {
         viewerCountTracker.stopPolling()
         val trackId = currentTrackId ?: return
@@ -314,9 +321,9 @@ class OnlineTrackingClient(
         scope.launch {
             flushQueue()
 
-            val queueEmpty = queueMutex.withLock { pointQueue.isEmpty() }
-            if (!queueEmpty) {
-                Logger.w("Stopping track %s with %d points still queued", trackId, pointQueue.size)
+            val remainingCount = queueMutex.withLock { pointQueue.size }
+            if (remainingCount > 0) {
+                Logger.w("Stopping track %s with %d points still queued", trackId, remainingCount)
                 return@launch
             }
 

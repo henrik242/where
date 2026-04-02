@@ -98,6 +98,7 @@ class LocationTrackingService : Service() {
 
     private fun disableOnlineTracking() {
         onlineTrackingClient?.stopTrack()
+        onlineTrackingClient?.close()
         onlineTrackingClient = null
     }
 
@@ -190,6 +191,7 @@ class LocationTrackingService : Service() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
         onlineTrackingClient?.stopTrack()
+        onlineTrackingClient?.close()
         serviceScope.cancel()
     }
 

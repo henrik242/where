@@ -29,14 +29,16 @@ class OnlineTrackingClientTest {
             clientId = "test-client",
             trackingHint = "test-secret",
             client = HttpClient(MockEngine { request ->
-                capturedBody = String(request.body.toByteArray())
-                capturedMethod = request.method
-                capturedClientIdHeader = request.headers["X-Client-Id"]
-                respond(
-                    content = """{"id":"track-123"}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
+                if (request.url.encodedPath.contains("viewers")) {
+                    respond("""{"viewers":0}""", HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, "application/json"))
+                } else {
+                    capturedBody = String(request.body.toByteArray())
+                    capturedMethod = request.method
+                    capturedClientIdHeader = request.headers["X-Client-Id"]
+                    respond("""{"id":"track-123"}""", HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, "application/json"))
+                }
             })
         )
 
@@ -60,12 +62,14 @@ class OnlineTrackingClientTest {
             clientId = "test-client",
             trackingHint = "test-secret",
             client = HttpClient(MockEngine { request ->
-                capturedSignature = request.headers["X-Signature"]
-                respond(
-                    content = """{"id":"track-456"}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
+                if (request.url.encodedPath.contains("viewers")) {
+                    respond("""{"viewers":0}""", HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, "application/json"))
+                } else {
+                    capturedSignature = request.headers["X-Signature"]
+                    respond("""{"id":"track-456"}""", HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, "application/json"))
+                }
             })
         )
 
@@ -87,21 +91,18 @@ class OnlineTrackingClientTest {
             clientId = "test-client",
             trackingHint = "test-secret",
             client = HttpClient(MockEngine { request ->
-                if (!startCalled) {
+                if (request.url.encodedPath.contains("viewers")) {
+                    respond("""{"viewers":0}""", HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, "application/json"))
+                } else if (!startCalled) {
                     startCalled = true
-                    respond(
-                        content = """{"id":"track-789"}""",
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json")
-                    )
+                    respond("""{"id":"track-789"}""", HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, "application/json"))
                 } else {
                     capturedStopMethod = request.method
                     capturedStopUrl = request.url.toString()
-                    respond(
-                        content = "{}",
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json")
-                    )
+                    respond("{}", HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, "application/json"))
                 }
             })
         )
