@@ -3,6 +3,7 @@ package no.synth.where.data
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -66,6 +67,8 @@ object TerrainClient {
             val slopeDegrees = slopeRadians * 180.0 / PI
 
             TerrainInfo(elevation = centerElev, slopeDegrees = slopeDegrees)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Logger.e(e, "Error decoding DEM tile")
             null
@@ -124,6 +127,8 @@ object TerrainClient {
                 elevation = centerElev,
                 slopeDegrees = slopeDegrees
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Logger.e(e, "Error fetching terrain info from API")
             null
