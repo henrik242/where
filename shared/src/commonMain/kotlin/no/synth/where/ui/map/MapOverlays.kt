@@ -229,12 +229,6 @@ fun RecordingCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_cloud_upload),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.size(20.dp)
-                    )
                     Text(
                         text = stringResource(Res.string.online_tracking),
                         style = MaterialTheme.typography.bodyMedium,
