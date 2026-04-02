@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsBytes
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -157,6 +158,8 @@ object OfflineTileReader {
             } else {
                 null
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Logger.e(e, "Failed to fetch DEM tile %d/%d/%d", z, x, y)
             null
