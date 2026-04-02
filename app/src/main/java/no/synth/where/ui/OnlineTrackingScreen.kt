@@ -24,6 +24,7 @@ fun OnlineTrackingScreen(
     val isTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val hasSeenTrackingInfo by viewModel.hasSeenTrackingInfo.collectAsState()
     val clientId by viewModel.clientId.collectAsState()
+    val viewerCount by viewModel.viewerCount.collectAsState()
     val trackingServerUrl by viewModel.trackingServerUrl.collectAsState()
     var showRegenerateDialog by remember { mutableStateOf(false) }
     var showTrackingInfoDialog by remember { mutableStateOf(false) }
@@ -36,6 +37,7 @@ fun OnlineTrackingScreen(
     OnlineTrackingScreenContent(
         isTrackingEnabled = isTrackingEnabled,
         clientId = clientId,
+        viewerCount = viewerCount,
         showRegenerateDialog = showRegenerateDialog,
         showTrackingInfoDialog = showTrackingInfoDialog,
         onBackClick = onBackClick,

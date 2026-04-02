@@ -416,9 +416,12 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     }
                 }
 
+                val viewerCount by userPreferences.viewerCount.collectAsState()
+
                 OnlineTrackingScreenContent(
                     isTrackingEnabled = onlineTrackingEnabled,
                     clientId = clientId,
+                    viewerCount = viewerCount,
                     showRegenerateDialog = showRegenerateDialog,
                     showTrackingInfoDialog = showTrackingInfoDialog,
                     onBackClick = { navigateBack() },

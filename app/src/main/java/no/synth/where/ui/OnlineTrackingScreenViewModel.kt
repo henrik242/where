@@ -17,6 +17,7 @@ class OnlineTrackingScreenViewModel(
     val onlineTrackingEnabled = userPreferences.onlineTrackingEnabled
     val hasSeenTrackingInfo = userPreferences.hasSeenTrackingInfo
     val trackingServerUrl = userPreferences.trackingServerUrl
+    val viewerCount = userPreferences.viewerCount
 
     private val _clientId = MutableStateFlow("")
     val clientId: StateFlow<String> = _clientId.asStateFlow()

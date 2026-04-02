@@ -39,6 +39,7 @@ import org.jetbrains.compose.resources.stringResource
 fun OnlineTrackingScreenContent(
     isTrackingEnabled: Boolean,
     clientId: String,
+    viewerCount: Int = 0,
     showRegenerateDialog: Boolean,
     showTrackingInfoDialog: Boolean,
     onBackClick: () -> Unit,
@@ -103,6 +104,39 @@ fun OnlineTrackingScreenContent(
                         checked = isTrackingEnabled,
                         onCheckedChange = onToggleTracking
                     )
+                }
+            }
+
+            if (viewerCount > 0) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_visibility),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            text = if (viewerCount == 1) {
+                                stringResource(Res.string.viewers_watching)
+                            } else {
+                                stringResource(Res.string.viewers_watching_plural, viewerCount)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                 }
             }
 
