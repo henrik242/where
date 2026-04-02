@@ -32,7 +32,8 @@ class OnlineTrackingClient(
     private val clientId: String,
     private val trackingHint: String,
     val client: HttpClient = createDefaultHttpClient(),
-    private val canSend: () -> Boolean = { true }
+    private val canSend: () -> Boolean = { true },
+    onViewerCountChanged: (Int) -> Unit = {}
 ) {
 
     companion object {
@@ -41,6 +42,9 @@ class OnlineTrackingClient(
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val viewerCountTracker = ViewerCountTracker(
+        serverUrl, clientId, trackingHint, client, scope, onViewerCountChanged
+    )
     private var currentTrackId: String? = null
     private var pendingTrackName: String? = null
     private var startTrackBackoffMs = 5_000L
@@ -60,6 +64,7 @@ class OnlineTrackingClient(
         pendingTrackName = trackName
         startTrackBackoffMs = 5_000L
         scope.launch { createTrack(trackName) }
+        viewerCountTracker.startPolling()
     }
 
     private suspend fun createTrack(trackName: String) {
@@ -106,6 +111,7 @@ class OnlineTrackingClient(
     }
 
     fun syncExistingTrack(track: Track) {
+        viewerCountTracker.startPolling()
         scope.launch {
             try {
                 val jsonBody = buildJsonObject {
@@ -302,6 +308,7 @@ class OnlineTrackingClient(
     }
 
     fun stopTrack() {
+        viewerCountTracker.stopPolling()
         val trackId = currentTrackId ?: return
 
         scope.launch {

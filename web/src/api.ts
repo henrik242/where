@@ -1,7 +1,7 @@
 import { trackStore } from './store';
 import type { Track } from './types';
 import { verifyHmacSignature, validatePoint, detectPlatform } from './utils';
-import { enrichTrack, broadcastToAll } from './tracking';
+import { enrichTrack, broadcastToAll, getViewerCount } from './tracking';
 import { CONFIG } from './config';
 
 const CORS_HEADERS = {
@@ -44,6 +44,11 @@ export async function handleAPI(req: Request): Promise<Response> {
     }
 
     // Route to handlers
+    // NOTE: This must come before the generic /api/tracks/:trackId route
+    if (path.match(/^\/api\/tracks\/viewers\/[^\/]+$/) && req.method === 'GET') {
+      return handleGetViewerCount(path, req);
+    }
+
     if (path === '/api/tracks' && req.method === 'GET') {
       return handleGetTracks(url, req);
     }
@@ -83,6 +88,26 @@ function jsonResponse(data: any, status = 200): Response {
     status,
     headers: CORS_HEADERS,
   });
+}
+
+/**
+ * GET /api/tracks/viewers/:clientId - Get viewer count for a client
+ * Requires X-Client-Id header matching the queried clientId and valid HMAC signature.
+ */
+async function handleGetViewerCount(path: string, req: Request): Promise<Response> {
+  const clientId = path.split('/')[4];
+  const headerClientId = req.headers.get('X-Client-Id');
+  const signature = req.headers.get('X-Signature');
+
+  if (!headerClientId || headerClientId !== clientId) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+
+  if (!(await verifyHmacSignature(clientId, signature))) {
+    return jsonResponse({ error: 'Invalid or missing signature' }, 401);
+  }
+
+  return jsonResponse({ viewers: getViewerCount(clientId) });
 }
 
 /**

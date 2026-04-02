@@ -67,6 +67,8 @@
     <string name="save_as_track">Save as Track</string>
     <string name="recording">Recording</string>
     <string name="online_tracking">Online Tracking</string>
+    <string name="viewers_watching">Someone is watching your track</string>
+    <string name="viewers_watching_plural">%1$d people are watching your track</string>
     <string name="close_track_view">Close Track View</string>
     <string name="close_point_view">Close Point View</string>
 

@@ -81,7 +81,8 @@ class LocationTrackingService : Service() {
                 serverUrl = userPreferences.trackingServerUrl.value,
                 clientId = clientId,
                 trackingHint = BuildInfo.TRACKING_HINT,
-                canSend = { !userPreferences.offlineModeEnabled.value }
+                canSend = { !userPreferences.offlineModeEnabled.value },
+                onViewerCountChanged = { userPreferences.updateViewerCount(it) }
             )
 
             // Sync existing track if already recording
