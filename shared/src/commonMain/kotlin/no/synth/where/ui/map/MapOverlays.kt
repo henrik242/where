@@ -675,64 +675,56 @@ fun TwoFingerDistanceOverlay(measurement: TwoFingerMeasurement) {
     val density = LocalDensity.current
     val midX = (measurement.screenX1 + measurement.screenX2) / 2
     val midY = (measurement.screenY1 + measurement.screenY2) / 2
+    val badgeColor = MaterialTheme.colorScheme.inverseSurface
+    val textColor = MaterialTheme.colorScheme.inverseOnSurface
 
-    // Draw line and dots between the two finger positions
     Box(
-        modifier = Modifier.fillMaxSize().drawBehind {
-            val p1 = Offset(measurement.screenX1, measurement.screenY1)
-            val p2 = Offset(measurement.screenX2, measurement.screenY2)
-            val strokeWidth = 2.5.dp.toPx()
-            val shadowWidth = strokeWidth + 2.dp.toPx()
-            val dotRadius = 5.dp.toPx()
-            val dashEffect = PathEffect.dashPathEffect(
-                floatArrayOf(10.dp.toPx(), 8.dp.toPx())
-            )
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                val p1 = Offset(measurement.screenX1, measurement.screenY1)
+                val p2 = Offset(measurement.screenX2, measurement.screenY2)
+                val strokeWidth = 2.5.dp.toPx()
+                val shadowWidth = strokeWidth + 2.dp.toPx()
+                val dotRadius = 5.dp.toPx()
+                val dashEffect = PathEffect.dashPathEffect(
+                    floatArrayOf(10.dp.toPx(), 8.dp.toPx())
+                )
 
-            // Shadow line
-            drawLine(
-                Color.White.copy(alpha = 0.6f),
-                p1, p2,
-                strokeWidth = shadowWidth,
-                cap = StrokeCap.Round,
-                pathEffect = dashEffect
-            )
-            // Main line
-            drawLine(
-                Color.Black.copy(alpha = 0.8f),
-                p1, p2,
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Round,
-                pathEffect = dashEffect
-            )
+                drawLine(
+                    Color.White.copy(alpha = 0.6f), p1, p2,
+                    strokeWidth = shadowWidth, cap = StrokeCap.Round, pathEffect = dashEffect
+                )
+                drawLine(
+                    Color.Black.copy(alpha = 0.8f), p1, p2,
+                    strokeWidth = strokeWidth, cap = StrokeCap.Round, pathEffect = dashEffect
+                )
 
-            // Dots at finger positions
-            drawCircle(Color.White, dotRadius + 1.dp.toPx(), p1)
-            drawCircle(Color.Black.copy(alpha = 0.8f), dotRadius, p1)
-            drawCircle(Color.White, dotRadius + 1.dp.toPx(), p2)
-            drawCircle(Color.Black.copy(alpha = 0.8f), dotRadius, p2)
-        }
-    )
-
-    // Distance badge centered at midpoint, above the line
-    Box(modifier = Modifier.fillMaxSize()) {
+                drawCircle(Color.White, dotRadius + 1.dp.toPx(), p1)
+                drawCircle(Color.Black.copy(alpha = 0.8f), dotRadius, p1)
+                drawCircle(Color.White, dotRadius + 1.dp.toPx(), p2)
+                drawCircle(Color.Black.copy(alpha = 0.8f), dotRadius, p2)
+            }
+    ) {
         val badgeGap = with(density) { 20.dp.roundToPx() }
         Text(
             text = distanceText,
             style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
+            color = textColor,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .layout { measurable, constraints ->
                     val placeable = measurable.measure(constraints)
+                    val x = (midX.toInt() - placeable.width / 2)
+                        .coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0))
+                    val y = (midY.toInt() - placeable.height - badgeGap)
+                        .coerceIn(0, (constraints.maxHeight - placeable.height).coerceAtLeast(0))
                     layout(placeable.width, placeable.height) {
-                        placeable.placeRelative(
-                            midX.toInt() - placeable.width / 2,
-                            midY.toInt() - placeable.height - badgeGap
-                        )
+                        placeable.placeRelative(x, y)
                     }
                 }
                 .background(
-                    color = Color.Black.copy(alpha = 0.75f),
+                    color = badgeColor,
                     shape = RoundedCornerShape(16.dp)
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp)

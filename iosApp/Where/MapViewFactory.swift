@@ -2,7 +2,7 @@ import UIKit
 import MapLibre
 import Shared
 
-class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkConfigurationDelegate {
+class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkConfigurationDelegate, UIGestureRecognizerDelegate {
     private var mapView: MLNMapView?
     private var currentStyleJson: String?
     private var isMapConnected = true
@@ -17,6 +17,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
     private var cameraMoveCallback: MapCameraMoveCallback?
+    private var twoFingerTouchCallback: MapTwoFingerTouchCallback?
     private var styleVersion = 0
 
     private let trackSourceId = "track-source"
@@ -50,6 +51,11 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         tap.require(toFail: longPress)
         map.addGestureRecognizer(tap)
 
+        let twoFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerTouch(_:)))
+        twoFingerPan.minimumNumberOfTouches = 2
+        twoFingerPan.delegate = self
+        map.addGestureRecognizer(twoFingerPan)
+
         self.mapView = map
 
         // If setStyle was called before the map was created, apply it now.
@@ -77,6 +83,33 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         let point = gesture.location(in: mapView)
         let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
         mapClickCallback?.onMapClick(latitude: coordinate.latitude, longitude: coordinate.longitude)
+    }
+
+    @objc private func handleTwoFingerTouch(_ gesture: UIGestureRecognizer) {
+        guard let mapView = self.mapView else { return }
+        if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
+            twoFingerTouchCallback?.onTwoFingerRelease()
+            return
+        }
+        guard gesture.numberOfTouches >= 2 else {
+            twoFingerTouchCallback?.onTwoFingerRelease()
+            return
+        }
+        let p1 = gesture.location(ofTouch: 0, in: mapView)
+        let p2 = gesture.location(ofTouch: 1, in: mapView)
+        let screenDist = hypot(p2.x - p1.x, p2.y - p1.y)
+        guard screenDist >= 48 else {
+            twoFingerTouchCallback?.onTwoFingerRelease()
+            return
+        }
+        let c1 = mapView.convert(p1, toCoordinateFrom: mapView)
+        let c2 = mapView.convert(p2, toCoordinateFrom: mapView)
+        twoFingerTouchCallback?.onTwoFingerTouch(
+            screenX1: Float(p1.x), screenY1: Float(p1.y),
+            screenX2: Float(p2.x), screenY2: Float(p2.y),
+            lat1: c1.latitude, lng1: c1.longitude,
+            lat2: c2.latitude, lng2: c2.longitude
+        )
     }
 
     func setOnLongPressCallback(callback: MapLongPressCallback?) {
@@ -245,11 +278,22 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         self.cameraMoveCallback = callback
     }
 
+    func setOnTwoFingerTouchCallback(callback: MapTwoFingerTouchCallback?) {
+        self.twoFingerTouchCallback = callback
+    }
+
     func getUserLocation() -> [KotlinDouble]? {
         guard let mapView = self.mapView,
               let location = mapView.userLocation?.location else { return nil }
         return [KotlinDouble(value: location.coordinate.latitude),
                 KotlinDouble(value: location.coordinate.longitude)]
+    }
+
+    // MARK: - UIGestureRecognizerDelegate
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Only allow simultaneous recognition for our custom two-finger recognizer
+        return gestureRecognizer is UIPanGestureRecognizer || otherGestureRecognizer is UIPanGestureRecognizer
     }
 
     // MARK: - MLNMapViewDelegate
