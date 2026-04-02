@@ -41,6 +41,19 @@ export function broadcastToAll(message: any, userId?: string) {
 }
 
 /**
+ * Count how many WebSocket clients are viewing a specific user's tracks
+ */
+export function getViewerCount(userId: string): number {
+  let count = 0;
+  for (const ws of subscribedClients) {
+    const data = ws.data as { clients?: string[]; admin?: boolean };
+    if (!data) continue;
+    if (data.clients?.includes(userId)) count++;
+  }
+  return count;
+}
+
+/**
  * Background job to check for stale tracks (no updates in 10 minutes)
  */
 export function checkStaleTracks() {

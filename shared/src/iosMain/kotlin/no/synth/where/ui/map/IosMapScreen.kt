@@ -84,6 +84,7 @@ fun IosMapScreen(
     val viewingTrack by trackRepository.viewingTrack.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
+    val viewerCount by userPreferences.viewerCount.collectAsState()
     val hasSeenTrackingInfo by userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
@@ -128,6 +129,7 @@ fun IosMapScreen(
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
     var isCompassVisible by remember { mutableStateOf(false) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
+    var twoFingerMeasurement by remember { mutableStateOf<TwoFingerMeasurement?>(null) }
 
     // Save ruler as track state
     var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
@@ -194,6 +196,29 @@ fun IosMapScreen(
             }
         })
         onDispose { mapViewProvider.setOnCameraMoveCallback(null) }
+    }
+
+    // Two-finger touch callback for distance measurement
+    DisposableEffect(Unit) {
+        mapViewProvider.setOnTwoFingerTouchCallback(object : MapTwoFingerTouchCallback {
+            override fun onTwoFingerTouch(
+                screenX1: Float, screenY1: Float,
+                screenX2: Float, screenY2: Float,
+                lat1: Double, lng1: Double,
+                lat2: Double, lng2: Double
+            ) {
+                val ll1 = LatLng(lat1, lng1)
+                val ll2 = LatLng(lat2, lng2)
+                twoFingerMeasurement = TwoFingerMeasurement(
+                    screenX1, screenY1, screenX2, screenY2,
+                    ll1.distanceTo(ll2)
+                )
+            }
+            override fun onTwoFingerRelease() {
+                twoFingerMeasurement = null
+            }
+        })
+        onDispose { mapViewProvider.setOnTwoFingerTouchCallback(null) }
     }
 
     // Initialize center position when crosshair is activated
@@ -313,7 +338,8 @@ fun IosMapScreen(
                             serverUrl = trackingServerUrl,
                             clientId = clientId,
                             trackingHint = BuildInfo.TRACKING_HINT,
-                            canSend = { !userPreferences.offlineModeEnabled.value }
+                            canSend = { !userPreferences.offlineModeEnabled.value },
+                            onViewerCountChanged = { userPreferences.updateViewerCount(it) }
                         )
                         val track = currentTrack
                         if (track != null && track.isRecording) {
@@ -483,6 +509,7 @@ fun IosMapScreen(
         offlineModeEnabled = offlineModeEnabled,
         isCompassVisible = isCompassVisible,
         onlineTrackingEnabled = onlineTrackingEnabled,
+        viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,
         viewingPointName = viewingPoint?.name,
@@ -547,7 +574,8 @@ fun IosMapScreen(
                             serverUrl = trackingServerUrl,
                             clientId = clientId,
                             trackingHint = BuildInfo.TRACKING_HINT,
-                            canSend = { !userPreferences.offlineModeEnabled.value }
+                            canSend = { !userPreferences.offlineModeEnabled.value },
+                            onViewerCountChanged = { userPreferences.updateViewerCount(it) }
                         )
                         client.startTrack("Track")
                         locationTracker.onlineTrackingClient = client
@@ -634,7 +662,8 @@ fun IosMapScreen(
                             serverUrl = trackingServerUrl,
                             clientId = clientId,
                             trackingHint = BuildInfo.TRACKING_HINT,
-                            canSend = { !userPreferences.offlineModeEnabled.value }
+                            canSend = { !userPreferences.offlineModeEnabled.value },
+                            onViewerCountChanged = { userPreferences.updateViewerCount(it) }
                         )
                         val track = currentTrack
                         if (track != null && track.isRecording) {
@@ -685,6 +714,7 @@ fun IosMapScreen(
             searchQuery = ""
             searchResults = emptyList()
         },
+        twoFingerMeasurement = twoFingerMeasurement,
         mapContent = {
             UIKitView(
                 factory = { mapViewProvider.createMapView() },

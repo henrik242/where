@@ -40,6 +40,7 @@ fun MapScreenContent(
     offlineModeEnabled: Boolean = false,
     isCompassVisible: Boolean = false,
     onlineTrackingEnabled: Boolean,
+    viewerCount: Int = 0,
     recordingDistance: Double?,
     viewingTrackName: String?,
     viewingPointName: String?,
@@ -78,6 +79,7 @@ fun MapScreenContent(
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit,
+    twoFingerMeasurement: TwoFingerMeasurement? = null,
     // Map slot
     mapContent: @Composable () -> Unit
 ) {
@@ -131,6 +133,7 @@ fun MapScreenContent(
                 isRecording = isRecording,
                 recordingDistance = recordingDistance,
                 onlineTrackingEnabled = onlineTrackingEnabled,
+                viewerCount = viewerCount,
                 viewingTrackName = viewingTrackName,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,
@@ -153,7 +156,8 @@ fun MapScreenContent(
                 onSearchQueryChange = onSearchQueryChange,
                 onSearchResultClick = onSearchResultClick,
                 onSearchResultHover = onSearchResultHover,
-                onSearchClose = onSearchClose
+                onSearchClose = onSearchClose,
+                twoFingerMeasurement = twoFingerMeasurement
             )
         }
     }

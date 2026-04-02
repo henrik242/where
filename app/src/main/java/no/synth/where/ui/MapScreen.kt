@@ -78,6 +78,7 @@ fun MapScreen(
     val currentTrack by viewModel.currentTrack.collectAsState()
     val viewingTrack by viewModel.viewingTrack.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
+    val viewerCount by viewModel.userPreferences.viewerCount.collectAsState()
     val hasSeenTrackingInfo by viewModel.userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by viewModel.userPreferences.offlineModeEnabled.collectAsState()
     val showCountyBorders by viewModel.userPreferences.showCountyBorders.collectAsState()
@@ -128,6 +129,7 @@ fun MapScreen(
     val coordFormat by viewModel.userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
+    var twoFingerMeasurement by remember { mutableStateOf<no.synth.where.ui.map.TwoFingerMeasurement?>(null) }
 
     var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
 
@@ -332,6 +334,7 @@ fun MapScreen(
         offlineModeEnabled = offlineModeEnabled,
         isCompassVisible = isCompassVisible,
         onlineTrackingEnabled = onlineTrackingEnabled,
+        viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,
         viewingPointName = viewingPoint?.name,
@@ -446,6 +449,7 @@ fun MapScreen(
             highlightedSearchResult = null
             viewModel.closeSearch()
         },
+        twoFingerMeasurement = twoFingerMeasurement,
         mapContent = {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
@@ -468,7 +472,8 @@ fun MapScreen(
                 regionsLoadedTrigger = regionsLoadedTrigger,
                 onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },
-                onPointClick = { point -> viewModel.openPointInfoDialog(point) }
+                onPointClick = { point -> viewModel.openPointInfoDialog(point) },
+                onTwoFingerMeasure = { twoFingerMeasurement = it }
             )
         }
     )

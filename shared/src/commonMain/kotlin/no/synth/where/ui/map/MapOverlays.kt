@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,7 +26,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,10 +40,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
@@ -167,6 +179,7 @@ fun RecordingCard(
     modifier: Modifier = Modifier,
     distance: Double,
     onlineTrackingEnabled: Boolean,
+    viewerCount: Int = 0,
     onOnlineTrackingChange: (Boolean) -> Unit,
     onOnlineTrackingClick: () -> Unit = {}
 ) {
@@ -227,12 +240,68 @@ fun RecordingCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
+                    if (onlineTrackingEnabled && viewerCount > 0) {
+                        BlinkingEyeIndicator(
+                            viewerCount = viewerCount,
+                            onClick = onOnlineTrackingClick
+                        )
+                    }
                 }
                 Switch(
                     checked = onlineTrackingEnabled,
                     onCheckedChange = onOnlineTrackingChange
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun BlinkingEyeIndicator(
+    viewerCount: Int,
+    onClick: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "eyeBlink")
+    val scaleY by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 4000
+                1f at 0 using LinearEasing
+                1f at 3600 using LinearEasing
+                0.1f at 3700 using LinearEasing
+                1f at 3800 using LinearEasing
+                1f at 4000 using LinearEasing
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "eyeScaleY"
+    )
+
+    Row(
+        modifier = Modifier.clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Icon(
+            painterResource(Res.drawable.ic_visibility),
+            contentDescription = if (viewerCount == 1) {
+                stringResource(Res.string.viewers_watching)
+            } else {
+                stringResource(Res.string.viewers_watching_plural, viewerCount)
+            },
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier
+                .size(18.dp)
+                .graphicsLayer { this.scaleY = scaleY }
+        )
+        if (viewerCount > 1) {
+            Text(
+                text = viewerCount.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
         }
     }
 }
@@ -439,6 +508,7 @@ fun BoxScope.MapOverlays(
     isRecording: Boolean,
     recordingDistance: Double?,
     onlineTrackingEnabled: Boolean,
+    viewerCount: Int = 0,
     viewingTrackName: String?,
     viewingPointName: String?,
     viewingPointColor: String,
@@ -461,7 +531,8 @@ fun BoxScope.MapOverlays(
     onSearchQueryChange: (String) -> Unit,
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
-    onSearchClose: () -> Unit
+    onSearchClose: () -> Unit,
+    twoFingerMeasurement: TwoFingerMeasurement? = null
 ) {
     val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null)
     val offlineChipEnd by animateDpAsState(
@@ -535,6 +606,7 @@ fun BoxScope.MapOverlays(
                 RecordingCard(
                     distance = recordingDistance,
                     onlineTrackingEnabled = onlineTrackingEnabled,
+                    viewerCount = viewerCount,
                     onOnlineTrackingChange = onOnlineTrackingChange,
                     onOnlineTrackingClick = onOnlineTrackingClick
                 )
@@ -590,5 +662,80 @@ fun BoxScope.MapOverlays(
 
     if (crosshairActive) {
         CrosshairOverlay()
+    }
+
+    if (twoFingerMeasurement != null) {
+        TwoFingerDistanceOverlay(measurement = twoFingerMeasurement)
+    }
+}
+
+@Composable
+fun TwoFingerDistanceOverlay(measurement: TwoFingerMeasurement) {
+    val distanceText = measurement.distanceMeters.formatDistance()
+    val density = LocalDensity.current
+    val midX = (measurement.screenX1 + measurement.screenX2) / 2
+    val midY = (measurement.screenY1 + measurement.screenY2) / 2
+
+    // Draw line and dots between the two finger positions
+    Box(
+        modifier = Modifier.fillMaxSize().drawBehind {
+            val p1 = Offset(measurement.screenX1, measurement.screenY1)
+            val p2 = Offset(measurement.screenX2, measurement.screenY2)
+            val strokeWidth = 2.5.dp.toPx()
+            val shadowWidth = strokeWidth + 2.dp.toPx()
+            val dotRadius = 5.dp.toPx()
+            val dashEffect = PathEffect.dashPathEffect(
+                floatArrayOf(10.dp.toPx(), 8.dp.toPx())
+            )
+
+            // Shadow line
+            drawLine(
+                Color.White.copy(alpha = 0.6f),
+                p1, p2,
+                strokeWidth = shadowWidth,
+                cap = StrokeCap.Round,
+                pathEffect = dashEffect
+            )
+            // Main line
+            drawLine(
+                Color.Black.copy(alpha = 0.8f),
+                p1, p2,
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
+                pathEffect = dashEffect
+            )
+
+            // Dots at finger positions
+            drawCircle(Color.White, dotRadius + 1.dp.toPx(), p1)
+            drawCircle(Color.Black.copy(alpha = 0.8f), dotRadius, p1)
+            drawCircle(Color.White, dotRadius + 1.dp.toPx(), p2)
+            drawCircle(Color.Black.copy(alpha = 0.8f), dotRadius, p2)
+        }
+    )
+
+    // Distance badge centered at midpoint, above the line
+    Box(modifier = Modifier.fillMaxSize()) {
+        val badgeGap = with(density) { 20.dp.roundToPx() }
+        Text(
+            text = distanceText,
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    layout(placeable.width, placeable.height) {
+                        placeable.placeRelative(
+                            midX.toInt() - placeable.width / 2,
+                            midY.toInt() - placeable.height - badgeGap
+                        )
+                    }
+                }
+                .background(
+                    color = Color.Black.copy(alpha = 0.75f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        )
     }
 }

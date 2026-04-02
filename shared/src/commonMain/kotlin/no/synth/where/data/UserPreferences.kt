@@ -42,6 +42,13 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _trackingServerUrl = MutableStateFlow("https://where.synth.no")
     val trackingServerUrl: StateFlow<String> = _trackingServerUrl.asStateFlow()
 
+    private val _viewerCount = MutableStateFlow(0)
+    val viewerCount: StateFlow<Int> = _viewerCount.asStateFlow()
+
+    fun updateViewerCount(count: Int) {
+        _viewerCount.value = count
+    }
+
     private val _offlineModeEnabled = MutableStateFlow(false)
     val offlineModeEnabled: StateFlow<Boolean> = _offlineModeEnabled.asStateFlow()
 
