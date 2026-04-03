@@ -433,10 +433,10 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         }
                     },
                     onViewOnWeb = {
-                        IosPlatformActions.openUrl("${trackingServerUrl}?clients=$clientId")
+                        IosPlatformActions.openUrl("${trackingServerUrl}/$clientId")
                     },
                     onShare = {
-                        val url = "${trackingServerUrl}?clients=$clientId"
+                        val url = "${trackingServerUrl}/$clientId"
                         IosPlatformActions.shareText("Track my location: $url")
                     },
                     onRegenerateClick = { showRegenerateDialog = true },
