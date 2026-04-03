@@ -118,9 +118,10 @@ function initMap(): void {
 function parseURLParameters(): void {
   const urlParams = new URLSearchParams(window.location.search);
 
-  const clientsParam = urlParams.get('clients');
-  if (clientsParam) {
-    clientFilters = clientsParam.split(',').filter(Boolean);
+  // Parse client IDs from path (e.g. /abc123 or /abc123,def456)
+  const path = window.location.pathname.slice(1);
+  if (path && /^[a-z0-9]{6}(,[a-z0-9]{6})*$/.test(path)) {
+    clientFilters = path.split(',');
   }
 
   const adminParam = urlParams.get('admin');
@@ -234,11 +235,7 @@ function disableAdmin(): void {
 
 // Update URL with current filters
 function updateURL(): void {
-  const params = new URLSearchParams();
-  if (clientFilters.length > 0) {
-    params.set('clients', clientFilters.join(','));
-  }
-  const newURL = params.toString() ? `?${params.toString()}` : window.location.pathname;
+  const newURL = clientFilters.length > 0 ? `/${clientFilters.join(',')}` : '/';
   window.history.replaceState({}, '', newURL);
 }
 

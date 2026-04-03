@@ -1,5 +1,6 @@
 import { handleAPI } from './src/api';
 import { CONFIG } from './src/config';
+import { CLIENT_IDS_RE } from './src/constants';
 import { trackStore } from './src/store';
 import { enrichTrack, addSubscribedClient, removeSubscribedClient, startStaleTrackChecker } from './src/tracking';
 
@@ -58,6 +59,14 @@ const server = Bun.serve({
       return Response.redirect('https://play.google.com/store/apps/details?id=no.synth.where', 302);
     }
 
+    // Redirect legacy ?clients= query parameter to path-based URL (only on root)
+    if (url.pathname === '/') {
+      const clientsParam = url.searchParams.get('clients');
+      if (clientsParam && CLIENT_IDS_RE.test(clientsParam)) {
+        return Response.redirect(`${url.origin}/${clientsParam}`, 302);
+      }
+    }
+
     // Serve static files
     let filePath = url.pathname;
     if (filePath === '/') {
@@ -79,6 +88,16 @@ const server = Bun.serve({
         });
       }
       return new Response(file);
+    }
+
+    // Serve index.html for path-based client IDs (e.g. /abc123 or /abc123,def456)
+    const pathClients = url.pathname.slice(1);
+    if (CLIENT_IDS_RE.test(pathClients)) {
+      const indexFile = Bun.file(`${import.meta.dir}/src/public/index.html`);
+      const html = await indexFile.text();
+      return new Response(html.replace('<!-- OG_META -->', OG_META), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
     }
 
     return new Response('Not Found', { status: 404 });

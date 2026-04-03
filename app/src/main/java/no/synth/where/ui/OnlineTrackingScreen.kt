@@ -49,11 +49,11 @@ fun OnlineTrackingScreen(
             }
         },
         onViewOnWeb = {
-            val url = "${trackingServerUrl}?clients=$clientId"
+            val url = "${trackingServerUrl}/$clientId"
             context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
         },
         onShare = {
-            val url = "${trackingServerUrl}?clients=$clientId"
+            val url = "${trackingServerUrl}/$clientId"
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, String.format(shareTrackingMessageFmt, url))
