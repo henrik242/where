@@ -117,6 +117,14 @@
             </intent-filter>
 -->
 
+            <!-- Where? live tracking links -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="where.synth.no" android:pathPattern="/......" />
+            </intent-filter>
+
             <!-- Garmin Connect activities and courses (/modern/ and /app/ paths) -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />

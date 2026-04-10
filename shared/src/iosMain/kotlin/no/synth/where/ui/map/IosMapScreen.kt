@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import no.synth.where.BuildInfo
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.GeocodingHelper
+import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.MapStyle
 import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.PlaceSearchClient
@@ -88,6 +89,19 @@ fun IosMapScreen(
     val hasSeenTrackingInfo by userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
+
+    val liveTrackingFollower = remember { AppDependencies.liveTrackingFollower }
+    val followState by liveTrackingFollower.state.collectAsState()
+    val friendTrackGeoJson by liveTrackingFollower.friendTrackGeoJson.collectAsState()
+    val followedClientId by userPreferences.followedClientId.collectAsState()
+
+    // Auto-follow on startup
+    LaunchedEffect(followedClientId) {
+        val id = followedClientId
+        if (id != null && followState is LiveTrackingFollower.FollowState.Idle) {
+            liveTrackingFollower.follow(id)
+        }
+    }
 
     // Hoisted string resources for use in lambdas
     val recordingMsg = stringResource(Res.string.recording_snackbar)
@@ -717,6 +731,29 @@ fun IosMapScreen(
             searchResults = emptyList()
         },
         twoFingerMeasurement = twoFingerMeasurement,
+        followedClientId = followedClientId,
+        isFollowConnecting = followState is LiveTrackingFollower.FollowState.Connecting,
+        isFollowedTrackActive = (followState as? LiveTrackingFollower.FollowState.Following)?.tracks?.any { it.isActive } == true,
+        onFollowBannerClick = {
+            val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
+            val allPoints = following.tracks.flatMap { it.points }
+            if (allPoints.isNotEmpty()) {
+                val lats = allPoints.map { it.latitude }
+                val lngs = allPoints.map { it.longitude }
+                mapViewProvider.setCameraBounds(
+                    south = lats.min(),
+                    west = lngs.min(),
+                    north = lats.max(),
+                    east = lngs.max(),
+                    padding = 80,
+                    maxZoom = 15
+                )
+            }
+        },
+        onStopFollowing = {
+            userPreferences.updateFollowedClientId(null)
+            liveTrackingFollower.stopFollowing()
+        },
         mapContent = {
             UIKitView(
                 factory = { mapViewProvider.createMapView() },
@@ -738,6 +775,14 @@ fun IosMapScreen(
                         } else {
                             mapViewProvider.clearTrackLine()
                         }
+                    }
+
+                    // Friend track rendering
+                    val friendGeoJson = friendTrackGeoJson
+                    if (friendGeoJson != null) {
+                        mapViewProvider.updateFriendTrackLine(friendGeoJson, "#2196F3")
+                    } else {
+                        mapViewProvider.clearFriendTrackLine()
                     }
 
                     // Saved points rendering

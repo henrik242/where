@@ -105,6 +105,18 @@
     <string name="live_location_tracking">Live Location Tracking</string>
     <string name="share_tracking_chooser">Share tracking link</string>
 
+    <!-- Follow Friend -->
+    <string name="follow_a_friend">Follow a Friend</string>
+    <string name="enter_friend_client_id">Enter friend's client ID</string>
+    <string name="follow">Follow</string>
+    <string name="stop_following">Stop Following</string>
+    <string name="following_friend">Following %1$s</string>
+    <string name="following_live">Live</string>
+    <string name="following_no_tracks">No active tracks</string>
+    <string name="following_connecting">Connecting…</string>
+    <string name="invalid_client_id">Enter a valid 6-character client ID</string>
+    <string name="follow_friend_description">Enter a friend's client ID to see their live track on your map.</string>
+
     <!-- Settings Screen -->
     <string name="go_to_online_tracking">Go to Online Tracking</string>
     <string name="saved_tracks">Saved Tracks</string>

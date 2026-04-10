@@ -36,6 +36,7 @@ interface MapViewProvider {
     fun clearTrackLine()
     fun getUserLocation(): List<Double>?
     fun setCameraBounds(south: Double, west: Double, north: Double, east: Double, padding: Int)
+    fun setCameraBounds(south: Double, west: Double, north: Double, east: Double, padding: Int, maxZoom: Int)
     fun updateSavedPoints(geoJson: String)
     fun clearSavedPoints()
     fun setOnLongPressCallback(callback: MapLongPressCallback?)
@@ -46,6 +47,8 @@ interface MapViewProvider {
     fun clearSearchResults()
     fun highlightSearchResult(geoJson: String)
     fun clearHighlightedSearchResult()
+    fun updateFriendTrackLine(geoJson: String, color: String)
+    fun clearFriendTrackLine()
     fun setConnected(connected: Boolean)
     fun getCameraCenter(): List<Double>?
     fun setOnCameraMoveCallback(callback: MapCameraMoveCallback?)

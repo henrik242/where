@@ -16,16 +16,22 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun OnlineTrackingScreen(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onNavigateToMap: () -> Unit = onBackClick
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as no.synth.where.WhereApplication
-    val viewModel: OnlineTrackingScreenViewModel = viewModel { OnlineTrackingScreenViewModel(app.userPreferences, app.clientIdManager) }
+    val viewModel: OnlineTrackingScreenViewModel = viewModel {
+        OnlineTrackingScreenViewModel(app.userPreferences, app.clientIdManager, app.liveTrackingFollower)
+    }
     val isTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val hasSeenTrackingInfo by viewModel.hasSeenTrackingInfo.collectAsState()
     val clientId by viewModel.clientId.collectAsState()
     val viewerCount by viewModel.viewerCount.collectAsState()
     val trackingServerUrl by viewModel.trackingServerUrl.collectAsState()
+    val followedClientId by viewModel.followedClientId.collectAsState()
+    val followClientIdInput by viewModel.followClientIdInput.collectAsState()
+    val followHistory by viewModel.followHistory.collectAsState()
     var showRegenerateDialog by remember { mutableStateOf(false) }
     var showTrackingInfoDialog by remember { mutableStateOf(false) }
 
@@ -71,6 +77,17 @@ fun OnlineTrackingScreen(
             showTrackingInfoDialog = false
             viewModel.confirmTrackingInfoAndEnable()
         },
-        onDismissTrackingInfo = { showTrackingInfoDialog = false }
+        onDismissTrackingInfo = { showTrackingInfoDialog = false },
+        followedClientId = followedClientId,
+        followClientIdInput = followClientIdInput,
+        followHistory = followHistory,
+        onFollowClientIdChange = { viewModel.updateFollowClientIdInput(it) },
+        onStartFollowing = {
+            viewModel.startFollowing()
+            if (viewModel.followedClientId.value != null) {
+                onNavigateToMap()
+            }
+        },
+        onStopFollowing = { viewModel.stopFollowing() }
     )
 }

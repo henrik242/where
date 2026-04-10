@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
+import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
@@ -24,6 +25,7 @@ object AppDependencies {
     lateinit var savedPointsRepository: SavedPointsRepository
     lateinit var userPreferences: UserPreferences
     lateinit var clientIdManager: ClientIdManager
+    lateinit var liveTrackingFollower: LiveTrackingFollower
 }
 
 fun startApp() {
@@ -36,6 +38,7 @@ fun startApp() {
     AppDependencies.savedPointsRepository = SavedPointsRepository(PlatformFile(documentsDir), database.savedPointDao())
     AppDependencies.userPreferences = UserPreferences(createDataStore("user_prefs"))
     AppDependencies.clientIdManager = ClientIdManager(createDataStore("client_prefs"))
+    AppDependencies.liveTrackingFollower = LiveTrackingFollower(AppDependencies.userPreferences.trackingServerUrl.value)
 
     val cachePaths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
     val cacheDir = requireNotNull((cachePaths.first() as NSURL).path) { "Caches directory not found" }

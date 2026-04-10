@@ -12,6 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
+import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.IosMapDownloadManager
@@ -409,6 +410,10 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 var showTrackingInfoDialog by remember { mutableStateOf(false) }
                 val hasSeenTrackingInfo by userPreferences.hasSeenTrackingInfo.collectAsState()
                 val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
+                val followedClientIdVal by userPreferences.followedClientId.collectAsState()
+                val followHistoryVal by userPreferences.followHistory.collectAsState()
+                var followClientIdInput by remember { mutableStateOf("") }
+                val liveTrackingFollower = remember { AppDependencies.liveTrackingFollower }
 
                 LaunchedEffect(Unit) {
                     if (clientId.isEmpty()) {
@@ -449,7 +454,24 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         showTrackingInfoDialog = false
                         userPreferences.confirmTrackingInfoAndEnable()
                     },
-                    onDismissTrackingInfo = { showTrackingInfoDialog = false }
+                    onDismissTrackingInfo = { showTrackingInfoDialog = false },
+                    followedClientId = followedClientIdVal,
+                    followClientIdInput = followClientIdInput,
+                    followHistory = followHistoryVal,
+                    onFollowClientIdChange = { followClientIdInput = it },
+                    onStartFollowing = {
+                        if (LiveTrackingFollower.CLIENT_ID_REGEX.matches(followClientIdInput) && followClientIdInput != clientId) {
+                            userPreferences.updateFollowedClientId(followClientIdInput)
+                            userPreferences.addFollowHistoryEntry(followClientIdInput)
+                            liveTrackingFollower.follow(followClientIdInput)
+                            followClientIdInput = ""
+                            navigateToMap()
+                        }
+                    },
+                    onStopFollowing = {
+                        userPreferences.updateFollowedClientId(null)
+                        liveTrackingFollower.stopFollowing()
+                    }
                 )
             }
         }
