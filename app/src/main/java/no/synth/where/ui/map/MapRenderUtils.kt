@@ -7,9 +7,11 @@ import no.synth.where.data.Track
 import no.synth.where.data.RulerState
 import org.maplibre.android.location.LocationComponent
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -51,6 +53,83 @@ object MapRenderUtils {
                     PropertyFactory.lineOpacity(0.8f)
                 )
                 style.addLayer(lineLayer)
+            }
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
+    /**
+     * Update friend's track visualization on the map (dashed blue line).
+     */
+    fun updateFriendTrackOnMap(style: Style, geoJson: String?) {
+        try {
+            val lineSourceId = "friend-track-line-source"
+            val pointSourceId = "friend-track-point-source"
+            val lineLayerId = "friend-track-line-layer"
+            val pointLayerId = "friend-track-point-layer"
+            val labelLayerId = "friend-track-label-layer"
+
+            style.getLayer(labelLayerId)?.let { style.removeLayer(it) }
+            style.getLayer(lineLayerId)?.let { style.removeLayer(it) }
+            style.getLayer(pointLayerId)?.let { style.removeLayer(it) }
+            style.getSource(lineSourceId)?.let { style.removeSource(it) }
+            style.getSource(pointSourceId)?.let { style.removeSource(it) }
+
+            if (geoJson != null) {
+                val fc = try {
+                    FeatureCollection.fromJson(geoJson)
+                } catch (e: Exception) {
+                    Logger.e(e, "Failed to parse friend GeoJSON")
+                    return
+                }
+                val features = fc.features() ?: return
+
+                // Build separate collections for lines and points
+                val lineFeatures = mutableListOf<Feature>()
+                val pointFeatures = mutableListOf<Feature>()
+                for (feature in features) {
+                    when (feature.geometry()?.type()) {
+                        "LineString" -> lineFeatures.add(feature)
+                        "Point" -> pointFeatures.add(feature)
+                        else -> {}
+                    }
+                }
+
+                if (lineFeatures.isNotEmpty()) {
+                    val lineSource = GeoJsonSource(lineSourceId, FeatureCollection.fromFeatures(lineFeatures))
+                    style.addSource(lineSource)
+                    val lineLayer = LineLayer(lineLayerId, lineSourceId).withProperties(
+                        PropertyFactory.lineColor("#2196F3"),
+                        PropertyFactory.lineWidth(4f),
+                        PropertyFactory.lineOpacity(0.8f),
+                        PropertyFactory.lineDasharray(arrayOf(4f, 2f))
+                    )
+                    style.addLayer(lineLayer)
+                }
+
+                if (pointFeatures.isNotEmpty()) {
+                    val pointSource = GeoJsonSource(pointSourceId, FeatureCollection.fromFeatures(pointFeatures))
+                    style.addSource(pointSource)
+                    val pointLayer = CircleLayer(pointLayerId, pointSourceId).withProperties(
+                        PropertyFactory.circleRadius(8f),
+                        PropertyFactory.circleColor("#2196F3"),
+                        PropertyFactory.circleStrokeWidth(2f),
+                        PropertyFactory.circleStrokeColor("#FFFFFF")
+                    )
+                    style.addLayer(pointLayer)
+
+                    val labelLayer = SymbolLayer(labelLayerId, pointSourceId).withProperties(
+                        PropertyFactory.textField(Expression.get("clientId")),
+                        PropertyFactory.textSize(12f),
+                        PropertyFactory.textColor("#2196F3"),
+                        PropertyFactory.textHaloColor("#FFFFFF"),
+                        PropertyFactory.textHaloWidth(1.5f),
+                        PropertyFactory.textOffset(arrayOf(0f, 1.5f)),
+                        PropertyFactory.textAnchor("top")
+                    )
+                    style.addLayer(labelLayer)
+                }
             }
         } catch (e: Exception) {
             Logger.e(e, "Map render error")

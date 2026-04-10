@@ -1,5 +1,6 @@
 package no.synth.where.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,15 +11,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -50,7 +56,13 @@ fun OnlineTrackingScreenContent(
     onConfirmRegenerate: () -> Unit,
     onDismissRegenerate: () -> Unit,
     onConfirmTrackingInfo: () -> Unit,
-    onDismissTrackingInfo: () -> Unit
+    onDismissTrackingInfo: () -> Unit,
+    followedClientId: String? = null,
+    followClientIdInput: String = "",
+    followHistory: List<String> = emptyList(),
+    onFollowClientIdChange: (String) -> Unit = {},
+    onStartFollowing: () -> Unit = {},
+    onStopFollowing: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -68,6 +80,7 @@ fun OnlineTrackingScreenContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -212,6 +225,98 @@ fun OnlineTrackingScreenContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(Res.string.regenerate_client_id))
+            }
+
+            HorizontalDivider()
+
+            Text(
+                text = stringResource(Res.string.follow_a_friend),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(Res.string.follow_friend_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (followedClientId != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = stringResource(Res.string.following_friend, followedClientId),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = onStopFollowing,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text(stringResource(Res.string.stop_following))
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            OutlinedTextField(
+                                value = followClientIdInput,
+                                onValueChange = { value ->
+                                    if (value.length <= 6) {
+                                        onFollowClientIdChange(value.lowercase().filter { it in 'a'..'z' || it in '0'..'9' })
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                label = { Text(stringResource(Res.string.enter_friend_client_id)) },
+                                placeholder = { Text("abc123") },
+                                singleLine = true
+                            )
+                            Button(
+                                onClick = onStartFollowing,
+                                modifier = Modifier.padding(top = 8.dp),
+                                enabled = followClientIdInput.length == 6
+                            ) {
+                                Text(stringResource(Res.string.follow))
+                            }
+                        }
+                        if (followHistory.isNotEmpty()) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                for (historyId in followHistory) {
+                                    Text(
+                                        text = historyId,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .clickable { onFollowClientIdChange(historyId) }
+                                            .padding(vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             Card(

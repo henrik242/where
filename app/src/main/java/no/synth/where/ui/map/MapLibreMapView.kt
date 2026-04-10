@@ -56,6 +56,7 @@ fun MapLibreMapView(
     rulerState: RulerState = RulerState(),
     searchResults: List<PlaceSearchClient.SearchResult> = emptyList(),
     highlightedSearchResult: PlaceSearchClient.SearchResult? = null,
+    friendTrackGeoJson: String? = null,
     regionsLoadedTrigger: Int = 0,
     onRulerPointAdded: (LatLng) -> Unit = {},
     onLongPress: (LatLng) -> Unit = {},
@@ -145,6 +146,7 @@ fun MapLibreMapView(
                                 isCurrentTrack = current != null
                             )
                             MapRenderUtils.updateRulerOnMap(style, rulerState)
+                            MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
 
                             if (showSavedPoints && savedPoints.isNotEmpty()) {
                                 MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
@@ -218,6 +220,7 @@ fun MapLibreMapView(
                                     isCurrentTrack = current != null
                                 )
                                 MapRenderUtils.updateRulerOnMap(style, rulerState)
+                                MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
 
                                 if (showSavedPoints && savedPoints.isNotEmpty()) {
                                     MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
@@ -249,6 +252,12 @@ fun MapLibreMapView(
                     Logger.e(e, "Map screen error")
                 }
             }
+        }
+    }
+
+    LaunchedEffect(friendTrackGeoJson, map) {
+        map?.style?.let { style ->
+            MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
         }
     }
 
@@ -385,6 +394,7 @@ fun MapLibreMapView(
                                         isCurrentTrack = current != null
                                     )
                                     MapRenderUtils.updateRulerOnMap(style, rulerState)
+                                    MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
                                     mapInstance.triggerRepaint()
                                 }
                             })

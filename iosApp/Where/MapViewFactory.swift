@@ -13,6 +13,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingRulerPointsGeoJson: String?
     private var pendingSearchResultsGeoJson: String?
     private var pendingSearchHighlightGeoJson: String?
+    private var pendingFriendTrackGeoJson: String?
+    private var pendingFriendTrackColor: String?
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
@@ -32,6 +34,11 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let searchResultsLayerId = "search-results-layer"
     private let searchHighlightSourceId = "search-highlight-source"
     private let searchHighlightLayerId = "search-highlight-layer"
+    private let friendTrackLineSourceId = "friend-track-line-source"
+    private let friendTrackPointSourceId = "friend-track-point-source"
+    private let friendTrackLineLayerId = "friend-track-line-layer"
+    private let friendTrackPointLayerId = "friend-track-point-layer"
+    private let friendTrackLabelLayerId = "friend-track-label-layer"
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -187,6 +194,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     }
 
     func setCameraBounds(south: Double, west: Double, north: Double, east: Double, padding: Int32) {
+        setCameraBounds(south: south, west: west, north: north, east: east, padding: padding, maxZoom: 0)
+    }
+
+    func setCameraBounds(south: Double, west: Double, north: Double, east: Double, padding: Int32, maxZoom: Int32) {
         guard let mapView = self.mapView else { return }
         let sw = CLLocationCoordinate2D(latitude: south, longitude: west)
         let ne = CLLocationCoordinate2D(latitude: north, longitude: east)
@@ -194,6 +205,13 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         let p = CGFloat(padding)
         let edgePadding = UIEdgeInsets(top: p, left: p, bottom: p, right: p)
         mapView.setVisibleCoordinateBounds(bounds, edgePadding: edgePadding, animated: true, completionHandler: nil)
+        if maxZoom > 0 && mapView.zoomLevel > Double(maxZoom) {
+            let center = CLLocationCoordinate2D(
+                latitude: (south + north) / 2,
+                longitude: (west + east) / 2
+            )
+            mapView.setCenter(center, zoomLevel: Double(maxZoom), animated: true)
+        }
     }
 
     func updateSavedPoints(geoJson: String) {
@@ -252,6 +270,22 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         pendingSearchHighlightGeoJson = nil
         guard let mapView = self.mapView, let style = mapView.style else { return }
         removeSearchHighlight(style: style)
+    }
+
+    func updateFriendTrackLine(geoJson: String, color: String) {
+        guard let mapView = self.mapView, let style = mapView.style else {
+            pendingFriendTrackGeoJson = geoJson
+            pendingFriendTrackColor = color
+            return
+        }
+        applyFriendTrackLine(style: style, geoJson: geoJson, color: color)
+    }
+
+    func clearFriendTrackLine() {
+        pendingFriendTrackGeoJson = nil
+        pendingFriendTrackColor = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeFriendTrackLine(style: style)
     }
 
     func setConnected(connected: Bool) {
@@ -323,6 +357,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
         if let geoJson = pendingSearchHighlightGeoJson {
             applySearchHighlight(style: style, geoJson: geoJson)
+        }
+        if let geoJson = pendingFriendTrackGeoJson, let color = pendingFriendTrackColor {
+            applyFriendTrackLine(style: style, geoJson: geoJson, color: color)
         }
     }
 
@@ -488,6 +525,81 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private func removeSearchHighlight(style: MLNStyle) {
         if let layer = style.layer(withIdentifier: searchHighlightLayerId) { style.removeLayer(layer) }
         if let source = style.source(withIdentifier: searchHighlightSourceId) { style.removeSource(source) }
+    }
+
+    private func applyFriendTrackLine(style: MLNStyle, geoJson: String, color: String) {
+        removeFriendTrackLine(style: style)
+
+        guard let data = geoJson.data(using: .utf8),
+              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+            print("Failed to parse friend track GeoJSON")
+            return
+        }
+
+        // Split features by geometry type into separate sources
+        var lineShapes: [MLNShape] = []
+        var pointShapes: [MLNShape] = []
+
+        if let collection = shape as? MLNShapeCollectionFeature {
+            for s in collection.shapes {
+                if s is MLNPolylineFeature {
+                    lineShapes.append(s)
+                } else if s is MLNPointFeature {
+                    pointShapes.append(s)
+                }
+            }
+        } else if shape is MLNPolylineFeature {
+            lineShapes.append(shape)
+        } else if shape is MLNPointFeature {
+            pointShapes.append(shape)
+        }
+
+        if !lineShapes.isEmpty {
+            let lineSource = MLNShapeSource(identifier: friendTrackLineSourceId, shapes: lineShapes, options: nil)
+            style.addSource(lineSource)
+
+            let lineLayer = MLNLineStyleLayer(identifier: friendTrackLineLayerId, source: lineSource)
+            lineLayer.lineColor = NSExpression(forConstantValue: UIColor(hex: color))
+            lineLayer.lineWidth = NSExpression(forConstantValue: 4)
+            lineLayer.lineOpacity = NSExpression(forConstantValue: 0.8)
+            lineLayer.lineDashPattern = NSExpression(forConstantValue: [4, 2])
+            lineLayer.lineCap = NSExpression(forConstantValue: "round")
+            lineLayer.lineJoin = NSExpression(forConstantValue: "round")
+            style.addLayer(lineLayer)
+        }
+
+        if !pointShapes.isEmpty {
+            let pointSource = MLNShapeSource(identifier: friendTrackPointSourceId, shapes: pointShapes, options: nil)
+            style.addSource(pointSource)
+
+            let pointLayer = MLNCircleStyleLayer(identifier: friendTrackPointLayerId, source: pointSource)
+            pointLayer.circleRadius = NSExpression(forConstantValue: 8)
+            pointLayer.circleColor = NSExpression(forConstantValue: UIColor(hex: color))
+            pointLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+            pointLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)
+            style.addLayer(pointLayer)
+
+            let labelLayer = MLNSymbolStyleLayer(identifier: friendTrackLabelLayerId, source: pointSource)
+            labelLayer.text = NSExpression(forKeyPath: "clientId")
+            labelLayer.textFontSize = NSExpression(forConstantValue: 12)
+            labelLayer.textColor = NSExpression(forConstantValue: UIColor(hex: color))
+            labelLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
+            labelLayer.textHaloWidth = NSExpression(forConstantValue: 1.5)
+            labelLayer.textOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: 1.5)))
+            labelLayer.textAnchor = NSExpression(forConstantValue: "top")
+            style.addLayer(labelLayer)
+        }
+
+        pendingFriendTrackGeoJson = geoJson
+        pendingFriendTrackColor = color
+    }
+
+    private func removeFriendTrackLine(style: MLNStyle) {
+        if let layer = style.layer(withIdentifier: friendTrackLabelLayerId) { style.removeLayer(layer) }
+        if let layer = style.layer(withIdentifier: friendTrackLineLayerId) { style.removeLayer(layer) }
+        if let layer = style.layer(withIdentifier: friendTrackPointLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: friendTrackLineSourceId) { style.removeSource(source) }
+        if let source = style.source(withIdentifier: friendTrackPointSourceId) { style.removeSource(source) }
     }
 }
 

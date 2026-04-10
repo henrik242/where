@@ -23,9 +23,11 @@ import no.synth.where.ui.*
 fun WhereApp(
     pendingGpxUri: Uri? = null,
     pendingImportUrl: String? = null,
+    pendingFollowClientId: String? = null,
     regionsLoadedTrigger: Int = 0,
     onGpxHandled: () -> Unit = {},
     onImportUrlHandled: () -> Unit = {},
+    onFollowHandled: () -> Unit = {},
     onRegionsLoaded: () -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -83,6 +85,14 @@ fun WhereApp(
         }
     }
 
+    LaunchedEffect(pendingFollowClientId) {
+        pendingFollowClientId?.let { clientId ->
+            app.userPreferences.updateFollowedClientId(clientId)
+            app.liveTrackingFollower.follow(clientId)
+            onFollowHandled()
+        }
+    }
+
     LaunchedEffect(pendingImportUrl) {
         pendingImportUrl?.let { url ->
             navController.navigate(TracksRoute(importUrl = url))
@@ -132,7 +142,8 @@ fun WhereApp(
         }
         composable<OnlineTrackingRoute> {
             OnlineTrackingScreen(
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onNavigateToMap = { navController.popBackStack<MapRoute>(false) }
             )
         }
         composable<SavedPointsRoute> {

@@ -373,6 +373,58 @@ fun ViewingPointBanner(
 }
 
 @Composable
+fun FollowingFriendBanner(
+    modifier: Modifier = Modifier,
+    clientId: String,
+    isConnecting: Boolean,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    onClose: () -> Unit
+) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                painterResource(Res.drawable.ic_visibility),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(Res.string.following_friend, clientId),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = when {
+                        isConnecting -> stringResource(Res.string.following_connecting)
+                        isActive -> stringResource(Res.string.following_live)
+                        else -> stringResource(Res.string.following_no_tracks)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
+            IconButton(onClick = onClose) {
+                Icon(
+                    painterResource(Res.drawable.ic_close),
+                    contentDescription = stringResource(Res.string.stop_following),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun CrosshairOverlay(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.fillMaxSize().drawBehind {
@@ -526,9 +578,14 @@ fun BoxScope.MapOverlays(
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit,
-    twoFingerMeasurement: TwoFingerMeasurement? = null
+    twoFingerMeasurement: TwoFingerMeasurement? = null,
+    followedClientId: String? = null,
+    isFollowConnecting: Boolean = false,
+    isFollowedTrackActive: Boolean = false,
+    onFollowBannerClick: () -> Unit = {},
+    onStopFollowing: () -> Unit = {}
 ) {
-    val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null)
+    val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null) || followedClientId != null
     val offlineChipEnd by animateDpAsState(
         targetValue = if (isCompassVisible) 56.dp else 16.dp,
         label = "offlineChipEnd"
@@ -628,6 +685,21 @@ fun BoxScope.MapOverlays(
             pointName = viewingPointName,
             pointColor = viewingPointColor,
             onClose = onCloseViewingPoint
+        )
+    }
+
+    if (followedClientId != null && !showSearch) {
+        val hasOtherBanner = viewingTrackName != null || (showViewingPoint && viewingPointName != null)
+        FollowingFriendBanner(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = if (hasOtherBanner) 80.dp else 16.dp)
+                .padding(horizontal = 16.dp),
+            clientId = followedClientId,
+            isConnecting = isFollowConnecting,
+            isActive = isFollowedTrackActive,
+            onClick = onFollowBannerClick,
+            onClose = onStopFollowing
         )
     }
 

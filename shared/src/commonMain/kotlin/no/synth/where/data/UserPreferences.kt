@@ -82,6 +82,12 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _searchHistory = MutableStateFlow<List<PlaceSearchClient.SearchResult>>(emptyList())
     val searchHistory: StateFlow<List<PlaceSearchClient.SearchResult>> = _searchHistory.asStateFlow()
 
+    private val _followedClientId = MutableStateFlow<String?>(null)
+    val followedClientId: StateFlow<String?> = _followedClientId.asStateFlow()
+
+    private val _followHistory = MutableStateFlow<List<String>>(emptyList())
+    val followHistory: StateFlow<List<String>> = _followHistory.asStateFlow()
+
     init {
         scope.launch {
             dataStore.data.collect { prefs ->
@@ -101,6 +107,8 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _themeMode.value = prefs[THEME_MODE] ?: "system"
                 _coordFormat.value = try { CoordFormat.valueOf(prefs[COORD_FORMAT] ?: "LATLNG") } catch (_: Exception) { CoordFormat.LATLNG }
                 _searchHistory.value = deserializeSearchHistory(prefs[SEARCH_HISTORY])
+                _followedClientId.value = prefs[FOLLOWED_CLIENT_ID]
+                _followHistory.value = prefs[FOLLOW_HISTORY]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
             }
         }
     }
@@ -192,6 +200,30 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    fun updateFollowedClientId(value: String?) {
+        _followedClientId.value = value
+        scope.launch {
+            dataStore.edit {
+                if (value != null) {
+                    it[FOLLOWED_CLIENT_ID] = value
+                } else {
+                    it.remove(FOLLOWED_CLIENT_ID)
+                }
+            }
+        }
+    }
+
+    fun addFollowHistoryEntry(clientId: String) {
+        val current = _followHistory.value.toMutableList()
+        current.remove(clientId)
+        current.add(0, clientId)
+        val updated = current.take(MAX_FOLLOW_HISTORY)
+        _followHistory.value = updated
+        scope.launch {
+            dataStore.edit { it[FOLLOW_HISTORY] = updated.joinToString(",") }
+        }
+    }
+
     fun addSearchHistoryEntry(result: PlaceSearchClient.SearchResult) {
         val current = _searchHistory.value.toMutableList()
         current.removeAll { it.name == result.name && it.municipality == result.municipality }
@@ -237,6 +269,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     }
 
     companion object {
+        private const val MAX_FOLLOW_HISTORY = 5
         private const val MAX_SEARCH_HISTORY = 10
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
@@ -254,5 +287,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val COORD_FORMAT = stringPreferencesKey("coord_format")
         private val SEARCH_HISTORY = stringPreferencesKey("search_history")
+        private val FOLLOWED_CLIENT_ID = stringPreferencesKey("followed_client_id")
+        private val FOLLOW_HISTORY = stringPreferencesKey("follow_history")
     }
 }

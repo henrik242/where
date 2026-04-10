@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.synth.where.data.CrosshairInfo
+import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.TerrainClient
 import no.synth.where.resources.Res
@@ -103,7 +104,51 @@ fun MapScreen(
     val rulerTrackName by viewModel.rulerTrackName.collectAsState()
     val isResolvingRulerName by viewModel.isResolvingRulerName.collectAsState()
 
+    val liveTrackingFollower = app.liveTrackingFollower
+    val followState by liveTrackingFollower.state.collectAsState()
+    val friendTrackGeoJson by liveTrackingFollower.friendTrackGeoJson.collectAsState()
+    val followedClientId by viewModel.userPreferences.followedClientId.collectAsState()
+
+    // Auto-follow on startup if a client ID is persisted
+    LaunchedEffect(followedClientId) {
+        val id = followedClientId
+        if (id != null && followState is LiveTrackingFollower.FollowState.Idle) {
+            liveTrackingFollower.follow(id)
+        }
+    }
+
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
+
+    // Zoom to friend track when first data arrives
+    var hasZoomedToFriend by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(followedClientId) {
+        hasZoomedToFriend = false
+    }
+    LaunchedEffect(followState, mapInstance) {
+        val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@LaunchedEffect
+        val map = mapInstance ?: return@LaunchedEffect
+        if (hasZoomedToFriend) return@LaunchedEffect
+        val allPoints = following.tracks.flatMap { it.points }
+        if (allPoints.isEmpty()) return@LaunchedEffect
+        hasZoomedToFriend = true
+        val maxZoom = 15.0
+        val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
+            .includes(allPoints.map { it.toMapLibre() })
+            .build()
+        map.animateCamera(
+            org.maplibre.android.camera.CameraUpdateFactory.newLatLngBounds(bounds, 100),
+            object : org.maplibre.android.maps.MapLibreMap.CancelableCallback {
+                override fun onCancel() {}
+                override fun onFinish() {
+                    if (map.cameraPosition.zoom > maxZoom) {
+                        map.animateCamera(
+                            org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(bounds.center, maxZoom)
+                        )
+                    }
+                }
+            }
+        )
+    }
     var isCompassVisible by remember { mutableStateOf(false) }
     var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
     val selectedLayer by viewModel.userPreferences.selectedMapLayer.collectAsState()
@@ -451,6 +496,38 @@ fun MapScreen(
             viewModel.closeSearch()
         },
         twoFingerMeasurement = twoFingerMeasurement,
+        followedClientId = followedClientId,
+        isFollowConnecting = followState is LiveTrackingFollower.FollowState.Connecting,
+        isFollowedTrackActive = (followState as? LiveTrackingFollower.FollowState.Following)?.tracks?.any { it.isActive } == true,
+        onFollowBannerClick = {
+            val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
+            val allPoints = following.tracks.flatMap { it.points }
+            if (allPoints.isNotEmpty()) {
+                val maxZoom = 15.0
+                val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
+                    .includes(allPoints.map { it.toMapLibre() })
+                    .build()
+                mapInstance?.let { map ->
+                    map.animateCamera(
+                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngBounds(bounds, 100),
+                        object : org.maplibre.android.maps.MapLibreMap.CancelableCallback {
+                            override fun onCancel() {}
+                            override fun onFinish() {
+                                if (map.cameraPosition.zoom > maxZoom) {
+                                    map.animateCamera(
+                                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(bounds.center, maxZoom)
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        },
+        onStopFollowing = {
+            viewModel.userPreferences.updateFollowedClientId(null)
+            liveTrackingFollower.stopFollowing()
+        },
         mapContent = {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },
@@ -464,6 +541,7 @@ fun MapScreen(
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,
                 viewingTrack = viewingTrack,
+                friendTrackGeoJson = friendTrackGeoJson,
                 savedCameraLat = savedCameraLat,
                 savedCameraLon = savedCameraLon,
                 savedCameraZoom = savedCameraZoom,

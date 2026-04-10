@@ -105,6 +105,18 @@
     <string name="live_location_tracking">Direkte posisjonssporing</string>
     <string name="share_tracking_chooser">Del sporingslenke</string>
 
+    <!-- Follow Friend -->
+    <string name="follow_a_friend">Følg en venn</string>
+    <string name="enter_friend_client_id">Skriv inn vennens klient-ID</string>
+    <string name="follow">Følg</string>
+    <string name="stop_following">Slutt å følge</string>
+    <string name="following_friend">Følger %1$s</string>
+    <string name="following_live">Direkte</string>
+    <string name="following_no_tracks">Ingen aktive spor</string>
+    <string name="following_connecting">Kobler til…</string>
+    <string name="invalid_client_id">Skriv inn en gyldig 6-tegns klient-ID</string>
+    <string name="follow_friend_description">Skriv inn en venns klient-ID for å se sporet deres direkte på kartet ditt.</string>
+
     <!-- Settings Screen -->
     <string name="go_to_online_tracking">Gå til Direktesporing</string>
     <string name="saved_tracks">Lagrede spor</string>

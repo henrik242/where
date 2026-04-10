@@ -26,6 +26,7 @@ import no.synth.where.ui.theme.WhereTheme
 class MainActivity : AppCompatActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
     private var pendingImportUrl by mutableStateOf<String?>(null)
+    private var pendingFollowClientId by mutableStateOf<String?>(null)
     private var regionsLoaded by mutableIntStateOf(0)
     private val userPreferences: UserPreferences get() = (application as WhereApplication).userPreferences
 
@@ -55,9 +56,11 @@ class MainActivity : AppCompatActivity() {
                     WhereApp(
                         pendingGpxUri = pendingGpxUri,
                         pendingImportUrl = pendingImportUrl,
+                        pendingFollowClientId = pendingFollowClientId,
                         regionsLoadedTrigger = regionsLoaded,
                         onGpxHandled = { pendingGpxUri = null },
                         onImportUrlHandled = { pendingImportUrl = null },
+                        onFollowHandled = { pendingFollowClientId = null },
                         onRegionsLoaded = { regionsLoaded++ }
                     )
                 }
@@ -74,6 +77,13 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent) {
         if (intent.action == Intent.ACTION_VIEW) {
             val uri = intent.data ?: return
+            if ((uri.scheme == "https" || uri.scheme == "http") && uri.host == "where.synth.no") {
+                val path = uri.path?.removePrefix("/") ?: ""
+                if (path.matches(Regex("^[a-z0-9]{6}$"))) {
+                    pendingFollowClientId = path
+                    return
+                }
+            }
             if (uri.scheme == "https" || uri.scheme == "http") {
                 pendingImportUrl = uri.toString()
             } else {

@@ -6,7 +6,7 @@ export const CONFIG = {
   ADMIN_KEY: process.env.ADMIN_KEY,
   TRACKING_HINT: process.env.TRACKING_HINT,
   PORT: process.env.PORT || 3000,
-  STALE_TRACK_TIMEOUT: 10 * 60 * 1000, // 10 minutes
+  STALE_TRACK_TIMEOUT: 60 * 60 * 1000, // 1 hour
   STALE_CHECK_INTERVAL: 60 * 1000, // 1 minute
   INITIAL_CHECK_DELAY: 10 * 1000, // 10 seconds
   TRACKS_RETENTION: 24 * 60 * 60 * 1000 // 24 hours

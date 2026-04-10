@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
+import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
@@ -31,6 +32,7 @@ class WhereApplication : Application() {
     val savedPointsRepository by lazy { SavedPointsRepository(PlatformFile(filesDir), database.savedPointDao()) }
     val userPreferences by lazy { UserPreferences(userPrefsDataStore) }
     val clientIdManager by lazy { ClientIdManager(clientPrefsDataStore) }
+    val liveTrackingFollower by lazy { LiveTrackingFollower(userPreferences.trackingServerUrl.value) }
 
     override fun onCreate() {
         super.onCreate()
