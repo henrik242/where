@@ -25,7 +25,7 @@ import org.jetbrains.compose.resources.stringResource
 private data class Attribution(val name: String, val description: String, val license: String)
 
 private val dataSources = listOf(
-    Attribution("Kartverket", "Topographic maps, elevation data, place names, and county boundaries", "CC BY 4.0"),
+    Attribution("Kartverket", "Topographic maps, elevation data, and place names", "CC BY 4.0"),
     Attribution("OpenStreetMap", "Map data and tiles", "ODbL"),
     Attribution("OpenTopoMap", "Topographic map style", "CC-BY-SA"),
     Attribution("MapAnt.no", "Orienteering maps for Norway", ""),

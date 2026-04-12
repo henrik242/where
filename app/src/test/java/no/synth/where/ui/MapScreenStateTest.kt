@@ -15,19 +15,6 @@ import no.synth.where.data.geo.LatLng
 class MapScreenStateTest {
 
     @Test
-    fun countyBordersState_togglingWorks() {
-        var showCountyBorders by mutableStateOf(true)
-
-        // Simulate user toggling county borders off
-        showCountyBorders = false
-        assertFalse("County borders should be hidden", showCountyBorders)
-
-        // Simulate user toggling county borders on
-        showCountyBorders = true
-        assertTrue("County borders should be visible", showCountyBorders)
-    }
-
-    @Test
     fun savedPointsState_togglingWorks() {
         var showSavedPoints by mutableStateOf(true)
 
@@ -67,22 +54,15 @@ class MapScreenStateTest {
     @Test
     fun mapScreenCallbacks_areInvoked() {
         var settingsClicked = false
-        var countyBordersChanged = false
         var savedPointsChanged = false
         var viewingPointCleared = false
 
-        // Simulate callback invocations
         val onSettingsClick = { settingsClicked = true }
-        val onShowCountyBordersChange = { _: Boolean -> countyBordersChanged = true }
         val onShowSavedPointsChange = { _: Boolean -> savedPointsChanged = true }
         val onClearViewingPoint = { viewingPointCleared = true }
 
-        // Test callbacks
         onSettingsClick()
         assertTrue("Settings callback should be invoked", settingsClicked)
-
-        onShowCountyBordersChange(false)
-        assertTrue("County borders callback should be invoked", countyBordersChanged)
 
         onShowSavedPointsChange(false)
         assertTrue("Saved points callback should be invoked", savedPointsChanged)
@@ -139,7 +119,6 @@ class MapScreenStateTest {
             "onMapReady",
             "selectedLayer",
             "hasLocationPermission",
-            "showCountyBorders",
             "showSavedPoints",
             "savedPoints",
             "currentTrack",
@@ -153,8 +132,7 @@ class MapScreenStateTest {
             "onPointClick"
         )
 
-        // This is a documentation test - the actual validation happens at compile time
-        assertTrue("MapLibreMapView requires 15 parameters", requiredParameters.size == 15)
+        assertTrue("MapLibreMapView requires 14 parameters", requiredParameters.size == 14)
     }
 
     @Test

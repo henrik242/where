@@ -69,8 +69,7 @@ fun MapScreen(
     onOfflineSettingsClick: () -> Unit = {},
     onOnlineTrackingSettingsClick: () -> Unit = {},
     viewingPoint: no.synth.where.data.SavedPoint? = null,
-    onClearViewingPoint: () -> Unit = {},
-    regionsLoadedTrigger: Int = 0
+    onClearViewingPoint: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as no.synth.where.WhereApplication
@@ -83,7 +82,6 @@ fun MapScreen(
     val viewerCount by viewModel.userPreferences.viewerCount.collectAsState()
     val hasSeenTrackingInfo by viewModel.userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by viewModel.userPreferences.offlineModeEnabled.collectAsState()
-    val showCountyBorders by viewModel.userPreferences.showCountyBorders.collectAsState()
     val showSavedPoints by viewModel.userPreferences.showSavedPoints.collectAsState()
     val rulerState by viewModel.rulerState.collectAsState()
     val showSearch by viewModel.showSearch.collectAsState()
@@ -366,7 +364,6 @@ fun MapScreen(
         showLayerMenu = showLayerMenu,
         selectedLayer = selectedLayer,
         showWaymarkedTrails = showWaymarkedTrails,
-        showCountyBorders = showCountyBorders,
         showSavedPoints = showSavedPoints,
         showAvalancheZones = showAvalancheZones,
         showHillshade = showHillshade,
@@ -402,9 +399,6 @@ fun MapScreen(
         },
         onHillshadeToggle = {
             viewModel.userPreferences.updateShowHillshade(!showHillshade); showLayerMenu = false
-        },
-        onCountyBordersToggle = {
-            viewModel.userPreferences.updateShowCountyBorders(!showCountyBorders); showLayerMenu = false
         },
         onSavedPointsToggle = { viewModel.userPreferences.updateShowSavedPoints(!showSavedPoints); showLayerMenu = false },
         onRecordStopClick = {
@@ -533,7 +527,6 @@ fun MapScreen(
                 onMapReady = { mapInstance = it },
                 selectedLayer = selectedLayer,
                 hasLocationPermission = hasLocationPermission,
-                showCountyBorders = showCountyBorders,
                 showWaymarkedTrails = showWaymarkedTrails,
                 showAvalancheZones = showAvalancheZones,
                 showHillshade = showHillshade,
@@ -548,7 +541,6 @@ fun MapScreen(
                 rulerState = rulerState,
                 searchResults = searchResults,
                 highlightedSearchResult = highlightedSearchResult,
-                regionsLoadedTrigger = regionsLoadedTrigger,
                 onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },
                 onPointClick = { point -> viewModel.openPointInfoDialog(point) },
@@ -797,7 +789,6 @@ private fun MapScreenFullPreview() {
             showLayerMenu = false,
             selectedLayer = MapLayer.KARTVERKET,
             showWaymarkedTrails = false,
-            showCountyBorders = false,
             showSavedPoints = true,
             showAvalancheZones = false,
             onlineTrackingEnabled = false,
@@ -815,7 +806,6 @@ private fun MapScreenFullPreview() {
             onLayerSelected = {},
             onWaymarkedTrailsToggle = {},
             onAvalancheZonesToggle = {},
-            onCountyBordersToggle = {},
             onSavedPointsToggle = {},
             onRecordStopClick = {},
             onMyLocationClick = {},

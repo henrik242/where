@@ -5,41 +5,10 @@ import no.synth.where.ui.map.MapLayer
 object MapStyle {
     fun getStyle(
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
-        showCountyBorders: Boolean = true,
         showWaymarkedTrails: Boolean = false,
         showAvalancheZones: Boolean = false,
         showHillshade: Boolean = false,
-        regions: List<Region> = emptyList()
     ): String {
-        val activeRegions = if (showCountyBorders) regions else emptyList()
-        val regionsGeoJson = activeRegions.joinToString(",") { region ->
-            val coordinates = if (region.polygon != null && region.polygon.isNotEmpty()) {
-                region.polygon.first().joinToString(",") { latLng ->
-                    "[${latLng.longitude}, ${latLng.latitude}]"
-                }
-            } else {
-                val b = region.boundingBox
-                val north = b.north
-                val south = b.south
-                val east = b.east
-                val west = b.west
-                "[$west, $north],[$west, $south],[$east, $south],[$east, $north],[$west, $north]"
-            }
-
-            val cleanName = region.name.substringBefore(" - ")
-
-            """
-            {
-              "type": "Feature",
-              "properties": { "name": "$cleanName" },
-              "geometry": {
-                "type": "Polygon",
-                "coordinates": [[$coordinates]]
-              }
-            }
-            """
-        }
-
         data class TileSource(val id: String, val tiles: String, val attribution: String)
 
         val baseSource = when (selectedLayer) {
@@ -93,14 +62,6 @@ object MapStyle {
       "attribution": "© <a href='https://github.com/tilezen/joerd'>Tilezen Joerd</a> (data from USGS, GMTED, SRTM, ETOPO1)"
     }""")
             }
-            append(""",
-    "regions": {
-      "type": "geojson",
-      "data": {
-        "type": "FeatureCollection",
-        "features": [$regionsGeoJson]
-      }
-    }""")
         }
 
         val layers = buildString {
@@ -150,43 +111,6 @@ object MapStyle {
       "source": "waymarkedtrails",
       "paint": {
         "raster-opacity": 1.0
-      }
-    }""")
-            }
-            if (showCountyBorders) {
-                append(""",
-    {
-      "id": "regions-fill",
-      "type": "fill",
-      "source": "regions",
-      "paint": {
-        "fill-color": "#FF8800",
-        "fill-opacity": 0.0
-      }
-    },
-    {
-      "id": "regions-outline",
-      "type": "line",
-      "source": "regions",
-      "paint": {
-        "line-color": "#ff0000",
-        "line-width": 2
-      }
-    },
-    {
-      "id": "regions-label",
-      "type": "symbol",
-      "source": "regions",
-      "layout": {
-        "text-field": ["get", "name"],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": 14,
-        "text-anchor": "center"
-      },
-      "paint": {
-        "text-color": "#333333",
-        "text-halo-color": "#ffffff",
-        "text-halo-width": 2
       }
     }""")
             }

@@ -9,36 +9,11 @@ import no.synth.where.data.geo.LatLng
  * Regression tests to ensure specific bugs don't happen again.
  *
  * These tests document the exact issues that occurred and verify they're fixed:
- * 1. County borders toggle not working (always shown)
- * 2. Saved points toggle not working (never shown)
- * 3. Unable to add points (long press not working)
- * 4. Point click not working
+ * 1. Saved points toggle not working (never shown)
+ * 2. Unable to add points (long press not working)
+ * 3. Point click not working
  */
 class MapScreenRegressionTest {
-
-    @Test
-    fun regression_countyBordersAlwaysShown_Issue20260104() {
-        // Bug: County borders were always shown regardless of toggle state
-        // Root cause: showCountyBorders parameter not passed to MapLibreMapView
-
-        var showCountyBorders = true
-        val onShowCountyBordersChange: (Boolean) -> Unit = { showCountyBorders = it }
-
-        // User toggles county borders OFF
-        onShowCountyBordersChange(false)
-        assertFalse(
-            "Bug regression: County borders should be hideable. " +
-            "Ensure showCountyBorders parameter is passed to MapLibreMapView",
-            showCountyBorders
-        )
-
-        // User toggles county borders ON
-        onShowCountyBordersChange(true)
-        assertTrue(
-            "County borders should be showable",
-            showCountyBorders
-        )
-    }
 
     @Test
     fun regression_savedPointsNeverShown_Issue20260104() {
@@ -134,7 +109,6 @@ class MapScreenRegressionTest {
         // to MapLibreMapView. If any are missing, tests should fail.
 
         val criticalParameters = mapOf(
-            "showCountyBorders" to "Controls visibility of Norwegian county borders",
             "showSavedPoints" to "Controls visibility of user's saved points",
             "savedPoints" to "List of saved points to display on map",
             "onLongPress" to "Callback for saving new points via long press",
@@ -150,9 +124,9 @@ class MapScreenRegressionTest {
 
         // This is a documentation test - actual validation happens at compile time
         assertTrue(
-            "MapLibreMapView must receive at least 12 critical parameters. " +
+            "MapLibreMapView must receive at least 11 critical parameters. " +
             "NEVER replace these with comments during refactoring!",
-            criticalParameters.size >= 12
+            criticalParameters.size >= 11
         )
 
         // Verify each parameter has a clear purpose
@@ -179,8 +153,7 @@ class MapScreenRegressionTest {
             NEVER use comment placeholders like '$antiPattern' in Compose function calls!
             
             This anti-pattern caused a critical bug where:
-            - County borders toggle stopped working
-            - Saved points toggle stopped working  
+            - Saved points toggle stopped working
             - Adding new points stopped working
             - Clicking existing points stopped working
             

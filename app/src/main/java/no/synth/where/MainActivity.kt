@@ -14,7 +14,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -27,7 +26,6 @@ class MainActivity : AppCompatActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
     private var pendingImportUrl by mutableStateOf<String?>(null)
     private var pendingFollowClientId by mutableStateOf<String?>(null)
-    private var regionsLoaded by mutableIntStateOf(0)
     private val userPreferences: UserPreferences get() = (application as WhereApplication).userPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,11 +55,9 @@ class MainActivity : AppCompatActivity() {
                         pendingGpxUri = pendingGpxUri,
                         pendingImportUrl = pendingImportUrl,
                         pendingFollowClientId = pendingFollowClientId,
-                        regionsLoadedTrigger = regionsLoaded,
                         onGpxHandled = { pendingGpxUri = null },
                         onImportUrlHandled = { pendingImportUrl = null },
-                        onFollowHandled = { pendingFollowClientId = null },
-                        onRegionsLoaded = { regionsLoaded++ }
+                        onFollowHandled = { pendingFollowClientId = null }
                     )
                 }
             }
