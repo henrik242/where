@@ -130,6 +130,10 @@
     <string name="theme_system">System Default</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="coordinate_format">Coordinate Format</string>
+    <string name="coord_format_latlng">Lat/Lng</string>
+    <string name="coord_format_utm">UTM</string>
+    <string name="coord_format_mgrs">MGRS</string>
     <string name="attributions">Attributions</string>
     <string name="go_to_attributions">Go to Attributions</string>
     <string name="data_sources">Data Sources</string>

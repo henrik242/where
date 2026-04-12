@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import no.synth.where.data.geo.CoordFormat
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.painterResource
@@ -61,6 +62,8 @@ fun SettingsScreenContent(
     currentThemeLabel: String = "",
     themeOptions: List<LanguageOption> = emptyList(),
     onThemeSelected: (String) -> Unit = {},
+    currentCoordFormat: CoordFormat = CoordFormat.LATLNG,
+    onCoordFormatSelected: (CoordFormat) -> Unit = {},
     onAttributionsClick: () -> Unit = {},
     onSponsorClick: () -> Unit = {},
     highlightOfflineMode: Boolean = false
@@ -290,6 +293,52 @@ fun SettingsScreenContent(
                                     onClick = {
                                         themeExpanded = false
                                         option.tag?.let { onThemeSelected(it) }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider()
+                }
+
+                run {
+                    val coordFormatOptions = listOf(
+                        CoordFormat.LATLNG to stringResource(Res.string.coord_format_latlng),
+                        CoordFormat.UTM to stringResource(Res.string.coord_format_utm),
+                        CoordFormat.MGRS to stringResource(Res.string.coord_format_mgrs),
+                    )
+                    var coordExpanded by remember { mutableStateOf(false) }
+
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { coordExpanded = true }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.coordinate_format),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = coordFormatOptions.first { it.first == currentCoordFormat }.second,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = coordExpanded,
+                            onDismissRequest = { coordExpanded = false }
+                        ) {
+                            coordFormatOptions.forEach { (format, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        coordExpanded = false
+                                        onCoordFormatSelected(format)
                                     }
                                 )
                             }
