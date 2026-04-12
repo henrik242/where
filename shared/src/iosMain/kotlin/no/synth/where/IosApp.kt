@@ -14,10 +14,8 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.DownloadLayers
-import no.synth.where.data.FylkeDownloader
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.OfflineMapManager
-import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
@@ -40,13 +38,9 @@ import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.di.AppDependencies
 import no.synth.where.util.CrashReporter
-import no.synth.where.util.Logger
 import org.jetbrains.compose.resources.stringResource
 import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.util.IosPlatformActions
-import platform.Foundation.NSCachesDirectory
-import platform.Foundation.NSFileManager
-import platform.Foundation.NSUserDomainMask
 import platform.Foundation.NSUserDefaults
 
 enum class Screen {
@@ -77,36 +71,14 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val downloadState by downloadManager.downloadState.collectAsState()
 
-    val cacheDir = remember {
-        val paths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
-        @Suppress("UNCHECKED_CAST")
-        val url = (paths as List<platform.Foundation.NSURL>).first()
-        PlatformFile(url.path ?: "")
-    }
-
     var currentScreen by remember { mutableStateOf(Screen.MAP) }
     var backStack by remember { mutableStateOf(listOf<Screen>()) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
     var selectedLayerId by remember { mutableStateOf("") }
-    var regionsLoaded by remember { mutableStateOf(false) }
     var highlightOfflineMode by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     var clientId by remember { mutableStateOf("") }
-
-    LaunchedEffect(offlineModeEnabled) {
-        if (offlineModeEnabled) return@LaunchedEffect
-        for (attempt in 1..3) {
-            val hasCached = FylkeDownloader.hasCachedData(cacheDir)
-            Logger.d("FylkeDownloader: attempt=%s, hasCachedData=%s", attempt.toString(), hasCached.toString())
-            if (hasCached) break
-            val success = FylkeDownloader.downloadAndCacheFylker(cacheDir)
-            Logger.d("FylkeDownloader: download result=%s", success.toString())
-            if (success) break
-            kotlinx.coroutines.delay(2000L)
-        }
-        regionsLoaded = true
-    }
 
     fun navigateTo(screen: Screen) {
         backStack = backStack + currentScreen

@@ -26,8 +26,6 @@ import no.synth.where.data.MapStyle
 import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.TerrainClient
-import no.synth.where.data.PlatformFile
-import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointUtils
@@ -49,9 +47,6 @@ import no.synth.where.resources.track_saved
 import no.synth.where.resources.unnamed_point
 import no.synth.where.util.NamingUtils
 import org.jetbrains.compose.resources.stringResource
-import platform.Foundation.NSCachesDirectory
-import platform.Foundation.NSFileManager
-import platform.Foundation.NSUserDomainMask
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -72,7 +67,6 @@ fun IosMapScreen(
     var showLayerMenu by remember { mutableStateOf(false) }
     val currentLayer by userPreferences.selectedMapLayer.collectAsState()
     val waymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
-    val countyBorders by userPreferences.showCountyBorders.collectAsState()
     val avalancheZones by userPreferences.showAvalancheZones.collectAsState()
     val hillshade by userPreferences.showHillshade.collectAsState()
     val showSavedPoints by userPreferences.showSavedPoints.collectAsState()
@@ -151,22 +145,12 @@ fun IosMapScreen(
     var rulerTrackName by remember { mutableStateOf("") }
     var isResolvingRulerName by remember { mutableStateOf(false) }
 
-    val cacheDir = remember {
-        val paths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
-        @Suppress("UNCHECKED_CAST")
-        val url = (paths as List<platform.Foundation.NSURL>).first()
-        PlatformFile(url.path ?: "")
-    }
-    val regions = remember { RegionsRepository.getRegions(cacheDir) }
-
-    val styleJson = remember(currentLayer, waymarkedTrails, countyBorders, avalancheZones, hillshade, regions) {
+    val styleJson = remember(currentLayer, waymarkedTrails, avalancheZones, hillshade) {
         MapStyle.getStyle(
             selectedLayer = currentLayer,
-            showCountyBorders = countyBorders,
             showWaymarkedTrails = waymarkedTrails,
             showAvalancheZones = avalancheZones,
             showHillshade = hillshade,
-            regions = regions
         )
     }
 
@@ -511,7 +495,6 @@ fun IosMapScreen(
         showLayerMenu = showLayerMenu,
         selectedLayer = currentLayer,
         showWaymarkedTrails = waymarkedTrails,
-        showCountyBorders = countyBorders,
         showSavedPoints = showSavedPoints,
         showAvalancheZones = avalancheZones,
         showHillshade = hillshade,
@@ -542,7 +525,6 @@ fun IosMapScreen(
         onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!waymarkedTrails) },
         onAvalancheZonesToggle = { userPreferences.updateShowAvalancheZones(!avalancheZones) },
         onHillshadeToggle = { userPreferences.updateShowHillshade(!hillshade) },
-        onCountyBordersToggle = { userPreferences.updateShowCountyBorders(!countyBorders) },
         onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {
             if (isRecording) {

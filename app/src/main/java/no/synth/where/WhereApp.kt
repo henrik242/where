@@ -1,7 +1,6 @@
 package no.synth.where
 
-import android.content.Context
-import android.net.*
+import android.net.Uri
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
@@ -10,9 +9,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.util.CrashReporter
-import no.synth.where.data.FylkeDownloader
-import no.synth.where.data.PlatformFile
-import no.synth.where.data.RegionsRepository
 import no.synth.where.data.SavedPoint
 import no.synth.where.navigation.*
 import no.synth.where.service.LocationTrackingService
@@ -24,11 +20,9 @@ fun WhereApp(
     pendingGpxUri: Uri? = null,
     pendingImportUrl: String? = null,
     pendingFollowClientId: String? = null,
-    regionsLoadedTrigger: Int = 0,
     onGpxHandled: () -> Unit = {},
     onImportUrlHandled: () -> Unit = {},
-    onFollowHandled: () -> Unit = {},
-    onRegionsLoaded: () -> Unit = {}
+    onFollowHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
@@ -36,53 +30,11 @@ fun WhereApp(
     val viewModel: WhereAppViewModel = viewModel { WhereAppViewModel(app.trackRepository, app.userPreferences) }
     val userPreferences = viewModel.userPreferences
     val trackRepository = viewModel.trackRepository
-    val showCountyBorders by userPreferences.showCountyBorders.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
-    var hasDownloadedCounties by remember { mutableStateOf(FylkeDownloader.hasCachedData(PlatformFile(context.cacheDir))) }
-    var isOnline by remember { mutableStateOf(false) }
-
-    DisposableEffect(context) {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-        val networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                isOnline = true
-            }
-
-            override fun onLost(network: Network) {
-                isOnline = false
-            }
-        }
-
-        val networkRequest = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
-
-        connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
-
-        val activeNetwork = connectivityManager.activeNetwork
-        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-        isOnline = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-
-        onDispose {
-            connectivityManager.unregisterNetworkCallback(networkCallback)
-        }
-    }
 
     LaunchedEffect(offlineModeEnabled) {
         org.maplibre.android.MapLibre.setConnected(!offlineModeEnabled)
-    }
-
-    LaunchedEffect(isOnline, showCountyBorders, offlineModeEnabled) {
-        if (isOnline && !offlineModeEnabled && showCountyBorders && !hasDownloadedCounties) {
-            val success = FylkeDownloader.downloadAndCacheFylker(PlatformFile(context.cacheDir))
-            if (success) {
-                hasDownloadedCounties = true
-                RegionsRepository.reloadRegions(PlatformFile(context.cacheDir))
-                onRegionsLoaded()
-            }
-        }
     }
 
     LaunchedEffect(pendingFollowClientId) {
@@ -114,8 +66,7 @@ fun WhereApp(
                 onOfflineSettingsClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
                 onOnlineTrackingSettingsClick = { navController.navigate(OnlineTrackingRoute) },
                 viewingPoint = viewingPoint,
-                onClearViewingPoint = { viewingPoint = null },
-                regionsLoadedTrigger = regionsLoadedTrigger
+                onClearViewingPoint = { viewingPoint = null }
             )
         }
         composable<SettingsRoute> { backStackEntry ->

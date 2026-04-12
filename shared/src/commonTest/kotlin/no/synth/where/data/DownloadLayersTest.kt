@@ -7,8 +7,8 @@ import kotlin.test.assertTrue
 class DownloadLayersTest {
 
     @Test
-    fun hasSevenLayers() {
-        assertEquals(8, DownloadLayers.all.size)
+    fun hasNineLayers() {
+        assertEquals(9, DownloadLayers.all.size)
     }
 
     @Test

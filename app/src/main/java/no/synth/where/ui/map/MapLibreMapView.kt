@@ -20,9 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import no.synth.where.data.MapStyle
-import no.synth.where.data.PlatformFile
 import no.synth.where.data.PlaceSearchClient
-import no.synth.where.data.RegionsRepository
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.Track
@@ -42,7 +40,6 @@ fun MapLibreMapView(
     onMapReady: (MapLibreMap) -> Unit = {},
     selectedLayer: MapLayer = MapLayer.KARTVERKET,
     hasLocationPermission: Boolean = false,
-    showCountyBorders: Boolean = true,
     showWaymarkedTrails: Boolean = false,
     showAvalancheZones: Boolean = false,
     showHillshade: Boolean = false,
@@ -57,7 +54,6 @@ fun MapLibreMapView(
     searchResults: List<PlaceSearchClient.SearchResult> = emptyList(),
     highlightedSearchResult: PlaceSearchClient.SearchResult? = null,
     friendTrackGeoJson: String? = null,
-    regionsLoadedTrigger: Int = 0,
     onRulerPointAdded: (LatLng) -> Unit = {},
     onLongPress: (LatLng) -> Unit = {},
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {},
@@ -106,26 +102,21 @@ fun MapLibreMapView(
 
     LaunchedEffect(
         selectedLayer,
-        showCountyBorders,
         showWaymarkedTrails,
         showAvalancheZones,
         showHillshade,
         showSavedPoints,
         savedPoints.size,
         isOnline,
-        regionsLoadedTrigger,
         map
     ) {
         map?.let { mapInstance ->
             try {
-                val regions = RegionsRepository.getRegions(PlatformFile(context.cacheDir))
                 val styleJson = MapStyle.getStyle(
                     selectedLayer,
-                    showCountyBorders,
                     showWaymarkedTrails,
                     showAvalancheZones,
                     showHillshade = showHillshade,
-                    regions = regions
                 )
                 val viewing = viewingTrack
                 val current = currentTrack
@@ -190,14 +181,11 @@ fun MapLibreMapView(
         if (wasInitialized && isOnline && map != null) {
 
             map?.let { mapInstance ->
-                val regions = RegionsRepository.getRegions(PlatformFile(context.cacheDir))
                 val styleJson = MapStyle.getStyle(
                     selectedLayer,
-                    showCountyBorders,
                     showWaymarkedTrails,
                     showAvalancheZones,
                     showHillshade = showHillshade,
-                    regions = regions
                 )
                 val viewing = viewingTrack
                 val current = currentTrack
@@ -366,14 +354,11 @@ fun MapLibreMapView(
                     // Don't add any click listeners here to avoid conflicts
 
                     try {
-                        val regions = RegionsRepository.getRegions(PlatformFile(ctx.cacheDir))
                         val styleJson = MapStyle.getStyle(
                             selectedLayer,
-                            showCountyBorders,
                             showWaymarkedTrails,
                             showAvalancheZones,
                             showHillshade = showHillshade,
-                            regions = regions
                         )
                         val viewing = viewingTrack
                         val current = currentTrack

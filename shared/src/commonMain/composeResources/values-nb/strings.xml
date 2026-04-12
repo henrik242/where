@@ -49,7 +49,6 @@
     <string name="overlays">Overlegg</string>
     <string name="waymarked_trails_osm">Merkede stier (OSM)</string>
     <string name="avalanche_zones_nve">Brattkart (NVE)</string>
-    <string name="county_borders_norway">Fylkesgrenser (Norge)</string>
     <string name="saved_points">Lagrede punkter</string>
     <string name="stop_recording">Stopp opptak</string>
     <string name="start_recording">Start opptak</string>

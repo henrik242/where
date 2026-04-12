@@ -7,6 +7,4 @@ import no.synth.where.data.UserPreferences
 class WhereAppViewModel(
     val trackRepository: TrackRepository,
     val userPreferences: UserPreferences
-) : ViewModel() {
-    val showCountyBorders = userPreferences.showCountyBorders
-}
+) : ViewModel()

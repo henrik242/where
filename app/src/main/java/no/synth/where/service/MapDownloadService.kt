@@ -24,9 +24,7 @@ import no.synth.where.R
 import no.synth.where.data.DownloadState
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.OfflineTileReader
-import no.synth.where.data.PlatformFile
 import no.synth.where.data.Region
-import no.synth.where.data.RegionsRepository
 import no.synth.where.data.geo.LatLngBounds
 
 class MapDownloadService : Service() {
@@ -66,7 +64,7 @@ class MapDownloadService : Service() {
                     val region = if (!south.isNaN() && !west.isNaN() && !north.isNaN() && !east.isNaN()) {
                         Region(regionName, LatLngBounds(south = south, west = west, north = north, east = east))
                     } else {
-                        RegionsRepository.getRegions(PlatformFile(cacheDir)).find { it.name == regionName }
+                        null
                     }
                     if (region != null) {
                         startDownload(region, layerName, minZoom, maxZoom, downloadDem)

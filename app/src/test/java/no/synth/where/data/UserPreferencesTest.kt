@@ -40,11 +40,6 @@ class UserPreferencesTest {
     }
 
     @Test
-    fun defaults_showCountyBordersIsFalse() {
-        assertEquals(false, prefs.showCountyBorders.value)
-    }
-
-    @Test
     fun defaults_crashReportingEnabledIsTrue() {
         assertEquals(true, prefs.crashReportingEnabled.value)
     }
@@ -52,12 +47,6 @@ class UserPreferencesTest {
     @Test
     fun defaults_onlineTrackingEnabledIsFalse() {
         assertEquals(false, prefs.onlineTrackingEnabled.value)
-    }
-
-    @Test
-    fun updateShowCountyBorders_updatesStateFlow() {
-        prefs.updateShowCountyBorders(true)
-        assertEquals(true, prefs.showCountyBorders.value)
     }
 
     @Test
@@ -92,12 +81,4 @@ class UserPreferencesTest {
         assertEquals(true, prefs.hasSeenTrackingInfo.value)
     }
 
-    @Test
-    fun updatePersistsAndEmits() = runBlocking {
-        prefs.updateShowCountyBorders(true)
-        assertEquals(true, prefs.showCountyBorders.value)
-
-        prefs.updateShowCountyBorders(false)
-        assertEquals(false, prefs.showCountyBorders.value)
-    }
 }

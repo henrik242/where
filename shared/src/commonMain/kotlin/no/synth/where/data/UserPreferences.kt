@@ -27,9 +27,6 @@ import no.synth.where.ui.map.MapLayer
 class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    private val _showCountyBorders = MutableStateFlow(false)
-    val showCountyBorders: StateFlow<Boolean> = _showCountyBorders.asStateFlow()
-
     private val _crashReportingEnabled = MutableStateFlow(true)
     val crashReportingEnabled: StateFlow<Boolean> = _crashReportingEnabled.asStateFlow()
 
@@ -91,7 +88,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     init {
         scope.launch {
             dataStore.data.collect { prefs ->
-                _showCountyBorders.value = prefs[SHOW_COUNTY_BORDERS] ?: false
                 _showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
                 _showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
                 _showAvalancheZones.value = prefs[SHOW_AVALANCHE_ZONES] ?: false
@@ -110,13 +106,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _followedClientId.value = prefs[FOLLOWED_CLIENT_ID]
                 _followHistory.value = prefs[FOLLOW_HISTORY]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
             }
-        }
-    }
-
-    fun updateShowCountyBorders(value: Boolean) {
-        _showCountyBorders.value = value
-        scope.launch {
-            dataStore.edit { it[SHOW_COUNTY_BORDERS] = value }
         }
     }
 
@@ -272,7 +261,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private const val MAX_FOLLOW_HISTORY = 5
         private const val MAX_SEARCH_HISTORY = 10
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
-        private val SHOW_COUNTY_BORDERS = booleanPreferencesKey("show_county_borders")
         private val SHOW_WAYMARKED_TRAILS = booleanPreferencesKey("show_waymarked_trails")
         private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
         private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")

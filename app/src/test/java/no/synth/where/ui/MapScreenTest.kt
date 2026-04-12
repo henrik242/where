@@ -16,40 +16,15 @@ class MapScreenTest {
 
     @Test
     fun mapScreen_requiredParameters_areDocumented() {
-        // This test documents all required parameters for MapScreen
         val requiredParameters = listOf(
             "onSettingsClick",
-            "showCountyBorders",
-            "onShowCountyBordersChange",
-            "showSavedPoints",
-            "onShowSavedPointsChange",
+            "onOfflineSettingsClick",
+            "onOnlineTrackingSettingsClick",
             "viewingPoint",
             "onClearViewingPoint"
         )
 
-        assertEquals("MapScreen must have 7 required parameters", 7, requiredParameters.size)
-    }
-
-    @Test
-    fun countyBordersToggle_changesState() {
-        var showCountyBorders by mutableStateOf(true)
-        var callbackInvoked = false
-
-        val onShowCountyBordersChange: (Boolean) -> Unit = { value ->
-            showCountyBorders = value
-            callbackInvoked = true
-        }
-
-        // Toggle off
-        onShowCountyBordersChange(false)
-        assertFalse("County borders should be off", showCountyBorders)
-        assertTrue("Callback should be invoked", callbackInvoked)
-
-        // Toggle on
-        callbackInvoked = false
-        onShowCountyBordersChange(true)
-        assertTrue("County borders should be on", showCountyBorders)
-        assertTrue("Callback should be invoked", callbackInvoked)
+        assertEquals("MapScreen must have 5 required parameters", 5, requiredParameters.size)
     }
 
     @Test
@@ -112,7 +87,6 @@ class MapScreenTest {
             "onMapReady",
             "selectedLayer",
             "hasLocationPermission",
-            "showCountyBorders",
             "showSavedPoints",
             "savedPoints",
             "currentTrack",
@@ -127,9 +101,9 @@ class MapScreenTest {
         )
 
         assertEquals(
-            "MapLibreMapView must have 15 parameters. " +
+            "MapLibreMapView must have 14 parameters. " +
             "NEVER replace these with comment placeholders during refactoring!",
-            15,
+            14,
             requiredMapLibreMapViewParameters.size
         )
     }
