@@ -10,6 +10,7 @@ import androidx.core.net.toUri
 import androidx.core.os.LocaleListCompat
 import no.synth.where.BuildInfo
 import no.synth.where.data.UserPreferences
+import no.synth.where.data.geo.CoordFormat
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -47,6 +48,7 @@ fun SettingsScreen(
     val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val themeMode by userPreferences.themeMode.collectAsState()
+    val coordFormat by userPreferences.coordFormat.collectAsState()
     val currentThemeLabel = themeOptions.find { it.tag == themeMode }?.displayName
         ?: themeOptions.first().displayName
 
@@ -74,6 +76,8 @@ fun SettingsScreen(
         currentThemeLabel = currentThemeLabel,
         themeOptions = themeOptions,
         onThemeSelected = { userPreferences.updateThemeMode(it) },
+        currentCoordFormat = coordFormat,
+        onCoordFormatSelected = { userPreferences.updateCoordFormat(it) },
         onAttributionsClick = onAttributionsClick,
         onSponsorClick = {
             context.startActivity(Intent(Intent.ACTION_VIEW, "https://buymeacoffee.com/henrik242".toUri()))

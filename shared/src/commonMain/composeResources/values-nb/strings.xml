@@ -130,6 +130,10 @@
     <string name="theme_system">Systemstandard</string>
     <string name="theme_light">Lyst</string>
     <string name="theme_dark">Mørkt</string>
+    <string name="coordinate_format">Koordinatformat</string>
+    <string name="coord_format_latlng">Lat/Lng</string>
+    <string name="coord_format_utm">UTM</string>
+    <string name="coord_format_mgrs">MGRS</string>
     <string name="sponsor">Støtt prosjektet</string>
     <string name="sponsor_description">Kjøp meg en kaffe</string>
     <string name="crash_reporting">Krasjrapportering</string>
