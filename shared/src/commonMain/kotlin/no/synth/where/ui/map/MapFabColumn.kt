@@ -60,6 +60,7 @@ fun MapFabColumn(
     showSavedPoints: Boolean,
     showAvalancheZones: Boolean,
     showHillshade: Boolean = false,
+    showCoordGrid: Boolean = false,
     onSearchClick: () -> Unit,
     onLayerMenuToggle: (Boolean) -> Unit,
     onLayerSelected: (MapLayer) -> Unit,
@@ -67,6 +68,7 @@ fun MapFabColumn(
     onSavedPointsToggle: () -> Unit,
     onAvalancheZonesToggle: () -> Unit,
     onHillshadeToggle: () -> Unit = {},
+    onCoordGridToggle: () -> Unit = {},
     onRecordStopClick: () -> Unit,
     onMyLocationClick: () -> Unit,
     onRulerToggle: () -> Unit,
@@ -111,6 +113,7 @@ fun MapFabColumn(
             LayerMenuItem(stringResource(Res.string.avalanche_zones_nve), showAvalancheZones) { onAvalancheZonesToggle() }
             LayerMenuItem(stringResource(Res.string.hillshade), showHillshade) { onHillshadeToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
+            LayerMenuItem(stringResource(Res.string.coordinate_grid), showCoordGrid) { onCoordGridToggle() }
             LayerMenuItem(stringResource(Res.string.crosshair), crosshairActive) { onCrosshairToggle() }
             }
         }
