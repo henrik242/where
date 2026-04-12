@@ -131,10 +131,12 @@ fun IosMapScreen(
     var showPointInfoDialog by remember { mutableStateOf(false) }
     var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
+    val showCoordGrid by userPreferences.showCoordGrid.collectAsState()
     val crosshairActive by userPreferences.crosshairActive.collectAsState()
     var crosshairInfo by remember { mutableStateOf(CrosshairInfo()) }
     val coordFormat by userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var cameraZoom by remember { mutableStateOf(5.0) }
     var isCompassVisible by remember { mutableStateOf(false) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var twoFingerMeasurement by remember { mutableStateOf<TwoFingerMeasurement?>(null) }
@@ -181,11 +183,12 @@ fun IosMapScreen(
             }
     }
 
-    // Camera move callback for crosshair
+    // Camera move callback for crosshair and grid
     DisposableEffect(Unit) {
         mapViewProvider.setOnCameraMoveCallback(object : MapCameraMoveCallback {
-            override fun onCameraMove(latitude: Double, longitude: Double, bearing: Double) {
+            override fun onCameraMove(latitude: Double, longitude: Double, zoom: Double, bearing: Double) {
                 centerLatLng = LatLng(latitude, longitude)
+                cameraZoom = zoom
                 isCompassVisible = when {
                     bearing > 2.0 && bearing < 358.0 -> true
                     bearing < 0.5 || bearing > 359.5 -> false
@@ -256,6 +259,22 @@ fun IosMapScreen(
         } else {
             CrosshairInfo()
         }
+    }
+
+    // Coordinate grid overlay
+    LaunchedEffect(showCoordGrid, coordFormat) {
+        if (!showCoordGrid) {
+            mapViewProvider.clearCoordGrid()
+            return@LaunchedEffect
+        }
+        snapshotFlow { Pair(centerLatLng, cameraZoom) }
+            .debounce(200)
+            .collect { (center, zoom) ->
+                val lat = center?.latitude ?: return@collect
+                val lng = center.longitude
+                val geoJson = CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat)
+                mapViewProvider.updateCoordGrid(geoJson)
+            }
     }
 
     // Animate camera to viewing point
@@ -498,6 +517,7 @@ fun IosMapScreen(
         showSavedPoints = showSavedPoints,
         showAvalancheZones = avalancheZones,
         showHillshade = hillshade,
+        showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
         centerLatLng = centerLatLng,
@@ -525,6 +545,7 @@ fun IosMapScreen(
         onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!waymarkedTrails) },
         onAvalancheZonesToggle = { userPreferences.updateShowAvalancheZones(!avalancheZones) },
         onHillshadeToggle = { userPreferences.updateShowHillshade(!hillshade) },
+        onCoordGridToggle = { userPreferences.updateShowCoordGrid(!showCoordGrid) },
         onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {
             if (isRecording) {

@@ -79,7 +79,7 @@ fun IosLayerHexMapScreen(
 
     DisposableEffect(Unit) {
         hexMapViewProvider.setOnCameraMoveCallback(object : MapCameraMoveCallback {
-            override fun onCameraMove(latitude: Double, longitude: Double, bearing: Double) {
+            override fun onCameraMove(latitude: Double, longitude: Double, zoom: Double, bearing: Double) {
                 isCompassVisible = when {
                     bearing > 2.0 && bearing < 358.0 -> true
                     bearing < 0.5 || bearing > 359.5 -> false

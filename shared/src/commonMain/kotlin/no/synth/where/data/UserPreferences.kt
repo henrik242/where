@@ -70,6 +70,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _showHillshade = MutableStateFlow(false)
     val showHillshade: StateFlow<Boolean> = _showHillshade.asStateFlow()
 
+    private val _showCoordGrid = MutableStateFlow(false)
+    val showCoordGrid: StateFlow<Boolean> = _showCoordGrid.asStateFlow()
+
     private val _crosshairActive = MutableStateFlow(false)
     val crosshairActive: StateFlow<Boolean> = _crosshairActive.asStateFlow()
 
@@ -92,6 +95,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
                 _showAvalancheZones.value = prefs[SHOW_AVALANCHE_ZONES] ?: false
                 _showHillshade.value = prefs[SHOW_HILLSHADE] ?: false
+                _showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
                 _selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
@@ -127,6 +131,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     fun updateShowHillshade(value: Boolean) {
         _showHillshade.value = value
         scope.launch { dataStore.edit { it[SHOW_HILLSHADE] = value } }
+    }
+
+    fun updateShowCoordGrid(value: Boolean) {
+        _showCoordGrid.value = value
+        scope.launch { dataStore.edit { it[SHOW_COORD_GRID] = value } }
     }
 
     fun updateCrosshairActive(value: Boolean) {
@@ -265,6 +274,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
         private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")
         private val SHOW_HILLSHADE = booleanPreferencesKey("show_hillshade")
+        private val SHOW_COORD_GRID = booleanPreferencesKey("show_coord_grid")
         private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")
         private val SELECTED_MAP_LAYER = stringPreferencesKey("selected_map_layer")
         private val HAS_SEEN_TRACKING_INFO = booleanPreferencesKey("has_seen_tracking_info")

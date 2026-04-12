@@ -57,7 +57,8 @@ fun MapLibreMapView(
     onRulerPointAdded: (LatLng) -> Unit = {},
     onLongPress: (LatLng) -> Unit = {},
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {},
-    onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {}
+    onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
+    coordGridGeoJson: String? = null
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
@@ -131,6 +132,7 @@ fun MapLibreMapView(
                                 hasLocationPermission
                             )
                             val trackToShow = current ?: viewing
+                            MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
                             MapRenderUtils.updateTrackOnMap(
                                 style,
                                 trackToShow,
@@ -202,6 +204,7 @@ fun MapLibreMapView(
                                     hasLocationPermission
                                 )
                                 val trackToShow = current ?: viewing
+                                MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
                                 MapRenderUtils.updateTrackOnMap(
                                     style,
                                     trackToShow,
@@ -246,6 +249,12 @@ fun MapLibreMapView(
     LaunchedEffect(friendTrackGeoJson, map) {
         map?.style?.let { style ->
             MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
+        }
+    }
+
+    LaunchedEffect(coordGridGeoJson, map) {
+        map?.style?.let { style ->
+            MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
         }
     }
 
@@ -378,6 +387,7 @@ fun MapLibreMapView(
                                         trackToShow,
                                         isCurrentTrack = current != null
                                     )
+                                    MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
                                     MapRenderUtils.updateRulerOnMap(style, rulerState)
                                     MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
                                     mapInstance.triggerRepaint()

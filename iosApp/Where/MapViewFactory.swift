@@ -15,6 +15,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingSearchHighlightGeoJson: String?
     private var pendingFriendTrackGeoJson: String?
     private var pendingFriendTrackColor: String?
+    private var pendingCoordGridGeoJson: String?
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
@@ -39,6 +40,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let friendTrackLineLayerId = "friend-track-line-layer"
     private let friendTrackPointLayerId = "friend-track-point-layer"
     private let friendTrackLabelLayerId = "friend-track-label-layer"
+    private let coordGridSourceId = "coord-grid-source"
+    private let coordGridLayerId = "coord-grid-line-layer"
+    private let coordGridZoneLayerId = "coord-grid-zone-layer"
+    private let coordGridLabelLayerId = "coord-grid-label-layer"
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -308,6 +313,20 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
                 KotlinDouble(value: center.longitude)]
     }
 
+    func updateCoordGrid(geoJson: String) {
+        guard let mapView = self.mapView, let style = mapView.style else {
+            pendingCoordGridGeoJson = geoJson
+            return
+        }
+        applyCoordGrid(style: style, geoJson: geoJson)
+    }
+
+    func clearCoordGrid() {
+        pendingCoordGridGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeCoordGrid(style: style)
+    }
+
     func setOnCameraMoveCallback(callback: MapCameraMoveCallback?) {
         self.cameraMoveCallback = callback
     }
@@ -334,12 +353,12 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
     func mapViewRegionIsChanging(_ mapView: MLNMapView) {
         let center = mapView.centerCoordinate
-        cameraMoveCallback?.onCameraMove(latitude: center.latitude, longitude: center.longitude, bearing: mapView.direction)
+        cameraMoveCallback?.onCameraMove(latitude: center.latitude, longitude: center.longitude, zoom: mapView.zoomLevel, bearing: mapView.direction)
     }
 
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
         let center = mapView.centerCoordinate
-        cameraMoveCallback?.onCameraMove(latitude: center.latitude, longitude: center.longitude, bearing: mapView.direction)
+        cameraMoveCallback?.onCameraMove(latitude: center.latitude, longitude: center.longitude, zoom: mapView.zoomLevel, bearing: mapView.direction)
     }
 
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
@@ -360,6 +379,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
         if let geoJson = pendingFriendTrackGeoJson, let color = pendingFriendTrackColor {
             applyFriendTrackLine(style: style, geoJson: geoJson, color: color)
+        }
+        if let geoJson = pendingCoordGridGeoJson {
+            applyCoordGrid(style: style, geoJson: geoJson)
         }
     }
 
@@ -592,6 +614,57 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
         pendingFriendTrackGeoJson = geoJson
         pendingFriendTrackColor = color
+    }
+
+    private func applyCoordGrid(style: MLNStyle, geoJson: String) {
+        guard let data = geoJson.data(using: .utf8),
+              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+            return
+        }
+
+        if let existingSource = style.source(withIdentifier: coordGridSourceId) as? MLNShapeSource {
+            existingSource.shape = shape
+        } else {
+            removeCoordGrid(style: style)
+            let source = MLNShapeSource(identifier: coordGridSourceId, shape: shape, options: nil)
+            style.addSource(source)
+
+            let belowIds = [trackLayerId, rulerLineLayerId, friendTrackLineLayerId, savedPointsLayerId]
+            let belowLayer = belowIds.lazy.compactMap({ style.layer(withIdentifier: $0) }).first
+
+            let zoneLayer = MLNLineStyleLayer(identifier: coordGridZoneLayerId, source: source)
+            zoneLayer.lineColor = NSExpression(forConstantValue: UIColor.black)
+            zoneLayer.lineWidth = NSExpression(forConstantValue: 1.5)
+            zoneLayer.lineOpacity = NSExpression(forConstantValue: 0.5)
+            zoneLayer.predicate = NSPredicate(format: "zone != nil")
+            if let below = belowLayer { style.insertLayer(zoneLayer, below: below) } else { style.addLayer(zoneLayer) }
+
+            let lineLayer = MLNLineStyleLayer(identifier: coordGridLayerId, source: source)
+            lineLayer.lineColor = NSExpression(forConstantValue: UIColor.black)
+            lineLayer.lineWidth = NSExpression(forConstantValue: 0.8)
+            lineLayer.lineOpacity = NSExpression(forConstantValue: 0.3)
+            lineLayer.predicate = NSPredicate(format: "zone = nil")
+            if let below = belowLayer { style.insertLayer(lineLayer, below: below) } else { style.addLayer(lineLayer) }
+
+            let labelLayer = MLNSymbolStyleLayer(identifier: coordGridLabelLayerId, source: source)
+            labelLayer.text = NSExpression(forKeyPath: "label")
+            labelLayer.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
+            labelLayer.textFontSize = NSExpression(forConstantValue: 10)
+            labelLayer.textColor = NSExpression(forConstantValue: UIColor.black.withAlphaComponent(0.6))
+            labelLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
+            labelLayer.textHaloWidth = NSExpression(forConstantValue: 1.5)
+            labelLayer.textAnchor = NSExpression(forKeyPath: "anchor")
+            if let below = belowLayer { style.insertLayer(labelLayer, below: below) } else { style.addLayer(labelLayer) }
+        }
+
+        pendingCoordGridGeoJson = geoJson
+    }
+
+    private func removeCoordGrid(style: MLNStyle) {
+        if let layer = style.layer(withIdentifier: coordGridLabelLayerId) { style.removeLayer(layer) }
+        if let layer = style.layer(withIdentifier: coordGridLayerId) { style.removeLayer(layer) }
+        if let layer = style.layer(withIdentifier: coordGridZoneLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: coordGridSourceId) { style.removeSource(source) }
     }
 
     private func removeFriendTrackLine(style: MLNStyle) {

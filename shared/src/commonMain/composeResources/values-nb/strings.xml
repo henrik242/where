@@ -216,6 +216,7 @@
     <!-- Crosshair -->
     <string name="hillshade">Terrengskygge</string>
     <string name="crosshair">Kryssmarkør</string>
+    <string name="coordinate_grid">Koordinatrutenett</string>
     <string name="elevation_format">%1$s m</string>
     <string name="slope_format">%1$s°</string>
     <string name="loading_dots">…</string>

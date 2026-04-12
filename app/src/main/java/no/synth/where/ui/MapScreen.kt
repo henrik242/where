@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,7 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.LiveTrackingFollower
@@ -44,6 +47,7 @@ import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.service.LocationTrackingService
+import no.synth.where.ui.map.CoordGrid
 import no.synth.where.ui.map.MapDialogs
 import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.MapLibreMapView
@@ -154,6 +158,7 @@ fun MapScreen(
     val showWaymarkedTrails by viewModel.userPreferences.showWaymarkedTrails.collectAsState()
     val showAvalancheZones by viewModel.userPreferences.showAvalancheZones.collectAsState()
     val showHillshade by viewModel.userPreferences.showHillshade.collectAsState()
+    val showCoordGrid by viewModel.userPreferences.showCoordGrid.collectAsState()
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasBackgroundLocationPermission by remember {
         mutableStateOf(
@@ -181,6 +186,21 @@ fun MapScreen(
     var savedCameraLat by rememberSaveable { mutableDoubleStateOf(65.0) }
     var savedCameraLon by rememberSaveable { mutableDoubleStateOf(10.0) }
     var savedCameraZoom by rememberSaveable { mutableDoubleStateOf(5.0) }
+
+    var coordGridGeoJson by remember { mutableStateOf<String?>(null) }
+
+    @OptIn(FlowPreview::class)
+    LaunchedEffect(showCoordGrid, coordFormat) {
+        if (!showCoordGrid) {
+            coordGridGeoJson = null
+            return@LaunchedEffect
+        }
+        snapshotFlow { Triple(savedCameraLat, savedCameraLon, savedCameraZoom) }
+            .debounce(200)
+            .collect { (lat, lng, zoom) ->
+                coordGridGeoJson = CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat)
+            }
+    }
 
     // Pre-resolve string resources for use in lambdas
     val recordingMsg = stringResource(Res.string.recording_snackbar)
@@ -367,6 +387,7 @@ fun MapScreen(
         showSavedPoints = showSavedPoints,
         showAvalancheZones = showAvalancheZones,
         showHillshade = showHillshade,
+        showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
         centerLatLng = centerLatLng,
@@ -399,6 +420,9 @@ fun MapScreen(
         },
         onHillshadeToggle = {
             viewModel.userPreferences.updateShowHillshade(!showHillshade); showLayerMenu = false
+        },
+        onCoordGridToggle = {
+            viewModel.userPreferences.updateShowCoordGrid(!showCoordGrid); showLayerMenu = false
         },
         onSavedPointsToggle = { viewModel.userPreferences.updateShowSavedPoints(!showSavedPoints); showLayerMenu = false },
         onRecordStopClick = {
@@ -544,7 +568,8 @@ fun MapScreen(
                 onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },
                 onPointClick = { point -> viewModel.openPointInfoDialog(point) },
-                onTwoFingerMeasure = { twoFingerMeasurement = it }
+                onTwoFingerMeasure = { twoFingerMeasurement = it },
+                coordGridGeoJson = coordGridGeoJson
             )
         }
     )

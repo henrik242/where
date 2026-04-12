@@ -11,7 +11,7 @@ interface MapClickCallback {
 }
 
 interface MapCameraMoveCallback {
-    fun onCameraMove(latitude: Double, longitude: Double, bearing: Double)
+    fun onCameraMove(latitude: Double, longitude: Double, zoom: Double, bearing: Double)
 }
 
 interface MapTwoFingerTouchCallback {
@@ -51,6 +51,8 @@ interface MapViewProvider {
     fun clearFriendTrackLine()
     fun setConnected(connected: Boolean)
     fun getCameraCenter(): List<Double>?
+    fun updateCoordGrid(geoJson: String)
+    fun clearCoordGrid()
     fun setOnCameraMoveCallback(callback: MapCameraMoveCallback?)
     fun setOnTwoFingerTouchCallback(callback: MapTwoFingerTouchCallback?)
 }

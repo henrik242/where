@@ -325,6 +325,69 @@ object MapRenderUtils {
         }
     }
 
+    fun updateCoordGridOnMap(style: Style, geoJson: String?) {
+        try {
+            val sourceId = "coord-grid-source"
+            val lineLayerId = "coord-grid-line-layer"
+            val zoneLayerId = "coord-grid-zone-layer"
+            val labelLayerId = "coord-grid-label-layer"
+
+            if (geoJson == null) {
+                style.getLayer(labelLayerId)?.let { style.removeLayer(it) }
+                style.getLayer(lineLayerId)?.let { style.removeLayer(it) }
+                style.getLayer(zoneLayerId)?.let { style.removeLayer(it) }
+                style.getSource(sourceId)?.let { style.removeSource(it) }
+                return
+            }
+
+            val fc = FeatureCollection.fromJson(geoJson)
+
+            val existingSource = style.getSourceAs<GeoJsonSource>(sourceId)
+            if (existingSource != null) {
+                existingSource.setGeoJson(fc)
+            } else {
+                val source = GeoJsonSource(sourceId, fc)
+                style.addSource(source)
+
+                val overlayBelow = listOf("track-layer", "ruler-line-layer", "friend-track-line-layer", "saved-points-layer")
+                    .firstOrNull { style.getLayer(it) != null }
+
+                val zoneLayer = LineLayer(zoneLayerId, sourceId).withProperties(
+                    PropertyFactory.lineColor("#000000"),
+                    PropertyFactory.lineWidth(1.5f),
+                    PropertyFactory.lineOpacity(0.5f)
+                )
+                zoneLayer.setFilter(Expression.has("zone"))
+                if (overlayBelow != null) style.addLayerBelow(zoneLayer, overlayBelow) else style.addLayer(zoneLayer)
+
+                val lineLayer = LineLayer(lineLayerId, sourceId).withProperties(
+                    PropertyFactory.lineColor("#000000"),
+                    PropertyFactory.lineWidth(0.8f),
+                    PropertyFactory.lineOpacity(0.3f)
+                )
+                lineLayer.setFilter(Expression.not(Expression.has("zone")))
+                if (overlayBelow != null) style.addLayerBelow(lineLayer, overlayBelow) else style.addLayer(lineLayer)
+
+                val labelLayer = SymbolLayer(labelLayerId, sourceId).withProperties(
+                    PropertyFactory.textField(Expression.get("label")),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textSize(10f),
+                    PropertyFactory.textColor("#000000"),
+                    PropertyFactory.textOpacity(0.6f),
+                    PropertyFactory.textHaloColor("#FFFFFF"),
+                    PropertyFactory.textHaloWidth(1.5f),
+                    PropertyFactory.textAnchor(Expression.get("anchor")),
+                    PropertyFactory.textAllowOverlap(false),
+                    PropertyFactory.textIgnorePlacement(false),
+                    PropertyFactory.textPadding(2f)
+                )
+                if (overlayBelow != null) style.addLayerBelow(labelLayer, overlayBelow) else style.addLayer(labelLayer)
+            }
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
     /**
      * Enable location component on the map.
      */

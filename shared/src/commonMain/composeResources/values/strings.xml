@@ -207,6 +207,7 @@
     <!-- Crosshair -->
     <string name="hillshade">Hillshade</string>
     <string name="crosshair">Crosshair</string>
+    <string name="coordinate_grid">Coordinate Grid</string>
     <string name="elevation_format">%1$s m</string>
     <string name="slope_format">%1$s°</string>
     <string name="loading_dots">…</string>

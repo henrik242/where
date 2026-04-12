@@ -10,6 +10,8 @@ import kotlin.math.sqrt
 import kotlin.math.tan
 import no.synth.where.util.roundToDecimals
 
+data class UtmResult(val zone: Int, val letter: Char, val easting: Double, val northing: Double)
+
 enum class CoordFormat {
     UTM, MGRS, LATLNG;
 
@@ -21,6 +23,15 @@ enum class CoordFormat {
 }
 
 object CoordinateFormatter {
+
+    // WGS84 ellipsoid constants
+    private const val UTM_A = 6378137.0
+    private const val UTM_F = 1 / 298.257223563
+    private const val UTM_K0 = 0.9996
+    private val UTM_E = sqrt(2 * UTM_F - UTM_F * UTM_F)
+    private val UTM_E2 = UTM_E * UTM_E
+    private val UTM_EP2 = UTM_E2 / (1 - UTM_E2)
+    private val UTM_E1 = (1 - sqrt(1 - UTM_E2)) / (1 + sqrt(1 - UTM_E2))
 
     fun formatLatLng(latLng: LatLng): String {
         val latDir = if (latLng.latitude >= 0) "N" else "S"
@@ -61,16 +72,50 @@ object CoordinateFormatter {
         return "$col$row"
     }
 
-    private data class UtmResult(val zone: Int, val letter: Char, val easting: Double, val northing: Double)
+    fun latLngToUtm(lat: Double, lon: Double): UtmResult {
+        val zone = computeUtmZone(lat, lon)
+        return latLngToUtmInZone(lat, lon, zone)
+    }
 
-    private fun latLngToUtm(lat: Double, lon: Double): UtmResult {
-        val a = 6378137.0
-        val f = 1 / 298.257223563
-        val k0 = 0.9996
-        val e = sqrt(2 * f - f * f)
-        val e2 = e * e
-        val ep2 = e2 / (1 - e2)
+    fun latLngToUtmInZone(lat: Double, lon: Double, zone: Int): UtmResult {
+        val lonOrigin = (zone - 1) * 6.0 - 180.0 + 3.0
+        val latRad = lat * PI / 180.0
+        val lonRad = (lon - lonOrigin) * PI / 180.0
 
+        val n = UTM_A / sqrt(1 - UTM_E2 * sin(latRad) * sin(latRad))
+        val t = tan(latRad) * tan(latRad)
+        val c = UTM_EP2 * cos(latRad) * cos(latRad)
+        val aCoeff = cos(latRad) * lonRad
+
+        val m = UTM_A * (
+            (1 - UTM_E2 / 4 - 3 * UTM_E2 * UTM_E2 / 64 - 5 * UTM_E2 * UTM_E2 * UTM_E2 / 256) * latRad -
+            (3 * UTM_E2 / 8 + 3 * UTM_E2 * UTM_E2 / 32 + 45 * UTM_E2 * UTM_E2 * UTM_E2 / 1024) * sin(2 * latRad) +
+            (15 * UTM_E2 * UTM_E2 / 256 + 45 * UTM_E2 * UTM_E2 * UTM_E2 / 1024) * sin(4 * latRad) -
+            (35 * UTM_E2 * UTM_E2 * UTM_E2 / 3072) * sin(6 * latRad)
+        )
+
+        var easting = UTM_K0 * n * (
+            aCoeff +
+            (1 - t + c) * aCoeff * aCoeff * aCoeff / 6 +
+            (5 - 18 * t + t * t + 72 * c - 58 * UTM_EP2) * aCoeff * aCoeff * aCoeff * aCoeff * aCoeff / 120
+        ) + 500000.0
+
+        var northing = UTM_K0 * (
+            m + n * tan(latRad) * (
+                aCoeff * aCoeff / 2 +
+                (5 - t + 9 * c + 4 * c * c) * aCoeff * aCoeff * aCoeff * aCoeff / 24 +
+                (61 - 58 * t + t * t + 600 * c - 330 * UTM_EP2) * aCoeff * aCoeff * aCoeff * aCoeff * aCoeff * aCoeff / 720
+            )
+        )
+
+        if (lat < 0) northing += 10000000.0
+
+        val letter = utmLetterDesignator(lat)
+
+        return UtmResult(zone, letter, easting, northing)
+    }
+
+    private fun computeUtmZone(lat: Double, lon: Double): Int {
         var zone = floor((lon + 180.0) / 6.0).toInt() + 1
 
         // Norway special zones
@@ -83,42 +128,46 @@ object CoordinateFormatter {
                 lon >= 33.0 && lon < 42.0 -> zone = 37
             }
         }
+        return zone
+    }
+
+    fun utmToLatLng(zone: Int, easting: Double, northing: Double, northern: Boolean): LatLng {
+        val x = easting - 500000.0
+        val y = if (northern) northing else northing - 10000000.0
+
+        val m = y / UTM_K0
+        val mu = m / (UTM_A * (1 - UTM_E2 / 4 - 3 * UTM_E2 * UTM_E2 / 64 - 5 * UTM_E2 * UTM_E2 * UTM_E2 / 256))
+
+        val phi1 = mu +
+            (3 * UTM_E1 / 2 - 27 * UTM_E1 * UTM_E1 * UTM_E1 / 32) * sin(2 * mu) +
+            (21 * UTM_E1 * UTM_E1 / 16 - 55 * UTM_E1 * UTM_E1 * UTM_E1 * UTM_E1 / 32) * sin(4 * mu) +
+            (151 * UTM_E1 * UTM_E1 * UTM_E1 / 96) * sin(6 * mu) +
+            (1097 * UTM_E1 * UTM_E1 * UTM_E1 * UTM_E1 / 512) * sin(8 * mu)
+
+        val sinPhi1 = sin(phi1)
+        val cosPhi1 = cos(phi1)
+        val tanPhi1 = tan(phi1)
+        val n1 = UTM_A / sqrt(1 - UTM_E2 * sinPhi1 * sinPhi1)
+        val t1 = tanPhi1 * tanPhi1
+        val c1 = UTM_EP2 * cosPhi1 * cosPhi1
+        val denom = 1 - UTM_E2 * sinPhi1 * sinPhi1
+        val r1 = UTM_A * (1 - UTM_E2) / (denom * sqrt(denom))
+        val d = x / (n1 * UTM_K0)
+
+        val latRad = phi1 - (n1 * tanPhi1 / r1) * (
+            d * d / 2 -
+            (5 + 3 * t1 + 10 * c1 - 4 * c1 * c1 - 9 * UTM_EP2) * d * d * d * d / 24 +
+            (61 + 90 * t1 + 298 * c1 + 45 * t1 * t1 - 252 * UTM_EP2 - 3 * c1 * c1) * d * d * d * d * d * d / 720
+        )
 
         val lonOrigin = (zone - 1) * 6.0 - 180.0 + 3.0
-        val latRad = lat * PI / 180.0
-        val lonRad = (lon - lonOrigin) * PI / 180.0
+        val lonDiffRad = (
+            d -
+            (1 + 2 * t1 + c1) * d * d * d / 6 +
+            (5 - 2 * c1 + 28 * t1 - 3 * c1 * c1 + 8 * UTM_EP2 + 24 * t1 * t1) * d * d * d * d * d / 120
+        ) / cosPhi1
 
-        val n = a / sqrt(1 - e2 * sin(latRad) * sin(latRad))
-        val t = tan(latRad) * tan(latRad)
-        val c = ep2 * cos(latRad) * cos(latRad)
-        val aCoeff = cos(latRad) * lonRad
-
-        val m = a * (
-            (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256) * latRad -
-            (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 * e2 * e2 / 1024) * sin(2 * latRad) +
-            (15 * e2 * e2 / 256 + 45 * e2 * e2 * e2 / 1024) * sin(4 * latRad) -
-            (35 * e2 * e2 * e2 / 3072) * sin(6 * latRad)
-        )
-
-        var easting = k0 * n * (
-            aCoeff +
-            (1 - t + c) * aCoeff * aCoeff * aCoeff / 6 +
-            (5 - 18 * t + t * t + 72 * c - 58 * ep2) * aCoeff * aCoeff * aCoeff * aCoeff * aCoeff / 120
-        ) + 500000.0
-
-        var northing = k0 * (
-            m + n * tan(latRad) * (
-                aCoeff * aCoeff / 2 +
-                (5 - t + 9 * c + 4 * c * c) * aCoeff * aCoeff * aCoeff * aCoeff / 24 +
-                (61 - 58 * t + t * t + 600 * c - 330 * ep2) * aCoeff * aCoeff * aCoeff * aCoeff * aCoeff * aCoeff / 720
-            )
-        )
-
-        if (lat < 0) northing += 10000000.0
-
-        val letter = utmLetterDesignator(lat)
-
-        return UtmResult(zone, letter, easting, northing)
+        return LatLng(latRad * 180.0 / PI, lonOrigin + lonDiffRad * 180.0 / PI)
     }
 
     private fun utmLetterDesignator(lat: Double): Char = when {
