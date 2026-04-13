@@ -14,10 +14,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import no.synth.where.BuildInfo
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.GeocodingHelper
@@ -272,7 +274,9 @@ fun IosMapScreen(
             .collect { (center, zoom) ->
                 val lat = center?.latitude ?: return@collect
                 val lng = center.longitude
-                val geoJson = CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat)
+                val geoJson = withContext(Dispatchers.Default) {
+                    CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat)
+                }
                 mapViewProvider.updateCoordGrid(geoJson)
             }
     }

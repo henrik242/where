@@ -30,6 +30,23 @@ object CoordGrid {
         )
     }
 
+    /**
+     * Approximates the actual on-screen viewport (for label placement). The
+     * horizontal span is tighter than vertical because phones are taller than
+     * wide; this keeps left/right-edge labels well inside the visible area.
+     */
+    private fun viewportBounds(centerLat: Double, centerLng: Double, zoom: Double): LatLngBounds {
+        val tileSpan = 360.0 / 2.0.pow(zoom)
+        val halfSpanLng = tileSpan * 0.35
+        val halfSpanLat = tileSpan * 0.6
+        return LatLngBounds(
+            south = (centerLat - halfSpanLat).coerceIn(-80.0, 84.0),
+            north = (centerLat + halfSpanLat).coerceIn(-80.0, 84.0),
+            west = (centerLng - halfSpanLng).coerceAtLeast(-180.0),
+            east = (centerLng + halfSpanLng).coerceAtMost(180.0)
+        )
+    }
+
     private fun utmGridBounds(centerLat: Double, centerLng: Double, spacing: Double): LatLngBounds {
         val halfMeters = spacing * 80.0
         val halfLat = halfMeters / 111320.0
@@ -60,7 +77,7 @@ object CoordGrid {
     }
 
     private fun utmGridSpacing(zoom: Double): Double = when {
-        zoom < 7 -> -1.0
+        zoom < 8 -> -1.0
         zoom < 10 -> 10000.0
         else -> 1000.0
     }
@@ -102,42 +119,178 @@ object CoordGrid {
     private fun buildUtmGrid(centerLat: Double, centerLng: Double, zoom: Double): String {
         val spacing = utmGridSpacing(zoom)
         val f = Features()
-
         val viewBounds = lineBounds(centerLat, centerLng, zoom)
-        appendZoneBoundaries(f, viewBounds)
 
+        val labelBounds = viewportBounds(centerLat, centerLng, zoom)
         if (spacing > 0) {
+            // Close zoom: curved per-zone UTM grid only — no latlng-aligned overlay.
             val bounds = utmGridBounds(centerLat, centerLng, spacing)
-            val zone = CoordinateFormatter.latLngToUtm(centerLat, centerLng).zone
+            val utm = CoordinateFormatter.latLngToUtm(centerLat, centerLng)
+            val zone = utm.zone
+            val range = zoneRange(zone, utm.letter) ?: standardZoneRange(zone)
             val off = labelOffset(zoom)
 
             if (bounds.south < 0 && bounds.north > 0) {
                 val southBounds = LatLngBounds(bounds.south, bounds.west, 0.0, bounds.east)
                 val northBounds = LatLngBounds(0.0, bounds.west, bounds.north, bounds.east)
-                appendUtmZoneGrid(f, southBounds, spacing, false, zone, centerLat, centerLng, off)
-                appendUtmZoneGrid(f, northBounds, spacing, true, zone, centerLat, centerLng, off)
+                appendUtmZoneGrid(f, southBounds, spacing, false, zone, centerLat, centerLng, off,
+                    zoneWest = range.first, zoneEast = range.second)
+                appendUtmZoneGrid(f, northBounds, spacing, true, zone, centerLat, centerLng, off,
+                    zoneWest = range.first, zoneEast = range.second)
             } else {
-                appendUtmZoneGrid(f, bounds, spacing, centerLat >= 0, zone, centerLat, centerLng, off)
+                appendUtmZoneGrid(f, bounds, spacing, centerLat >= 0, zone, centerLat, centerLng, off,
+                    zoneWest = range.first, zoneEast = range.second)
             }
+        } else {
+            // Global view: MGRS zone/band borders.
+            // At zoom < 3 the inner per-zone UTM grid is skipped — world-scale
+            // navigation isn't done in UTM, and the density (60 zones × many
+            // lines) would be unreadable.
+            if (zoom >= 3.0) {
+                val coarseSpacing = globalUtmSpacing(zoom)
+                forEachVisibleCell(viewBounds) { cell ->
+                    val cellBounds = LatLngBounds(
+                        south = maxOf(cell.south, viewBounds.south),
+                        west = maxOf(cell.west, viewBounds.west),
+                        north = minOf(cell.north, viewBounds.north),
+                        east = minOf(cell.east, viewBounds.east)
+                    )
+                    val northern = cell.south >= 0
+                    appendUtmZoneGrid(f, cellBounds, coarseSpacing, northern, cell.zone,
+                        0.0, 0.0, 0.0, drawLabels = false,
+                        zoneWest = cell.west, zoneEast = cell.east)
+                }
+            }
+            appendZoneBorders(f, viewBounds)
         }
+        // MGRS designators (e.g. "32V") in each visible cell — at all zooms.
+        appendCellLabels(f, labelBounds)
 
         return f.toGeoJson()
     }
 
-    private fun appendZoneBoundaries(f: Features, bounds: LatLngBounds) {
-        val startLng = floor(bounds.west / 6.0) * 6.0
-        var i = 0
-        while (true) {
-            val lng = startLng + i * 6.0
-            if (lng > bounds.east) break
-            i++
-            if (lng < bounds.west) continue
+    private fun globalUtmSpacing(zoom: Double): Double = when {
+        zoom < 3 -> 1_000_000.0  // 1000 km
+        zoom < 5 -> 500_000.0    //  500 km
+        zoom < 7 -> 200_000.0    //  200 km
+        else -> 100_000.0        //  100 km
+    }
 
-            f.addZoneLine("[[$lng,${bounds.south}],[$lng,${bounds.north}]]")
+    private data class Band(val letter: Char, val south: Double, val north: Double)
 
-            val zone = utmZone(lng + 3.0)
-            val labelLng = (lng + 3.0).coerceIn(bounds.west, bounds.east)
-            f.addLabel(labelLng, bounds.north, "$zone", "top")
+    // UTM latitude bands C–X, each 8° tall except X which spans 72°N–84°N.
+    // Letters I and O are skipped.
+    private val LAT_BANDS: List<Band> = listOf(
+        Band('C', -80.0, -72.0), Band('D', -72.0, -64.0),
+        Band('E', -64.0, -56.0), Band('F', -56.0, -48.0),
+        Band('G', -48.0, -40.0), Band('H', -40.0, -32.0),
+        Band('J', -32.0, -24.0), Band('K', -24.0, -16.0),
+        Band('L', -16.0, -8.0), Band('M', -8.0, 0.0),
+        Band('N', 0.0, 8.0), Band('P', 8.0, 16.0),
+        Band('Q', 16.0, 24.0), Band('R', 24.0, 32.0),
+        Band('S', 32.0, 40.0), Band('T', 40.0, 48.0),
+        Band('U', 48.0, 56.0), Band('V', 56.0, 64.0),
+        Band('W', 64.0, 72.0), Band('X', 72.0, 84.0)
+    )
+
+    /**
+     * Longitude range `(west, east)` of a UTM zone in a given band, accounting
+     * for the Norway (32V widened westward) and Svalbard (31X/33X/35X/37X
+     * widened; 32X/34X/36X absent) exceptions. Returns null if the zone does
+     * not exist in that band.
+     */
+    private fun zoneRange(zone: Int, bandLetter: Char): Pair<Double, Double>? {
+        if (zone < 1 || zone > 60) return null
+        if (bandLetter == 'V') {
+            if (zone == 31) return 0.0 to 3.0
+            if (zone == 32) return 3.0 to 12.0
+        }
+        if (bandLetter == 'X') {
+            return when (zone) {
+                31 -> 0.0 to 9.0
+                32, 34, 36 -> null
+                33 -> 9.0 to 21.0
+                35 -> 21.0 to 33.0
+                37 -> 33.0 to 42.0
+                else -> standardZoneRange(zone)
+            }
+        }
+        return standardZoneRange(zone)
+    }
+
+    private fun standardZoneRange(zone: Int): Pair<Double, Double> {
+        val west = (zone - 1) * 6.0 - 180.0
+        return west to (west + 6.0)
+    }
+
+    private class Cell(
+        val zone: Int,
+        val bandLetter: Char,
+        val west: Double,
+        val east: Double,
+        val south: Double,
+        val north: Double
+    )
+
+    /** Iterates every (zone × band) cell that overlaps [bounds], honouring UTM exceptions. */
+    private inline fun forEachVisibleCell(bounds: LatLngBounds, block: (Cell) -> Unit) {
+        for (band in LAT_BANDS) {
+            if (band.north <= bounds.south || band.south >= bounds.north) continue
+            for (zone in 1..60) {
+                val range = zoneRange(zone, band.letter) ?: continue
+                if (range.second <= bounds.west || range.first >= bounds.east) continue
+                block(Cell(zone, band.letter, range.first, range.second, band.south, band.north))
+            }
+        }
+    }
+
+    /**
+     * Straight MGRS zone/band borders: meridians at each zone boundary
+     * (honouring 32V / Svalbard exceptions) and parallels every 8°
+     * (band boundaries, with X band extending to 84°N).
+     */
+    private fun appendZoneBorders(f: Features, bounds: LatLngBounds) {
+        // Meridians: per band, since zone boundaries differ between bands (32V, 31X-37X).
+        for (band in LAT_BANDS) {
+            val visSouth = maxOf(band.south, bounds.south)
+            val visNorth = minOf(band.north, bounds.north)
+            if (visSouth >= visNorth) continue
+            val meridians = mutableSetOf<Double>()
+            for (zone in 1..60) {
+                val r = zoneRange(zone, band.letter) ?: continue
+                if (r.first in bounds.west..bounds.east) meridians.add(r.first)
+                if (r.second in bounds.west..bounds.east) meridians.add(r.second)
+            }
+            for (lng in meridians) {
+                f.addZoneLine("[[$lng,$visSouth],[$lng,$visNorth]]")
+            }
+        }
+        // Band parallels (each band's southern boundary, plus the X band's northern cap).
+        for (band in LAT_BANDS) {
+            if (band.south in bounds.south..bounds.north) {
+                f.addZoneLine("[[${bounds.west},${band.south}],[${bounds.east},${band.south}]]")
+            }
+        }
+        if (84.0 in bounds.south..bounds.north) {
+            f.addZoneLine("[[${bounds.west},84.0],[${bounds.east},84.0]]")
+        }
+    }
+
+    /**
+     * Combined MGRS designator label (e.g. "32V") per visible (zone × band)
+     * cell, placed at the centre of the cell's visible portion. The
+     * MapLibre symbol layer culls collisions so dense low-zoom views show
+     * a readable subset rather than a wall of overlapping text.
+     */
+    private fun appendCellLabels(f: Features, bounds: LatLngBounds) {
+        forEachVisibleCell(bounds) { cell ->
+            val visWest = maxOf(cell.west, bounds.west)
+            val visEast = minOf(cell.east, bounds.east)
+            val visSouth = maxOf(cell.south, bounds.south)
+            val visNorth = minOf(cell.north, bounds.north)
+            val labelLng = (visWest + visEast) / 2.0
+            val labelLat = (visSouth + visNorth) / 2.0
+            f.addCellLabel(labelLng, labelLat, "${cell.zone}${cell.bandLetter}", "center")
         }
     }
 
@@ -149,11 +302,11 @@ object CoordGrid {
         zone: Int,
         centerLat: Double,
         centerLng: Double,
-        labelOffset: Double
+        labelOffset: Double,
+        drawLabels: Boolean = true,
+        zoneWest: Double = standardZoneRange(zone).first,
+        zoneEast: Double = standardZoneRange(zone).second
     ) {
-        val zoneWest = (zone - 1) * 6.0 - 180.0
-        val zoneEast = zoneWest + 6.0
-
         val effectiveWest = maxOf(bounds.west, zoneWest)
         val effectiveEast = minOf(bounds.east, zoneEast)
         val effectiveSouth = bounds.south.coerceIn(-80.0, 84.0)
@@ -185,13 +338,15 @@ object CoordGrid {
             val e = startE + idx * spacing
             if (e > maxEasting) break
             idx++
-            val coords = buildLineCoords(numSamples) { i ->
+            val coords = buildLineCoords(numSamples, zoneWest, zoneEast) { i ->
                 val n = minNorthing + (maxNorthing - minNorthing) * i / numSamples
                 CoordinateFormatter.utmToLatLng(zone, e, n, northern)
             } ?: continue
             f.addLine("[$coords]")
-            val lp = CoordinateFormatter.utmToLatLng(zone, e, labelUtm.northing, northern)
-            f.addLabel(lp.longitude, lp.latitude, formatUtmValue(e, spacing), "top")
+            if (drawLabels) {
+                val lp = CoordinateFormatter.utmToLatLng(zone, e, labelUtm.northing, northern)
+                f.addLabel(lp.longitude, lp.latitude, formatUtmValue(e, spacing), "top")
+            }
         }
 
         // Constant northing lines (roughly east-west)
@@ -201,13 +356,15 @@ object CoordGrid {
             val n = startN + idx * spacing
             if (n > maxNorthing) break
             idx++
-            val coords = buildLineCoords(numSamples) { i ->
+            val coords = buildLineCoords(numSamples, zoneWest, zoneEast) { i ->
                 val eVal = minEasting + (maxEasting - minEasting) * i / numSamples
                 CoordinateFormatter.utmToLatLng(zone, eVal, n, northern)
             } ?: continue
             f.addLine("[$coords]")
-            val lp = CoordinateFormatter.utmToLatLng(zone, labelUtm.easting, n, northern)
-            f.addLabel(lp.longitude, lp.latitude, formatUtmValue(n, spacing), "right")
+            if (drawLabels) {
+                val lp = CoordinateFormatter.utmToLatLng(zone, labelUtm.easting, n, northern)
+                f.addLabel(lp.longitude, lp.latitude, formatUtmValue(n, spacing), "right")
+            }
         }
     }
 
@@ -215,13 +372,20 @@ object CoordGrid {
 
     private inline fun buildLineCoords(
         numSamples: Int,
+        minLng: Double = -180.0,
+        maxLng: Double = 180.0,
         pointAt: (Int) -> LatLng
     ): String? {
         val sb = StringBuilder()
         var pointCount = 0
+        // Small epsilon so points right on the zone boundary aren't dropped due
+        // to floating-point noise in the UTM inverse projection.
+        val eps = 1e-6
         for (i in 0..numSamples) {
             val ll = pointAt(i)
+            if (!ll.latitude.isFinite() || !ll.longitude.isFinite()) continue
             if (ll.latitude < -85 || ll.latitude > 85) continue
+            if (ll.longitude < minLng - eps || ll.longitude > maxLng + eps) continue
             if (pointCount > 0) sb.append(",")
             pointCount++
             sb.append("[${ll.longitude},${ll.latitude}]")
@@ -270,9 +434,6 @@ object CoordGrid {
 
     // --- Helpers ---
 
-    private fun utmZone(longitude: Double): Int =
-        (floor((longitude + 180.0) / 6.0).toInt() + 1).coerceIn(1, 60)
-
     private class Features {
         private val sb = StringBuilder()
         private var first = true
@@ -286,7 +447,13 @@ object CoordGrid {
         }
 
         fun addLabel(lng: Double, lat: Double, label: String, anchor: String) {
+            if (!lng.isFinite() || !lat.isFinite()) return
             append("""{"type":"Feature","geometry":{"type":"Point","coordinates":[$lng,$lat]},"properties":{"label":"$label","anchor":"$anchor"}}""")
+        }
+
+        fun addCellLabel(lng: Double, lat: Double, label: String, anchor: String) {
+            if (!lng.isFinite() || !lat.isFinite()) return
+            append("""{"type":"Feature","geometry":{"type":"Point","coordinates":[$lng,$lat]},"properties":{"label":"$label","anchor":"$anchor","cell":true}}""")
         }
 
         private fun append(json: String) {

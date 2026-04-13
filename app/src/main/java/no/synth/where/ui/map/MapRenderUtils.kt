@@ -331,8 +331,10 @@ object MapRenderUtils {
             val lineLayerId = "coord-grid-line-layer"
             val zoneLayerId = "coord-grid-zone-layer"
             val labelLayerId = "coord-grid-label-layer"
+            val cellLayerId = "coord-grid-cell-layer"
 
             if (geoJson == null) {
+                style.getLayer(cellLayerId)?.let { style.removeLayer(it) }
                 style.getLayer(labelLayerId)?.let { style.removeLayer(it) }
                 style.getLayer(lineLayerId)?.let { style.removeLayer(it) }
                 style.getLayer(zoneLayerId)?.let { style.removeLayer(it) }
@@ -340,22 +342,20 @@ object MapRenderUtils {
                 return
             }
 
-            val fc = FeatureCollection.fromJson(geoJson)
-
             val existingSource = style.getSourceAs<GeoJsonSource>(sourceId)
             if (existingSource != null) {
-                existingSource.setGeoJson(fc)
+                existingSource.setGeoJson(geoJson)
             } else {
-                val source = GeoJsonSource(sourceId, fc)
+                val source = GeoJsonSource(sourceId, geoJson)
                 style.addSource(source)
 
                 val overlayBelow = listOf("track-layer", "ruler-line-layer", "friend-track-line-layer", "saved-points-layer")
                     .firstOrNull { style.getLayer(it) != null }
 
                 val zoneLayer = LineLayer(zoneLayerId, sourceId).withProperties(
-                    PropertyFactory.lineColor("#000000"),
+                    PropertyFactory.lineColor("#E67E22"),
                     PropertyFactory.lineWidth(1.5f),
-                    PropertyFactory.lineOpacity(0.5f)
+                    PropertyFactory.lineOpacity(0.7f)
                 )
                 zoneLayer.setFilter(Expression.has("zone"))
                 if (overlayBelow != null) style.addLayerBelow(zoneLayer, overlayBelow) else style.addLayer(zoneLayer)
@@ -381,7 +381,24 @@ object MapRenderUtils {
                     PropertyFactory.textIgnorePlacement(false),
                     PropertyFactory.textPadding(2f)
                 )
+                labelLayer.setFilter(Expression.not(Expression.has("cell")))
                 if (overlayBelow != null) style.addLayerBelow(labelLayer, overlayBelow) else style.addLayer(labelLayer)
+
+                val cellLayer = SymbolLayer(cellLayerId, sourceId).withProperties(
+                    PropertyFactory.textField(Expression.get("label")),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textSize(14f),
+                    PropertyFactory.textColor("#C62828"),
+                    PropertyFactory.textOpacity(0.85f),
+                    PropertyFactory.textHaloColor("#FFFFFF"),
+                    PropertyFactory.textHaloWidth(1.5f),
+                    PropertyFactory.textAnchor(Expression.get("anchor")),
+                    PropertyFactory.textAllowOverlap(false),
+                    PropertyFactory.textIgnorePlacement(false),
+                    PropertyFactory.textPadding(8f)
+                )
+                cellLayer.setFilter(Expression.has("cell"))
+                if (overlayBelow != null) style.addLayerBelow(cellLayer, overlayBelow) else style.addLayer(cellLayer)
             }
         } catch (e: Exception) {
             Logger.e(e, "Map render error")

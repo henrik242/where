@@ -44,6 +44,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let coordGridLayerId = "coord-grid-line-layer"
     private let coordGridZoneLayerId = "coord-grid-zone-layer"
     private let coordGridLabelLayerId = "coord-grid-label-layer"
+    private let coordGridCellLayerId = "coord-grid-cell-layer"
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -633,9 +634,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             let belowLayer = belowIds.lazy.compactMap({ style.layer(withIdentifier: $0) }).first
 
             let zoneLayer = MLNLineStyleLayer(identifier: coordGridZoneLayerId, source: source)
-            zoneLayer.lineColor = NSExpression(forConstantValue: UIColor.black)
+            zoneLayer.lineColor = NSExpression(forConstantValue: UIColor(red: 0.902, green: 0.494, blue: 0.133, alpha: 1.0))
             zoneLayer.lineWidth = NSExpression(forConstantValue: 1.5)
-            zoneLayer.lineOpacity = NSExpression(forConstantValue: 0.5)
+            zoneLayer.lineOpacity = NSExpression(forConstantValue: 0.7)
             zoneLayer.predicate = NSPredicate(format: "zone != nil")
             if let below = belowLayer { style.insertLayer(zoneLayer, below: below) } else { style.addLayer(zoneLayer) }
 
@@ -654,13 +655,29 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             labelLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
             labelLayer.textHaloWidth = NSExpression(forConstantValue: 1.5)
             labelLayer.textAnchor = NSExpression(forKeyPath: "anchor")
+            labelLayer.predicate = NSPredicate(format: "cell = nil")
             if let below = belowLayer { style.insertLayer(labelLayer, below: below) } else { style.addLayer(labelLayer) }
+
+            let cellLayer = MLNSymbolStyleLayer(identifier: coordGridCellLayerId, source: source)
+            cellLayer.text = NSExpression(forKeyPath: "label")
+            cellLayer.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
+            cellLayer.textFontSize = NSExpression(forConstantValue: 14)
+            cellLayer.textColor = NSExpression(forConstantValue: UIColor(red: 0.776, green: 0.157, blue: 0.157, alpha: 0.85))
+            cellLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
+            cellLayer.textHaloWidth = NSExpression(forConstantValue: 1.5)
+            cellLayer.textAnchor = NSExpression(forKeyPath: "anchor")
+            cellLayer.textAllowsOverlap = NSExpression(forConstantValue: false)
+            cellLayer.textIgnoresPlacement = NSExpression(forConstantValue: false)
+            cellLayer.textPadding = NSExpression(forConstantValue: 8)
+            cellLayer.predicate = NSPredicate(format: "cell = YES")
+            if let below = belowLayer { style.insertLayer(cellLayer, below: below) } else { style.addLayer(cellLayer) }
         }
 
         pendingCoordGridGeoJson = geoJson
     }
 
     private func removeCoordGrid(style: MLNStyle) {
+        if let layer = style.layer(withIdentifier: coordGridCellLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: coordGridLabelLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: coordGridLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: coordGridZoneLayerId) { style.removeLayer(layer) }

@@ -32,10 +32,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.PlaceSearchClient
@@ -198,7 +200,9 @@ fun MapScreen(
         snapshotFlow { Triple(savedCameraLat, savedCameraLon, savedCameraZoom) }
             .debounce(200)
             .collect { (lat, lng, zoom) ->
-                coordGridGeoJson = CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat)
+                coordGridGeoJson = withContext(Dispatchers.Default) {
+                    CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat)
+                }
             }
     }
 
