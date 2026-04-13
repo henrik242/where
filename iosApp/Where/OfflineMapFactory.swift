@@ -167,7 +167,7 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         }
     }
 
-    func getRegionStatusEncoded(regionName: String) -> String {
+    func getRegionStatus(regionName: String) -> RegionStatus? {
         // Active download: trust the pack reference directly — never fall through
         // to findPackSync, because reloadPacks() invalidates live pack objects.
         if let pack = activePacks[regionName],
@@ -177,36 +177,37 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             if !status.hasPrefix("0,0,") {
                 cachedStatus[regionName] = status
             }
-            return cachedStatus[regionName] ?? status
+            return decodeStatus(cachedStatus[regionName] ?? status)
         }
 
         // No active download — safe to check storage for completed/historical packs
-        let storedPack = findPackSync(name: regionName)
-        if let pack = storedPack {
+        if let pack = findPackSync(name: regionName) {
             let status = encodePackStatus(pack, name: regionName)
             if !status.hasPrefix("0,0,") {
                 cachedStatus[regionName] = status
-                return status
+                return decodeStatus(status)
             }
             // Progress is 0 (stale); use cached data if available.
             // ensurePacksLoaded() (called via findPackSync) already called
             // requestProgress() on this pack, so the notification will fire shortly.
             if let cached = cachedStatus[regionName] {
-                return cached
+                return decodeStatus(cached)
             }
             // pack.state == .unknown means reloadPacks() ran but requestProgress() hasn't
-            // fired its notification yet. Return the retry sentinel so the Kotlin caller
-            // waits and retries — the notification will populate cachedStatus shortly.
+            // fired its notification yet. Signal retry so the Kotlin caller waits —
+            // the notification will populate cachedStatus shortly.
             if pack.state == .unknown {
-                return "-1,-1,-1,-1"
+                return nil
             }
             // State is now known from the DB (inactive, complete, etc.).
-            return "0,0,0,\(pack.state == .complete)"
+            return RegionStatus(
+                downloadedTiles: 0,
+                totalTiles: 0,
+                downloadedSize: 0,
+                isComplete: pack.state == .complete
+            )
         }
-        if let cached = cachedStatus[regionName] {
-            return cached
-        }
-        return ""
+        return cachedStatus[regionName].flatMap(decodeStatus)
     }
 
     private func encodePackStatus(_ pack: MLNOfflinePack, name: String) -> String {
@@ -219,6 +220,20 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         let result = "\(downloaded),\(total),\(size),\(isComplete)"
         NSLog("[OfflineMap] packStatus(\(name)): \(result) (state=\(pack.state.rawValue))")
         return result
+    }
+
+    private func decodeStatus(_ encoded: String) -> RegionStatus? {
+        let parts = encoded.split(separator: ",")
+        guard parts.count >= 4,
+              let downloaded = Int32(String(parts[0])),
+              let total = Int32(String(parts[1])),
+              let size = Int64(String(parts[2])) else { return nil }
+        return RegionStatus(
+            downloadedTiles: downloaded,
+            totalTiles: total,
+            downloadedSize: size,
+            isComplete: parts[3] == "true"
+        )
     }
 
     func deleteRegionSync(regionName: String) -> Bool {
@@ -246,7 +261,7 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
         return true
     }
 
-    func getLayerStatsEncoded(layerName: String) -> String {
+    func getLayerStats(layerName: String) -> LayerStats? {
         var totalSize: Int64 = 0
         var totalTiles: Int32 = 0
         var counted = Set<String>()
@@ -292,12 +307,12 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             }
         }
 
-        // Tell the caller to retry after the requestProgress notifications fire
-        if requestedProgress { return "-1,-1" }
-        return "\(totalSize),\(totalTiles)"
+        // Signal retry after the requestProgress notifications fire
+        if requestedProgress { return nil }
+        return LayerStats(sizeBytes: totalSize, tileCount: totalTiles)
     }
 
-    func getRegionNamesForLayer(layerName: String) -> String {
+    func getRegionNamesForLayer(layerName: String) -> [String] {
         var names: [String] = []
         var counted = Set<String>()
 
@@ -322,8 +337,7 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
             }
         }
 
-        let json = try? JSONSerialization.data(withJSONObject: names)
-        return json.flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        return names
     }
 
     func getDatabaseSize() -> Int64 {

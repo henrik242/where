@@ -10,6 +10,13 @@ interface ClearCacheCallback {
     fun onComplete()
 }
 
+data class RegionStatus(
+    val downloadedTiles: Int,
+    val totalTiles: Int,
+    val downloadedSize: Long,
+    val isComplete: Boolean
+)
+
 interface OfflineMapManager {
     fun downloadRegion(
         regionName: String, layerName: String, styleJson: String,
@@ -19,14 +26,13 @@ interface OfflineMapManager {
     fun stopDownload(regionName: String)
     fun resumeDownload(regionName: String)
 
-    // Synchronous queries — return encoded strings for reliable Kotlin/Native ↔ Swift interop.
-    // Returns "downloadedTiles,totalTiles,downloadedSize,isComplete" or "" if not found
-    fun getRegionStatusEncoded(regionName: String): String
+    // Returns null when the region is unknown or progress notifications are still
+    // pending; caller should retry or fall back to defaults.
+    fun getRegionStatus(regionName: String): RegionStatus?
     fun deleteRegionSync(regionName: String): Boolean
-    // Returns "totalSize,totalTiles"
-    fun getLayerStatsEncoded(layerName: String): String
-    // Returns JSON array of region names for the given layer, e.g. ["hex_5_10-kartverket",...]
-    fun getRegionNamesForLayer(layerName: String): String
+    // Returns null when progress notifications are still pending; caller should retry.
+    fun getLayerStats(layerName: String): LayerStats?
+    fun getRegionNamesForLayer(layerName: String): List<String>
     fun getDatabaseSize(): Long
     // Clears automatically cached (ambient) tiles; calls callback when complete
     fun clearAmbientCache(callback: ClearCacheCallback)

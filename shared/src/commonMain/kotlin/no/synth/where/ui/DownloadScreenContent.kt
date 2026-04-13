@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import no.synth.where.data.LayerStats
 import no.synth.where.util.formatBytes
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -68,7 +69,7 @@ fun DownloadScreenContent(
     downloadElevationData: Boolean = true,
     demCacheSize: Long = 0L,
     onDownloadElevationDataChange: (Boolean) -> Unit = {},
-    getLayerStats: suspend (String) -> Pair<Long, Int>,
+    getLayerStats: suspend (String) -> LayerStats,
     refreshTrigger: Int
 ) {
     var deleteLayerDialog by rememberSaveable { mutableStateOf<String?>(null) }
@@ -280,7 +281,7 @@ fun DownloadScreenContent(
             }
 
             items(layers) { layer ->
-                var stats by remember { mutableStateOf(Pair(0L, 0)) }
+                var stats by remember { mutableStateOf(LayerStats.EMPTY) }
                 LaunchedEffect(refreshTrigger, layer.id) {
                     stats = getLayerStats(layer.id)
                 }
@@ -307,17 +308,17 @@ fun DownloadScreenContent(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            if (stats.second > 0) {
+                            if (stats.tileCount > 0) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    stringResource(Res.string.tiles_stats, stats.second, formatBytes(stats.first)),
+                                    stringResource(Res.string.tiles_stats, stats.tileCount, formatBytes(stats.sizeBytes)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
                         }
-                        if (stats.second > 0) {
+                        if (stats.tileCount > 0) {
                             IconButton(onClick = { deleteLayerDialog = layer.id }) {
                                 Icon(
                                     painterResource(Res.drawable.ic_delete),
