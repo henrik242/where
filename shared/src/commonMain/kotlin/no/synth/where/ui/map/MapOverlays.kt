@@ -478,6 +478,7 @@ fun CrosshairInfoCard(
                         CoordFormat.UTM -> CoordinateFormatter.formatUtm(centerLatLng)
                         CoordFormat.MGRS -> CoordinateFormatter.formatMgrs(centerLatLng)
                         CoordFormat.LATLNG -> CoordinateFormatter.formatLatLng(centerLatLng)
+                        CoordFormat.DMS -> CoordinateFormatter.formatDms(centerLatLng)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

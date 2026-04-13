@@ -15,7 +15,8 @@ object CoordGrid {
 
     fun buildGeoJson(centerLat: Double, centerLng: Double, zoom: Double, format: CoordFormat): String {
         return when (format) {
-            CoordFormat.LATLNG -> buildLatLngGrid(centerLat, centerLng, zoom)
+            CoordFormat.LATLNG -> buildLatLngGrid(centerLat, centerLng, zoom, dms = false)
+            CoordFormat.DMS -> buildLatLngGrid(centerLat, centerLng, zoom, dms = true)
             CoordFormat.UTM, CoordFormat.MGRS -> buildUtmGrid(centerLat, centerLng, zoom)
         }
     }
@@ -82,11 +83,11 @@ object CoordGrid {
         else -> 1000.0
     }
 
-    // --- Lat/Lng grid ---
+    // --- Lat/Lng grid (decimal degrees or DMS) ---
 
-    private fun buildLatLngGrid(centerLat: Double, centerLng: Double, zoom: Double): String {
+    private fun buildLatLngGrid(centerLat: Double, centerLng: Double, zoom: Double, dms: Boolean): String {
         val bounds = lineBounds(centerLat, centerLng, zoom)
-        val spacing = latLngGridSpacing(zoom)
+        val spacing = if (dms) dmsGridSpacing(zoom) else latLngGridSpacing(zoom)
         val decimals = coordDecimals(spacing)
         val off = labelOffset(zoom)
         val labelLng = centerLng - off
@@ -98,7 +99,8 @@ object CoordGrid {
         while (startLat + i * spacing <= bounds.north) {
             val lat = startLat + i * spacing
             f.addLine("[[${bounds.west},$lat],[${bounds.east},$lat]]")
-            f.addLabel(labelLng, lat, formatLatLabel(lat, decimals), "right")
+            val text = if (dms) formatDmsLatLabel(lat, spacing) else formatLatLabel(lat, decimals)
+            f.addLabel(labelLng, lat, text, "right")
             i++
         }
 
@@ -107,11 +109,30 @@ object CoordGrid {
         while (startLng + i * spacing <= bounds.east) {
             val lng = startLng + i * spacing
             f.addLine("[[$lng,${bounds.south}],[$lng,${bounds.north}]]")
-            f.addLabel(lng, labelLat, formatLngLabel(lng, decimals), "top")
+            val text = if (dms) formatDmsLngLabel(lng, spacing) else formatLngLabel(lng, decimals)
+            f.addLabel(lng, labelLat, text, "top")
             i++
         }
 
         return f.toGeoJson()
+    }
+
+    /**
+     * Grid spacing in decimal degrees, snapped to clean DMS values (degrees,
+     * arc-minutes, arc-seconds) so labels read e.g. `30'`, `1°`, `10"`.
+     */
+    private fun dmsGridSpacing(zoom: Double): Double = when {
+        zoom < 3 -> 30.0                    // 30°
+        zoom < 5 -> 10.0                    // 10°
+        zoom < 6 -> 5.0                     //  5°
+        zoom < 7 -> 1.0                     //  1°
+        zoom < 9 -> 30.0 / 60.0             // 30'
+        zoom < 10 -> 10.0 / 60.0            // 10'
+        zoom < 12 -> 1.0 / 60.0             //  1'
+        zoom < 14 -> 30.0 / 3600.0          // 30"
+        zoom < 16 -> 10.0 / 3600.0          // 10"
+        zoom < 18 -> 5.0 / 3600.0           //  5"
+        else -> 1.0 / 3600.0                //  1"
     }
 
     // --- UTM/MGRS grid ---
@@ -403,6 +424,33 @@ object CoordGrid {
     private fun formatLngLabel(lng: Double, decimals: Int): String {
         val dir = if (lng >= 0) "E" else "W"
         return "${formatCoord(lng, decimals)}\u00B0 $dir"
+    }
+
+    private fun formatDmsLatLabel(lat: Double, spacing: Double): String {
+        val dir = if (lat >= 0) "N" else "S"
+        return "${formatDmsValue(abs(lat), spacing)} $dir"
+    }
+
+    private fun formatDmsLngLabel(lng: Double, spacing: Double): String {
+        val dir = if (lng >= 0) "E" else "W"
+        return "${formatDmsValue(abs(lng), spacing)} $dir"
+    }
+
+    /**
+     * Formats a non-negative coordinate at DMS-aligned [spacing] using only
+     * the units relevant at that resolution: degrees if the spacing is ≥ 1°,
+     * arc-minutes if ≥ 1', otherwise arc-seconds.
+     */
+    private fun formatDmsValue(value: Double, spacing: Double): String {
+        val totalSeconds = (value * 3600.0).roundToInt()
+        val d = totalSeconds / 3600
+        val m = (totalSeconds % 3600) / 60
+        val s = totalSeconds % 60
+        return when {
+            spacing >= 1.0 -> "$d\u00B0"
+            spacing >= 1.0 / 60.0 -> "$d\u00B0$m'"
+            else -> "$d\u00B0$m'$s\""
+        }
     }
 
     private fun formatUtmValue(value: Double, spacing: Double): String {

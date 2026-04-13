@@ -13,10 +13,11 @@ import no.synth.where.util.roundToDecimals
 data class UtmResult(val zone: Int, val letter: Char, val easting: Double, val northing: Double)
 
 enum class CoordFormat {
-    UTM, MGRS, LATLNG;
+    UTM, MGRS, LATLNG, DMS;
 
     fun next(): CoordFormat = when (this) {
-        LATLNG -> UTM
+        LATLNG -> DMS
+        DMS -> UTM
         UTM -> MGRS
         MGRS -> LATLNG
     }
@@ -39,6 +40,26 @@ object CoordinateFormatter {
         val latStr = abs(latLng.latitude).roundToDecimals(4)
         val lonStr = abs(latLng.longitude).roundToDecimals(4)
         return "$latStr° $latDir, $lonStr° $lonDir"
+    }
+
+    /** Formats a coordinate as degrees / minutes / seconds, e.g. `59°54'24.0" N, 10°45'12.5" E`. */
+    fun formatDms(latLng: LatLng): String {
+        val latDir = if (latLng.latitude >= 0) "N" else "S"
+        val lonDir = if (latLng.longitude >= 0) "E" else "W"
+        return "${decimalToDms(abs(latLng.latitude))} $latDir, ${decimalToDms(abs(latLng.longitude))} $lonDir"
+    }
+
+    private fun decimalToDms(decimal: Double): String {
+        // Round to tenths-of-arc-second once, then carry decompose to D / M / S
+        // so a rounded 60.0" doesn't end up as `m=N, s=60.0`.
+        val tenthsTotal = (decimal * 3600.0 * 10.0).roundToInt()
+        val d = tenthsTotal / 36_000
+        val rem = tenthsTotal - d * 36_000
+        val m = rem / 600
+        val sTenths = rem - m * 600
+        val sWhole = sTenths / 10
+        val sFrac = sTenths % 10
+        return "$d°$m'$sWhole.$sFrac\""
     }
 
     fun formatUtm(latLng: LatLng): String {
