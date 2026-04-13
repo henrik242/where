@@ -370,7 +370,7 @@ object MapRenderUtils {
 
                 val labelLayer = SymbolLayer(labelLayerId, sourceId).withProperties(
                     PropertyFactory.textField(Expression.get("label")),
-                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textFont(arrayOf("NotoSansRegular")),
                     PropertyFactory.textSize(10f),
                     PropertyFactory.textColor("#000000"),
                     PropertyFactory.textOpacity(0.6f),
@@ -386,7 +386,7 @@ object MapRenderUtils {
 
                 val cellLayer = SymbolLayer(cellLayerId, sourceId).withProperties(
                     PropertyFactory.textField(Expression.get("label")),
-                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textFont(arrayOf("NotoSansRegular")),
                     PropertyFactory.textSize(14f),
                     PropertyFactory.textColor("#C62828"),
                     PropertyFactory.textOpacity(0.85f),

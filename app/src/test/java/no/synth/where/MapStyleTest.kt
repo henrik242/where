@@ -20,6 +20,15 @@ class MapStyleTest {
     }
 
     @Test
+    fun testCustomGlyphsUrlIsEmbedded() {
+        val styleJson = MapStyle.getStyle(glyphsUrl = "asset://fonts/{fontstack}/{range}.pbf")
+        assertTrue(
+            "Style should embed the supplied glyphs URL",
+            styleJson.contains("\"glyphs\": \"asset://fonts/{fontstack}/{range}.pbf\"")
+        )
+    }
+
+    @Test
     fun testOnlySelectedSourceIncluded() {
         val styleJson = MapStyle.getStyle(selectedLayer = MapLayer.OSM)
 

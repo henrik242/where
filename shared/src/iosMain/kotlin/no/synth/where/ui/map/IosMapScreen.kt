@@ -49,6 +49,22 @@ import no.synth.where.resources.track_saved
 import no.synth.where.resources.unnamed_point
 import no.synth.where.util.NamingUtils
 import org.jetbrains.compose.resources.stringResource
+import platform.Foundation.NSBundle
+import platform.Foundation.NSURL
+
+/**
+ * URL template for MapLibre `glyphs:` pointing at PBF files inside the iOS
+ * app bundle's Fonts/ folder. The font stack name (no spaces) substitutes
+ * directly into the path so no percent-decoding is needed by MapLibre's
+ * file source. Built from `NSURL` so any spaces in the bundle path are
+ * percent-encoded correctly.
+ */
+private fun iosBundleGlyphsUrl(): String {
+    val fontsRoot = NSURL.fileURLWithPath("${NSBundle.mainBundle.bundlePath}/Fonts").absoluteString
+        ?: "file://${NSBundle.mainBundle.bundlePath}/Fonts"
+    val trimmed = fontsRoot.trimEnd('/')
+    return "$trimmed/{fontstack}/{range}.pbf"
+}
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -149,12 +165,14 @@ fun IosMapScreen(
     var rulerTrackName by remember { mutableStateOf("") }
     var isResolvingRulerName by remember { mutableStateOf(false) }
 
+    val glyphsUrl = remember { iosBundleGlyphsUrl() }
     val styleJson = remember(currentLayer, waymarkedTrails, avalancheZones, hillshade) {
         MapStyle.getStyle(
             selectedLayer = currentLayer,
             showWaymarkedTrails = waymarkedTrails,
             showAvalancheZones = avalancheZones,
             showHillshade = hillshade,
+            glyphsUrl = glyphsUrl,
         )
     }
 

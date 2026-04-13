@@ -3,11 +3,16 @@ package no.synth.where.data
 import no.synth.where.ui.map.MapLayer
 
 object MapStyle {
+    /** Network fallback used only by tests; production callers pass a platform-local URL. */
+    private const val DEFAULT_GLYPHS_URL =
+        "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf"
+
     fun getStyle(
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
         showWaymarkedTrails: Boolean = false,
         showAvalancheZones: Boolean = false,
         showHillshade: Boolean = false,
+        glyphsUrl: String = DEFAULT_GLYPHS_URL,
     ): String {
         data class TileSource(val id: String, val tiles: String, val attribution: String)
 
@@ -119,7 +124,7 @@ object MapStyle {
         return """
 {
   "version": 8,
-  "glyphs": "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+  "glyphs": "$glyphsUrl",
   "sources": {$sources
   },
   "layers": [$layers
