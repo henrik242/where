@@ -32,14 +32,15 @@ object CoordGrid {
     }
 
     /**
-     * Approximates the actual on-screen viewport (for label placement). The
-     * horizontal span is tighter than vertical because phones are taller than
-     * wide; this keeps left/right-edge labels well inside the visible area.
+     * Approximates the actual on-screen viewport in degrees. A typical
+     * portrait phone shows roughly 1.4 tiles wide and 3 tiles tall at any
+     * given zoom, so the vertical multiplier is about double the horizontal
+     * one. Used to decide whether a UTM cell fits entirely on screen.
      */
     private fun viewportBounds(centerLat: Double, centerLng: Double, zoom: Double): LatLngBounds {
         val tileSpan = 360.0 / 2.0.pow(zoom)
-        val halfSpanLng = tileSpan * 0.35
-        val halfSpanLat = tileSpan * 0.6
+        val halfSpanLng = tileSpan * 0.7
+        val halfSpanLat = tileSpan * 1.5
         return LatLngBounds(
             south = (centerLat - halfSpanLat).coerceIn(-80.0, 84.0),
             north = (centerLat + halfSpanLat).coerceIn(-80.0, 84.0),
@@ -299,19 +300,23 @@ object CoordGrid {
 
     /**
      * Combined MGRS designator label (e.g. "32V") per visible (zone × band)
-     * cell, placed at the centre of the cell's visible portion. The
-     * MapLibre symbol layer culls collisions so dense low-zoom views show
-     * a readable subset rather than a wall of overlapping text.
+     * cell. If the entire cell fits in the viewport the label sits at the
+     * cell centre; otherwise (close zoom, viewport inside the cell) it sits
+     * at the top-centre of the visible portion so it doesn't collide with
+     * the crosshair. MapLibre culls collisions so dense low-zoom views show
+     * a readable subset.
      */
     private fun appendCellLabels(f: Features, bounds: LatLngBounds) {
         forEachVisibleCell(bounds) { cell ->
-            val visWest = maxOf(cell.west, bounds.west)
-            val visEast = minOf(cell.east, bounds.east)
-            val visSouth = maxOf(cell.south, bounds.south)
-            val visNorth = minOf(cell.north, bounds.north)
-            val labelLng = (visWest + visEast) / 2.0
-            val labelLat = (visSouth + visNorth) / 2.0
-            f.addCellLabel(labelLng, labelLat, "${cell.zone}${cell.bandLetter}", "center")
+            val labelLng = (maxOf(cell.west, bounds.west) + minOf(cell.east, bounds.east)) / 2.0
+            val text = "${cell.zone}${cell.bandLetter}"
+            val fullyVisible = cell.south >= bounds.south && cell.north <= bounds.north &&
+                cell.west >= bounds.west && cell.east <= bounds.east
+            if (fullyVisible) {
+                f.addCellLabel(labelLng, (cell.south + cell.north) / 2.0, text, "center")
+            } else {
+                f.addCellLabel(labelLng, minOf(cell.north, bounds.north), text, "top")
+            }
         }
     }
 
