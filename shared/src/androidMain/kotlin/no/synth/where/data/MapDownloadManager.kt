@@ -430,7 +430,7 @@ class MapDownloadManager(private val context: Context) {
     }
 
 
-    suspend fun getLayerStats(layerName: String): Pair<Long, Int> =
+    suspend fun getLayerStats(layerName: String): LayerStats =
         suspendCancellableCoroutine { continuation ->
             offlineManager.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
                 override fun onList(offlineRegions: Array<OfflineRegion>?) {
@@ -439,7 +439,7 @@ class MapDownloadManager(private val context: Context) {
                     var processed = 0
 
                     if (offlineRegions.isNullOrEmpty()) {
-                        continuation.resume(Pair(0L, 0))
+                        continuation.resume(LayerStats.EMPTY)
                         return
                     }
 
@@ -454,7 +454,7 @@ class MapDownloadManager(private val context: Context) {
                     }
 
                     if (layerRegions.isEmpty()) {
-                        continuation.resume(Pair(0L, 0))
+                        continuation.resume(LayerStats.EMPTY)
                         return
                     }
 
@@ -468,14 +468,14 @@ class MapDownloadManager(private val context: Context) {
                                 processed++
 
                                 if (processed == layerRegions.size) {
-                                    continuation.resume(Pair(totalSize, totalTiles))
+                                    continuation.resume(LayerStats(totalSize, totalTiles))
                                 }
                             }
 
                             override fun onError(error: String?) {
                                 processed++
                                 if (processed == layerRegions.size) {
-                                    continuation.resume(Pair(totalSize, totalTiles))
+                                    continuation.resume(LayerStats(totalSize, totalTiles))
                                 }
                             }
                         })
@@ -483,7 +483,7 @@ class MapDownloadManager(private val context: Context) {
                 }
 
                 override fun onError(error: String) {
-                    continuation.resume(Pair(0L, 0))
+                    continuation.resume(LayerStats.EMPTY)
                 }
             })
         }

@@ -54,9 +54,9 @@ class TileUtilsTest {
         val lng = 10.39
         val zoom = 14
         val coord = TileUtils.latLngToTileCoord(lat, lng, zoom)
-        val (backLat, backLng) = TileUtils.tileToLatLng(coord.z, coord.x, coord.y)
+        val back = TileUtils.tileToLatLng(coord.z, coord.x, coord.y)
         // Tile corner should be close to original point (within one tile's span)
-        assertTrue(kotlin.math.abs(backLat - lat) < 0.1, "Latitude round trip should be close")
-        assertTrue(kotlin.math.abs(backLng - lng) < 0.1, "Longitude round trip should be close")
+        assertTrue(kotlin.math.abs(back.latitude - lat) < 0.1, "Latitude round trip should be close")
+        assertTrue(kotlin.math.abs(back.longitude - lng) < 0.1, "Longitude round trip should be close")
     }
 }

@@ -101,28 +101,23 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
             var stallThreshold = 15 // First stall triggers after ~15s, then backs off
             while (isActive && _downloadState.value.isDownloading) {
                 try {
-                    val status = offlineMapManager.getRegionStatusEncoded(regionName)
-                    Logger.d("Poll status for %s: '%s'", regionName, status)
-                    if (status.isNotEmpty()) {
-                        val parts = status.split(",")
-                        val downloaded = parts[0].toIntOrNull() ?: 0
-                        val total = parts[1].toIntOrNull() ?: 1
-                        val isComplete = parts.getOrNull(3) == "true"
-                        if (total > 0) {
-                            val percent = (downloaded * 100 / total).coerceIn(0, 100)
-                            _downloadState.value = _downloadState.value.copy(progress = percent)
-                        }
-                        if (isComplete) {
+                    val status = offlineMapManager.getRegionStatus(regionName)
+                    Logger.d("Poll status for %s: %s", regionName, status?.toString() ?: "pending")
+                    if (status != null) {
+                        val total = if (status.totalTiles > 0) status.totalTiles else 1
+                        val percent = (status.downloadedTiles * 100 / total).coerceIn(0, 100)
+                        _downloadState.value = _downloadState.value.copy(progress = percent)
+                        if (status.isComplete) {
                             Logger.d("Polling detected completion for %s", regionName)
                             demJob?.join()
                             _downloadState.value = DownloadState()
                             break
                         }
                         // Stall detection: auto-resume when no tile progress
-                        if (downloaded == lastPolledProgress && downloaded > 0) {
+                        if (status.downloadedTiles == lastPolledProgress && status.downloadedTiles > 0) {
                             stallCount++
                             if (stallCount >= stallThreshold) {
-                                Logger.d("Auto-resuming stalled pack for %s (stuck at %s tiles for %ss)", regionName, downloaded.toString(), stallCount.toString())
+                                Logger.d("Auto-resuming stalled pack for %s (stuck at %s tiles for %ss)", regionName, status.downloadedTiles.toString(), stallCount.toString())
                                 offlineMapManager.resumeDownload(regionName)
                                 stallCount = 0
                                 // Keep lastPolledProgress — don't reset to -1 or the
@@ -131,11 +126,11 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
                                 delay(5_000) // Cooldown: let server throttle expire
                                 continue
                             }
-                        } else if (downloaded > lastPolledProgress) {
+                        } else if (status.downloadedTiles > lastPolledProgress) {
                             stallCount = 0
                             stallThreshold = 15 // Reset backoff on real progress
                         }
-                        lastPolledProgress = downloaded
+                        lastPolledProgress = status.downloadedTiles
                     }
                 } catch (e: Exception) {
                     Logger.e("Poll error for %s: %s", regionName, e.message ?: "unknown")
@@ -167,44 +162,30 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         val regionName = "${region.name}-$layerName"
         val estimatedTileCount = TileUtils.estimateTileCount(region.boundingBox, minZoom, maxZoom)
         return try {
-            var result = offlineMapManager.getRegionStatusEncoded(regionName)
-            // Sentinel: state=Unknown after reloadPacks() — wait for requestProgress() notification
+            // Retry on null: state=Unknown after reloadPacks() — wait for requestProgress() notification
+            var status = offlineMapManager.getRegionStatus(regionName)
             var retries = 0
-            while (result == "-1,-1,-1,-1" && retries < 5) {
+            while (status == null && retries < 5) {
                 delay(300)
-                result = offlineMapManager.getRegionStatusEncoded(regionName)
+                status = offlineMapManager.getRegionStatus(regionName)
                 retries++
             }
-            Logger.d("getRegionTileInfo %s: estimated=%s, status='%s'", regionName, estimatedTileCount.toString(), result)
-            if (result.isEmpty() || result == "-1,-1,-1,-1") {
+            Logger.d("getRegionTileInfo %s: estimated=%s, status=%s", regionName, estimatedTileCount.toString(), status?.toString() ?: "unavailable")
+            if (status == null) {
                 return RegionTileInfo(estimatedTileCount, 0, 0, false)
             }
-            val parts = result.split(",")
-            val downloaded = parts[0].toIntOrNull() ?: 0
-            val total = parts[1].toIntOrNull() ?: 0
-            val size = parts[2].toLongOrNull() ?: 0L
-            val isComplete = parts.getOrNull(3) == "true"
             // Pack state is complete but tile count is stale (0) — wait for the
             // requestProgress() notification to populate cachedStatus, then retry
             // to get the accurate count. isComplete is already correct so ✓ shows.
-            if (isComplete && downloaded == 0) {
+            val resolved = if (status.isComplete && status.downloadedTiles == 0) {
                 delay(300)
-                val retry = offlineMapManager.getRegionStatusEncoded(regionName)
-                if (!retry.isEmpty() && retry != "-1,-1,-1,-1") {
-                    val rp = retry.split(",")
-                    return RegionTileInfo(
-                        totalTiles = rp.getOrNull(1)?.toIntOrNull()?.takeIf { it > 0 } ?: estimatedTileCount,
-                        downloadedTiles = rp.getOrNull(0)?.toIntOrNull() ?: 0,
-                        downloadedSize = rp.getOrNull(2)?.toLongOrNull() ?: 0L,
-                        isFullyDownloaded = rp.getOrNull(3) == "true"
-                    )
-                }
-            }
+                offlineMapManager.getRegionStatus(regionName) ?: status
+            } else status
             RegionTileInfo(
-                totalTiles = if (total > 0) total else estimatedTileCount,
-                downloadedTiles = downloaded,
-                downloadedSize = size,
-                isFullyDownloaded = isComplete
+                totalTiles = if (resolved.totalTiles > 0) resolved.totalTiles else estimatedTileCount,
+                downloadedTiles = resolved.downloadedTiles,
+                downloadedSize = resolved.downloadedSize,
+                isFullyDownloaded = resolved.isComplete
             )
         } catch (e: Exception) {
             Logger.e("getRegionTileInfo error for %s: %s", regionName, e.message ?: "unknown")
@@ -218,8 +199,7 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
                 .filter { it.id != excludeLayer }
                 .any { layer ->
                     val regionName = "$regionHexId-${layer.id}"
-                    val status = offlineMapManager.getRegionStatusEncoded(regionName)
-                    status.isNotEmpty() && status != "-1,-1,-1,-1" && status.split(",").getOrNull(0)?.toIntOrNull()?.let { it > 0 } == true
+                    (offlineMapManager.getRegionStatus(regionName)?.downloadedTiles ?: 0) > 0
                 }
         } catch (e: Exception) {
             Logger.e("hasOtherLayersForRegion error: %s", e.message ?: "unknown")
@@ -241,11 +221,7 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
 
     suspend fun deleteAllRegionsForLayer(layerName: String): Boolean {
         return try {
-            val json = offlineMapManager.getRegionNamesForLayer(layerName)
-            if (json == "[]" || json.isBlank()) return true
-            json.removeSurrounding("[", "]")
-                .split(",")
-                .mapNotNull { s -> s.trim().removeSurrounding("\"").takeIf { it.isNotBlank() } }
+            offlineMapManager.getRegionNamesForLayer(layerName)
                 .forEach { name -> offlineMapManager.deleteRegionSync(name) }
             true
         } catch (e: Exception) {
@@ -269,15 +245,9 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
 
     suspend fun getDownloadedRegionsForLayer(layerName: String): Set<String> {
         return try {
-            val json = offlineMapManager.getRegionNamesForLayer(layerName)
-            if (json == "[]" || json.isBlank()) return emptySet()
             val suffix = "-$layerName"
-            json.removeSurrounding("[", "]")
-                .split(",")
-                .mapNotNull { s ->
-                    val name = s.trim().removeSurrounding("\"")
-                    if (name.endsWith(suffix)) name.dropLast(suffix.length) else null
-                }
+            offlineMapManager.getRegionNamesForLayer(layerName)
+                .mapNotNull { name -> if (name.endsWith(suffix)) name.dropLast(suffix.length) else null }
                 .toSet()
         } catch (e: Exception) {
             Logger.e("getDownloadedRegionsForLayer error for %s: %s", layerName, e.message ?: "unknown")
@@ -285,26 +255,18 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         }
     }
 
-    suspend fun getLayerStats(layerName: String): Pair<Long, Int> {
+    suspend fun getLayerStats(layerName: String): LayerStats {
         return try {
-            var result = offlineMapManager.getLayerStatsEncoded(layerName)
-            if (result == "-1,-1") {
-                // requestProgress() was triggered for stale packs; wait for notifications
+            // null means requestProgress() was triggered for stale packs; wait for notifications
+            val stats = offlineMapManager.getLayerStats(layerName) ?: run {
                 delay(300)
-                result = offlineMapManager.getLayerStatsEncoded(layerName)
-            }
-            Logger.d("getLayerStats %s: '%s'", layerName, result)
-            if (result.isEmpty() || result == "-1,-1") Pair(0L, 0)
-            else {
-                val parts = result.split(",")
-                Pair(
-                    parts[0].toLongOrNull() ?: 0L,
-                    parts[1].toIntOrNull() ?: 0
-                )
-            }
+                offlineMapManager.getLayerStats(layerName)
+            } ?: LayerStats.EMPTY
+            Logger.d("getLayerStats %s: %d bytes, %d tiles", layerName, stats.sizeBytes, stats.tileCount)
+            stats
         } catch (e: Exception) {
             Logger.e("getLayerStats error for %s: %s", layerName, e.message ?: "unknown")
-            Pair(0L, 0)
+            LayerStats.EMPTY
         }
     }
 }

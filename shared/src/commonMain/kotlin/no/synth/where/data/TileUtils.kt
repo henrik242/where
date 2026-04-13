@@ -1,5 +1,6 @@
 package no.synth.where.data
 
+import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
 import kotlin.math.PI
 import kotlin.math.atan
@@ -39,11 +40,11 @@ object TileUtils {
         return TileCoord(zoom, xTile, yTile, pixelX, pixelY)
     }
 
-    fun tileToLatLng(z: Int, x: Int, y: Int): Pair<Double, Double> {
+    fun tileToLatLng(z: Int, x: Int, y: Int): LatLng {
         val n = 1 shl z
         val lng = x.toDouble() / n * 360.0 - 180.0
         val latRad = atan(sinh(PI * (1 - 2.0 * y / n)))
         val lat = latRad * 180.0 / PI
-        return Pair(lat, lng)
+        return LatLng(lat, lng)
     }
 }
