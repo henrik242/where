@@ -22,4 +22,8 @@ dependencyResolutionManagement {
 rootProject.name = "Where"
 include(":app")
 include(":shared")
- 
+
+// dependencyUpdates fails with parallel execution enabled
+if (gradle.startParameter.taskNames.any { it.equals("dependencyUpdates", ignoreCase = true) }) {
+    gradle.startParameter.isParallelProjectExecutionEnabled = false
+}
