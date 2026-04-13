@@ -13,6 +13,7 @@ class CoordGridTest {
     fun outputIsAlwaysAFeatureCollectionJson() {
         val cases = listOf(
             Triple(59.9, 10.75, 14.0) to CoordFormat.LATLNG,
+            Triple(59.9, 10.75, 14.0) to CoordFormat.DMS,
             Triple(59.9, 10.75, 14.0) to CoordFormat.UTM,
             Triple(59.9, 10.75, 14.0) to CoordFormat.MGRS,
             Triple(0.0, 0.0, 2.0) to CoordFormat.UTM,
@@ -48,6 +49,30 @@ class CoordGridTest {
             assertFalse(json.contains("NaN"), "NaN at $lat,$lng z=$zoom")
             assertFalse(json.contains("Infinity"), "Infinity at $lat,$lng z=$zoom")
         }
+    }
+
+    // --- DMS grid ---
+
+    @Test
+    fun dmsGridUsesArcMinuteOrSecondLabelsAtCloseZoom() {
+        // Zoom 11: spacing should be 1' (1/60°). Labels look like `59°54' N`.
+        val json = CoordGrid.buildGeoJson(59.9, 10.75, 11.0, CoordFormat.DMS)
+        // Look for a label containing an arc-minute marker.
+        assertTrue(
+            json.contains(Regex(""""label":"\d+°\d+' [NSEW]""")),
+            "expected arc-minute DMS label at zoom 11"
+        )
+        assertFalse(json.contains("NaN"))
+    }
+
+    @Test
+    fun dmsGridUsesDegreeOnlyLabelsAtLowZoom() {
+        val json = CoordGrid.buildGeoJson(0.0, 0.0, 4.0, CoordFormat.DMS)
+        // At low zoom the spacing is in whole degrees: `30° N`, `90° W`, etc.
+        assertTrue(
+            json.contains(Regex(""""label":"\d+° [NSEW]""")),
+            "expected whole-degree DMS label at zoom 4"
+        )
     }
 
     // --- UTM zone labels: standard cases ---

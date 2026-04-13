@@ -305,6 +305,7 @@ fun SettingsScreenContent(
                 run {
                     val coordFormatOptions = listOf(
                         CoordFormat.LATLNG to stringResource(Res.string.coord_format_latlng),
+                        CoordFormat.DMS to stringResource(Res.string.coord_format_dms),
                         CoordFormat.UTM to stringResource(Res.string.coord_format_utm),
                         CoordFormat.MGRS to stringResource(Res.string.coord_format_mgrs),
                     )

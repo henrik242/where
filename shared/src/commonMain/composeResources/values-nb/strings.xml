@@ -132,6 +132,7 @@
     <string name="theme_dark">Mørkt</string>
     <string name="coordinate_format">Koordinatformat</string>
     <string name="coord_format_latlng">Lat/Lng</string>
+    <string name="coord_format_dms">DMS</string>
     <string name="coord_format_utm">UTM</string>
     <string name="coord_format_mgrs">MGRS</string>
     <string name="sponsor">Støtt prosjektet</string>
