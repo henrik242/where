@@ -649,7 +649,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
             let labelLayer = MLNSymbolStyleLayer(identifier: coordGridLabelLayerId, source: source)
             labelLayer.text = NSExpression(forKeyPath: "label")
-            labelLayer.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
+            labelLayer.textFontNames = NSExpression(forConstantValue: ["NotoSansRegular"])
             labelLayer.textFontSize = NSExpression(forConstantValue: 10)
             labelLayer.textColor = NSExpression(forConstantValue: UIColor.black.withAlphaComponent(0.6))
             labelLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
@@ -660,7 +660,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
             let cellLayer = MLNSymbolStyleLayer(identifier: coordGridCellLayerId, source: source)
             cellLayer.text = NSExpression(forKeyPath: "label")
-            cellLayer.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
+            cellLayer.textFontNames = NSExpression(forConstantValue: ["NotoSansRegular"])
             cellLayer.textFontSize = NSExpression(forConstantValue: 14)
             cellLayer.textColor = NSExpression(forConstantValue: UIColor(red: 0.776, green: 0.157, blue: 0.157, alpha: 0.85))
             cellLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)

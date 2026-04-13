@@ -35,6 +35,13 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import no.synth.where.util.Logger
 
+/**
+ * MapLibre `glyphs:` URL pointing at PBF font files bundled in
+ * `app/src/main/assets/fonts/`. Keeps label rendering working offline and
+ * avoids a network round-trip to protomaps.github.io for every glyph range.
+ */
+private const val ANDROID_ASSET_GLYPHS_URL = "asset://fonts/{fontstack}/{range}.pbf"
+
 @Composable
 fun MapLibreMapView(
     onMapReady: (MapLibreMap) -> Unit = {},
@@ -118,6 +125,7 @@ fun MapLibreMapView(
                     showWaymarkedTrails,
                     showAvalancheZones,
                     showHillshade = showHillshade,
+                    glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
                 )
                 val viewing = viewingTrack
                 val current = currentTrack
@@ -188,6 +196,7 @@ fun MapLibreMapView(
                     showWaymarkedTrails,
                     showAvalancheZones,
                     showHillshade = showHillshade,
+                    glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
                 )
                 val viewing = viewingTrack
                 val current = currentTrack
@@ -368,6 +377,7 @@ fun MapLibreMapView(
                             showWaymarkedTrails,
                             showAvalancheZones,
                             showHillshade = showHillshade,
+                            glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
                         )
                         val viewing = viewingTrack
                         val current = currentTrack
