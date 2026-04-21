@@ -4,7 +4,7 @@ agp = "9.1.0"
 appcompat = "1.7.1"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
 composeMultiplatform = "1.11.0-beta02"
-composeMaterial3 = "1.11.0-alpha06" # see release notes for matching version
+composeMaterial3 = "1.11.0-alpha07" # see release notes for matching version
 composeBom = "2026.03.01"
 core = "1.7.0"
 coreKtx = "1.18.0"
