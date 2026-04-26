@@ -18,22 +18,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,14 +39,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
@@ -185,10 +175,6 @@ fun RulerCard(
 fun RecordingCard(
     modifier: Modifier = Modifier,
     distance: Double,
-    onlineTrackingEnabled: Boolean,
-    viewerCount: Int = 0,
-    onOnlineTrackingChange: (Boolean) -> Unit,
-    onOnlineTrackingClick: () -> Unit = {}
 ) {
     Card(
         modifier = modifier,
@@ -196,111 +182,20 @@ fun RecordingCard(
             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
         )
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    painterResource(Res.drawable.ic_fiber_manual_record),
-                    contentDescription = null,
-                    tint = Color.Red
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(Res.string.recording),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Text(
-                        text = distance.formatDistance(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.2f)
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                painterResource(Res.drawable.ic_fiber_manual_record),
+                contentDescription = null,
+                tint = Color.Red,
+                modifier = Modifier.size(14.dp)
             )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOnlineTrackingClick() },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = stringResource(Res.string.online_tracking),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    if (onlineTrackingEnabled && viewerCount > 0) {
-                        BlinkingEyeIndicator(
-                            viewerCount = viewerCount,
-                            onClick = onOnlineTrackingClick
-                        )
-                    }
-                }
-                Switch(
-                    checked = onlineTrackingEnabled,
-                    onCheckedChange = onOnlineTrackingChange
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BlinkingEyeIndicator(
-    viewerCount: Int,
-    onClick: () -> Unit
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "eyeBlink")
-    val scaleY by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = 4000
-                1f at 0 using LinearEasing
-                1f at 3600 using LinearEasing
-                0.1f at 3700 using LinearEasing
-                1f at 3800 using LinearEasing
-                1f at 4000 using LinearEasing
-            },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "eyeScaleY"
-    )
-
-    Row(
-        modifier = Modifier.clickable { onClick() },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Icon(
-            painterResource(Res.drawable.ic_visibility),
-            contentDescription = if (viewerCount == 1) {
-                stringResource(Res.string.viewers_watching)
-            } else {
-                stringResource(Res.string.viewers_watching_plural, viewerCount)
-            },
-            tint = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier
-                .size(18.dp)
-                .graphicsLayer { this.scaleY = scaleY }
-        )
-        if (viewerCount > 1) {
             Text(
-                text = viewerCount.toString(),
-                style = MaterialTheme.typography.labelSmall,
+                text = stringResource(Res.string.recording_distance, distance.formatDistance()),
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
         }
@@ -577,7 +472,6 @@ fun BoxScope.MapOverlays(
     onRulerUndo: () -> Unit,
     onRulerClear: () -> Unit,
     onRulerSaveAsTrack: () -> Unit,
-    onOnlineTrackingChange: (Boolean) -> Unit,
     onOnlineTrackingClick: () -> Unit = {},
     onCloseViewingTrack: () -> Unit,
     onCloseViewingPoint: () -> Unit,
@@ -642,10 +536,14 @@ fun BoxScope.MapOverlays(
                     )
                 }
             }
-            if (isLiveSharing && !isRecording) {
+            if (isLiveSharing || isRecording) {
+                val chipEnabled = isLiveSharing ||
+                    (onlineTrackingEnabled && !offlineModeEnabled)
                 LiveSharingChip(
-                    untilMillis = liveShareUntilMillis,
-                    onClick = onOnlineTrackingClick
+                    enabled = chipEnabled,
+                    untilMillis = if (isLiveSharing) liveShareUntilMillis else null,
+                    viewerCount = if (chipEnabled) viewerCount else 0,
+                    onClick = onOnlineTrackingClick,
                 )
             }
         }
@@ -676,13 +574,7 @@ fun BoxScope.MapOverlays(
                 )
             }
             if (isRecording && recordingDistance != null) {
-                RecordingCard(
-                    distance = recordingDistance,
-                    onlineTrackingEnabled = onlineTrackingEnabled,
-                    viewerCount = viewerCount,
-                    onOnlineTrackingChange = onOnlineTrackingChange,
-                    onOnlineTrackingClick = onOnlineTrackingClick
-                )
+                RecordingCard(distance = recordingDistance)
             }
         }
     }

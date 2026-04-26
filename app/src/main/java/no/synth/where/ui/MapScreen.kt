@@ -92,7 +92,6 @@ fun MapScreen(
     val liveShareUntilMillis by viewModel.userPreferences.liveShareUntilMillis.collectAsState()
     val coordinator = remember(context) { (context.applicationContext as WhereApplication).onlineTrackingCoordinator }
     val isLiveSharing by coordinator.isLiveSharing.collectAsState()
-    val hasSeenTrackingInfo by viewModel.userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by viewModel.userPreferences.offlineModeEnabled.collectAsState()
     val showSavedPoints by viewModel.userPreferences.showSavedPoints.collectAsState()
     val rulerState by viewModel.rulerState.collectAsState()
@@ -177,7 +176,6 @@ fun MapScreen(
     }
     var showBackgroundLocationDisclosure by remember { mutableStateOf(false) }
     var pendingRecordStart by remember { mutableStateOf(false) }
-    var showTrackingInfoDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -219,8 +217,6 @@ fun MapScreen(
     val pointSavedMsg = stringResource(Res.string.point_saved)
     val pointDeletedMsg = stringResource(Res.string.point_deleted)
     val pointUpdatedMsg = stringResource(Res.string.point_updated)
-    val onlineEnabledMsg = stringResource(Res.string.online_tracking_enabled)
-    val onlineDisabledMsg = stringResource(Res.string.online_tracking_disabled)
 
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -494,15 +490,6 @@ fun MapScreen(
         onRulerSaveAsTrack = { viewModel.openSaveRulerAsTrackDialog() },
         onOfflineIndicatorClick = onOfflineSettingsClick,
         onOnlineTrackingClick = onOnlineTrackingSettingsClick,
-        onOnlineTrackingChange = { newValue ->
-            if (newValue && !hasSeenTrackingInfo) {
-                showTrackingInfoDialog = true
-            } else {
-                viewModel.updateOnlineTracking(newValue)
-                val msg = if (newValue) onlineEnabledMsg else onlineDisabledMsg
-                scope.launch { snackbarHostState.showSnackbar(msg) }
-            }
-        },
         onCloseViewingTrack = { viewModel.clearViewingTrack() },
         onCloseViewingPoint = onClearViewingPoint,
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
@@ -587,17 +574,6 @@ fun MapScreen(
             )
         }
     )
-
-    if (showTrackingInfoDialog) {
-        MapDialogs.TrackingInfoDialog(
-            onConfirm = {
-                showTrackingInfoDialog = false
-                viewModel.userPreferences.confirmTrackingInfoAndEnable()
-                scope.launch { snackbarHostState.showSnackbar(onlineEnabledMsg) }
-            },
-            onDismiss = { showTrackingInfoDialog = false }
-        )
-    }
 
     if (showStopTrackDialog) {
         MapDialogs.StopTrackDialog(
@@ -780,8 +756,6 @@ private fun RecordingCardPreview() {
                 .fillMaxWidth()
                 .padding(16.dp),
             distance = 2450.0,
-            onlineTrackingEnabled = true,
-            onOnlineTrackingChange = {}
         )
     }
 }
@@ -852,7 +826,6 @@ private fun MapScreenFullPreview() {
             onRulerUndo = {},
             onRulerClear = {},
             onRulerSaveAsTrack = {},
-            onOnlineTrackingChange = {},
             onCloseViewingTrack = {},
             onCloseViewingPoint = {},
             onSearchQueryChange = {},

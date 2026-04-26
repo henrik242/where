@@ -96,7 +96,6 @@ fun IosMapScreen(
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val viewerCount by userPreferences.viewerCount.collectAsState()
-    val hasSeenTrackingInfo by userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val liveShareUntilMillis by userPreferences.liveShareUntilMillis.collectAsState()
 
@@ -120,8 +119,6 @@ fun IosMapScreen(
     val pointSavedMsg = stringResource(Res.string.point_saved)
     val pointDeletedMsg = stringResource(Res.string.point_deleted)
     val pointUpdatedMsg = stringResource(Res.string.point_updated)
-    val onlineEnabledMsg = stringResource(Res.string.online_tracking_enabled)
-    val onlineDisabledMsg = stringResource(Res.string.online_tracking_disabled)
     val locationPermissionMsg = stringResource(Res.string.location_permission_required)
     val unnamedPointStr = stringResource(Res.string.unnamed_point)
 
@@ -159,7 +156,6 @@ fun IosMapScreen(
 
     // Save ruler as track state
     var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
-    var showTrackingInfoDialog by remember { mutableStateOf(false) }
     var rulerTrackName by remember { mutableStateOf("") }
     var isResolvingRulerName by remember { mutableStateOf(false) }
 
@@ -376,16 +372,6 @@ fun IosMapScreen(
                 }
             }
         })
-    }
-
-    if (showTrackingInfoDialog) {
-        MapDialogs.TrackingInfoDialog(
-            onConfirm = {
-                showTrackingInfoDialog = false
-                userPreferences.confirmTrackingInfoAndEnable()
-            },
-            onDismiss = { showTrackingInfoDialog = false }
-        )
     }
 
     if (showStopTrackDialog) {
@@ -664,15 +650,6 @@ fun IosMapScreen(
                 }
                 isResolvingRulerName = false
             }
-        },
-        onOnlineTrackingChange = { enabled ->
-            if (enabled && !hasSeenTrackingInfo) {
-                showTrackingInfoDialog = true
-                return@MapScreenContent
-            }
-            userPreferences.updateOnlineTrackingEnabled(enabled)
-            val msg = if (enabled) onlineEnabledMsg else onlineDisabledMsg
-            scope.launch { snackbarHostState.showSnackbar(msg) }
         },
         onCloseViewingTrack = {
             trackRepository.clearViewingTrack()
