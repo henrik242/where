@@ -28,6 +28,19 @@ import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
 import kotlin.math.min
 
+/**
+ * Lifecycle a track-sharing session exposes: [OnlineTrackingClient] is the
+ * production implementation; tests substitute their own without inheriting
+ * the production `init`'s scope, viewer-count poller, and HTTP client.
+ */
+interface TrackingSession {
+    fun startTrack(trackName: String)
+    fun syncExistingTrack(track: Track)
+    fun sendPoint(latLng: LatLng, altitude: Double? = null, accuracy: Float? = null)
+    fun stopTrack()
+    fun close()
+}
+
 class OnlineTrackingClient(
     private val serverUrl: String,
     private val clientId: String,
@@ -35,7 +48,7 @@ class OnlineTrackingClient(
     val client: HttpClient = createDefaultHttpClient(),
     private val canSend: () -> Boolean = { true },
     onViewerCountChanged: (Int) -> Unit = {}
-) {
+) : TrackingSession {
 
     companion object {
         private const val MAX_QUEUE_SIZE = 50_000
@@ -61,7 +74,7 @@ class OnlineTrackingClient(
     private val queueMutex = Mutex()
     private var flushScheduled = false
 
-    fun startTrack(trackName: String) {
+    override fun startTrack(trackName: String) {
         pendingTrackName = trackName
         startTrackBackoffMs = 5_000L
         scope.launch { createTrack(trackName) }
@@ -111,7 +124,7 @@ class OnlineTrackingClient(
         }
     }
 
-    fun syncExistingTrack(track: Track) {
+    override fun syncExistingTrack(track: Track) {
         viewerCountTracker.startPolling()
         scope.launch {
             try {
@@ -201,7 +214,7 @@ class OnlineTrackingClient(
         }
     }
 
-    fun sendPoint(latLng: LatLng, altitude: Double? = null, accuracy: Float? = null) {
+    override fun sendPoint(latLng: LatLng, altitude: Double?, accuracy: Float?) {
         val point = QueuedPoint(latLng, altitude, accuracy, currentTimeMillis())
         scope.launch {
             queueMutex.withLock {
@@ -308,13 +321,13 @@ class OnlineTrackingClient(
         }
     }
 
-    fun close() {
+    override fun close() {
         viewerCountTracker.stopPolling()
         scope.cancel()
         client.close()
     }
 
-    fun stopTrack() {
+    override fun stopTrack() {
         viewerCountTracker.stopPolling()
         val trackId = currentTrackId ?: return
 

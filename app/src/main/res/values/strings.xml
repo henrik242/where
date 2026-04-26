@@ -13,4 +13,8 @@
     <string name="notification_recording_and_sharing_text_no_time">Recording and sharing location</string>
     <string name="notification_action_stop_sharing">Stop sharing</string>
     <string name="notification_action_stop_recording">Stop recording</string>
+    <string name="duration_hours_only">%1$dh</string>
+    <string name="duration_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_minutes">%1$dm</string>
+    <string name="duration_seconds">%1$ds</string>
 </resources>

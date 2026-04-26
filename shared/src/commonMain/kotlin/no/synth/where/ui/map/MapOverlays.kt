@@ -68,81 +68,9 @@ import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
 import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
-import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.parseHexColor
-import no.synth.where.util.remainingTimeOf
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-
-@Composable
-private fun LiveSharingChip(
-    untilMillis: Long,
-    onClick: () -> Unit
-) {
-    var nowMillis by remember { mutableStateOf(currentTimeMillis()) }
-    LaunchedEffect(untilMillis) {
-        while (untilMillis > nowMillis) {
-            // Tick by the second only inside the last minute so the user sees
-            // an accurate countdown when it matters; coarse ticks otherwise.
-            val remaining = untilMillis - nowMillis
-            delay(if (remaining < 60_000L) 1_000L else 30_000L)
-            nowMillis = currentTimeMillis()
-        }
-    }
-    val remainingMillis = (untilMillis - nowMillis).coerceAtLeast(0L)
-    if (remainingMillis <= 0L) return
-    val r = remainingTimeOf(remainingMillis)
-    val remainingText = when {
-        r.isHoursOnly -> stringResource(Res.string.duration_hours_only, r.hours)
-        r.isHoursAndMinutes -> stringResource(Res.string.duration_hours_minutes, r.hours, r.minutes)
-        r.isMinutesOnly -> stringResource(Res.string.duration_minutes, r.minutes)
-        else -> stringResource(Res.string.duration_seconds, r.seconds)
-    }
-
-    val infiniteTransition = rememberInfiniteTransition(label = "liveDot")
-    val dotAlpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 900, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "liveDotAlpha"
-    )
-
-    Row(
-        modifier = Modifier
-            .background(
-                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.95f),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(
-                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = dotAlpha),
-                    CircleShape
-                )
-        )
-        Text(
-            text = stringResource(Res.string.live_chip_label),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = remainingText,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onTertiaryContainer
-        )
-    }
-}
 
 @Composable
 fun ZoomControls(
@@ -664,7 +592,7 @@ fun BoxScope.MapOverlays(
     isFollowedTrackActive: Boolean = false,
     onFollowBannerClick: () -> Unit = {},
     onStopFollowing: () -> Unit = {},
-    alwaysShareUntilMillis: Long = 0L,
+    liveShareUntilMillis: Long = 0L,
     isLiveSharing: Boolean = false
 ) {
     val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null) || followedClientId != null
@@ -716,7 +644,7 @@ fun BoxScope.MapOverlays(
             }
             if (isLiveSharing && !isRecording) {
                 LiveSharingChip(
-                    untilMillis = alwaysShareUntilMillis,
+                    untilMillis = liveShareUntilMillis,
                     onClick = onOnlineTrackingClick
                 )
             }

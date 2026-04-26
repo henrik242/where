@@ -4,9 +4,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import no.synth.where.BuildInfo
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.OfflineTileReader
+import no.synth.where.data.OnlineTrackingCoordinator
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
@@ -28,6 +30,7 @@ object AppDependencies {
     lateinit var userPreferences: UserPreferences
     lateinit var clientIdManager: ClientIdManager
     lateinit var liveTrackingFollower: LiveTrackingFollower
+    lateinit var onlineTrackingCoordinator: OnlineTrackingCoordinator
 }
 
 fun startApp() {
@@ -45,7 +48,8 @@ fun startApp() {
     val cachePaths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
     val cacheDir = requireNotNull((cachePaths.first() as NSURL).path) { "Caches directory not found" }
     OfflineTileReader.init(PlatformFile(cacheDir))
-    CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    appScope.launch {
         AppDependencies.userPreferences.offlineModeEnabled.collect { OfflineTileReader.offlineOnly = it }
     }
 
@@ -55,8 +59,24 @@ fun startApp() {
     // permission — would trigger an unsolicited Always prompt and may surprise
     // the user. Drop the timer; user can re-enable explicitly.
     val prefs = AppDependencies.userPreferences
-    if (prefs.alwaysShareUntilMillis.value > 0L &&
+    if (prefs.liveShareUntilMillis.value > 0L &&
         CLLocationManager.authorizationStatus() != kCLAuthorizationStatusAuthorizedAlways) {
-        prefs.stopAlwaysShare()
+        prefs.stopLiveShare()
     }
+
+    AppDependencies.onlineTrackingCoordinator = OnlineTrackingCoordinator(
+        sources = OnlineTrackingCoordinator.Sources(
+            isRecording = AppDependencies.trackRepository.isRecording,
+            liveShareUntilMillis = AppDependencies.userPreferences.liveShareUntilMillis,
+            onlineTrackingEnabled = AppDependencies.userPreferences.onlineTrackingEnabled,
+            offlineModeEnabled = AppDependencies.userPreferences.offlineModeEnabled,
+            trackingServerUrl = AppDependencies.userPreferences.trackingServerUrl,
+            currentTrack = AppDependencies.trackRepository.currentTrack,
+            onViewerCountChanged = { AppDependencies.userPreferences.updateViewerCount(it) },
+        ),
+        getClientId = { AppDependencies.clientIdManager.getClientId() },
+        trackingHint = BuildInfo.TRACKING_HINT,
+        parentScope = appScope,
+    )
+    AppDependencies.onlineTrackingCoordinator.start()
 }

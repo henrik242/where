@@ -394,7 +394,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 }
 
                 val viewerCount by userPreferences.viewerCount.collectAsState()
-                val alwaysShareUntilMillis by userPreferences.alwaysShareUntilMillis.collectAsState()
+                val liveShareUntilMillis by userPreferences.liveShareUntilMillis.collectAsState()
 
                 OnlineTrackingScreenContent(
                     isTrackingEnabled = onlineTrackingEnabled,
@@ -419,7 +419,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     },
                     onRegenerateClick = { showRegenerateDialog = true },
                     onConfirmRegenerate = {
-                        userPreferences.stopAlwaysShare()
+                        userPreferences.stopLiveShare()
                         scope.launch { clientId = clientIdManager.regenerateClientId() }
                         showRegenerateDialog = false
                     },
@@ -429,11 +429,11 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         userPreferences.confirmTrackingInfoAndEnable()
                     },
                     onDismissTrackingInfo = { showTrackingInfoDialog = false },
-                    alwaysShareUntilMillis = alwaysShareUntilMillis,
-                    onStartAlwaysShare = { durationMillis ->
-                        userPreferences.startAlwaysShare(durationMillis)
+                    liveShareUntilMillis = liveShareUntilMillis,
+                    onStartLiveShare = { durationMillis ->
+                        userPreferences.startLiveShare(durationMillis)
                     },
-                    onStopAlwaysShare = { userPreferences.stopAlwaysShare() },
+                    onStopLiveShare = { userPreferences.stopLiveShare() },
                     followedClientId = followedClientIdVal,
                     followClientIdInput = followClientIdInput,
                     followHistory = followHistoryVal,

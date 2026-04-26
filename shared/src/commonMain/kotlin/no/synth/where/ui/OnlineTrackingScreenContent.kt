@@ -45,7 +45,6 @@ import kotlinx.coroutines.delay
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.currentTimeMillis
-import no.synth.where.util.remainingTimeOf
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.hours
@@ -68,9 +67,9 @@ fun OnlineTrackingScreenContent(
     onDismissRegenerate: () -> Unit,
     onConfirmTrackingInfo: () -> Unit,
     onDismissTrackingInfo: () -> Unit,
-    alwaysShareUntilMillis: Long = 0L,
-    onStartAlwaysShare: (Long) -> Unit = {},
-    onStopAlwaysShare: () -> Unit = {},
+    liveShareUntilMillis: Long = 0L,
+    onStartLiveShare: (Long) -> Unit = {},
+    onStopLiveShare: () -> Unit = {},
     followedClientId: String? = null,
     followClientIdInput: String = "",
     followHistory: List<String> = emptyList(),
@@ -80,14 +79,14 @@ fun OnlineTrackingScreenContent(
 ) {
     var showDurationDialog by remember { mutableStateOf(false) }
     var nowMillis by remember { mutableStateOf(currentTimeMillis()) }
-    LaunchedEffect(alwaysShareUntilMillis) {
-        while (alwaysShareUntilMillis > nowMillis) {
+    LaunchedEffect(liveShareUntilMillis) {
+        while (liveShareUntilMillis > nowMillis) {
             delay(1000L)
             nowMillis = currentTimeMillis()
         }
     }
-    val remainingMillis = (alwaysShareUntilMillis - nowMillis).coerceAtLeast(0L)
-    val isAlwaysShareActive = remainingMillis > 0L
+    val remainingMillis = (liveShareUntilMillis - nowMillis).coerceAtLeast(0L)
+    val isLiveShareActive = remainingMillis > 0L
     Scaffold(
         topBar = {
             TopAppBar(
@@ -147,7 +146,7 @@ fun OnlineTrackingScreenContent(
             Card(
                 modifier = Modifier.fillMaxWidth().alpha(if (isTrackingEnabled) 1f else 0.5f),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isAlwaysShareActive) {
+                    containerColor = if (isLiveShareActive) {
                         MaterialTheme.colorScheme.primaryContainer
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -170,7 +169,7 @@ fun OnlineTrackingScreenContent(
                             Text(
                                 text = when {
                                     !isTrackingEnabled -> stringResource(Res.string.always_share_disabled_hint)
-                                    isAlwaysShareActive -> stringResource(Res.string.always_share_remaining, formatRemaining(remainingMillis))
+                                    isLiveShareActive -> stringResource(Res.string.always_share_remaining, formatRemaining(remainingMillis))
                                     else -> stringResource(Res.string.always_share_description)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
@@ -178,13 +177,13 @@ fun OnlineTrackingScreenContent(
                             )
                         }
                         Switch(
-                            checked = isAlwaysShareActive,
+                            checked = isLiveShareActive,
                             enabled = isTrackingEnabled,
                             onCheckedChange = { checked ->
                                 if (checked) {
                                     showDurationDialog = true
                                 } else {
-                                    onStopAlwaysShare()
+                                    onStopLiveShare()
                                 }
                             }
                         )
@@ -439,19 +438,19 @@ fun OnlineTrackingScreenContent(
                 Column {
                     DurationOption(stringResource(Res.string.share_duration_15min)) {
                         showDurationDialog = false
-                        onStartAlwaysShare(15.minutes.inWholeMilliseconds)
+                        onStartLiveShare(15.minutes.inWholeMilliseconds)
                     }
                     DurationOption(stringResource(Res.string.share_duration_1hour)) {
                         showDurationDialog = false
-                        onStartAlwaysShare(1.hours.inWholeMilliseconds)
+                        onStartLiveShare(1.hours.inWholeMilliseconds)
                     }
                     DurationOption(stringResource(Res.string.share_duration_4hours)) {
                         showDurationDialog = false
-                        onStartAlwaysShare(4.hours.inWholeMilliseconds)
+                        onStartLiveShare(4.hours.inWholeMilliseconds)
                     }
                     DurationOption(stringResource(Res.string.share_duration_8hours)) {
                         showDurationDialog = false
-                        onStartAlwaysShare(8.hours.inWholeMilliseconds)
+                        onStartLiveShare(8.hours.inWholeMilliseconds)
                     }
                 }
             },
@@ -497,13 +496,3 @@ private fun DurationOption(label: String, onClick: () -> Unit) {
     )
 }
 
-@Composable
-private fun formatRemaining(millis: Long): String {
-    val r = remainingTimeOf(millis)
-    return when {
-        r.isHoursOnly -> stringResource(Res.string.duration_hours_only, r.hours)
-        r.isHoursAndMinutes -> stringResource(Res.string.duration_hours_minutes, r.hours, r.minutes)
-        r.isMinutesOnly -> stringResource(Res.string.duration_minutes, r.minutes)
-        else -> stringResource(Res.string.duration_seconds, r.seconds)
-    }
-}

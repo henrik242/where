@@ -3,9 +3,8 @@ package no.synth.where.location
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.useContents
-import no.synth.where.data.OnlineTrackingClient
+import no.synth.where.data.OnlineTrackingCoordinator
 import no.synth.where.data.TrackRepository
-import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 import platform.CoreLocation.CLLocation
@@ -19,13 +18,12 @@ import platform.darwin.NSObject
 @OptIn(ExperimentalForeignApi::class)
 class IosLocationTracker(
     private val trackRepository: TrackRepository,
-    private val userPreferences: UserPreferences
+    private val coordinator: OnlineTrackingCoordinator,
 ) : NSObject(), CLLocationManagerDelegateProtocol {
 
     private val locationManager = CLLocationManager()
     private var _lastLocation: CLLocation? = null
     val lastLocation: CLLocation? get() = _lastLocation
-    var onlineTrackingClient: OnlineTrackingClient? = null
 
     init {
         locationManager.delegate = this
@@ -84,9 +82,7 @@ class IosLocationTracker(
                 accuracy = accuracy
             )
         }
-        if (trackRepository.isRecording.value || userPreferences.isLiveShareActive()) {
-            onlineTrackingClient?.sendPoint(coordinate, altitude, accuracy)
-        }
+        coordinator.sendPoint(coordinate, altitude, accuracy)
     }
 
     @ObjCSignatureOverride

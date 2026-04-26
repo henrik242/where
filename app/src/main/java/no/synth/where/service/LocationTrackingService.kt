@@ -29,16 +29,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import no.synth.where.BuildInfo
 import no.synth.where.MainActivity
 import no.synth.where.R
 import no.synth.where.WhereApplication
-import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.geo.LatLng
+import no.synth.where.util.RemainingTime
 import no.synth.where.util.currentTimeMillis
-import no.synth.where.util.formatDateTime
 import no.synth.where.util.remainingTimeOf
 
+/**
+ * Foreground service that owns the fused-location stream and the platform
+ * notification while either recording or live-share is active. Client
+ * lifecycle (creation, transitions between RECORDING/LIVE/NONE) is delegated
+ * to [no.synth.where.data.OnlineTrackingCoordinator].
+ */
 class LocationTrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -46,20 +50,17 @@ class LocationTrackingService : Service() {
     private val app get() = applicationContext as WhereApplication
     private val trackRepository get() = app.trackRepository
     private val userPreferences get() = app.userPreferences
-    private val clientIdManager get() = app.clientIdManager
+    private val coordinator get() = app.onlineTrackingCoordinator
 
-    private var onlineTrackingClient: OnlineTrackingClient? = null
-    private var clientMode: ClientMode = ClientMode.NONE
     private var notificationTickJob: Job? = null
 
-    private enum class ClientMode { NONE, RECORDING, LIVE }
-
-    private data class State(
+    private data class NotificationState(
         val recording: Boolean,
         val shareActive: Boolean,
-        val onlineActive: Boolean,
-        val shareUntilMillis: Long
-    )
+        val shareUntilMillis: Long,
+    ) {
+        val anyActive: Boolean get() = recording || shareActive
+    }
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
@@ -73,8 +74,7 @@ class LocationTrackingService : Service() {
                     altitude = altitude,
                     accuracy = accuracy
                 )
-
-                onlineTrackingClient?.sendPoint(latLng, altitude, accuracy)
+                coordinator.sendPoint(latLng, altitude, accuracy)
             }
         }
     }
@@ -83,45 +83,30 @@ class LocationTrackingService : Service() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
-        observeState()
+        observeNotificationState()
     }
 
-    private fun observeState() {
+    private fun observeNotificationState() {
         serviceScope.launch {
             combine(
                 trackRepository.isRecording,
-                userPreferences.alwaysShareUntilMillis,
-                userPreferences.onlineTrackingEnabled,
-                userPreferences.offlineModeEnabled
-            ) { recording, until, online, offline ->
-                State(
+                userPreferences.liveShareUntilMillis,
+            ) { recording, until ->
+                NotificationState(
                     recording = recording,
                     shareActive = until > currentTimeMillis(),
-                    onlineActive = online && !offline,
-                    shareUntilMillis = until
+                    shareUntilMillis = until,
                 )
-            }.distinctUntilChanged().collect { applyState(it) }
+            }.distinctUntilChanged().collect { state ->
+                if (!state.anyActive) {
+                    stopNotificationTicker()
+                    stopSelf()
+                    return@collect
+                }
+                startForeground(NOTIFICATION_ID, createNotification(state))
+                if (state.shareActive) startNotificationTicker() else stopNotificationTicker()
+            }
         }
-    }
-
-    private fun applyState(state: State) {
-        if (!state.recording && !state.shareActive) {
-            stopNotificationTicker()
-            transitionClient(ClientMode.NONE)
-            stopSelf()
-            return
-        }
-
-        startForeground(NOTIFICATION_ID, createNotification(state))
-
-        if (state.shareActive) startNotificationTicker() else stopNotificationTicker()
-
-        val desired = when {
-            !state.onlineActive -> ClientMode.NONE
-            state.recording -> ClientMode.RECORDING
-            else -> ClientMode.LIVE
-        }
-        if (desired != clientMode) transitionClient(desired)
     }
 
     private fun startNotificationTicker() {
@@ -129,7 +114,7 @@ class LocationTrackingService : Service() {
         notificationTickJob = serviceScope.launch {
             while (true) {
                 delay(NOTIFICATION_TICK_INTERVAL)
-                val s = currentState()
+                val s = currentNotificationState()
                 if (!s.shareActive) break
                 val nm = getSystemService(NotificationManager::class.java)
                 nm?.notify(NOTIFICATION_ID, createNotification(s))
@@ -142,65 +127,22 @@ class LocationTrackingService : Service() {
         notificationTickJob = null
     }
 
-    private fun transitionClient(desired: ClientMode) {
-        onlineTrackingClient?.let { c ->
-            c.stopTrack()
-            c.close()
-        }
-        onlineTrackingClient = null
-        clientMode = ClientMode.NONE
-
-        if (desired == ClientMode.NONE) return
-
-        clientMode = desired
-        serviceScope.launch {
-            val clientId = clientIdManager.getClientId()
-            val client = OnlineTrackingClient(
-                serverUrl = userPreferences.trackingServerUrl.value,
-                clientId = clientId,
-                trackingHint = BuildInfo.TRACKING_HINT,
-                canSend = { !userPreferences.offlineModeEnabled.value },
-                onViewerCountChanged = { userPreferences.updateViewerCount(it) }
-            )
-            onlineTrackingClient = client
-
-            when (desired) {
-                ClientMode.RECORDING -> {
-                    val current = trackRepository.currentTrack.value
-                    if (current != null && current.isRecording && current.points.isNotEmpty()) {
-                        client.syncExistingTrack(current)
-                    } else {
-                        client.startTrack(current?.name ?: "Track")
-                    }
-                }
-                ClientMode.LIVE -> {
-                    client.startTrack(liveTrackName())
-                }
-                ClientMode.NONE -> {}
-            }
-        }
-    }
-
-    private fun liveTrackName(): String =
-        "Live ${formatDateTime(currentTimeMillis(), "yyyy-MM-dd HH:mm")}"
-
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP_SHARING -> userPreferences.stopAlwaysShare()
+            ACTION_STOP_SHARING -> userPreferences.stopLiveShare()
             ACTION_STOP_RECORDING -> trackRepository.stopRecording()
         }
-        startForeground(NOTIFICATION_ID, createNotification(currentState()))
+        startForeground(NOTIFICATION_ID, createNotification(currentNotificationState()))
         startLocationUpdates()
         return START_STICKY
     }
 
-    private fun currentState(): State {
-        val until = userPreferences.alwaysShareUntilMillis.value
-        return State(
+    private fun currentNotificationState(): NotificationState {
+        val until = userPreferences.liveShareUntilMillis.value
+        return NotificationState(
             recording = trackRepository.isRecording.value,
             shareActive = until > currentTimeMillis(),
-            onlineActive = userPreferences.onlineTrackingEnabled.value && !userPreferences.offlineModeEnabled.value,
-            shareUntilMillis = until
+            shareUntilMillis = until,
         )
     }
 
@@ -244,7 +186,7 @@ class LocationTrackingService : Service() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun createNotification(state: State): Notification {
+    private fun createNotification(state: NotificationState): Notification {
         val notificationIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -307,22 +249,19 @@ class LocationTrackingService : Service() {
         return PendingIntent.getService(this, requestCode, intent, PendingIntent.FLAG_IMMUTABLE)
     }
 
-    private fun formatRemainingShort(millis: Long): String? {
-        val r = remainingTimeOf(millis)
-        return when {
-            r.hours <= 0 && r.minutes <= 0 && r.seconds <= 0 -> null
-            r.hours > 0 && r.minutes == 0 -> "${r.hours}h"
-            r.hours > 0 -> "${r.hours}h ${r.minutes}m"
-            r.minutes > 0 -> "${r.minutes}m"
-            else -> "${r.seconds}s"
+    private fun formatRemainingShort(millis: Long): String? =
+        when (val r = remainingTimeOf(millis)) {
+            RemainingTime.Zero -> null
+            is RemainingTime.HoursOnly -> getString(R.string.duration_hours_only, r.hours)
+            is RemainingTime.HoursAndMinutes ->
+                getString(R.string.duration_hours_minutes, r.hours, r.minutes)
+            is RemainingTime.MinutesOnly -> getString(R.string.duration_minutes, r.minutes)
+            is RemainingTime.SecondsOnly -> getString(R.string.duration_seconds, r.seconds)
         }
-    }
 
     override fun onDestroy() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
-        onlineTrackingClient?.stopTrack()
-        onlineTrackingClient?.close()
         serviceScope.cancel()
     }
 
