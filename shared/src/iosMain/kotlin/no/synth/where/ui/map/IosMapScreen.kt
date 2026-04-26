@@ -157,7 +157,7 @@ fun IosMapScreen(
     var cameraZoom by remember { mutableStateOf(5.0) }
     var isCompassVisible by remember { mutableStateOf(false) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
-    var twoFingerMeasurement by remember { mutableStateOf<TwoFingerMeasurement?>(null) }
+    var twoFingerMeasurement by rememberAutoDismissingTwoFingerMeasurement()
 
     // Save ruler as track state
     var showSaveRulerAsTrackDialog by remember { mutableStateOf(false) }
@@ -214,32 +214,26 @@ fun IosMapScreen(
                     bearing < 0.5 || bearing > 359.5 -> false
                     else -> isCompassVisible
                 }
+                twoFingerMeasurement
+                    ?.reprojectedWith(mapViewProvider::projectToScreen)
+                    ?.let { twoFingerMeasurement = it }
             }
         })
         onDispose { mapViewProvider.setOnCameraMoveCallback(null) }
     }
 
-    // Two-finger touch callback for distance measurement
+    // Two-finger tap callback for distance measurement
     DisposableEffect(Unit) {
-        mapViewProvider.setOnTwoFingerTouchCallback(object : MapTwoFingerTouchCallback {
-            override fun onTwoFingerTouch(
-                screenX1: Float, screenY1: Float,
-                screenX2: Float, screenY2: Float,
-                lat1: Double, lng1: Double,
-                lat2: Double, lng2: Double
-            ) {
-                val ll1 = LatLng(lat1, lng1)
-                val ll2 = LatLng(lat2, lng2)
-                twoFingerMeasurement = TwoFingerMeasurement(
-                    screenX1, screenY1, screenX2, screenY2,
-                    ll1.distanceTo(ll2)
-                )
-            }
-            override fun onTwoFingerRelease() {
-                twoFingerMeasurement = null
-            }
+        mapViewProvider.setOnTwoFingerTapCallback(MapTwoFingerTapCallback { sx1, sy1, sx2, sy2, lat1, lng1, lat2, lng2 ->
+            val ll1 = LatLng(lat1, lng1)
+            val ll2 = LatLng(lat2, lng2)
+            twoFingerMeasurement = TwoFingerMeasurement(
+                sx1, sy1, sx2, sy2,
+                lat1, lng1, lat2, lng2,
+                ll1.distanceTo(ll2)
+            )
         })
-        onDispose { mapViewProvider.setOnTwoFingerTouchCallback(null) }
+        onDispose { mapViewProvider.setOnTwoFingerTapCallback(null) }
     }
 
     // Initialize center position when crosshair is activated
@@ -351,6 +345,9 @@ fun IosMapScreen(
         })
         mapViewProvider.setOnMapClickCallback(object : MapClickCallback {
             override fun onMapClick(latitude: Double, longitude: Double) {
+                if (twoFingerMeasurement != null) {
+                    twoFingerMeasurement = null
+                }
                 if (rulerState.isActive) {
                     rulerState = rulerState.addPoint(LatLng(latitude, longitude))
                     return
