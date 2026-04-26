@@ -2,9 +2,15 @@
     <string name="app_name">Where?</string>
 
     <!-- Location Tracking Service (Android-only, used via R.string in Service context) -->
-    <string name="stop">Stop</string>
     <string name="notification_channel_name">Track Recording</string>
-    <string name="notification_channel_description">Ongoing track recording notifications</string>
+    <string name="notification_channel_description">Ongoing track recording and location sharing notifications</string>
     <string name="notification_recording_title">Recording Track</string>
     <string name="notification_recording_text">Location tracking is active</string>
+    <string name="notification_sharing_title">Sharing location</string>
+    <string name="notification_sharing_text">Live location is being shared — %1$s left</string>
+    <string name="notification_sharing_text_no_time">Live location is being shared</string>
+    <string name="notification_recording_and_sharing_text">Recording and sharing location — %1$s left</string>
+    <string name="notification_recording_and_sharing_text_no_time">Recording and sharing location</string>
+    <string name="notification_action_stop_sharing">Stop sharing</string>
+    <string name="notification_action_stop_recording">Stop recording</string>
 </resources>

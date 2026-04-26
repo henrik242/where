@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -48,9 +49,13 @@ import no.synth.where.resources.track_discarded
 import no.synth.where.resources.track_saved
 import no.synth.where.resources.unnamed_point
 import no.synth.where.util.NamingUtils
+import no.synth.where.util.currentTimeMillis
+import no.synth.where.util.formatDateTime
 import org.jetbrains.compose.resources.stringResource
 import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
+
+private enum class ClientMode { NONE, RECORDING, LIVE }
 
 /**
  * URL template for MapLibre `glyphs:` pointing at PBF files inside the iOS
@@ -80,7 +85,7 @@ fun IosMapScreen(
     val savedPointsRepository = remember { AppDependencies.savedPointsRepository }
     val userPreferences = remember { AppDependencies.userPreferences }
     val clientIdManager = remember { AppDependencies.clientIdManager }
-    val locationTracker = remember { IosLocationTracker(trackRepository) }
+    val locationTracker = remember { IosLocationTracker(trackRepository, userPreferences) }
 
     var showLayerMenu by remember { mutableStateOf(false) }
     val currentLayer by userPreferences.selectedMapLayer.collectAsState()
@@ -101,6 +106,7 @@ fun IosMapScreen(
     val hasSeenTrackingInfo by userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
+    val alwaysShareUntilMillis by userPreferences.alwaysShareUntilMillis.collectAsState()
 
     val liveTrackingFollower = remember { AppDependencies.liveTrackingFollower }
     val followState by liveTrackingFollower.state.collectAsState()
@@ -184,6 +190,75 @@ fun IosMapScreen(
 
     LaunchedEffect(offlineModeEnabled) {
         mapViewProvider.setConnected(!offlineModeEnabled)
+    }
+
+    val isAlwaysShareActive = alwaysShareUntilMillis > currentTimeMillis()
+    val shouldTrackLocation = isRecording || isAlwaysShareActive
+    val onlineActive = onlineTrackingEnabled && !offlineModeEnabled
+    val desiredClientMode = when {
+        !shouldTrackLocation || !onlineActive -> ClientMode.NONE
+        isRecording -> ClientMode.RECORDING
+        else -> ClientMode.LIVE
+    }
+
+    LaunchedEffect(shouldTrackLocation) {
+        if (shouldTrackLocation) {
+            when {
+                !locationTracker.hasPermission -> locationTracker.requestAlwaysPermission()
+                !locationTracker.hasAlwaysPermission -> {
+                    locationTracker.requestAlwaysPermission()
+                    locationTracker.startTracking()
+                }
+                else -> locationTracker.startTracking()
+            }
+        } else {
+            locationTracker.stopTracking()
+        }
+    }
+
+    LaunchedEffect(desiredClientMode) {
+        withContext(NonCancellable) {
+            locationTracker.onlineTrackingClient?.let { existing ->
+                existing.stopTrack()
+                existing.close()
+            }
+            locationTracker.onlineTrackingClient = null
+        }
+        if (desiredClientMode == ClientMode.NONE) return@LaunchedEffect
+
+        val cid = clientIdManager.getClientId()
+        val client = OnlineTrackingClient(
+            serverUrl = trackingServerUrl,
+            clientId = cid,
+            trackingHint = BuildInfo.TRACKING_HINT,
+            canSend = { !userPreferences.offlineModeEnabled.value },
+            onViewerCountChanged = { userPreferences.updateViewerCount(it) }
+        )
+        try {
+            locationTracker.onlineTrackingClient = client
+            when (desiredClientMode) {
+                ClientMode.RECORDING -> {
+                    val track = trackRepository.currentTrack.value
+                    if (track != null && track.points.isNotEmpty()) {
+                        client.syncExistingTrack(track)
+                    } else {
+                        client.startTrack(track?.name ?: "Track")
+                    }
+                }
+                ClientMode.LIVE -> {
+                    client.startTrack("Live ${formatDateTime(currentTimeMillis(), "yyyy-MM-dd HH:mm")}")
+                }
+                ClientMode.NONE -> {}
+            }
+        } catch (e: Throwable) {
+            withContext(NonCancellable) {
+                if (locationTracker.onlineTrackingClient === client) {
+                    locationTracker.onlineTrackingClient = null
+                }
+                client.close()
+            }
+            throw e
+        }
     }
 
     // Debounced search
@@ -367,25 +442,6 @@ fun IosMapScreen(
             onConfirm = {
                 showTrackingInfoDialog = false
                 userPreferences.confirmTrackingInfoAndEnable()
-                if (isRecording) {
-                    scope.launch {
-                        val clientId = clientIdManager.getClientId()
-                        val client = OnlineTrackingClient(
-                            serverUrl = trackingServerUrl,
-                            clientId = clientId,
-                            trackingHint = BuildInfo.TRACKING_HINT,
-                            canSend = { !userPreferences.offlineModeEnabled.value },
-                            onViewerCountChanged = { userPreferences.updateViewerCount(it) }
-                        )
-                        val track = currentTrack
-                        if (track != null && track.isRecording) {
-                            client.syncExistingTrack(track)
-                        } else {
-                            client.startTrack(track?.name ?: "Track")
-                        }
-                        locationTracker.onlineTrackingClient = client
-                    }
-                }
             },
             onDismiss = { showTrackingInfoDialog = false }
         )
@@ -396,27 +452,19 @@ fun IosMapScreen(
             trackNameInput = trackNameInput,
             onTrackNameChange = { trackNameInput = it },
             onDiscard = {
-                locationTracker.onlineTrackingClient?.stopTrack()
-                locationTracker.onlineTrackingClient?.close()
-                locationTracker.onlineTrackingClient = null
                 trackRepository.discardRecording()
-                locationTracker.stopTracking()
                 mapViewProvider.clearTrackLine()
                 showStopTrackDialog = false
                 trackNameInput = ""
                 scope.launch { snackbarHostState.showSnackbar(trackDiscardedMsg) }
             },
             onSave = {
-                locationTracker.onlineTrackingClient?.stopTrack()
-                locationTracker.onlineTrackingClient?.close()
-                locationTracker.onlineTrackingClient = null
                 val current = currentTrack
                 val name = trackNameInput
                 if (current != null && name.isNotBlank()) {
                     trackRepository.renameTrack(current, name)
                 }
                 trackRepository.stopRecording()
-                locationTracker.stopTracking()
                 mapViewProvider.clearTrackLine()
                 showStopTrackDialog = false
                 trackNameInput = ""
@@ -547,6 +595,8 @@ fun IosMapScreen(
         offlineModeEnabled = offlineModeEnabled,
         isCompassVisible = isCompassVisible,
         onlineTrackingEnabled = onlineTrackingEnabled,
+        alwaysShareUntilMillis = alwaysShareUntilMillis,
+        isLiveSharing = isAlwaysShareActive && onlineTrackingEnabled && !offlineModeEnabled,
         viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,
@@ -599,26 +649,14 @@ fun IosMapScreen(
                 }
             } else {
                 if (!locationTracker.hasPermission) {
-                    locationTracker.requestPermission()
+                    locationTracker.requestAlwaysPermission()
                     scope.launch { snackbarHostState.showSnackbar(locationPermissionMsg) }
                     return@MapScreenContent
                 }
-                trackRepository.startNewTrack()
-                locationTracker.startTracking()
-                if (onlineTrackingEnabled && !offlineModeEnabled) {
-                    scope.launch {
-                        val clientId = clientIdManager.getClientId()
-                        val client = OnlineTrackingClient(
-                            serverUrl = trackingServerUrl,
-                            clientId = clientId,
-                            trackingHint = BuildInfo.TRACKING_HINT,
-                            canSend = { !userPreferences.offlineModeEnabled.value },
-                            onViewerCountChanged = { userPreferences.updateViewerCount(it) }
-                        )
-                        client.startTrack("Track")
-                        locationTracker.onlineTrackingClient = client
-                    }
+                if (!locationTracker.hasAlwaysPermission) {
+                    locationTracker.requestAlwaysPermission()
                 }
+                trackRepository.startNewTrack()
                 scope.launch { snackbarHostState.showSnackbar(recordingMsg) }
             }
         },
@@ -692,32 +730,8 @@ fun IosMapScreen(
                 return@MapScreenContent
             }
             userPreferences.updateOnlineTrackingEnabled(enabled)
-            if (isRecording) {
-                if (enabled) {
-                    scope.launch {
-                        val clientId = clientIdManager.getClientId()
-                        val client = OnlineTrackingClient(
-                            serverUrl = trackingServerUrl,
-                            clientId = clientId,
-                            trackingHint = BuildInfo.TRACKING_HINT,
-                            canSend = { !userPreferences.offlineModeEnabled.value },
-                            onViewerCountChanged = { userPreferences.updateViewerCount(it) }
-                        )
-                        val track = currentTrack
-                        if (track != null && track.isRecording) {
-                            client.syncExistingTrack(track)
-                        } else {
-                            client.startTrack(track?.name ?: "Track")
-                        }
-                        locationTracker.onlineTrackingClient = client
-                        snackbarHostState.showSnackbar(onlineEnabledMsg)
-                    }
-                } else {
-                    locationTracker.onlineTrackingClient?.stopTrack()
-                    locationTracker.onlineTrackingClient = null
-                    scope.launch { snackbarHostState.showSnackbar(onlineDisabledMsg) }
-                }
-            }
+            val msg = if (enabled) onlineEnabledMsg else onlineDisabledMsg
+            scope.launch { snackbarHostState.showSnackbar(msg) }
         },
         onCloseViewingTrack = {
             trackRepository.clearViewingTrack()

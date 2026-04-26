@@ -88,6 +88,7 @@ fun MapScreen(
     val viewingTrack by viewModel.viewingTrack.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val viewerCount by viewModel.userPreferences.viewerCount.collectAsState()
+    val alwaysShareUntilMillis by viewModel.userPreferences.alwaysShareUntilMillis.collectAsState()
     val hasSeenTrackingInfo by viewModel.userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by viewModel.userPreferences.offlineModeEnabled.collectAsState()
     val showSavedPoints by viewModel.userPreferences.showSavedPoints.collectAsState()
@@ -410,6 +411,8 @@ fun MapScreen(
         offlineModeEnabled = offlineModeEnabled,
         isCompassVisible = isCompassVisible,
         onlineTrackingEnabled = onlineTrackingEnabled,
+        alwaysShareUntilMillis = alwaysShareUntilMillis,
+        isLiveSharing = onlineTrackingEnabled && !offlineModeEnabled && alwaysShareUntilMillis > System.currentTimeMillis(),
         viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,
@@ -493,13 +496,8 @@ fun MapScreen(
                 showTrackingInfoDialog = true
             } else {
                 viewModel.updateOnlineTracking(newValue)
-                if (newValue) {
-                    LocationTrackingService.enableOnlineTracking(context)
-                    scope.launch { snackbarHostState.showSnackbar(onlineEnabledMsg) }
-                } else {
-                    LocationTrackingService.disableOnlineTracking(context)
-                    scope.launch { snackbarHostState.showSnackbar(onlineDisabledMsg) }
-                }
+                val msg = if (newValue) onlineEnabledMsg else onlineDisabledMsg
+                scope.launch { snackbarHostState.showSnackbar(msg) }
             }
         },
         onCloseViewingTrack = { viewModel.clearViewingTrack() },
@@ -592,7 +590,6 @@ fun MapScreen(
             onConfirm = {
                 showTrackingInfoDialog = false
                 viewModel.userPreferences.confirmTrackingInfoAndEnable()
-                LocationTrackingService.enableOnlineTracking(context)
                 scope.launch { snackbarHostState.showSnackbar(onlineEnabledMsg) }
             },
             onDismiss = { showTrackingInfoDialog = false }
@@ -606,14 +603,12 @@ fun MapScreen(
             isLoading = isResolvingTrackName,
             onDiscard = {
                 viewModel.discardRecording()
-                LocationTrackingService.stop(context)
                 scope.launch {
                     snackbarHostState.showSnackbar(trackDiscardedMsg)
                 }
             },
             onSave = {
                 viewModel.saveRecording()
-                LocationTrackingService.stop(context)
                 scope.launch {
                     snackbarHostState.showSnackbar(trackSavedMsg)
                 }

@@ -5,6 +5,7 @@ import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.useContents
 import no.synth.where.data.OnlineTrackingClient
 import no.synth.where.data.TrackRepository
+import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 import platform.CoreLocation.CLLocation
@@ -17,7 +18,8 @@ import platform.darwin.NSObject
 
 @OptIn(ExperimentalForeignApi::class)
 class IosLocationTracker(
-    private val trackRepository: TrackRepository
+    private val trackRepository: TrackRepository,
+    private val userPreferences: UserPreferences
 ) : NSObject(), CLLocationManagerDelegateProtocol {
 
     private val locationManager = CLLocationManager()
@@ -29,6 +31,12 @@ class IosLocationTracker(
         locationManager.delegate = this
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = 5.0
+        locationManager.pausesLocationUpdatesAutomatically = false
+        applyBackgroundUpdatesFlag()
+    }
+
+    private fun applyBackgroundUpdatesFlag() {
+        locationManager.allowsBackgroundLocationUpdates = hasAlwaysPermission
     }
 
     val hasPermission: Boolean
@@ -38,11 +46,19 @@ class IosLocationTracker(
                 status == kCLAuthorizationStatusAuthorizedAlways
         }
 
+    val hasAlwaysPermission: Boolean
+        get() = CLLocationManager.authorizationStatus() == kCLAuthorizationStatusAuthorizedAlways
+
     fun requestPermission() {
         locationManager.requestWhenInUseAuthorization()
     }
 
+    fun requestAlwaysPermission() {
+        locationManager.requestAlwaysAuthorization()
+    }
+
     fun startTracking() {
+        applyBackgroundUpdatesFlag()
         locationManager.startUpdatingLocation()
     }
 
@@ -55,17 +71,20 @@ class IosLocationTracker(
         val location = didUpdateLocations.lastOrNull() as? CLLocation ?: return
         _lastLocation = location
 
+        val altitude = if (location.verticalAccuracy >= 0) location.altitude else null
+        val coordinate = location.coordinate.useContents {
+            LatLng(latitude, longitude)
+        }
+        val accuracy = location.horizontalAccuracy.toFloat()
+
         if (trackRepository.isRecording.value) {
-            val altitude = if (location.verticalAccuracy >= 0) location.altitude else null
-            val coordinate = location.coordinate.useContents {
-                LatLng(latitude, longitude)
-            }
-            val accuracy = location.horizontalAccuracy.toFloat()
             trackRepository.addTrackPoint(
                 latLng = coordinate,
                 altitude = altitude,
                 accuracy = accuracy
             )
+        }
+        if (trackRepository.isRecording.value || userPreferences.isLiveShareActive()) {
             onlineTrackingClient?.sendPoint(coordinate, altitude, accuracy)
         }
     }
@@ -73,5 +92,9 @@ class IosLocationTracker(
     @ObjCSignatureOverride
     override fun locationManager(manager: CLLocationManager, didFailWithError: platform.Foundation.NSError) {
         Logger.e("Location error: ${didFailWithError.localizedDescription}")
+    }
+
+    override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
+        applyBackgroundUpdatesFlag()
     }
 }

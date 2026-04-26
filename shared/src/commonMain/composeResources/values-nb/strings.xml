@@ -93,7 +93,22 @@
     <string name="regenerate_id">Generer ny ID</string>
     <string name="regenerate_client_id">Generer ny klient-ID</string>
     <string name="how_it_works">\u2139\uFE0F Slik fungerer det</string>
-    <string name="how_it_works_description">Når du trykker ta opp i kartvisningen og direktesporing er aktivert, deles posisjonen din i sanntid med alle som har din klient-ID. De kan se sporet ditt på nettsiden.</string>
+    <string name="how_it_works_description">Når direktesporing er aktivert deles posisjonen din i sanntid med alle som har din klient-ID — enten mens du tar opp et spor i kartvisningen, eller mens \"Del posisjon midlertidig\" er aktiv.</string>
+
+    <!-- Del posisjon midlertidig -->
+    <string name="always_share_location">Del posisjon midlertidig</string>
+    <string name="always_share_description">Del posisjonen din i sanntid en begrenset tid, selv uten å ta opp et spor.</string>
+    <string name="always_share_disabled_hint">Aktiver direktesporing først.</string>
+    <string name="always_share_remaining">%1$s igjen</string>
+    <string name="share_duration_title">Hvor lenge skal posisjonen deles?</string>
+    <string name="share_duration_15min">15 minutter</string>
+    <string name="share_duration_1hour">1 time</string>
+    <string name="share_duration_4hours">4 timer</string>
+    <string name="share_duration_8hours">8 timer</string>
+    <string name="duration_seconds">%1$ds</string>
+    <string name="duration_hours_only">%1$dt</string>
+    <string name="live_chip_label">Direkte</string>
+    <string name="stop_sharing">Stopp deling</string>
     <string name="tracking_info_title">Direktesporing</string>
     <string name="tracking_info_message">Posisjonen din deles kun når du trykker på opptaksknappen i kartvisningen. Å aktivere denne bryteren starter ikke sporing i seg selv.</string>
     <string name="got_it">Forstått</string>

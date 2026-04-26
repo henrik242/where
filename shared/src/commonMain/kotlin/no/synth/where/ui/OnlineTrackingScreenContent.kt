@@ -31,14 +31,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import no.synth.where.util.currentTimeMillis
+import no.synth.where.util.remainingTimeOf
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +68,9 @@ fun OnlineTrackingScreenContent(
     onDismissRegenerate: () -> Unit,
     onConfirmTrackingInfo: () -> Unit,
     onDismissTrackingInfo: () -> Unit,
+    alwaysShareUntilMillis: Long = 0L,
+    onStartAlwaysShare: (Long) -> Unit = {},
+    onStopAlwaysShare: () -> Unit = {},
     followedClientId: String? = null,
     followClientIdInput: String = "",
     followHistory: List<String> = emptyList(),
@@ -64,6 +78,16 @@ fun OnlineTrackingScreenContent(
     onStartFollowing: () -> Unit = {},
     onStopFollowing: () -> Unit = {}
 ) {
+    var showDurationDialog by remember { mutableStateOf(false) }
+    var nowMillis by remember { mutableStateOf(currentTimeMillis()) }
+    LaunchedEffect(alwaysShareUntilMillis) {
+        while (alwaysShareUntilMillis > nowMillis) {
+            delay(1000L)
+            nowMillis = currentTimeMillis()
+        }
+    }
+    val remainingMillis = (alwaysShareUntilMillis - nowMillis).coerceAtLeast(0L)
+    val isAlwaysShareActive = remainingMillis > 0L
     Scaffold(
         topBar = {
             TopAppBar(
@@ -117,6 +141,54 @@ fun OnlineTrackingScreenContent(
                         checked = isTrackingEnabled,
                         onCheckedChange = onToggleTracking
                     )
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth().alpha(if (isTrackingEnabled) 1f else 0.5f),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isAlwaysShareActive) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    }
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(Res.string.always_share_location),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = when {
+                                    !isTrackingEnabled -> stringResource(Res.string.always_share_disabled_hint)
+                                    isAlwaysShareActive -> stringResource(Res.string.always_share_remaining, formatRemaining(remainingMillis))
+                                    else -> stringResource(Res.string.always_share_description)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = isAlwaysShareActive,
+                            enabled = isTrackingEnabled,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    showDurationDialog = true
+                                } else {
+                                    onStopAlwaysShare()
+                                }
+                            }
+                        )
+                    }
                 }
             }
 
@@ -359,6 +431,39 @@ fun OnlineTrackingScreenContent(
         )
     }
 
+    if (showDurationDialog) {
+        AlertDialog(
+            onDismissRequest = { showDurationDialog = false },
+            title = { Text(stringResource(Res.string.share_duration_title)) },
+            text = {
+                Column {
+                    DurationOption(stringResource(Res.string.share_duration_15min)) {
+                        showDurationDialog = false
+                        onStartAlwaysShare(15.minutes.inWholeMilliseconds)
+                    }
+                    DurationOption(stringResource(Res.string.share_duration_1hour)) {
+                        showDurationDialog = false
+                        onStartAlwaysShare(1.hours.inWholeMilliseconds)
+                    }
+                    DurationOption(stringResource(Res.string.share_duration_4hours)) {
+                        showDurationDialog = false
+                        onStartAlwaysShare(4.hours.inWholeMilliseconds)
+                    }
+                    DurationOption(stringResource(Res.string.share_duration_8hours)) {
+                        showDurationDialog = false
+                        onStartAlwaysShare(8.hours.inWholeMilliseconds)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showDurationDialog = false }) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
     if (showRegenerateDialog) {
         AlertDialog(
             onDismissRequest = onDismissRegenerate,
@@ -377,5 +482,28 @@ fun OnlineTrackingScreenContent(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun DurationOption(label: String, onClick: () -> Unit) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp)
+    )
+}
+
+@Composable
+private fun formatRemaining(millis: Long): String {
+    val r = remainingTimeOf(millis)
+    return when {
+        r.isHoursOnly -> stringResource(Res.string.duration_hours_only, r.hours)
+        r.isHoursAndMinutes -> stringResource(Res.string.duration_hours_minutes, r.hours, r.minutes)
+        r.isMinutesOnly -> stringResource(Res.string.duration_minutes, r.minutes)
+        else -> stringResource(Res.string.duration_seconds, r.seconds)
     }
 }
