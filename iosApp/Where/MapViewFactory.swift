@@ -117,9 +117,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
         let c1 = mapView.convert(p1, toCoordinateFrom: mapView)
         let c2 = mapView.convert(p2, toCoordinateFrom: mapView)
+        let scale = mapView.window?.screen.scale ?? UIScreen.main.scale
         twoFingerTouchCallback?.onTwoFingerTouch(
-            screenX1: Float(p1.x), screenY1: Float(p1.y),
-            screenX2: Float(p2.x), screenY2: Float(p2.y),
+            screenX1: Float(p1.x * scale), screenY1: Float(p1.y * scale),
+            screenX2: Float(p2.x * scale), screenY2: Float(p2.y * scale),
             lat1: c1.latitude, lng1: c1.longitude,
             lat2: c2.latitude, lng2: c2.longitude
         )
