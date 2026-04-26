@@ -65,6 +65,7 @@
     <string name="clear_all">Fjern alle</string>
     <string name="save_as_track">Lagre som spor</string>
     <string name="recording">Tar opp</string>
+    <string name="recording_distance">Tar opp %1$s</string>
     <string name="online_tracking">Direktesporing</string>
     <string name="viewers_watching">Noen ser på sporet ditt</string>
     <string name="viewers_watching_plural">%1$d personer ser på sporet ditt</string>
