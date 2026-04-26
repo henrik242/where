@@ -122,7 +122,7 @@
     <string name="saved_tracks_description">Importer fra GPX, Garmin eller Komoot, eksporter og administrer spor</string>
     <string name="go_to_saved_tracks">Gå til Lagrede spor</string>
     <string name="go_to_saved_points">Gå til Lagrede punkter</string>
-    <string name="offline_maps">Frakoblede kart</string>
+    <string name="offline_maps">Nedlastede kart</string>
     <string name="go_to_download_manager">Gå til Nedlastinger</string>
     <string name="language">Språk</string>
     <string name="system_default">Systemstandard</string>
@@ -139,10 +139,10 @@
     <string name="sponsor_description">Kjøp meg en kaffe</string>
     <string name="crash_reporting">Krasjrapportering</string>
     <string name="crash_reporting_description">Send anonyme krasjrapporter for å hjelpe med å forbedre appen</string>
-    <string name="offline_mode">Frakoblet modus</string>
+    <string name="offline_mode">Offline modus</string>
     <string name="offline_mode_description">Bruk kun bufrede kart og data, ingen nettverksforespørsler</string>
     <string name="download_elevation_data">Last ned høydedata</string>
-    <string name="download_elevation_data_description">Last ned høyde- og bratthetdata ved nedlasting av kartfliser for frakoblet bruk</string>
+    <string name="download_elevation_data_description">Last ned høyde- og bratthetdata ved nedlasting av kartfliser for offline bruk</string>
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Importer fil</string>
