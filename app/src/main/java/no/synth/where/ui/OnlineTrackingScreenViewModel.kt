@@ -22,7 +22,7 @@ class OnlineTrackingScreenViewModel(
     val viewerCount = userPreferences.viewerCount
     val followedClientId = userPreferences.followedClientId
     val followHistory = userPreferences.followHistory
-    val alwaysShareUntilMillis = userPreferences.alwaysShareUntilMillis
+    val liveShareUntilMillis = userPreferences.liveShareUntilMillis
 
     private val _clientId = MutableStateFlow("")
     val clientId: StateFlow<String> = _clientId.asStateFlow()
@@ -40,12 +40,12 @@ class OnlineTrackingScreenViewModel(
         userPreferences.updateOnlineTrackingEnabled(enabled)
     }
 
-    fun startAlwaysShare(durationMillis: Long) {
-        userPreferences.startAlwaysShare(durationMillis)
+    fun startLiveShare(durationMillis: Long) {
+        userPreferences.startLiveShare(durationMillis)
     }
 
-    fun stopAlwaysShare() {
-        userPreferences.stopAlwaysShare()
+    fun stopLiveShare() {
+        userPreferences.stopLiveShare()
     }
 
     fun confirmTrackingInfoAndEnable() {
@@ -53,7 +53,7 @@ class OnlineTrackingScreenViewModel(
     }
 
     fun regenerateClientId() {
-        userPreferences.stopAlwaysShare()
+        userPreferences.stopLiveShare()
         viewModelScope.launch {
             _clientId.value = clientIdManager.regenerateClientId()
         }

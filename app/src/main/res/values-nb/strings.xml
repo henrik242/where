@@ -13,4 +13,8 @@
     <string name="notification_recording_and_sharing_text_no_time">Tar opp og deler posisjon</string>
     <string name="notification_action_stop_sharing">Stopp deling</string>
     <string name="notification_action_stop_recording">Stopp opptak</string>
+    <string name="duration_hours_only">%1$dt</string>
+    <string name="duration_hours_minutes">%1$dt %2$dm</string>
+    <string name="duration_minutes">%1$dm</string>
+    <string name="duration_seconds">%1$ds</string>
 </resources>

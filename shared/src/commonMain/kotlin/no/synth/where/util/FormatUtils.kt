@@ -1,15 +1,15 @@
 package no.synth.where.util
 
 /**
- * Decomposes a remaining-time value into a (hours, minutes, seconds) triple.
- * Negative or zero millis yields all-zeros. Callers pick the appropriate
- * resource format based on which fields are non-zero.
+ * Coarsest non-zero granularity of a positive remaining-time value, picked
+ * so callers can map directly to a single localized resource format.
  */
-data class RemainingTime(val hours: Int, val minutes: Int, val seconds: Int) {
-    val isHoursOnly: Boolean get() = hours > 0 && minutes == 0
-    val isHoursAndMinutes: Boolean get() = hours > 0 && minutes > 0
-    val isMinutesOnly: Boolean get() = hours == 0 && minutes > 0
-    val isSecondsOnly: Boolean get() = hours == 0 && minutes == 0
+sealed class RemainingTime {
+    data object Zero : RemainingTime()
+    data class HoursOnly(val hours: Int) : RemainingTime()
+    data class HoursAndMinutes(val hours: Int, val minutes: Int) : RemainingTime()
+    data class MinutesOnly(val minutes: Int) : RemainingTime()
+    data class SecondsOnly(val seconds: Int) : RemainingTime()
 }
 
 fun remainingTimeOf(millis: Long): RemainingTime {
@@ -17,7 +17,13 @@ fun remainingTimeOf(millis: Long): RemainingTime {
     val h = (totalSeconds / 3600L).toInt()
     val m = ((totalSeconds % 3600L) / 60L).toInt()
     val s = (totalSeconds % 60L).toInt()
-    return RemainingTime(h, m, s)
+    return when {
+        h <= 0 && m <= 0 && s <= 0 -> RemainingTime.Zero
+        h > 0 && m == 0 -> RemainingTime.HoursOnly(h)
+        h > 0 -> RemainingTime.HoursAndMinutes(h, m)
+        m > 0 -> RemainingTime.MinutesOnly(m)
+        else -> RemainingTime.SecondsOnly(s)
+    }
 }
 
 fun formatBytes(bytes: Long): String = when {

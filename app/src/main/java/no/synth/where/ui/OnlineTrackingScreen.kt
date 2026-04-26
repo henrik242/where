@@ -33,7 +33,7 @@ fun OnlineTrackingScreen(
     val followedClientId by viewModel.followedClientId.collectAsState()
     val followClientIdInput by viewModel.followClientIdInput.collectAsState()
     val followHistory by viewModel.followHistory.collectAsState()
-    val alwaysShareUntilMillis by viewModel.alwaysShareUntilMillis.collectAsState()
+    val liveShareUntilMillis by viewModel.liveShareUntilMillis.collectAsState()
     var showRegenerateDialog by remember { mutableStateOf(false) }
     var showTrackingInfoDialog by remember { mutableStateOf(false) }
 
@@ -80,12 +80,12 @@ fun OnlineTrackingScreen(
             viewModel.confirmTrackingInfoAndEnable()
         },
         onDismissTrackingInfo = { showTrackingInfoDialog = false },
-        alwaysShareUntilMillis = alwaysShareUntilMillis,
-        onStartAlwaysShare = { durationMillis ->
-            viewModel.startAlwaysShare(durationMillis)
+        liveShareUntilMillis = liveShareUntilMillis,
+        onStartLiveShare = { durationMillis ->
+            viewModel.startLiveShare(durationMillis)
             LocationTrackingService.start(context)
         },
-        onStopAlwaysShare = { viewModel.stopAlwaysShare() },
+        onStopLiveShare = { viewModel.stopLiveShare() },
         followedClientId = followedClientId,
         followClientIdInput = followClientIdInput,
         followHistory = followHistory,

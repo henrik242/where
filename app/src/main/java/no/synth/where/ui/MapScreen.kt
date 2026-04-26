@@ -48,6 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
 import no.synth.where.data.geo.CoordFormat
+import no.synth.where.WhereApplication
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.map.CoordGrid
 import no.synth.where.ui.map.MapDialogs
@@ -88,7 +89,9 @@ fun MapScreen(
     val viewingTrack by viewModel.viewingTrack.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val viewerCount by viewModel.userPreferences.viewerCount.collectAsState()
-    val alwaysShareUntilMillis by viewModel.userPreferences.alwaysShareUntilMillis.collectAsState()
+    val liveShareUntilMillis by viewModel.userPreferences.liveShareUntilMillis.collectAsState()
+    val coordinator = remember(context) { (context.applicationContext as WhereApplication).onlineTrackingCoordinator }
+    val isLiveSharing by coordinator.isLiveSharing.collectAsState()
     val hasSeenTrackingInfo by viewModel.userPreferences.hasSeenTrackingInfo.collectAsState()
     val offlineModeEnabled by viewModel.userPreferences.offlineModeEnabled.collectAsState()
     val showSavedPoints by viewModel.userPreferences.showSavedPoints.collectAsState()
@@ -411,8 +414,8 @@ fun MapScreen(
         offlineModeEnabled = offlineModeEnabled,
         isCompassVisible = isCompassVisible,
         onlineTrackingEnabled = onlineTrackingEnabled,
-        alwaysShareUntilMillis = alwaysShareUntilMillis,
-        isLiveSharing = onlineTrackingEnabled && !offlineModeEnabled && alwaysShareUntilMillis > System.currentTimeMillis(),
+        liveShareUntilMillis = liveShareUntilMillis,
+        isLiveSharing = isLiveSharing,
         viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrackName = viewingTrack?.name,

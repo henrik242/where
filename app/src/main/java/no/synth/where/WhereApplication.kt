@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.OfflineTileReader
+import no.synth.where.data.OnlineTrackingCoordinator
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
@@ -28,11 +29,29 @@ class WhereApplication : Application() {
     private val database by lazy {
         Room.databaseBuilder(this, WhereDatabase::class.java, "where_database").build()
     }
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     val trackRepository by lazy { TrackRepository(PlatformFile(filesDir), database.trackDao()) }
     val savedPointsRepository by lazy { SavedPointsRepository(PlatformFile(filesDir), database.savedPointDao()) }
     val userPreferences by lazy { UserPreferences(userPrefsDataStore) }
     val clientIdManager by lazy { ClientIdManager(clientPrefsDataStore) }
     val liveTrackingFollower by lazy { LiveTrackingFollower(userPreferences.trackingServerUrl.value) }
+    val onlineTrackingCoordinator by lazy {
+        OnlineTrackingCoordinator(
+            sources = OnlineTrackingCoordinator.Sources(
+                isRecording = trackRepository.isRecording,
+                liveShareUntilMillis = userPreferences.liveShareUntilMillis,
+                onlineTrackingEnabled = userPreferences.onlineTrackingEnabled,
+                offlineModeEnabled = userPreferences.offlineModeEnabled,
+                trackingServerUrl = userPreferences.trackingServerUrl,
+                currentTrack = trackRepository.currentTrack,
+                onViewerCountChanged = { userPreferences.updateViewerCount(it) },
+            ),
+            getClientId = { clientIdManager.getClientId() },
+            trackingHint = BuildInfo.TRACKING_HINT,
+            parentScope = appScope,
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -45,9 +64,10 @@ class WhereApplication : Application() {
 
         MapLibre.getInstance(this)
         OfflineTileReader.init(PlatformFile(cacheDir))
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+        appScope.launch {
             userPreferences.offlineModeEnabled.collect { OfflineTileReader.offlineOnly = it }
         }
+        onlineTrackingCoordinator.start()
 
         val tilesDir = File(getExternalFilesDir(null), "maplibre-tiles")
         if (!tilesDir.exists()) {
