@@ -14,6 +14,8 @@ import no.synth.where.data.UserPreferences
 import no.synth.where.data.createDataStore
 import no.synth.where.data.db.getDatabaseBuilder
 import no.synth.where.util.CrashReporter
+import platform.CoreLocation.CLLocationManager
+import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -48,4 +50,13 @@ fun startApp() {
     }
 
     CrashReporter.setEnabled(AppDependencies.userPreferences.crashReportingEnabled.value)
+
+    // Don't silently auto-resume live sharing on cold start without Always
+    // permission — would trigger an unsolicited Always prompt and may surprise
+    // the user. Drop the timer; user can re-enable explicitly.
+    val prefs = AppDependencies.userPreferences
+    if (prefs.alwaysShareUntilMillis.value > 0L &&
+        CLLocationManager.authorizationStatus() != kCLAuthorizationStatusAuthorizedAlways) {
+        prefs.stopAlwaysShare()
+    }
 }

@@ -93,7 +93,22 @@
     <string name="regenerate_id">Regenerate ID</string>
     <string name="regenerate_client_id">Regenerate Client ID</string>
     <string name="how_it_works">\u2139\uFE0F How it works</string>
-    <string name="how_it_works_description">When you press record in map view and online tracking is enabled, your location is shared in real-time with anyone who has your Client ID. They can view your track on the web interface.</string>
+    <string name="how_it_works_description">When online tracking is enabled, your location is shared in real-time with anyone who has your Client ID — either while you record a track in map view, or while \"Share location temporarily\" is active.</string>
+
+    <!-- Temporary share -->
+    <string name="always_share_location">Share location temporarily</string>
+    <string name="always_share_description">Share your live location for a limited time, even when not recording a track.</string>
+    <string name="always_share_disabled_hint">Enable online tracking first.</string>
+    <string name="always_share_remaining">%1$s left</string>
+    <string name="share_duration_title">How long should location be shared?</string>
+    <string name="share_duration_15min">15 minutes</string>
+    <string name="share_duration_1hour">1 hour</string>
+    <string name="share_duration_4hours">4 hours</string>
+    <string name="share_duration_8hours">8 hours</string>
+    <string name="duration_seconds">%1$ds</string>
+    <string name="duration_hours_only">%1$dh</string>
+    <string name="live_chip_label">Live</string>
+    <string name="stop_sharing">Stop sharing</string>
     <string name="tracking_info_title">Online Tracking</string>
     <string name="tracking_info_message">Your location is only shared online when you press the record button in map view. Simply enabling this toggle does not start tracking.</string>
     <string name="got_it">Got it</string>

@@ -54,6 +54,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
@@ -67,9 +68,81 @@ import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
 import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.parseHexColor
+import no.synth.where.util.remainingTimeOf
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+@Composable
+private fun LiveSharingChip(
+    untilMillis: Long,
+    onClick: () -> Unit
+) {
+    var nowMillis by remember { mutableStateOf(currentTimeMillis()) }
+    LaunchedEffect(untilMillis) {
+        while (untilMillis > nowMillis) {
+            // Tick by the second only inside the last minute so the user sees
+            // an accurate countdown when it matters; coarse ticks otherwise.
+            val remaining = untilMillis - nowMillis
+            delay(if (remaining < 60_000L) 1_000L else 30_000L)
+            nowMillis = currentTimeMillis()
+        }
+    }
+    val remainingMillis = (untilMillis - nowMillis).coerceAtLeast(0L)
+    if (remainingMillis <= 0L) return
+    val r = remainingTimeOf(remainingMillis)
+    val remainingText = when {
+        r.isHoursOnly -> stringResource(Res.string.duration_hours_only, r.hours)
+        r.isHoursAndMinutes -> stringResource(Res.string.duration_hours_minutes, r.hours, r.minutes)
+        r.isMinutesOnly -> stringResource(Res.string.duration_minutes, r.minutes)
+        else -> stringResource(Res.string.duration_seconds, r.seconds)
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "liveDot")
+    val dotAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "liveDotAlpha"
+    )
+
+    Row(
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.95f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(
+                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = dotAlpha),
+                    CircleShape
+                )
+        )
+        Text(
+            text = stringResource(Res.string.live_chip_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = remainingText,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer
+        )
+    }
+}
 
 @Composable
 fun ZoomControls(
@@ -590,7 +663,9 @@ fun BoxScope.MapOverlays(
     isFollowConnecting: Boolean = false,
     isFollowedTrackActive: Boolean = false,
     onFollowBannerClick: () -> Unit = {},
-    onStopFollowing: () -> Unit = {}
+    onStopFollowing: () -> Unit = {},
+    alwaysShareUntilMillis: Long = 0L,
+    isLiveSharing: Boolean = false
 ) {
     val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null) || followedClientId != null
     val offlineChipEnd by animateDpAsState(
@@ -607,30 +682,42 @@ fun BoxScope.MapOverlays(
             onZoomOut = onZoomOut
         )
 
-        if (offlineModeEnabled) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 16.dp, end = offlineChipEnd)
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
-                        shape = RoundedCornerShape(16.dp)
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 16.dp, end = offlineChipEnd),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            if (offlineModeEnabled) {
+                Row(
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable { onOfflineIndicatorClick() }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_cloud_off),
+                        contentDescription = stringResource(Res.string.offline_mode),
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    .clickable { onOfflineIndicatorClick() }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    painterResource(Res.drawable.ic_cloud_off),
-                    contentDescription = stringResource(Res.string.offline_mode),
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = stringResource(Res.string.offline_mode),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Text(
+                        text = stringResource(Res.string.offline_mode),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (isLiveSharing && !isRecording) {
+                LiveSharingChip(
+                    untilMillis = alwaysShareUntilMillis,
+                    onClick = onOnlineTrackingClick
                 )
             }
         }

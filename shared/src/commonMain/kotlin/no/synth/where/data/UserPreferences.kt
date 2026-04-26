@@ -4,14 +4,20 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import no.synth.where.util.currentTimeMillis
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -35,6 +41,13 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
 
     private val _onlineTrackingEnabled = MutableStateFlow(false)
     val onlineTrackingEnabled: StateFlow<Boolean> = _onlineTrackingEnabled.asStateFlow()
+
+    private val _alwaysShareUntilMillis = MutableStateFlow(0L)
+    val alwaysShareUntilMillis: StateFlow<Long> = _alwaysShareUntilMillis.asStateFlow()
+    private var alwaysShareExpiryJob: Job? = null
+    private val alwaysShareExpiryMutex = Mutex()
+
+    fun isLiveShareActive(): Boolean = _alwaysShareUntilMillis.value > currentTimeMillis()
 
     private val _trackingServerUrl = MutableStateFlow("https://where.synth.no")
     val trackingServerUrl: StateFlow<String> = _trackingServerUrl.asStateFlow()
@@ -101,6 +114,12 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _hasSeenTrackingInfo.value = prefs[HAS_SEEN_TRACKING_INFO] ?: false
                 _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
+                val rawUntil = prefs[ALWAYS_SHARE_UNTIL] ?: 0L
+                val effectiveUntil = if (rawUntil > currentTimeMillis()) rawUntil else 0L
+                if (_alwaysShareUntilMillis.value != effectiveUntil) {
+                    _alwaysShareUntilMillis.value = effectiveUntil
+                    scheduleAlwaysShareExpiry(effectiveUntil)
+                }
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
                 _offlineModeEnabled.value = prefs[OFFLINE_MODE_ENABLED] ?: false
                 _downloadElevationData.value = prefs[DOWNLOAD_ELEVATION_DATA] ?: true
@@ -169,6 +188,47 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         _onlineTrackingEnabled.value = value
         scope.launch {
             dataStore.edit { it[ONLINE_TRACKING_ENABLED] = value }
+        }
+        if (!value) updateAlwaysShareUntil(0L)
+    }
+
+    fun startAlwaysShare(durationMillis: Long) {
+        val until = currentTimeMillis() + durationMillis
+        updateAlwaysShareUntil(until)
+    }
+
+    fun stopAlwaysShare() {
+        updateAlwaysShareUntil(0L)
+    }
+
+    private fun updateAlwaysShareUntil(value: Long) {
+        _alwaysShareUntilMillis.value = value
+        scope.launch {
+            dataStore.edit {
+                if (value > 0L) it[ALWAYS_SHARE_UNTIL] = value else it.remove(ALWAYS_SHARE_UNTIL)
+            }
+        }
+        scheduleAlwaysShareExpiry(value)
+    }
+
+    private fun scheduleAlwaysShareExpiry(until: Long) {
+        scope.launch {
+            alwaysShareExpiryMutex.withLock {
+                alwaysShareExpiryJob?.cancel()
+                alwaysShareExpiryJob = null
+                if (until <= 0L) return@withLock
+                val delayMs = until - currentTimeMillis()
+                if (delayMs <= 0L) {
+                    updateAlwaysShareUntil(0L)
+                    return@withLock
+                }
+                alwaysShareExpiryJob = scope.launch {
+                    delay(delayMs)
+                    if (_alwaysShareUntilMillis.value == until) {
+                        updateAlwaysShareUntil(0L)
+                    }
+                }
+            }
         }
     }
 
@@ -279,6 +339,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val SELECTED_MAP_LAYER = stringPreferencesKey("selected_map_layer")
         private val HAS_SEEN_TRACKING_INFO = booleanPreferencesKey("has_seen_tracking_info")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
+        private val ALWAYS_SHARE_UNTIL = longPreferencesKey("always_share_until_millis")
         private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")
         private val OFFLINE_MODE_ENABLED = booleanPreferencesKey("offline_mode_enabled")
         private val DOWNLOAD_ELEVATION_DATA = booleanPreferencesKey("download_elevation_data")

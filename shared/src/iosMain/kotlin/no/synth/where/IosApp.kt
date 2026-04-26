@@ -394,6 +394,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 }
 
                 val viewerCount by userPreferences.viewerCount.collectAsState()
+                val alwaysShareUntilMillis by userPreferences.alwaysShareUntilMillis.collectAsState()
 
                 OnlineTrackingScreenContent(
                     isTrackingEnabled = onlineTrackingEnabled,
@@ -418,6 +419,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     },
                     onRegenerateClick = { showRegenerateDialog = true },
                     onConfirmRegenerate = {
+                        userPreferences.stopAlwaysShare()
                         scope.launch { clientId = clientIdManager.regenerateClientId() }
                         showRegenerateDialog = false
                     },
@@ -427,6 +429,11 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         userPreferences.confirmTrackingInfoAndEnable()
                     },
                     onDismissTrackingInfo = { showTrackingInfoDialog = false },
+                    alwaysShareUntilMillis = alwaysShareUntilMillis,
+                    onStartAlwaysShare = { durationMillis ->
+                        userPreferences.startAlwaysShare(durationMillis)
+                    },
+                    onStopAlwaysShare = { userPreferences.stopAlwaysShare() },
                     followedClientId = followedClientIdVal,
                     followClientIdInput = followClientIdInput,
                     followHistory = followHistoryVal,

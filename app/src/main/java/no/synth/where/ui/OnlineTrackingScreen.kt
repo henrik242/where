@@ -12,6 +12,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import no.synth.where.service.LocationTrackingService
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -32,6 +33,7 @@ fun OnlineTrackingScreen(
     val followedClientId by viewModel.followedClientId.collectAsState()
     val followClientIdInput by viewModel.followClientIdInput.collectAsState()
     val followHistory by viewModel.followHistory.collectAsState()
+    val alwaysShareUntilMillis by viewModel.alwaysShareUntilMillis.collectAsState()
     var showRegenerateDialog by remember { mutableStateOf(false) }
     var showTrackingInfoDialog by remember { mutableStateOf(false) }
 
@@ -78,6 +80,12 @@ fun OnlineTrackingScreen(
             viewModel.confirmTrackingInfoAndEnable()
         },
         onDismissTrackingInfo = { showTrackingInfoDialog = false },
+        alwaysShareUntilMillis = alwaysShareUntilMillis,
+        onStartAlwaysShare = { durationMillis ->
+            viewModel.startAlwaysShare(durationMillis)
+            LocationTrackingService.start(context)
+        },
+        onStopAlwaysShare = { viewModel.stopAlwaysShare() },
         followedClientId = followedClientId,
         followClientIdInput = followClientIdInput,
         followHistory = followHistory,

@@ -52,6 +52,7 @@ function escapeHtml(str: string): string {
 let map: maplibregl.Map;
 let tracks: Record<string, Track> = {};
 let selectedTrackId: string | null = null;
+const renderTypeFor = new Map<string, 'single' | 'line'>();
 let clientFilters: string[] = [];
 let showHistorical = false;
 let admin = false;
@@ -294,9 +295,14 @@ function selectTrack(trackId: string): void {
 
   const track = tracks[trackId];
   if (track && track.points.length > 0) {
-    const bounds = new maplibregl.LngLatBounds();
-    track.points.forEach(p => bounds.extend([p.lon, p.lat]));
-    map.fitBounds(bounds, { padding: 50 });
+    if (track.points.length === 1) {
+      const p = track.points[0];
+      map.flyTo({ center: [p.lon, p.lat], zoom: 15 });
+    } else {
+      const bounds = new maplibregl.LngLatBounds();
+      track.points.forEach(p => bounds.extend([p.lon, p.lat]));
+      map.fitBounds(bounds, { padding: 50, maxZoom: 16 });
+    }
   }
 }
 
@@ -317,7 +323,16 @@ function updateMap(): void {
       return;
     }
 
-    if (track.points.length === 1) {
+    // Layer types differ between single (circle) and multi (line). When the
+    // render type changes the existing layers must be torn down or paint
+    // properties will be applied to the wrong layer type.
+    const newType: 'single' | 'line' = track.points.length === 1 ? 'single' : 'line';
+    if (renderTypeFor.get(trackId) !== newType) {
+      cleanupTrackLayers(trackId);
+    }
+    renderTypeFor.set(trackId, newType);
+
+    if (newType === 'single') {
       renderSinglePoint(track, sourceId, layerId);
     } else {
       renderTrackLine(track, sourceId, layerId);
@@ -328,7 +343,9 @@ function updateMap(): void {
 
 // Cleanup track layers
 function cleanupTrackLayers(trackId: string): void {
+  renderTypeFor.delete(trackId);
   const layers = [
+    `track-layer-${trackId}-halo`,
     `track-layer-${trackId}`,
     `track-start-layer-${trackId}`,
     `track-end-layer-${trackId}`
@@ -361,14 +378,25 @@ function renderSinglePoint(track: Track, sourceId: string, layerId: string): voi
     (map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geojson);
   } else {
     map.addSource(sourceId, { type: 'geojson', data: geojson });
+    // Outer halo for visibility
+    map.addLayer({
+      id: `${layerId}-halo`,
+      type: 'circle',
+      source: sourceId,
+      paint: {
+        'circle-radius': 14,
+        'circle-color': track.color || '#FF5722',
+        'circle-opacity': 0.25
+      }
+    });
     map.addLayer({
       id: layerId,
       type: 'circle',
       source: sourceId,
       paint: {
-        'circle-radius': 6,
+        'circle-radius': 8,
         'circle-color': track.color || '#FF5722',
-        'circle-stroke-width': 2,
+        'circle-stroke-width': 2.5,
         'circle-stroke-color': '#FFFFFF'
       }
     });
