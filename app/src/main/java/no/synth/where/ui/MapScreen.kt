@@ -55,7 +55,9 @@ import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.MapLibreMapView
 import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.ui.map.MapScreenContent
+import no.synth.where.ui.map.ScreenPoint
 import no.synth.where.ui.map.TwoFingerMeasurement
+import no.synth.where.ui.map.rememberAutoDismissingTwoFingerMeasurement
 import no.synth.where.ui.map.RecordingCard
 import no.synth.where.ui.map.RulerCard
 import no.synth.where.ui.map.SearchOverlay
@@ -180,7 +182,7 @@ fun MapScreen(
     val coordFormat by viewModel.userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
-    var twoFingerMeasurement by remember { mutableStateOf<TwoFingerMeasurement?>(null) }
+    var twoFingerMeasurement by rememberAutoDismissingTwoFingerMeasurement()
 
     var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
 
@@ -290,6 +292,12 @@ fun MapScreen(
                 bearing < 0.5 || bearing > 359.5 -> false
                 else -> isCompassVisible
             }
+            twoFingerMeasurement
+                ?.reprojectedWith { lat, lng ->
+                    val pt = map.projection.toScreenLocation(LatLng(lat, lng).toMapLibre())
+                    ScreenPoint(pt.x, pt.y)
+                }
+                ?.let { twoFingerMeasurement = it }
         }
     }
 
@@ -573,6 +581,7 @@ fun MapScreen(
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },
                 onPointClick = { point -> viewModel.openPointInfoDialog(point) },
                 onTwoFingerMeasure = { twoFingerMeasurement = it },
+                isTwoFingerMeasurementVisible = twoFingerMeasurement != null,
                 coordGridGeoJson = coordGridGeoJson
             )
         }

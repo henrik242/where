@@ -1,4 +1,5 @@
 import UIKit
+import UIKit.UIGestureRecognizerSubclass
 import MapLibre
 import Shared
 
@@ -20,7 +21,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
     private var cameraMoveCallback: MapCameraMoveCallback?
-    private var twoFingerTouchCallback: MapTwoFingerTouchCallback?
+    private var twoFingerTapCallback: MapTwoFingerTapCallback?
     private var styleVersion = 0
 
     private let trackSourceId = "track-source"
@@ -64,10 +65,21 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         tap.require(toFail: longPress)
         map.addGestureRecognizer(tap)
 
-        let twoFingerPan = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerTouch(_:)))
-        twoFingerPan.minimumNumberOfTouches = 2
-        twoFingerPan.delegate = self
-        map.addGestureRecognizer(twoFingerPan)
+        let twoFingerTap = TwoFingerTapGestureRecognizer(target: self, action: #selector(handleTwoFingerTap(_:)))
+        twoFingerTap.delegate = self
+        map.addGestureRecognizer(twoFingerTap)
+
+        // Make MLN's pinch and two-finger-tap-to-zoom recognizers wait for our
+        // tap to fail, so a clean two-finger tap doesn't also nudge the zoom.
+        // (Android can't do this preventively — see MapLibreMapView.kt's
+        // cancelTransitions() call which suppresses the same gesture post-hoc.)
+        for gr in map.gestureRecognizers ?? [] where gr !== twoFingerTap {
+            if gr is UIPinchGestureRecognizer {
+                gr.require(toFail: twoFingerTap)
+            } else if let t = gr as? UITapGestureRecognizer, t.numberOfTouchesRequired == 2 {
+                gr.require(toFail: twoFingerTap)
+            }
+        }
 
         self.mapView = map
 
@@ -98,27 +110,18 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         mapClickCallback?.onMapClick(latitude: coordinate.latitude, longitude: coordinate.longitude)
     }
 
-    @objc private func handleTwoFingerTouch(_ gesture: UIGestureRecognizer) {
-        guard let mapView = self.mapView else { return }
-        if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
-            twoFingerTouchCallback?.onTwoFingerRelease()
-            return
-        }
-        guard gesture.numberOfTouches >= 2 else {
-            twoFingerTouchCallback?.onTwoFingerRelease()
-            return
-        }
-        let p1 = gesture.location(ofTouch: 0, in: mapView)
-        let p2 = gesture.location(ofTouch: 1, in: mapView)
+    @objc private func handleTwoFingerTap(_ gesture: TwoFingerTapGestureRecognizer) {
+        guard gesture.state == .recognized, let mapView = self.mapView else { return }
+        let p1 = gesture.touch1
+        let p2 = gesture.touch2
         let screenDist = hypot(p2.x - p1.x, p2.y - p1.y)
-        guard screenDist >= 48 else {
-            twoFingerTouchCallback?.onTwoFingerRelease()
-            return
-        }
+        guard screenDist >= 48 else { return }
         let c1 = mapView.convert(p1, toCoordinateFrom: mapView)
         let c2 = mapView.convert(p2, toCoordinateFrom: mapView)
         let scale = mapView.window?.screen.scale ?? UIScreen.main.scale
-        twoFingerTouchCallback?.onTwoFingerTouch(
+        // CGPoints are in UIKit logical points; the Compose overlay draws in
+        // pixels, so multiply by screen scale before sending coordinates over.
+        twoFingerTapCallback?.onTwoFingerTap(
             screenX1: Float(p1.x * scale), screenY1: Float(p1.y * scale),
             screenX2: Float(p2.x * scale), screenY2: Float(p2.y * scale),
             lat1: c1.latitude, lng1: c1.longitude,
@@ -333,8 +336,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         self.cameraMoveCallback = callback
     }
 
-    func setOnTwoFingerTouchCallback(callback: MapTwoFingerTouchCallback?) {
-        self.twoFingerTouchCallback = callback
+    func setOnTwoFingerTapCallback(callback: MapTwoFingerTapCallback?) {
+        self.twoFingerTapCallback = callback
     }
 
     func getUserLocation() -> [KotlinDouble]? {
@@ -344,11 +347,19 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
                 KotlinDouble(value: location.coordinate.longitude)]
     }
 
+    func projectToScreen(latitude: Double, longitude: Double) -> ScreenPoint? {
+        guard let mapView = self.mapView else { return nil }
+        let coord = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        let point = mapView.convert(coord, toPointTo: mapView)
+        let scale = mapView.window?.screen.scale ?? UIScreen.main.scale
+        return ScreenPoint(x: Float(point.x * scale), y: Float(point.y * scale))
+    }
+
     // MARK: - UIGestureRecognizerDelegate
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        // Only allow simultaneous recognition for our custom two-finger recognizer
-        return gestureRecognizer is UIPanGestureRecognizer || otherGestureRecognizer is UIPanGestureRecognizer
+        // Allow our two-finger tap to coexist with the map's pan/pinch recognizers
+        return gestureRecognizer is TwoFingerTapGestureRecognizer || otherGestureRecognizer is TwoFingerTapGestureRecognizer
     }
 
     // MARK: - MLNMapViewDelegate
@@ -691,6 +702,92 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let layer = style.layer(withIdentifier: friendTrackPointLayerId) { style.removeLayer(layer) }
         if let source = style.source(withIdentifier: friendTrackLineSourceId) { style.removeSource(source) }
         if let source = style.source(withIdentifier: friendTrackPointSourceId) { style.removeSource(source) }
+    }
+}
+
+class TwoFingerTapGestureRecognizer: UIGestureRecognizer {
+    private(set) var touch1: CGPoint = .zero
+    private(set) var touch2: CGPoint = .zero
+    private var initial1: CGPoint = .zero
+    private var initial2: CGPoint = .zero
+    private var touch1Ref: UITouch?
+    private var touch2Ref: UITouch?
+    private var touch1Ended: Bool = false
+    private var touch2Ended: Bool = false
+    private var startTime: TimeInterval = 0
+    private let maxDuration: TimeInterval = 0.6
+    private let maxMovement: CGFloat = 20
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesBegan(touches, with: event)
+        let active = event.touches(for: self) ?? []
+        if active.count > 2 {
+            state = .failed
+            return
+        }
+        if active.count == 2 {
+            let arr = Array(active)
+            touch1Ref = arr[0]
+            touch2Ref = arr[1]
+            initial1 = arr[0].location(in: view)
+            initial2 = arr[1].location(in: view)
+            touch1 = initial1
+            touch2 = initial2
+            startTime = event.timestamp
+        }
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesMoved(touches, with: event)
+        guard state != .failed && state != .cancelled else { return }
+        guard let t1 = touch1Ref, let t2 = touch2Ref else { return }
+        let p1 = t1.location(in: view)
+        let p2 = t2.location(in: view)
+        if hypot(p1.x - initial1.x, p1.y - initial1.y) > maxMovement ||
+           hypot(p2.x - initial2.x, p2.y - initial2.y) > maxMovement {
+            state = .failed
+            return
+        }
+        touch1 = p1
+        touch2 = p2
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesEnded(touches, with: event)
+        if state == .failed || state == .cancelled { return }
+        if event.timestamp - startTime > maxDuration {
+            state = .failed
+            return
+        }
+        // Fingers can lift in separate touchesEnded calls; latch a per-touch
+        // ended flag and only recognize once both have lifted.
+        if let t1 = touch1Ref, touches.contains(t1) {
+            touch1Ended = true
+        }
+        if let t2 = touch2Ref, touches.contains(t2) {
+            touch2Ended = true
+        }
+        if touch1Ended && touch2Ended {
+            state = .recognized
+        }
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesCancelled(touches, with: event)
+        state = .cancelled
+    }
+
+    override func reset() {
+        super.reset()
+        touch1 = .zero
+        touch2 = .zero
+        initial1 = .zero
+        initial2 = .zero
+        touch1Ref = nil
+        touch2Ref = nil
+        touch1Ended = false
+        touch2Ended = false
+        startTime = 0
     }
 }
 

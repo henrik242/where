@@ -30,13 +30,19 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -731,26 +737,47 @@ fun BoxScope.MapOverlays(
         CrosshairOverlay()
     }
 
-    if (twoFingerMeasurement != null) {
-        TwoFingerDistanceOverlay(measurement = twoFingerMeasurement)
-    }
+    TwoFingerDistanceOverlay(measurement = twoFingerMeasurement)
 }
 
 @Composable
-fun TwoFingerDistanceOverlay(measurement: TwoFingerMeasurement) {
-    val distanceText = measurement.distanceMeters.formatDistance()
+fun TwoFingerDistanceOverlay(measurement: TwoFingerMeasurement?) {
+    var lastMeasurement by remember { mutableStateOf<TwoFingerMeasurement?>(null) }
+    if (measurement != null) {
+        lastMeasurement = measurement
+    }
+    val alpha by animateFloatAsState(
+        targetValue = if (measurement != null) 1f else 0f,
+        animationSpec = tween(durationMillis = if (measurement != null) 0 else TwoFingerTap.FADE_OUT_MS),
+        label = "twoFingerOverlayAlpha"
+    )
+    val visible = lastMeasurement
+    if (alpha <= 0f || visible == null) return
+
+    val distanceText = visible.distanceMeters.formatDistance()
     val density = LocalDensity.current
-    val midX = (measurement.screenX1 + measurement.screenX2) / 2
-    val midY = (measurement.screenY1 + measurement.screenY2) / 2
+    val midX = (visible.screenX1 + visible.screenX2) / 2
+    val midY = (visible.screenY1 + visible.screenY2) / 2
     val badgeColor = MaterialTheme.colorScheme.inverseSurface
     val textColor = MaterialTheme.colorScheme.inverseOnSurface
+
+    val minX = minOf(visible.screenX1, visible.screenX2)
+    val maxX = maxOf(visible.screenX1, visible.screenX2)
+    val minY = minOf(visible.screenY1, visible.screenY2)
+    val maxY = maxOf(visible.screenY1, visible.screenY2)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .drawBehind {
-                val p1 = Offset(measurement.screenX1, measurement.screenY1)
-                val p2 = Offset(measurement.screenX2, measurement.screenY2)
+                // Skip drawing entirely if the segment's bounding box is off the
+                // canvas — after a big pan the dotted line would otherwise render
+                // a meaningless diagonal across the visible area.
+                if (maxX < 0f || minX > size.width || maxY < 0f || minY > size.height) {
+                    return@drawBehind
+                }
+                val p1 = Offset(visible.screenX1, visible.screenY1)
+                val p2 = Offset(visible.screenX2, visible.screenY2)
                 val strokeWidth = 2.5.dp.toPx()
                 val shadowWidth = strokeWidth + 2.dp.toPx()
                 val dotRadius = 5.dp.toPx()
@@ -759,39 +786,43 @@ fun TwoFingerDistanceOverlay(measurement: TwoFingerMeasurement) {
                 )
 
                 drawLine(
-                    Color.White.copy(alpha = 0.6f), p1, p2,
+                    Color.White.copy(alpha = 0.6f * alpha), p1, p2,
                     strokeWidth = shadowWidth, cap = StrokeCap.Round, pathEffect = dashEffect
                 )
                 drawLine(
-                    Color.Black.copy(alpha = 0.8f), p1, p2,
+                    Color.Black.copy(alpha = 0.8f * alpha), p1, p2,
                     strokeWidth = strokeWidth, cap = StrokeCap.Round, pathEffect = dashEffect
                 )
 
-                drawCircle(Color.White, dotRadius + 1.dp.toPx(), p1)
-                drawCircle(Color.Black.copy(alpha = 0.8f), dotRadius, p1)
-                drawCircle(Color.White, dotRadius + 1.dp.toPx(), p2)
-                drawCircle(Color.Black.copy(alpha = 0.8f), dotRadius, p2)
+                drawCircle(Color.White.copy(alpha = alpha), dotRadius + 1.dp.toPx(), p1)
+                drawCircle(Color.Black.copy(alpha = 0.8f * alpha), dotRadius, p1)
+                drawCircle(Color.White.copy(alpha = alpha), dotRadius + 1.dp.toPx(), p2)
+                drawCircle(Color.Black.copy(alpha = 0.8f * alpha), dotRadius, p2)
             }
+            .semantics { contentDescription = distanceText }
     ) {
         val badgeGap = with(density) { 20.dp.roundToPx() }
         Text(
             text = distanceText,
             style = MaterialTheme.typography.titleMedium,
-            color = textColor,
+            color = textColor.copy(alpha = alpha),
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .layout { measurable, constraints ->
                     val placeable = measurable.measure(constraints)
-                    val x = (midX.toInt() - placeable.width / 2)
-                        .coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0))
-                    val y = (midY.toInt() - placeable.height - badgeGap)
-                        .coerceIn(0, (constraints.maxHeight - placeable.height).coerceAtLeast(0))
+                    val offScreen = maxX < 0f || minX > constraints.maxWidth ||
+                        maxY < 0f || minY > constraints.maxHeight
                     layout(placeable.width, placeable.height) {
+                        if (offScreen) return@layout
+                        val x = (midX.toInt() - placeable.width / 2)
+                            .coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0))
+                        val y = (midY.toInt() - placeable.height - badgeGap)
+                            .coerceIn(0, (constraints.maxHeight - placeable.height).coerceAtLeast(0))
                         placeable.placeRelative(x, y)
                     }
                 }
                 .background(
-                    color = badgeColor,
+                    color = badgeColor.copy(alpha = alpha),
                     shape = RoundedCornerShape(16.dp)
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp)

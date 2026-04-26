@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,13 +20,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import android.view.MotionEvent
 import no.synth.where.data.MapStyle
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.Track
-import android.graphics.PointF
-import android.view.MotionEvent
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.toCommon
 import no.synth.where.data.geo.toMapLibre
@@ -65,6 +65,7 @@ fun MapLibreMapView(
     onLongPress: (LatLng) -> Unit = {},
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {},
     onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
+    isTwoFingerMeasurementVisible: Boolean = false,
     coordGridGeoJson: String? = null
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -279,6 +280,8 @@ fun MapLibreMapView(
         }
     }
 
+    val measurementVisibleState = rememberUpdatedState(isTwoFingerMeasurementVisible)
+
     LaunchedEffect(rulerState.isActive, savedPoints.size, map) {
         map?.let { mapInstance ->
             // Remove old listeners if they exist
@@ -287,6 +290,9 @@ fun MapLibreMapView(
 
             // Create and add new click listener
             val newClickListener = MapLibreMap.OnMapClickListener { point ->
+                if (measurementVisibleState.value) {
+                    onTwoFingerMeasure(null)
+                }
                 val commonPoint = point.toCommon()
                 if (rulerState.isActive) {
                     onRulerPointAdded(commonPoint)
@@ -322,41 +328,46 @@ fun MapLibreMapView(
     AndroidView(
         factory = { ctx ->
             MapView(ctx).also { mapView = it }.apply {
-                setOnTouchListener { v, event ->
-                    val mapRef = map
-                    val action = event.actionMasked
-                    if (mapRef != null && event.pointerCount >= 2 &&
-                        action != MotionEvent.ACTION_POINTER_UP
-                    ) {
-                        try {
-                            val x1 = event.getX(0)
-                            val y1 = event.getY(0)
-                            val x2 = event.getX(1)
-                            val y2 = event.getY(1)
-                            val screenDist = kotlin.math.hypot(
-                                (x2 - x1).toDouble(), (y2 - y1).toDouble()
-                            )
-                            val minPx = 48 * v.resources.displayMetrics.density
-                            if (screenDist < minPx) {
-                                onTwoFingerMeasure(null)
-                            } else {
-                                val proj = mapRef.projection
-                                val ll1 = proj.fromScreenLocation(PointF(x1, y1)).toCommon()
-                                val ll2 = proj.fromScreenLocation(PointF(x2, y2)).toCommon()
-                                onTwoFingerMeasure(
-                                    TwoFingerMeasurement(x1, y1, x2, y2, ll1.distanceTo(ll2))
-                                )
-                            }
-                        } catch (e: Exception) {
-                            Logger.d("Two-finger projection not ready: %s", e.message ?: "")
+                // Snapshot of the camera taken when the second finger lands; if
+                // MLN nudges the camera (pinch on small jitter, two-finger-tap
+                // zoom-out animation) before our recognizer fires, we snap back.
+                // iOS prevents the zoom preventively via require(toFail:); the
+                // Android gesture stack doesn't expose an equivalent hook.
+                var savedCameraPosition: CameraPosition? = null
+
+                val tapDetector = TwoFingerTapDetector(resources.displayMetrics.density) { p1, p2 ->
+                    val mapRef = map ?: return@TwoFingerTapDetector
+                    try {
+                        savedCameraPosition?.let { saved ->
+                            mapRef.cancelTransitions()
+                            mapRef.cameraPosition = saved
                         }
-                    } else if (action == MotionEvent.ACTION_UP ||
-                        action == MotionEvent.ACTION_CANCEL ||
-                        action == MotionEvent.ACTION_POINTER_UP
-                    ) {
-                        onTwoFingerMeasure(null)
+                        val proj = mapRef.projection
+                        val ll1 = proj.fromScreenLocation(p1).toCommon()
+                        val ll2 = proj.fromScreenLocation(p2).toCommon()
+                        onTwoFingerMeasure(
+                            TwoFingerMeasurement(
+                                p1.x, p1.y, p2.x, p2.y,
+                                ll1.latitude, ll1.longitude,
+                                ll2.latitude, ll2.longitude,
+                                ll1.distanceTo(ll2)
+                            )
+                        )
+                    } catch (e: Exception) {
+                        Logger.d("Two-finger projection not ready: %s", e.message ?: "")
                     }
-                    false
+                }
+                setOnTouchListener { _, event ->
+                    when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> savedCameraPosition = null
+                        MotionEvent.ACTION_POINTER_DOWN -> {
+                            if (event.pointerCount == 2 && savedCameraPosition == null) {
+                                savedCameraPosition = map?.cameraPosition
+                            }
+                        }
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> savedCameraPosition = null
+                    }
+                    tapDetector.onTouch(event)
                 }
                 onCreate(null)
                 getMapAsync { mapInstance ->
