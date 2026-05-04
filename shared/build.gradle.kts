@@ -112,7 +112,6 @@ kotlin {
             api(libs.kotlinx.serialization.json)
             api(libs.ktor.client.core)
             api(libs.ktor.client.websockets)
-            implementation(libs.kmp.zip)
             api(libs.room.runtime)
             api(libs.androidx.datastore.preferences)
             implementation(libs.compose.material3)
