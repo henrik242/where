@@ -3,7 +3,7 @@ activityCompose = "1.13.0"
 agp = "9.2.0"
 appcompat = "1.7.1"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
-composeMultiplatform = "1.11.0-beta03"
+composeMultiplatform = "1.11.0-rc01"
 composeMaterial3 = "1.11.0-alpha07" # see release notes for matching version
 composeBom = "2026.04.01"
 core = "1.7.0"
