@@ -1,35 +1,12 @@
-// Type definitions
-interface Point {
-  lat: number;
-  lon: number;
-  timestamp: number;
-  altitude?: number;
-  accuracy?: number;
-}
+import type {
+  Track,
+  TrackPoint,
+  SessionStats,
+  TracksResponse,
+} from '../shared/types';
+import { calculateTrackDistance } from '../shared/geo';
 
-interface Track {
-  id: string;
-  userId: string;
-  name: string;
-  points: Point[];
-  startTime: number;
-  endTime?: number;
-  isActive: boolean;
-  color?: string;
-  distance?: number;
-  pointCount?: number;
-}
-
-interface TracksResponse {
-  admin: boolean;
-  tracks: Track[];
-}
-
-interface SessionStats {
-  day: Record<string, number>;
-  week: Record<string, number>;
-  month: Record<string, number>;
-}
+type Point = TrackPoint;
 
 interface WebSocketMessage {
   type: 'track_update' | 'track_stopped' | 'track_started' | 'track_deleted' | 'initial_state';
@@ -272,8 +249,8 @@ function updateTracksList(): void {
 // Render single track item
 function renderTrackItem(track: Track, isHistorical = false): string {
   const isSelected = track.id === selectedTrackId;
-  const distance = track.distance || 0;
-  const pointCount = track.pointCount || track.points.length;
+  const distance = calculateTrackDistance(track.points);
+  const pointCount = track.points.length;
 
   return `
     <div class="track-item ${isSelected ? 'active' : ''}" onclick="selectTrack('${escapeHtml(track.id)}')" ${isHistorical ? 'style="opacity: 0.7;"' : ''}>

@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["bun"]
+  },
+  "include": [
+    "src/server/**/*",
+    "src/shared/**/*",
+    "tests/**/*",
+    "test-server.ts"
+  ]
+}

@@ -50,7 +50,7 @@ jobs:
     - name: Inject version into HTML
       run: |
         cd web
-        sed -i "s|<!-- VERSION_PLACEHOLDER -->|<div id=\"version-info\" style=\"display:none;\">${VERSION_STRING}</div>|g" src/public/index.html
+        sed -i "s|<!-- VERSION_PLACEHOLDER -->|<div id=\"version-info\" style=\"display:none;\">${VERSION_STRING}</div>|g" src/client/index.html
 
     - name: Run unit tests
       run: |

@@ -6,9 +6,19 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/opt/where-web
-ExecStart=/usr/local/bin/bun --watch run index.ts
+EnvironmentFile=-/opt/where-web/.env
+ExecStart=/usr/local/bin/bun --watch src/server/index.ts
 Restart=always
 RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/where-web/data
 
 [Install]
 WantedBy=multi-user.target

@@ -9,5 +9,5 @@ bun.lockb
 data/
 
 # Build artifacts
-src/public/app.js
-src/public/app.js.map
+src/client/app.js
+src/client/app.js.map

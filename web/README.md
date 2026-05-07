@@ -73,7 +73,19 @@ PORT=3000                          # Default: 3000
 
 The same secret must be configured in the Android app build.
 
-**Note:** The client TypeScript (`src/public/app.ts`) is automatically built to `app.js` by GitHub Actions during deployment. For local development, just run `bun run dev` - the pre-built `app.js` will be used.
+**Note:** The client TypeScript (`src/client/app.ts`) is automatically built to `src/client/app.js` by GitHub Actions during deployment. For local development, just run `bun run dev` - the pre-built `app.js` will be used.
+
+## Project layout
+
+```
+src/
+├── server/   # Bun runtime (HTTP, WebSocket, SQLite, HMAC)
+├── client/   # Browser source (TS, HTML, CSS, images) + built app.js
+└── shared/   # Types and pure helpers used by both sides
+tests/        # Unit + integration tests (run on Bun)
+```
+
+A file's location tells you where it runs. `src/server/` may import from `src/shared/` but never from `src/client/` (and vice versa). Static assets live alongside the client TypeScript that consumes them; `app.js` is built next to `app.ts` and gitignored.
 
 ## Development
 
@@ -85,6 +97,9 @@ bun install
 bun run dev
 
 # The web will start on http://localhost:3000
+
+# Type-check both server and client (separate tsconfigs enforce the boundary)
+bun run typecheck
 ```
 
 **Note:** All POST/PUT requests require HMAC-SHA256 signatures in the `X-Signature` header. See `.env.example` for setup.
@@ -105,7 +120,7 @@ Manual deployment on server:
 ## Build Artifacts
 
 The build process generates:
-- `src/public/app.js` - Compiled TypeScript client code (gitignored, built by GHA)
+- `src/client/app.js` - Compiled TypeScript client code (gitignored, built by GHA)
 
 ## Data Format
 
