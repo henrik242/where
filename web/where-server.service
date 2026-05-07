@@ -1,6 +1,8 @@
 [Unit]
 Description=Where Tracking Server
 After=network.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -10,16 +12,15 @@ EnvironmentFile=-/opt/where-web/.env
 ExecStart=/usr/local/bin/bun --watch src/server/index.ts
 Restart=always
 RestartSec=10
-StartLimitIntervalSec=300
-StartLimitBurst=5
 
 # Hardening
+# Note: do NOT add ProtectHome=true if WorkingDirectory lives under /home —
+# it makes /home an empty bind mount inside the service namespace, so chdir
+# fails with Permission denied. Adapt ReadWritePaths to your install path.
 NoNewPrivileges=true
 ProtectSystem=strict
-ProtectHome=true
 PrivateTmp=true
 ReadWritePaths=/opt/where-web/data
 
 [Install]
 WantedBy=multi-user.target
-
