@@ -108,8 +108,8 @@ describe('API Integration Tests', () => {
       expect(response.status).toBe(200);
 
       const data = await response.json();
-      expect(Array.isArray(data)).toBe(true);
-      expect(data.length).toBeGreaterThanOrEqual(1);
+      expect(Array.isArray(data.tracks)).toBe(true);
+      expect(data.tracks.length).toBeGreaterThanOrEqual(1);
     });
 
     test('should filter by single client ID via URL', async () => {
@@ -127,8 +127,8 @@ describe('API Integration Tests', () => {
       expect(response.status).toBe(200);
 
       const data = await response.json();
-      expect(data.length).toBeGreaterThanOrEqual(1);
-      expect(data.some((t: any) => t.userId === 'filter1')).toBe(true);
+      expect(data.tracks.length).toBeGreaterThanOrEqual(1);
+      expect(data.tracks.some((t: any) => t.userId === 'filter1')).toBe(true);
     });
 
     test('should filter by multiple client IDs via URL', async () => {
@@ -154,8 +154,8 @@ describe('API Integration Tests', () => {
       expect(response.status).toBe(200);
 
       const data = await response.json();
-      expect(data.length).toBeGreaterThanOrEqual(2);
-      const userIds = data.map((t: any) => t.userId);
+      expect(data.tracks.length).toBeGreaterThanOrEqual(2);
+      const userIds = data.tracks.map((t: any) => t.userId);
       expect(userIds).toContain('multi1');
       expect(userIds).toContain('multi2');
     });
@@ -165,7 +165,7 @@ describe('API Integration Tests', () => {
       expect(response.status).toBe(200);
 
       const data = await response.json();
-      expect(data.length).toBe(0);
+      expect(data.tracks.length).toBe(0);
     });
 
     test('should handle empty clients parameter', async () => {
@@ -173,7 +173,7 @@ describe('API Integration Tests', () => {
       expect(response.status).toBe(200);
 
       const data = await response.json();
-      expect(Array.isArray(data)).toBe(true);
+      expect(Array.isArray(data.tracks)).toBe(true);
     });
 
     test('should return empty array without client IDs', async () => {
@@ -192,7 +192,7 @@ describe('API Integration Tests', () => {
       expect(response.status).toBe(200);
 
       const data = await response.json();
-      expect(data).toEqual([]);
+      expect(data.tracks).toEqual([]);
     });
   });
 

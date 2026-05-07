@@ -1,12 +1,10 @@
 import { trackStore } from './store';
-import type { Track } from './types';
-import { calculateTrackDistance } from './utils';
+import type { EnrichedTrack, Track } from '../shared/types';
+import { calculateTrackDistance } from '../shared/geo';
 import { CONFIG } from './config';
 
-/**
- * Enrich track with calculated metadata
- */
-export function enrichTrack(track: Track) {
+/** Add server-derived fields (distance, pointCount) to a track for the wire format. */
+export function enrichTrack(track: Track): EnrichedTrack {
   return {
     ...track,
     distance: calculateTrackDistance(track.points),
@@ -14,9 +12,6 @@ export function enrichTrack(track: Track) {
   };
 }
 
-/**
- * Broadcast message to subscribed WebSocket clients
- */
 const subscribedClients = new Set<any>();
 
 export function addSubscribedClient(ws: any) {
@@ -40,9 +35,7 @@ export function broadcastToAll(message: any, userId?: string) {
   }
 }
 
-/**
- * Count how many WebSocket clients are viewing a specific user's tracks
- */
+/** Number of WebSocket subscribers currently watching a given user's tracks. */
 export function getViewerCount(userId: string): number {
   let count = 0;
   for (const ws of subscribedClients) {
@@ -53,9 +46,6 @@ export function getViewerCount(userId: string): number {
   return count;
 }
 
-/**
- * Background job to check for stale tracks (no updates in 10 minutes)
- */
 export function checkStaleTracks() {
   const cutoffTime = Date.now() - CONFIG.STALE_TRACK_TIMEOUT;
   const activeTracks = trackStore.getAllActiveTracks();
@@ -108,9 +98,6 @@ export function checkStaleTracks() {
   }
 }
 
-/**
- * Delete tracks (and cascading points) older than 24 hours
- */
 export function cleanupOldTracks() {
   const deleted = trackStore.cleanupOldTracks();
   for (const { id, userId } of deleted) {
@@ -125,21 +112,13 @@ export function cleanupOldTracks() {
   }
 }
 
-/**
- * Start the stale track checker
- */
 export function startStaleTrackChecker() {
-  // Run check every minute
   setInterval(checkStaleTracks, CONFIG.STALE_CHECK_INTERVAL);
-
-  // Run cleanup every hour
   setInterval(cleanupOldTracks, 60 * 60 * 1000);
 
-  // Run initial check after 10 seconds
   setTimeout(() => {
     console.log('🔍 Running initial stale track check...');
     checkStaleTracks();
     cleanupOldTracks();
   }, CONFIG.INITIAL_CHECK_DELAY);
 }
-

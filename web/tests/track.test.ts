@@ -1,7 +1,8 @@
 import { describe, test, expect } from 'bun:test';
-import { Track } from '../src/types';
+import type { Track } from '../src/shared/types';
+import { parseGPX } from '../src/shared/gpx';
 
-describe('Track.fromGPX', () => {
+describe('parseGPX', () => {
   test('should parse valid GPX with all fields', () => {
     const gpxContent = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Where Test">
@@ -20,7 +21,7 @@ describe('Track.fromGPX', () => {
   </trk>
 </gpx>`;
 
-    const track = Track.fromGPX(gpxContent);
+    const track = parseGPX(gpxContent);
 
     expect(track).toBeDefined();
     expect(track?.name).toBe('Test Track');
@@ -44,7 +45,7 @@ describe('Track.fromGPX', () => {
   </trk>
 </gpx>`;
 
-    const track = Track.fromGPX(gpxContent);
+    const track = parseGPX(gpxContent);
 
     expect(track).toBeDefined();
     expect(track?.points[0].altitude).toBeUndefined();
@@ -62,7 +63,7 @@ describe('Track.fromGPX', () => {
   </trk>
 </gpx>`;
 
-    const track = Track.fromGPX(gpxContent);
+    const track = parseGPX(gpxContent);
 
     expect(track).toBeDefined();
     expect(track?.name).toBe('Imported Track');
@@ -77,13 +78,13 @@ describe('Track.fromGPX', () => {
   </trk>
 </gpx>`;
 
-    const track = Track.fromGPX(gpxContent);
+    const track = parseGPX(gpxContent);
     expect(track).toBeNull();
   });
 
   test('should return null for invalid GPX', () => {
     const gpxContent = 'not valid xml';
-    const track = Track.fromGPX(gpxContent);
+    const track = parseGPX(gpxContent);
     expect(track).toBeNull();
   });
 
@@ -102,7 +103,7 @@ describe('Track.fromGPX', () => {
   </trk>
 </gpx>`;
 
-    const track = Track.fromGPX(gpxContent);
+    const track = parseGPX(gpxContent);
 
     expect(track).toBeDefined();
     expect(track?.points).toHaveLength(5);
@@ -119,7 +120,7 @@ describe('Track.fromGPX', () => {
   </trk>
 </gpx>`;
 
-    const track = Track.fromGPX(gpxContent);
+    const track = parseGPX(gpxContent);
 
     expect(track).toBeDefined();
     expect(track?.isActive).toBe(false);

@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Track, TrackPoint } from './types';
+import type { Track, TrackPoint } from '../shared/types';
 
 const COLORS = [
   '#FF5722', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
@@ -265,7 +265,6 @@ export class TrackStore {
       this.db.prepare(`UPDATE tracks SET ${setClauses.join(', ')} WHERE id = ?`).run(...values);
     }
 
-    // Handle points replacement if provided in updates
     if (updates.points !== undefined) {
       this.db.prepare('DELETE FROM points WHERE trackId = ?').run(trackId);
       if (updates.points.length > 0) {
@@ -343,7 +342,7 @@ export class TrackStore {
   }
 
   incrementSessionCount(platform: string): void {
-    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const date = new Date().toISOString().slice(0, 10);
     this.db.prepare(
       `INSERT INTO session_counts (date, platform, count) VALUES (?, ?, 1)
        ON CONFLICT(date, platform) DO UPDATE SET count = count + 1`

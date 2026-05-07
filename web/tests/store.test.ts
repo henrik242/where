@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterAll } from 'bun:test';
-import { TrackStore } from '../src/store';
-import type { Track } from '../src/types';
+import { TrackStore } from '../src/server/store';
+import type { Track } from '../src/shared/types';
 
 const store = new TrackStore(':memory:');
 

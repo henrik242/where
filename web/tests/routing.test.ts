@@ -6,7 +6,7 @@ let serverProc: ReturnType<typeof Bun.spawn>;
 
 beforeAll(async () => {
   // Start the real server on a random port
-  serverProc = Bun.spawn(['bun', 'run', 'index.ts'], {
+  serverProc = Bun.spawn(['bun', 'run', 'src/server/index.ts'], {
     cwd: `${import.meta.dir}/..`,
     env: { ...process.env, PORT: '0' },
     stdout: 'pipe',

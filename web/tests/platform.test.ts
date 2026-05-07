@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { detectPlatform } from '../src/utils';
+import { detectPlatform } from '../src/server/platform';
 
 describe('detectPlatform', () => {
   test('should detect iPhone', () => {
