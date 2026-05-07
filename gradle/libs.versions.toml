@@ -1,11 +1,11 @@
 [versions]
 activityCompose = "1.13.0"
-agp = "9.2.0"
+agp = "9.2.1"
 appcompat = "1.7.1"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
-composeMultiplatform = "1.11.0-beta03"
+composeMultiplatform = "1.11.0-rc01"
 composeMaterial3 = "1.11.0-alpha07" # see release notes for matching version
-composeBom = "2026.04.01"
+composeBom = "2026.05.00"
 core = "1.7.0"
 coreKtx = "1.18.0"
 crashlyticsPlugin = "3.0.7"
@@ -30,7 +30,7 @@ navigationCompose = "2.9.8"
 playServicesLocation = "21.3.0"
 room = "2.8.4"
 timber = "5.0.1"
-uiTestJunit4 = "1.11.0"
+uiTestJunit4 = "1.11.1"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
