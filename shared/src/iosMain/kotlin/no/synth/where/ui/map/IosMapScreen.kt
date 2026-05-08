@@ -152,6 +152,8 @@ fun IosMapScreen(
     var cameraZoom by remember { mutableStateOf(5.0) }
     var isCompassVisible by remember { mutableStateOf(false) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
+    var hasFix by remember { mutableStateOf(false) }
+    val isLocating = locationTracker.hasPermission && !hasFix
     var twoFingerMeasurement by rememberAutoDismissingTwoFingerMeasurement()
 
     // Save ruler as track state
@@ -173,6 +175,18 @@ fun IosMapScreen(
     LaunchedEffect(Unit) {
         if (!locationTracker.hasPermission) {
             locationTracker.requestPermission()
+        }
+    }
+
+    DisposableEffect(locationTracker) {
+        locationTracker.startKeepAlive()
+        onDispose { locationTracker.stopKeepAlive() }
+    }
+
+    LaunchedEffect(locationTracker) {
+        while (!hasFix) {
+            if (locationTracker.lastLocation != null) hasFix = true
+            else kotlinx.coroutines.delay(1000)
         }
     }
 
@@ -521,6 +535,7 @@ fun IosMapScreen(
         onCrosshairToggle = { userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
         isCompassVisible = isCompassVisible,
+        isLocating = isLocating,
         onlineTrackingEnabled = onlineTrackingEnabled,
         liveShareUntilMillis = liveShareUntilMillis,
         isLiveSharing = isLiveSharing,

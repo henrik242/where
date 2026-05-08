@@ -39,6 +39,7 @@ fun MapScreenContent(
     // Overlay state
     offlineModeEnabled: Boolean = false,
     isCompassVisible: Boolean = false,
+    isLocating: Boolean = false,
     onlineTrackingEnabled: Boolean,
     viewerCount: Int = 0,
     liveShareUntilMillis: Long = 0L,
@@ -130,6 +131,7 @@ fun MapScreenContent(
             MapOverlays(
                 offlineModeEnabled = offlineModeEnabled,
                 isCompassVisible = isCompassVisible,
+                isLocating = isLocating,
                 crosshairActive = crosshairActive,
                 crosshairInfo = crosshairInfo,
                 centerLatLng = centerLatLng,

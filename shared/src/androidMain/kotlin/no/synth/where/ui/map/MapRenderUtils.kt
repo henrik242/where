@@ -5,7 +5,10 @@ import android.location.Location
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.Track
 import no.synth.where.data.RulerState
+import android.graphics.Color
 import org.maplibre.android.location.LocationComponent
+import org.maplibre.android.location.LocationComponentOptions
+import org.maplibre.android.location.engine.LocationEngineRequest
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
@@ -24,6 +27,13 @@ import no.synth.where.util.Logger
  * Utilities for managing map layers and rendering.
  */
 object MapRenderUtils {
+
+    private const val LOCATION_ENGINE_INTERVAL_MS = 2000L
+    private const val LOCATION_ENGINE_FASTEST_INTERVAL_MS = 1000L
+    private const val STALE_FIX_TIMEOUT_MS = 30_000L
+    private const val ACCURACY_RING_ALPHA = 0.30f
+    // Saturated blue, readable over Kartverket's yellow/green topo tints.
+    private const val ACCURACY_RING_COLOR = "#1E88E5"
 
     /**
      * Update track visualization on the map.
@@ -429,13 +439,28 @@ object MapRenderUtils {
 
             val locationComponent = map.locationComponent
 
-            if (!locationComponent.isLocationComponentActivated) {
-                locationComponent.activateLocationComponent(
-                    org.maplibre.android.location.LocationComponentActivationOptions.builder(context, style)
-                        .useDefaultLocationEngine(true)
-                        .build()
-                )
-            }
+            // Re-activate on every call: each setStyle replaces the map style,
+            // and the LocationComponent's puck layers must be rebound to the
+            // new style or the puck silently disappears.
+            val request = LocationEngineRequest.Builder(LOCATION_ENGINE_INTERVAL_MS)
+                .setFastestInterval(LOCATION_ENGINE_FASTEST_INTERVAL_MS)
+                .setPriority(LocationEngineRequest.PRIORITY_HIGH_ACCURACY)
+                .build()
+            val options = LocationComponentOptions.builder(context)
+                .accuracyAlpha(ACCURACY_RING_ALPHA)
+                .accuracyColor(Color.parseColor(ACCURACY_RING_COLOR))
+                .accuracyAnimationEnabled(true)
+                .staleStateTimeout(STALE_FIX_TIMEOUT_MS)
+                .foregroundStaleTintColor(Color.GRAY)
+                .backgroundStaleTintColor(Color.LTGRAY)
+                .build()
+            locationComponent.activateLocationComponent(
+                org.maplibre.android.location.LocationComponentActivationOptions.builder(context, style)
+                    .useDefaultLocationEngine(true)
+                    .locationEngineRequest(request)
+                    .locationComponentOptions(options)
+                    .build()
+            )
 
             if (!hasLocationFix && DeviceUtils.isEmulator()) {
                 forceLocationOnEmulator(locationComponent)

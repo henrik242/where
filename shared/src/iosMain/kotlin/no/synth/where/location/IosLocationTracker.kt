@@ -10,6 +10,7 @@ import no.synth.where.util.Logger
 import platform.CoreLocation.CLLocation
 import platform.CoreLocation.CLLocationManager
 import platform.CoreLocation.CLLocationManagerDelegateProtocol
+import platform.CoreLocation.CLActivityTypeFitness
 import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
 import platform.CoreLocation.kCLAuthorizationStatusAuthorizedWhenInUse
 import platform.CoreLocation.kCLLocationAccuracyBest
@@ -25,11 +26,15 @@ class IosLocationTracker(
     private var _lastLocation: CLLocation? = null
     val lastLocation: CLLocation? get() = _lastLocation
 
+    private var keepAliveActive = false
+    private var trackingActive = false
+
     init {
         locationManager.delegate = this
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = 5.0
+        locationManager.distanceFilter = 1.0
         locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.activityType = CLActivityTypeFitness
         applyBackgroundUpdatesFlag()
     }
 
@@ -56,17 +61,38 @@ class IosLocationTracker(
     }
 
     fun startTracking() {
+        trackingActive = true
         applyBackgroundUpdatesFlag()
         locationManager.startUpdatingLocation()
     }
 
     fun stopTracking() {
-        locationManager.stopUpdatingLocation()
+        trackingActive = false
+        if (!keepAliveActive) locationManager.stopUpdatingLocation()
+    }
+
+    /**
+     * Hold the GNSS chip warm while the map is visible. CoreLocation otherwise
+     * de-prioritises updates outside an active recording session, producing the
+     * same "stale dot in forest" symptom as Android's fused provider.
+     */
+    fun startKeepAlive() {
+        keepAliveActive = true
+        locationManager.startUpdatingLocation()
+    }
+
+    fun stopKeepAlive() {
+        keepAliveActive = false
+        if (!trackingActive) locationManager.stopUpdatingLocation()
     }
 
     @ObjCSignatureOverride
     override fun locationManager(manager: CLLocationManager, didUpdateLocations: List<*>) {
         val location = didUpdateLocations.lastOrNull() as? CLLocation ?: return
+        if (location.sourceInformation?.isSimulatedBySoftware() == true) return
+        if (location.horizontalAccuracy < 0 ||
+            location.horizontalAccuracy > MAX_ACCEPTABLE_ACCURACY_M
+        ) return
         _lastLocation = location
 
         val altitude = if (location.verticalAccuracy >= 0) location.altitude else null
@@ -92,5 +118,10 @@ class IosLocationTracker(
 
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
         applyBackgroundUpdatesFlag()
+        if (hasPermission && (keepAliveActive || trackingActive)) {
+            locationManager.startUpdatingLocation()
+        }
     }
 }
+
+private const val MAX_ACCEPTABLE_ACCURACY_M = 50.0

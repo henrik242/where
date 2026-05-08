@@ -242,4 +242,5 @@
     <string name="saved_as_track_name">Saved as track: %1$s</string>
     <string name="location_permission_required">Location permission required</string>
     <string name="unnamed_point">Unnamed point</string>
+    <string name="locating">Locating…</string>
 </resources>

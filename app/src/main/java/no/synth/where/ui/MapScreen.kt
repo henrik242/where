@@ -166,7 +166,16 @@ fun MapScreen(
     val showAvalancheZones by viewModel.userPreferences.showAvalancheZones.collectAsState()
     val showHillshade by viewModel.userPreferences.showHillshade.collectAsState()
     val showCoordGrid by viewModel.userPreferences.showCoordGrid.collectAsState()
-    var hasLocationPermission by remember { mutableStateOf(false) }
+    var hasLocationPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
     var hasBackgroundLocationPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -187,6 +196,8 @@ fun MapScreen(
     var twoFingerMeasurement by rememberAutoDismissingTwoFingerMeasurement()
 
     var hasZoomedToLocation by rememberSaveable { mutableStateOf(false) }
+    var hasFix by remember { mutableStateOf(false) }
+    val isLocating = hasLocationPermission && !hasFix
 
     // Save camera position across navigation
     var savedCameraLat by rememberSaveable { mutableDoubleStateOf(65.0) }
@@ -310,6 +321,26 @@ fun MapScreen(
         }
     }
 
+    // Track whether the location component has produced any fix yet, so the
+    // map can show a "Locating…" pill on cold start before the puck appears.
+    LaunchedEffect(hasLocationPermission, mapInstance) {
+        if (!hasLocationPermission || mapInstance == null) {
+            hasFix = false
+            return@LaunchedEffect
+        }
+        while (!hasFix) {
+            try {
+                val lc = mapInstance?.locationComponent
+                if (lc != null && lc.isLocationComponentEnabled && lc.lastKnownLocation != null) {
+                    hasFix = true
+                }
+            } catch (e: Exception) {
+                Logger.d("Could not read user location: %s", e.message ?: "unknown")
+            }
+            if (!hasFix) delay(1000)
+        }
+    }
+
     // Update user location periodically while crosshair is active
     LaunchedEffect(crosshairActive, mapInstance) {
         if (!crosshairActive) {
@@ -409,6 +440,7 @@ fun MapScreen(
         onCrosshairToggle = { viewModel.userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
         isCompassVisible = isCompassVisible,
+        isLocating = isLocating,
         onlineTrackingEnabled = onlineTrackingEnabled,
         liveShareUntilMillis = liveShareUntilMillis,
         isLiveSharing = isLiveSharing,
@@ -551,6 +583,7 @@ fun MapScreen(
                 onMapReady = { mapInstance = it },
                 selectedLayer = selectedLayer,
                 hasLocationPermission = hasLocationPermission,
+                isRecording = isRecording,
                 showWaymarkedTrails = showWaymarkedTrails,
                 showAvalancheZones = showAvalancheZones,
                 showHillshade = showHillshade,

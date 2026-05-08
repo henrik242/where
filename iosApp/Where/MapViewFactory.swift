@@ -7,6 +7,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var mapView: MLNMapView?
     private var currentStyleJson: String?
     private var isMapConnected = true
+    private var staleFixTimer: Timer?
+    private static let freshTintColor: UIColor = .systemBlue
+    private static let staleTintColor: UIColor = .systemGray
+    private static let staleFixThreshold: TimeInterval = 30.0
     private var pendingTrackGeoJson: String?
     private var pendingTrackColor: String?
     private var pendingSavedPointsGeoJson: String?
@@ -175,6 +179,39 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     func setShowsUserLocation(show: Bool) {
         guard let mapView = self.mapView else { return }
         mapView.showsUserLocation = show
+        if show {
+            mapView.tintColor = MapViewFactory.freshTintColor
+            startStaleFixMonitor()
+        } else {
+            stopStaleFixMonitor()
+        }
+    }
+
+    /// Tints the user-location puck grey when the latest fix is older than
+    /// `staleFixThreshold`. Mirrors the Android LocationComponentOptions.staleStateTimeout
+    /// behavior so users can tell the dot is no longer fresh.
+    private func startStaleFixMonitor() {
+        staleFixTimer?.invalidate()
+        let timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            self?.refreshUserLocationTint()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        staleFixTimer = timer
+    }
+
+    private func stopStaleFixMonitor() {
+        staleFixTimer?.invalidate()
+        staleFixTimer = nil
+    }
+
+    private func refreshUserLocationTint() {
+        guard let mapView = self.mapView else { return }
+        let lastFix = mapView.userLocation?.location?.timestamp
+        let stale = lastFix.map { Date().timeIntervalSince($0) > MapViewFactory.staleFixThreshold } ?? true
+        let target: UIColor = stale ? MapViewFactory.staleTintColor : MapViewFactory.freshTintColor
+        if mapView.tintColor != target {
+            mapView.tintColor = target
+        }
     }
 
     func zoomIn() {
