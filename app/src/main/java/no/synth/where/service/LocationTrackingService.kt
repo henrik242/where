@@ -15,6 +15,7 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.Granularity
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -65,9 +66,12 @@ class LocationTrackingService : Service() {
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.lastLocation?.let { location ->
+                if (location.isMock) return@let
+                if (!location.hasAccuracy() || location.accuracy > MAX_ACCEPTABLE_ACCURACY_M) return@let
+
                 val latLng = LatLng(location.latitude, location.longitude)
                 val altitude = if (location.hasAltitude()) location.altitude else null
-                val accuracy = if (location.hasAccuracy()) location.accuracy else null
+                val accuracy = location.accuracy
 
                 trackRepository.addTrackPoint(
                     latLng = latLng,
@@ -157,7 +161,9 @@ class LocationTrackingService : Service() {
             setMinUpdateIntervalMillis(FASTEST_UPDATE_INTERVAL)
             setMaxUpdateDelayMillis(LOCATION_UPDATE_INTERVAL * 2)
             setWaitForAccurateLocation(false)
-            setMinUpdateDistanceMeters(5f)
+            setMinUpdateDistanceMeters(MIN_UPDATE_DISTANCE_METERS)
+            setMaxUpdateAgeMillis(0)
+            setGranularity(Granularity.GRANULARITY_FINE)
         }.build()
 
         fusedLocationClient.requestLocationUpdates(
@@ -270,8 +276,10 @@ class LocationTrackingService : Service() {
     companion object {
         private const val CHANNEL_ID = "LocationTrackingChannel"
         private const val NOTIFICATION_ID = 1
-        private const val LOCATION_UPDATE_INTERVAL = 5000L
-        private const val FASTEST_UPDATE_INTERVAL = 2000L
+        private const val LOCATION_UPDATE_INTERVAL = 2000L
+        private const val FASTEST_UPDATE_INTERVAL = 1000L
+        private const val MIN_UPDATE_DISTANCE_METERS = 1f
+        private const val MAX_ACCEPTABLE_ACCURACY_M = 50f
         private const val NOTIFICATION_TICK_INTERVAL = 30_000L
         private const val ACTION_STOP_SHARING = "no.synth.where.action.STOP_SHARING"
         private const val ACTION_STOP_RECORDING = "no.synth.where.action.STOP_RECORDING"

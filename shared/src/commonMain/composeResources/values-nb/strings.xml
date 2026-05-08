@@ -229,6 +229,7 @@
     <string name="saved_as_track_name">Lagret som spor: %1$s</string>
     <string name="location_permission_required">Posisjonstillatelse kreves</string>
     <string name="unnamed_point">Navnløst punkt</string>
+    <string name="locating">Søker etter posisjon…</string>
 
     <!-- Crosshair -->
     <string name="hillshade">Terrengskygge</string>

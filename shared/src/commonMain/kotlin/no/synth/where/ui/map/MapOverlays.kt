@@ -447,6 +447,7 @@ fun CrosshairInfoCard(
 fun BoxScope.MapOverlays(
     offlineModeEnabled: Boolean = false,
     isCompassVisible: Boolean = false,
+    isLocating: Boolean = false,
     crosshairActive: Boolean = false,
     crosshairInfo: CrosshairInfo = CrosshairInfo(),
     centerLatLng: LatLng? = null,
@@ -490,6 +491,14 @@ fun BoxScope.MapOverlays(
     isLiveSharing: Boolean = false
 ) {
     val hasTopOverlay = showSearch || viewingTrackName != null || (showViewingPoint && viewingPointName != null) || followedClientId != null
+
+    if (isLocating && !hasTopOverlay) {
+        LocatingPill(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+        )
+    }
     val offlineChipEnd by animateDpAsState(
         targetValue = if (isCompassVisible) 56.dp else 16.dp,
         label = "offlineChipEnd"
@@ -733,6 +742,26 @@ fun TwoFingerDistanceOverlay(measurement: TwoFingerMeasurement?) {
                     shape = RoundedCornerShape(16.dp)
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun LocatingPill(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = stringResource(Res.string.locating),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

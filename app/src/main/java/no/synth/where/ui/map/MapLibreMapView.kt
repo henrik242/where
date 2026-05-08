@@ -26,6 +26,7 @@ import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.Track
+import no.synth.where.location.GpsKeepAlive
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.toCommon
 import no.synth.where.data.geo.toMapLibre
@@ -47,6 +48,7 @@ fun MapLibreMapView(
     onMapReady: (MapLibreMap) -> Unit = {},
     selectedLayer: MapLayer = MapLayer.KARTVERKET,
     hasLocationPermission: Boolean = false,
+    isRecording: Boolean = false,
     showWaymarkedTrails: Boolean = false,
     showAvalancheZones: Boolean = false,
     showHillshade: Boolean = false,
@@ -74,6 +76,9 @@ fun MapLibreMapView(
     val context = LocalContext.current
     var isOnline by remember { mutableStateOf(true) }
     var wasInitialized by remember { mutableStateOf(false) }
+    val gpsKeepAlive = remember(context) { GpsKeepAlive(context) }
+    val hasLocationPermissionState = rememberUpdatedState(hasLocationPermission)
+    val isRecordingState = rememberUpdatedState(isRecording)
 
     DisposableEffect(context) {
         val connectivityManager =
@@ -428,8 +433,19 @@ fun MapLibreMapView(
             mapView?.let {
                 when (event) {
                     Lifecycle.Event.ON_START -> it.onStart()
-                    Lifecycle.Event.ON_RESUME -> it.onResume()
-                    Lifecycle.Event.ON_PAUSE -> it.onPause()
+                    Lifecycle.Event.ON_RESUME -> {
+                        it.onResume()
+                        // Skip while the foreground recording service has fused
+                        // running at HIGH_ACCURACY — chip is already warm and
+                        // the keep-alive only burns ~5%/hr for no benefit.
+                        if (hasLocationPermissionState.value && !isRecordingState.value) {
+                            gpsKeepAlive.start()
+                        }
+                    }
+                    Lifecycle.Event.ON_PAUSE -> {
+                        gpsKeepAlive.stop()
+                        it.onPause()
+                    }
                     Lifecycle.Event.ON_STOP -> it.onStop()
                     Lifecycle.Event.ON_DESTROY -> it.onDestroy()
                     else -> {}
@@ -438,8 +454,19 @@ fun MapLibreMapView(
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            gpsKeepAlive.stop()
             lifecycleOwner.lifecycle.removeObserver(observer)
             mapView?.onDestroy()
+        }
+    }
+
+    // Re-evaluate keep-alive when permission or recording state changes mid-resume.
+    LaunchedEffect(hasLocationPermission, isRecording) {
+        val resumed = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        if (resumed && hasLocationPermission && !isRecording) {
+            gpsKeepAlive.start()
+        } else {
+            gpsKeepAlive.stop()
         }
     }
 }

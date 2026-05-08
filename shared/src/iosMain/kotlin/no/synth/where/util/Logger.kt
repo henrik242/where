@@ -9,6 +9,10 @@ actual object Logger {
         println("W: ${formatMessage(message, args)}")
     }
 
+    actual fun w(throwable: Throwable, message: String, vararg args: Any?) {
+        println("W: ${formatMessage(message, args)}\n${throwable.stackTraceToString()}")
+    }
+
     actual fun e(message: String, vararg args: Any?) {
         println("E: ${formatMessage(message, args)}")
     }

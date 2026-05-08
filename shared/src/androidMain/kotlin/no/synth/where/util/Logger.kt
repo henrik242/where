@@ -11,6 +11,10 @@ actual object Logger {
         Timber.w(message, *args)
     }
 
+    actual fun w(throwable: Throwable, message: String, vararg args: Any?) {
+        Timber.w(throwable, message, *args)
+    }
+
     actual fun e(message: String, vararg args: Any?) {
         Timber.e(message, *args)
     }
