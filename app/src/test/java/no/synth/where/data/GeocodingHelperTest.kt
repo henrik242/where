@@ -21,6 +21,7 @@ class GeocodingHelperTest {
 
     @After
     fun restore() {
+        runBlocking { GeocodingHelper.clearCaches() }
         if (::originalClient.isInitialized) {
             GeocodingHelper.client = originalClient
         }
