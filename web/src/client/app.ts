@@ -555,8 +555,17 @@ function zoomToClientTracks(): void {
       bounds.extend([point.lon, point.lat]);
     });
 
+    // Bias the point toward the upper portion so it's not covered if the
+    // panel is open: extra bottom padding on mobile (panel docks bottom),
+    // extra right padding on desktop (panel docks top-right).
+    // Breakpoint matches the @media (max-width: 768px) rule in app.css.
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const padding = isMobile
+      ? { top: 50, bottom: 250, left: 50, right: 50 }
+      : { top: 50, bottom: 50, left: 50, right: 350 };
+
     map.fitBounds(bounds, {
-      padding: 50,
+      padding,
       maxZoom: 15 // Don't zoom in too close if there's only one point
     });
   }
@@ -681,20 +690,26 @@ function setupWebSocket(): void {
 (window as any).toggleHistorical = toggleHistorical;
 (window as any).disableAdmin = disableAdmin;
 (window as any).selectTrack = selectTrack;
-(window as any).hidePanel = function() {
+function hidePanel(): void {
   document.getElementById('info-panel')?.classList.add('hidden');
   document.getElementById('show-panel-btn')?.classList.add('visible');
-};
-(window as any).showPanel = function() {
+}
+function showPanel(): void {
   document.getElementById('info-panel')?.classList.remove('hidden');
   document.getElementById('show-panel-btn')?.classList.remove('visible');
-};
+}
+(window as any).hidePanel = hidePanel;
+(window as any).showPanel = showPanel;
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
   parseURLParameters(); // Parse URL first so clientFilters is set
   initMap();
   updateClientTags();
+
+  // When arriving via a clientId link, collapse the panel so it doesn't
+  // cover the track point. The user can re-open it with the Live Tracks button.
+  if (clientFilters.length > 0) hidePanel();
 
   document.getElementById('client-input')?.addEventListener('keypress', (e) => {
     if ((e as KeyboardEvent).key === 'Enter') addClientFilter();
