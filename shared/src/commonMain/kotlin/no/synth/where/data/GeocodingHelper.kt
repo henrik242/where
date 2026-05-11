@@ -21,6 +21,7 @@ import no.synth.where.util.Logger
 
 private const val NOMINATIM = "https://nominatim.openstreetmap.org"
 private const val OVERPASS = "https://overpass-api.de/api/interpreter"
+private const val MAX_CACHE_ENTRIES = 1000
 
 object GeocodingHelper {
     var client: HttpClient = createDefaultHttpClient()
@@ -186,8 +187,8 @@ object GeocodingHelper {
     }
 
     private val cacheMutex = Mutex()
-    private val nameCache = mutableMapOf<String, String>()
-    private val areaNameCache = mutableMapOf<String, String>()
+    private val nameCache = LruCache(MAX_CACHE_ENTRIES)
+    private val areaNameCache = LruCache(MAX_CACHE_ENTRIES)
 
     private fun cacheKey(latLng: LatLng): String =
         "${latLng.latitude.toBits()}_${latLng.longitude.toBits()}"
@@ -197,6 +198,24 @@ object GeocodingHelper {
             nameCache.clear()
             areaNameCache.clear()
         }
+    }
+
+    private class LruCache(private val maxSize: Int) {
+        private val entries = LinkedHashMap<String, String>()
+
+        operator fun get(key: String): String? {
+            val value = entries.remove(key) ?: return null
+            entries[key] = value
+            return value
+        }
+
+        operator fun set(key: String, value: String) {
+            entries.remove(key)
+            entries[key] = value
+            if (entries.size > maxSize) entries.remove(entries.keys.iterator().next())
+        }
+
+        fun clear() = entries.clear()
     }
 
     suspend fun reverseGeocodeArea(latLng: LatLng): String? = withContext(Dispatchers.Default) {
