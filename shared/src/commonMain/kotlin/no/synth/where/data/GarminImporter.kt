@@ -101,6 +101,7 @@ class GarminImporter(
             val responseText = client.get(apiUrl) {
                 header("User-Agent", "Mozilla/5.0")
                 header("connect-csrf-token", session.csrfToken)
+                header("sec-fetch-site", "same-origin")
                 if (session.cookieHeader.isNotEmpty()) header("Cookie", session.cookieHeader)
             }.bodyAsText()
 
@@ -163,6 +164,7 @@ class GarminImporter(
             val responseText = client.get(apiUrl) {
                 header("User-Agent", "Mozilla/5.0")
                 header("connect-csrf-token", session.csrfToken)
+                header("sec-fetch-site", "same-origin")
                 if (session.cookieHeader.isNotEmpty()) header("Cookie", session.cookieHeader)
             }.bodyAsText()
 
