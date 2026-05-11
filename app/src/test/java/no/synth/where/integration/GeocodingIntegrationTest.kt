@@ -2,6 +2,9 @@ package no.synth.where.integration
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import no.synth.where.data.GeocodingHelper
@@ -36,13 +39,17 @@ class GeocodingIntegrationTest {
                 }
             })
         }
+        runBlocking { GeocodingHelper.clearCaches() }
         originalClient = GeocodingHelper.client
         GeocodingHelper.client = HttpClient(OkHttp) {
             engine {
                 config {
                     connectTimeout(15, TimeUnit.SECONDS)
-                    readTimeout(15, TimeUnit.SECONDS)
+                    readTimeout(30, TimeUnit.SECONDS)
                 }
+            }
+            defaultRequest {
+                header(HttpHeaders.UserAgent, "Where-IntegrationTest (https://github.com/henrik242/where)")
             }
         }
     }
