@@ -193,7 +193,7 @@ class LocationTrackingService : Service() {
     }
 
     private fun createNotification(state: NotificationState): Notification {
-        val notificationIntent = Intent(this, MainActivity::class.java)
+        val notificationIntent = Intent(this, MainActivity::class.java).setPackage(packageName)
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -251,7 +251,9 @@ class LocationTrackingService : Service() {
     }
 
     private fun pendingIntentForAction(action: String, requestCode: Int): PendingIntent {
-        val intent = Intent(this, LocationTrackingService::class.java).setAction(action)
+        val intent = Intent(this, LocationTrackingService::class.java)
+            .setPackage(packageName)
+            .setAction(action)
         return PendingIntent.getService(this, requestCode, intent, PendingIntent.FLAG_IMMUTABLE)
     }
 
