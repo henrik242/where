@@ -27,7 +27,7 @@ function escapeHtml(str: string): string {
 
 // Global state
 let map: maplibregl.Map;
-let tracks: Record<string, Track> = {};
+let tracks: Map<string, Track> = new Map();
 let selectedTrackId: string | null = null;
 const renderTypeFor = new Map<string, 'single' | 'line'>();
 let clientFilters: string[] = [];
@@ -131,17 +131,29 @@ function updateSessionStats(stats: SessionStats): void {
   if (!el) return;
 
   const fmt = (counts: Record<string, number>) => {
-    const ios = counts['ios'] || 0;
-    const android = counts['android'] || 0;
+    const ios = Number(counts['ios']) || 0;
+    const android = Number(counts['android']) || 0;
     return `iOS: ${ios}, Android: ${android}`;
   };
 
-  el.innerHTML = `
-    <div style="margin-bottom: 4px; font-weight: 600;">Tracking Sessions</div>
-    <div>24h: ${fmt(stats.day)}</div>
-    <div>7d: ${fmt(stats.week)}</div>
-    <div>30d: ${fmt(stats.month)}</div>
-  `;
+  el.replaceChildren();
+
+  const header = document.createElement('div');
+  header.style.marginBottom = '4px';
+  header.style.fontWeight = '600';
+  header.textContent = 'Tracking Sessions';
+  el.appendChild(header);
+
+  const rows: Array<[string, Record<string, number>]> = [
+    ['24h', stats.day],
+    ['7d', stats.week],
+    ['30d', stats.month],
+  ];
+  for (const [label, counts] of rows) {
+    const row = document.createElement('div');
+    row.textContent = `${label}: ${fmt(counts)}`;
+    el.appendChild(row);
+  }
 }
 
 // Format distance
@@ -222,7 +234,7 @@ function updateTracksList(): void {
   const tracksList = document.getElementById('tracks-list');
   if (!tracksList) return;
 
-  const allTracks = Object.values(tracks);
+  const allTracks = Array.from(tracks.values());
 
   if (allTracks.length === 0) {
     tracksList.innerHTML = '<div class="no-tracks">No tracks found</div>';
@@ -270,7 +282,7 @@ function selectTrack(trackId: string): void {
   updateTracksList();
   updateMap();
 
-  const track = tracks[trackId];
+  const track = tracks.get(trackId);
   if (track && track.points.length > 0) {
     if (track.points.length === 1) {
       const p = track.points[0];
@@ -290,8 +302,7 @@ function updateMap(): void {
     return;
   }
 
-  Object.keys(tracks).forEach(trackId => {
-    const track = tracks[trackId];
+  tracks.forEach((track, trackId) => {
     const sourceId = `track-${trackId}`;
     const layerId = `track-layer-${trackId}`;
 
@@ -513,16 +524,15 @@ async function fetchTracks(): Promise<void> {
     updateAdminIndicator(data.admin);
 
     // Get IDs of tracks that will be removed
-    const oldTrackIds = Object.keys(tracks);
-    const newTracks = data.tracks.reduce((acc, track) => {
-      acc[track.id] = track;
-      return acc;
-    }, {} as Record<string, Track>);
-    const newTrackIds = Object.keys(newTracks);
+    const oldTrackIds = Array.from(tracks.keys());
+    const newTracks = new Map<string, Track>();
+    data.tracks.forEach(track => {
+      newTracks.set(track.id, track);
+    });
 
     // Remove layers for tracks that are no longer in the response
     oldTrackIds.forEach(trackId => {
-      if (!newTrackIds.includes(trackId)) {
+      if (!newTracks.has(trackId)) {
         cleanupTrackLayers(trackId);
       }
     });
@@ -545,7 +555,7 @@ async function fetchTracks(): Promise<void> {
 function zoomToClientTracks(): void {
   const allPoints: Point[] = [];
 
-  Object.values(tracks).forEach(track => {
+  tracks.forEach(track => {
     allPoints.push(...track.points);
   });
 
@@ -610,14 +620,14 @@ function setupWebSocket(): void {
       updateAdminIndicator(data.admin === true);
       if (data.sessionStats) updateSessionStats(data.sessionStats);
 
-      const oldTrackIds = Object.keys(tracks);
-      const newTracks: Record<string, Track> = {};
+      const oldTrackIds = Array.from(tracks.keys());
+      const newTracks = new Map<string, Track>();
       (data.tracks || []).forEach(track => {
-        newTracks[track.id] = track;
+        newTracks.set(track.id, track);
       });
 
       oldTrackIds.forEach(trackId => {
-        if (!newTracks[trackId]) cleanupTrackLayers(trackId);
+        if (!newTracks.has(trackId)) cleanupTrackLayers(trackId);
       });
 
       tracks = newTracks;
@@ -629,7 +639,7 @@ function setupWebSocket(): void {
     }
 
     if (data.type === 'track_started') {
-      tracks[data.trackId] = {
+      tracks.set(data.trackId, {
         id: data.trackId,
         userId: data.userId,
         name: data.name || 'Unnamed Track',
@@ -637,12 +647,13 @@ function setupWebSocket(): void {
         startTime: data.point?.timestamp || Date.now(),
         isActive: true,
         color: data.color
-      };
+      });
       updateTracksList();
       updateMap();
     } else if (data.type === 'track_update') {
-      if (!tracks[data.trackId]) {
-        tracks[data.trackId] = {
+      let track = tracks.get(data.trackId);
+      if (!track) {
+        track = {
           id: data.trackId,
           userId: data.userId,
           name: data.name || 'Unnamed Track',
@@ -651,21 +662,23 @@ function setupWebSocket(): void {
           isActive: true,
           color: data.color
         };
+        tracks.set(data.trackId, track);
       }
       if (data.point) {
-        tracks[data.trackId].points.push(data.point);
+        track.points.push(data.point);
       }
       updateTracksList();
       updateMap();
     } else if (data.type === 'track_stopped') {
-      if (tracks[data.trackId]) {
-        tracks[data.trackId].isActive = false;
+      const track = tracks.get(data.trackId);
+      if (track) {
+        track.isActive = false;
         updateTracksList();
       }
     } else if (data.type === 'track_deleted') {
-      if (tracks[data.trackId]) {
+      if (tracks.has(data.trackId)) {
         cleanupTrackLayers(data.trackId);
-        delete tracks[data.trackId];
+        tracks.delete(data.trackId);
         if (selectedTrackId === data.trackId) selectedTrackId = null;
         updateTracksList();
       }
