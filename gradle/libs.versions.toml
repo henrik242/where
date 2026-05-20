@@ -5,7 +5,7 @@ appcompat = "1.7.1"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
 composeMultiplatform = "1.11.0"
 composeMaterial3 = "1.11.0-alpha07" # see release notes for matching version
-composeBom = "2026.05.00"
+composeBom = "2026.05.01"
 core = "1.7.0"
 coreKtx = "1.18.0"
 crashlyticsPlugin = "3.0.7"
