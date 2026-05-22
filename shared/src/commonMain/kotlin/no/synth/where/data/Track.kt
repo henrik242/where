@@ -3,6 +3,8 @@ package no.synth.where.data
 import kotlinx.serialization.Serializable
 import no.synth.where.data.serialization.LatLngSerializer
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.data.geo.bounds
 import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
 import kotlin.time.Instant
@@ -67,6 +69,8 @@ $trackPointsXml
     fun getDurationMillis(): Long {
         return (endTime ?: currentTimeMillis()) - startTime
     }
+
+    fun bounds(): LatLngBounds? = points.map { it.latLng }.bounds()
 
     companion object {
         fun fromFIT(data: ByteArray): Track? {
