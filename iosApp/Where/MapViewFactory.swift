@@ -251,13 +251,21 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         let bounds = MLNCoordinateBounds(sw: sw, ne: ne)
         let p = CGFloat(padding)
         let edgePadding = UIEdgeInsets(top: p, left: p, bottom: p, right: p)
-        mapView.setVisibleCoordinateBounds(bounds, edgePadding: edgePadding, animated: true, completionHandler: nil)
-        if maxZoom > 0 && mapView.zoomLevel > Double(maxZoom) {
+        // Snap to the bounds-fit camera non-animated to learn the resulting zoom, then
+        // either keep it (if under the cap) or animate to a zoom-capped center in one step.
+        let savedCamera = mapView.camera
+        mapView.setVisibleCoordinateBounds(bounds, edgePadding: edgePadding, animated: false, completionHandler: nil)
+        let resultingZoom = mapView.zoomLevel
+        let resultingCenter = mapView.centerCoordinate
+        mapView.camera = savedCamera
+        if maxZoom > 0 && resultingZoom > Double(maxZoom) {
             let center = CLLocationCoordinate2D(
                 latitude: (south + north) / 2,
                 longitude: (west + east) / 2
             )
             mapView.setCenter(center, zoomLevel: Double(maxZoom), animated: true)
+        } else {
+            mapView.setCenter(resultingCenter, zoomLevel: resultingZoom, animated: true)
         }
     }
 

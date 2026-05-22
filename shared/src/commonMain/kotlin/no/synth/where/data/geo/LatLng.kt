@@ -1,6 +1,7 @@
 package no.synth.where.data.geo
 
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -27,11 +28,31 @@ data class LatLngBounds(
 ) {
     val latitudeSpan get() = north - south
     val longitudeSpan get() = east - west
+    // Treat sub-cm spans (~1e-7° ≈ 1 cm) as a single point — guards against GPS jitter
+    // producing sliver bboxes that would otherwise feed degenerate input to MapLibre.
+    val isPoint get() = abs(latitudeSpan) < POINT_EPSILON && abs(longitudeSpan) < POINT_EPSILON
+    val center get() = LatLng((south + north) / 2.0, (west + east) / 2.0)
 
     companion object {
-        fun from(north: Double, east: Double, south: Double, west: Double) =
-            LatLngBounds(south = south, west = west, north = north, east = east)
+        const val POINT_EPSILON = 1e-7
     }
+}
+
+fun List<LatLng>.bounds(): LatLngBounds? {
+    if (isEmpty()) return null
+    val valid = filter { it.latitude.isFinite() && it.longitude.isFinite() }
+    if (valid.isEmpty()) return null
+    var south = valid.first().latitude
+    var north = valid.first().latitude
+    var west = valid.first().longitude
+    var east = valid.first().longitude
+    for (p in valid) {
+        if (p.latitude < south) south = p.latitude
+        if (p.latitude > north) north = p.latitude
+        if (p.longitude < west) west = p.longitude
+        if (p.longitude > east) east = p.longitude
+    }
+    return LatLngBounds(south = south, west = west, north = north, east = east)
 }
 
 private fun Double.toRadians(): Double = this * PI / 180.0

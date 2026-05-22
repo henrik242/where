@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -31,6 +32,7 @@ import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.bounds
 import no.synth.where.di.AppDependencies
 import no.synth.where.location.IosLocationTracker
 import no.synth.where.resources.Res
@@ -110,6 +112,19 @@ fun IosMapScreen(
         if (id != null && followState is LiveTrackingFollower.FollowState.Idle) {
             liveTrackingFollower.follow(id)
         }
+    }
+
+    // Zoom to friend track when first data arrives
+    var hasZoomedToFriend by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(followedClientId) {
+        hasZoomedToFriend = false
+    }
+    LaunchedEffect(followState) {
+        val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@LaunchedEffect
+        if (hasZoomedToFriend) return@LaunchedEffect
+        val bounds = following.tracks.flatMap { it.points }.bounds() ?: return@LaunchedEffect
+        hasZoomedToFriend = true
+        mapViewProvider.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
     }
 
     // Hoisted string resources for use in lambdas
@@ -333,18 +348,11 @@ fun IosMapScreen(
     // Fit camera to viewing track bounds and render blue track line
     LaunchedEffect(viewingTrack) {
         val track = viewingTrack
-        if (track != null && track.points.size >= 2 && !isRecording) {
-            val geoJson = buildTrackGeoJson(track.points)
-            mapViewProvider.updateTrackLine(geoJson, "#0000FF")
-            val lats = track.points.map { it.latLng.latitude }
-            val lngs = track.points.map { it.latLng.longitude }
-            mapViewProvider.setCameraBounds(
-                south = lats.min(),
-                west = lngs.min(),
-                north = lats.max(),
-                east = lngs.max(),
-                padding = 80
-            )
+        if (track != null && !isRecording) {
+            if (track.points.size >= 2) {
+                mapViewProvider.updateTrackLine(buildTrackGeoJson(track.points), "#0000FF")
+            }
+            track.bounds()?.let { mapViewProvider.animateToBounds(it) }
         }
     }
 
@@ -705,19 +713,8 @@ fun IosMapScreen(
         isFollowedTrackActive = (followState as? LiveTrackingFollower.FollowState.Following)?.tracks?.any { it.isActive } == true,
         onFollowBannerClick = {
             val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
-            val allPoints = following.tracks.flatMap { it.points }
-            if (allPoints.isNotEmpty()) {
-                val lats = allPoints.map { it.latitude }
-                val lngs = allPoints.map { it.longitude }
-                mapViewProvider.setCameraBounds(
-                    south = lats.min(),
-                    west = lngs.min(),
-                    north = lats.max(),
-                    east = lngs.max(),
-                    padding = 80,
-                    maxZoom = 15
-                )
-            }
+            val bounds = following.tracks.flatMap { it.points }.bounds() ?: return@MapScreenContent
+            mapViewProvider.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
         },
         onStopFollowing = {
             userPreferences.updateFollowedClientId(null)
