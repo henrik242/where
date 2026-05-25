@@ -111,6 +111,8 @@ object GeocodingHelper {
         "historic", "tourism", "waterway" -> true
         "natural" -> type in landmarkNaturalTypes
         "leisure" -> type in landmarkLeisureTypes
+        // Named guideposts identify the place they stand at (common in hiking areas).
+        "information" -> type == "guidepost"
         else -> false
     }
 
