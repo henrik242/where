@@ -20,15 +20,15 @@ import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
+import no.synth.where.data.TrackUrlImporter
 import no.synth.where.data.UserPreferences
 import no.synth.where.ui.AttributionsScreenContent
 import no.synth.where.ui.DownloadScreenContent
-import no.synth.where.ui.LanguageOption
 import no.synth.where.ui.LayerInfo
 import no.synth.where.ui.IosLayerHexMapScreen
 import no.synth.where.ui.OnlineTrackingScreenContent
 import no.synth.where.ui.SavedPointsScreenContent
-import no.synth.where.ui.SettingsScreenContent
+import no.synth.where.ui.SettingsScreen
 import no.synth.where.ui.TracksScreenContent
 import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
@@ -63,7 +63,6 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val downloadManager = remember { IosMapDownloadManager(offlineMapManager) }
 
     val themeMode by userPreferences.themeMode.collectAsState()
-    val crashReportingEnabled by userPreferences.crashReportingEnabled.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val downloadElevationData by userPreferences.downloadElevationData.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
@@ -114,29 +113,20 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
             }
 
             Screen.SETTINGS -> {
-                val languages = listOf(
-                    LanguageOption(null, stringResource(Res.string.system_default)),
-                    LanguageOption("en", "English"),
-                    LanguageOption("nb", "Norsk bokmål")
-                )
-
                 val appleLanguages = NSUserDefaults.standardUserDefaults.arrayForKey("AppleLanguages")
-                val currentTag = (appleLanguages?.firstOrNull() as? String)?.let { lang ->
-                    languages.find { it.tag == lang }?.tag
-                }
-                val currentLanguageLabel = languages.find { it.tag == currentTag }?.displayName
-                    ?: languages.first().displayName
+                val currentLanguageTag = appleLanguages?.firstOrNull() as? String
 
-                val themeOptions = listOf(
-                    LanguageOption("system", "System"),
-                    LanguageOption("light", "Light"),
-                    LanguageOption("dark", "Dark")
-                )
-                val currentThemeLabel = themeOptions.find { it.tag == themeMode }?.displayName ?: "System"
-
-                SettingsScreenContent(
-                    versionInfo = BuildInfo.VERSION_INFO,
-                    highlightOfflineMode = highlightOfflineMode,
+                SettingsScreen(
+                    userPreferences = userPreferences,
+                    currentLanguageTag = currentLanguageTag,
+                    onLanguageSelected = { tag ->
+                        if (tag == null) {
+                            NSUserDefaults.standardUserDefaults.removeObjectForKey("AppleLanguages")
+                        } else {
+                            NSUserDefaults.standardUserDefaults.setObject(listOf(tag), "AppleLanguages")
+                        }
+                    },
+                    onSponsorClick = { IosPlatformActions.openUrl("https://buymeacoffee.com/henrik242") },
                     onBackClick = {
                         highlightOfflineMode = false
                         navigateBack()
@@ -145,27 +135,12 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onTracksClick = { navigateTo(Screen.TRACKS) },
                     onSavedPointsClick = { navigateTo(Screen.SAVED_POINTS) },
                     onOnlineTrackingClick = { navigateTo(Screen.ONLINE_TRACKING) },
-                    offlineModeEnabled = offlineModeEnabled,
-                    onOfflineModeChange = { userPreferences.updateOfflineModeEnabled(it) },
-                    crashReportingEnabled = crashReportingEnabled,
+                    onAttributionsClick = { navigateTo(Screen.ATTRIBUTIONS) },
                     onCrashReportingChange = {
                         userPreferences.updateCrashReportingEnabled(it)
                         CrashReporter.setEnabled(it)
                     },
-                    currentLanguageLabel = currentLanguageLabel,
-                    languages = languages,
-                    onLanguageSelected = { tag ->
-                        if (tag == null) {
-                            NSUserDefaults.standardUserDefaults.removeObjectForKey("AppleLanguages")
-                        } else {
-                            NSUserDefaults.standardUserDefaults.setObject(listOf(tag), "AppleLanguages")
-                        }
-                    },
-                    themeOptions = themeOptions,
-                    currentThemeLabel = currentThemeLabel,
-                    onThemeSelected = { userPreferences.updateThemeMode(it) },
-                    onAttributionsClick = { navigateTo(Screen.ATTRIBUTIONS) },
-                    onSponsorClick = { IosPlatformActions.openUrl("https://buymeacoffee.com/henrik242") }
+                    highlightOfflineMode = highlightOfflineMode
                 )
             }
 
@@ -175,7 +150,10 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 var newTrackName by remember { mutableStateOf("") }
                 var showImportError by remember { mutableStateOf(false) }
                 var importErrorMessage by remember { mutableStateOf("") }
+                var isImportingUrl by remember { mutableStateOf(false) }
+                var newlyImportedTrackId by remember { mutableStateOf<String?>(null) }
                 val gpxCorruptedMsg = stringResource(Res.string.import_gpx_corrupted)
+                val importUrlErrorMsg = stringResource(Res.string.import_url_error)
                 fun sanitizeFileName(name: String): String =
                     name.replace(" ", "_").replace(":", "-")
 
@@ -186,6 +164,9 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     newTrackName = newTrackName,
                     showImportError = showImportError,
                     importErrorMessage = importErrorMessage,
+                    isImportingUrl = isImportingUrl,
+                    newlyImportedTrackId = newlyImportedTrackId,
+                    onNewlyImportedTrackConsumed = { newlyImportedTrackId = null },
                     onBackClick = { navigateBack() },
                     onImport = {
                         IosPlatformActions.pickFile(listOf("public.xml", "org.topografix.gpx", "public.data")) { bytes ->
@@ -195,10 +176,32 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                                 if (imported == null) {
                                     importErrorMessage = gpxCorruptedMsg
                                     showImportError = true
+                                } else {
+                                    newlyImportedTrackId = imported.id
                                 }
                             } catch (e: Exception) {
                                 importErrorMessage = e.message ?: gpxCorruptedMsg
                                 showImportError = true
+                            }
+                        }
+                    },
+                    onUrlImport = { input ->
+                        scope.launch {
+                            isImportingUrl = true
+                            try {
+                                val track = TrackUrlImporter().importFromUrl(input)
+                                val imported = track?.toGPX()?.let { trackRepository.importTrack(it) }
+                                if (imported == null) {
+                                    importErrorMessage = importUrlErrorMsg
+                                    showImportError = true
+                                } else {
+                                    newlyImportedTrackId = imported.id
+                                }
+                            } catch (_: Exception) {
+                                importErrorMessage = importUrlErrorMsg
+                                showImportError = true
+                            } finally {
+                                isImportingUrl = false
                             }
                         }
                     },

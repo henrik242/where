@@ -1,8 +1,12 @@
 package no.synth.where
 
+import android.content.Intent
 import android.net.Uri
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import androidx.core.os.LocaleListCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -71,19 +75,30 @@ fun WhereApp(
         }
         composable<SettingsRoute> { backStackEntry ->
             val settingsRoute = backStackEntry.toRoute<SettingsRoute>()
+            val currentLocale = AppCompatDelegate.getApplicationLocales()
+            val currentLanguageTag = if (currentLocale.isEmpty) null else currentLocale.toLanguageTags()
             SettingsScreen(
-                highlightOfflineMode = settingsRoute.highlightOfflineMode,
+                userPreferences = userPreferences,
+                currentLanguageTag = currentLanguageTag,
+                onLanguageSelected = { tag ->
+                    val locales = if (tag == null) LocaleListCompat.getEmptyLocaleList()
+                    else LocaleListCompat.forLanguageTags(tag)
+                    AppCompatDelegate.setApplicationLocales(locales)
+                },
+                onSponsorClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://buymeacoffee.com/henrik242".toUri()))
+                },
                 onBackClick = { navController.popBackStack() },
                 onDownloadClick = { navController.navigate(DownloadRoute) },
                 onTracksClick = { navController.navigate(TracksRoute()) },
                 onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
                 onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
                 onAttributionsClick = { navController.navigate(AttributionsRoute) },
-                userPreferences = userPreferences,
                 onCrashReportingChange = { enabled ->
                     userPreferences.updateCrashReportingEnabled(enabled)
                     CrashReporter.setEnabled(enabled)
-                }
+                },
+                highlightOfflineMode = settingsRoute.highlightOfflineMode
             )
         }
         composable<AttributionsRoute> {
