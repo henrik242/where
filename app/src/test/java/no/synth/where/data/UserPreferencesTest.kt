@@ -7,6 +7,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import no.synth.where.data.geo.CoordFormat
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -79,6 +80,38 @@ class UserPreferencesTest {
         prefs.updateOnlineTrackingEnabled(false)
         assertEquals(false, prefs.onlineTrackingEnabled.value)
         assertEquals(true, prefs.hasSeenTrackingInfo.value)
+    }
+
+    @Test
+    fun defaults_coordFormatIsLatLng() {
+        assertEquals(CoordFormat.LATLNG, prefs.coordFormat.value)
+    }
+
+    @Test
+    fun updateCoordFormat_updatesStateFlow() {
+        prefs.updateCoordFormat(CoordFormat.UTM)
+        assertEquals(CoordFormat.UTM, prefs.coordFormat.value)
+        prefs.updateCoordFormat(CoordFormat.DMS)
+        assertEquals(CoordFormat.DMS, prefs.coordFormat.value)
+    }
+
+    @Test
+    fun updateCoordFormat_persistsAcrossReload() = runBlocking {
+        val file = tempFolder.newFile("coord_format_persist.preferences_pb")
+        val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val firstStore = PreferenceDataStoreFactory.create(scope = firstScope, produceFile = { file })
+        val first = UserPreferences(firstStore)
+        delay(100)
+        first.updateCoordFormat(CoordFormat.MGRS)
+        delay(200)
+        firstScope.cancel()
+
+        val secondScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val secondStore = PreferenceDataStoreFactory.create(scope = secondScope, produceFile = { file })
+        val second = UserPreferences(secondStore)
+        delay(200)
+        assertEquals(CoordFormat.MGRS, second.coordFormat.value)
+        secondScope.cancel()
     }
 
 }
