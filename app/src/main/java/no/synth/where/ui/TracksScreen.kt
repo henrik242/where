@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.data.Track
 import no.synth.where.resources.Res
@@ -86,14 +87,14 @@ fun TracksScreen(
     }
 
     fileUriToConfirm?.let { uriString ->
-        val fileName = Uri.parse(uriString).lastPathSegment ?: uriString
+        val fileName = uriString.toUri().lastPathSegment ?: uriString
         AlertDialog(
             onDismissRequest = { fileUriToConfirm = null },
             title = { Text(stringResource(Res.string.import_from_title)) },
             text = { Text(stringResource(Res.string.import_file_message, fileName)) },
             confirmButton = {
                 TextButton(onClick = {
-                    val uri = Uri.parse(uriString)
+                    val uri = uriString.toUri()
                     fileUriToConfirm = null
                     try {
                         val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
@@ -197,7 +198,7 @@ fun TracksScreen(
 }
 
 private fun friendlySourceName(url: String): String {
-    val host = Uri.parse(url).host ?: return url
+    val host = url.toUri().host ?: return url
     return when {
         "strava.com" in host || "strava.app.link" in host -> "Strava"
         "garmin.com" in host -> "Garmin Connect"
