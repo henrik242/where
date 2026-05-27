@@ -36,12 +36,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import no.synth.where.data.geo.CoordFormat
+import no.synth.where.data.geo.CoordinateFormatter
+import no.synth.where.data.geo.LatLng
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 data class LanguageOption(val tag: String?, val displayName: String)
+
+private data class CoordFormatOption(val format: CoordFormat, val label: String, val example: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -303,12 +307,19 @@ fun SettingsScreenContent(
                 }
 
                 run {
-                    val coordFormatOptions = listOf(
-                        CoordFormat.LATLNG to stringResource(Res.string.coord_format_latlng),
-                        CoordFormat.DMS to stringResource(Res.string.coord_format_dms),
-                        CoordFormat.UTM to stringResource(Res.string.coord_format_utm),
-                        CoordFormat.MGRS to stringResource(Res.string.coord_format_mgrs),
-                    )
+                    val latLngLabel = stringResource(Res.string.coord_format_latlng)
+                    val dmsLabel = stringResource(Res.string.coord_format_dms)
+                    val utmLabel = stringResource(Res.string.coord_format_utm)
+                    val mgrsLabel = stringResource(Res.string.coord_format_mgrs)
+                    val coordFormatOptions = remember(latLngLabel, dmsLabel, utmLabel, mgrsLabel) {
+                        val sample = LatLng(59.9139, 10.7522)
+                        listOf(
+                            CoordFormatOption(CoordFormat.LATLNG, latLngLabel, CoordinateFormatter.formatLatLng(sample)),
+                            CoordFormatOption(CoordFormat.DMS, dmsLabel, CoordinateFormatter.formatDms(sample)),
+                            CoordFormatOption(CoordFormat.UTM, utmLabel, CoordinateFormatter.formatUtm(sample)),
+                            CoordFormatOption(CoordFormat.MGRS, mgrsLabel, CoordinateFormatter.formatMgrs(sample)),
+                        )
+                    }
                     var coordExpanded by remember { mutableStateOf(false) }
 
                     Box {
@@ -325,7 +336,7 @@ fun SettingsScreenContent(
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                text = coordFormatOptions.first { it.first == currentCoordFormat }.second,
+                                text = coordFormatOptions.first { it.format == currentCoordFormat }.label,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -334,12 +345,21 @@ fun SettingsScreenContent(
                             expanded = coordExpanded,
                             onDismissRequest = { coordExpanded = false }
                         ) {
-                            coordFormatOptions.forEach { (format, label) ->
+                            coordFormatOptions.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(label) },
+                                    text = {
+                                        Column {
+                                            Text(option.label)
+                                            Text(
+                                                text = option.example,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    },
                                     onClick = {
                                         coordExpanded = false
-                                        onCoordFormatSelected(format)
+                                        onCoordFormatSelected(option.format)
                                     }
                                 )
                             }
