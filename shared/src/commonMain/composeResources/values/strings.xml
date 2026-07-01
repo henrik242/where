@@ -69,7 +69,7 @@
     <string name="online_tracking">Online Tracking</string>
     <string name="viewers_watching">Someone is watching your track</string>
     <string name="viewers_watching_plural">%1$d people are watching your track</string>
-    <string name="close_track_view">Close Track View</string>
+    <string name="close_track">Close track</string>
     <string name="close_point_view">Close Point View</string>
 
     <!-- Search Overlay -->
@@ -181,7 +181,6 @@
     <string name="no_saved_tracks">No saved tracks yet</string>
     <string name="delete_track_title">Delete Track?</string>
     <string name="delete_track_confirm">Are you sure you want to delete \'%1$s\'?</string>
-    <string name="remove_track">Delete track</string>
     <string name="import_failed">Import Failed</string>
     <string name="rename_track">Rename Track</string>
     <string name="share_track_chooser">Share Track</string>

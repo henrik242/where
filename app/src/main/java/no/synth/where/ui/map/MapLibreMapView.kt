@@ -69,6 +69,7 @@ fun MapLibreMapView(
     onLongPress: (LatLng) -> Unit = {},
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {},
     onTrackClick: () -> Unit = {},
+    onMapClickOutsideTrack: () -> Unit = {},
     onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
     isTwoFingerMeasurementVisible: Boolean = false,
     twoFingerMeasurement: TwoFingerMeasurement? = null,
@@ -333,6 +334,7 @@ fun MapLibreMapView(
                             onTrackClick()
                             true
                         } else {
+                            if (viewingTrackState.value != null) onMapClickOutsideTrack()
                             false
                         }
                     }

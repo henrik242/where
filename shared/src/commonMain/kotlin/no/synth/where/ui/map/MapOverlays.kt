@@ -24,27 +24,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -208,8 +207,8 @@ fun RecordingCard(
 fun ViewingTrackBanner(
     modifier: Modifier = Modifier,
     trackName: String,
-    onRemove: () -> Unit,
-    onClose: () -> Unit
+    onCloseTrack: () -> Unit,
+    onCollapse: () -> Unit
 ) {
     Card(
         modifier = modifier,
@@ -218,9 +217,9 @@ fun ViewingTrackBanner(
         )
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(start = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
                 painterResource(Res.drawable.ic_map),
@@ -230,17 +229,18 @@ fun ViewingTrackBanner(
             Text(
                 text = trackName,
                 style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = onRemove) {
+            IconButton(onClick = onCloseTrack, modifier = Modifier.size(36.dp)) {
                 Icon(
-                    painterResource(Res.drawable.ic_delete),
-                    contentDescription = stringResource(Res.string.remove_track),
-                    tint = MaterialTheme.colorScheme.error
+                    painterResource(Res.drawable.ic_visibility_off),
+                    contentDescription = stringResource(Res.string.close_track)
                 )
             }
-            IconButton(onClick = onClose) {
-                Icon(painterResource(Res.drawable.ic_close), contentDescription = stringResource(Res.string.close_track_view))
+            IconButton(onClick = onCollapse, modifier = Modifier.size(36.dp)) {
+                Icon(painterResource(Res.drawable.ic_close), contentDescription = stringResource(Res.string.collapse))
             }
         }
     }
@@ -470,7 +470,7 @@ fun BoxScope.MapOverlays(
     onlineTrackingEnabled: Boolean,
     viewerCount: Int = 0,
     viewingTrack: no.synth.where.data.Track?,
-    showTrackBanner: Boolean = false,
+    trackFocused: Boolean = false,
     viewingPointName: String?,
     viewingPointColor: String,
     showSearch: Boolean,
@@ -485,15 +485,14 @@ fun BoxScope.MapOverlays(
     onRulerClear: () -> Unit,
     onRulerSaveAsTrack: () -> Unit,
     onOnlineTrackingClick: () -> Unit = {},
-    onRemoveViewingTrack: () -> Unit = {},
-    onCloseViewingTrack: () -> Unit,
+    onCloseTrack: () -> Unit,
+    onCollapseTrack: () -> Unit = {},
     onCloseViewingPoint: () -> Unit,
     onOfflineIndicatorClick: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit,
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit,
-    twoFingerMeasurement: TwoFingerMeasurement? = null,
     followedClientId: String? = null,
     isFollowConnecting: Boolean = false,
     isFollowedTrackActive: Boolean = false,
@@ -502,8 +501,10 @@ fun BoxScope.MapOverlays(
     liveShareUntilMillis: Long = 0L,
     isLiveSharing: Boolean = false
 ) {
+    // The track whose name banner + altitude chart are shown, or null when not focused.
+    val focusedTrack = if (trackFocused) viewingTrack else null
     val hasTopOverlay = showSearch ||
-        (showTrackBanner && viewingTrack != null) ||
+        focusedTrack != null ||
         (showViewingPoint && viewingPointName != null) ||
         followedClientId != null
 
@@ -511,7 +512,7 @@ fun BoxScope.MapOverlays(
     // cards (recording/ruler/crosshair) are lifted above its measured height so they
     // don't overlap it. Height is 0 for tracks without elevation, so no phantom gap.
     val density = LocalDensity.current
-    val chartVisible = viewingTrack?.hasElevationData() == true
+    val chartVisible = focusedTrack?.hasElevationData() == true
     var chartHeight by remember { mutableStateOf(0.dp) }
     val bottomCardsOffset = if (chartVisible) chartHeight else 0.dp
 
@@ -527,18 +528,27 @@ fun BoxScope.MapOverlays(
         label = "offlineChipEnd"
     )
 
-    if (!hasTopOverlay && viewingTrack == null) {
+    AnimatedVisibility(
+        visible = !hasTopOverlay,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = Modifier.align(Alignment.TopStart)
+    ) {
         ZoomControls(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut
         )
+    }
 
+    AnimatedVisibility(
+        visible = !hasTopOverlay,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = Modifier.align(Alignment.TopEnd)
+    ) {
         Column(
             modifier = Modifier
-                .align(Alignment.TopEnd)
                 .padding(top = 16.dp, end = offlineChipEnd),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End
@@ -611,15 +621,15 @@ fun BoxScope.MapOverlays(
         }
     }
 
-    if (showTrackBanner && viewingTrack != null) {
+    if (focusedTrack != null) {
         ViewingTrackBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 16.dp)
                 .padding(horizontal = 16.dp),
-            trackName = viewingTrack.name,
-            onRemove = onRemoveViewingTrack,
-            onClose = onCloseViewingTrack
+            trackName = focusedTrack.name,
+            onCloseTrack = onCloseTrack,
+            onCollapse = onCollapseTrack
         )
     }
 
@@ -636,7 +646,7 @@ fun BoxScope.MapOverlays(
     }
 
     if (followedClientId != null && !showSearch) {
-        val hasOtherBanner = (showTrackBanner && viewingTrack != null) || (showViewingPoint && viewingPointName != null)
+        val hasOtherBanner = focusedTrack != null || (showViewingPoint && viewingPointName != null)
         FollowingFriendBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -677,104 +687,12 @@ fun BoxScope.MapOverlays(
         CrosshairOverlay()
     }
 
-    if (viewingTrack != null) {
+    if (focusedTrack != null) {
         TrackAltitudeChart(
-            track = viewingTrack,
+            track = focusedTrack,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
-        )
-    }
-
-    TwoFingerDistanceOverlay(measurement = twoFingerMeasurement)
-}
-
-@Composable
-fun TwoFingerDistanceOverlay(measurement: TwoFingerMeasurement?) {
-    var lastMeasurement by remember { mutableStateOf<TwoFingerMeasurement?>(null) }
-    if (measurement != null) {
-        lastMeasurement = measurement
-    }
-    val alpha by animateFloatAsState(
-        targetValue = if (measurement != null) 1f else 0f,
-        animationSpec = tween(durationMillis = if (measurement != null) 0 else TwoFingerTap.FADE_OUT_MS),
-        label = "twoFingerOverlayAlpha"
-    )
-    val visible = lastMeasurement
-    if (alpha <= 0f || visible == null) return
-
-    val distanceText = visible.distanceMeters.formatDistance()
-    val density = LocalDensity.current
-    val midX = (visible.screenX1 + visible.screenX2) / 2
-    val midY = (visible.screenY1 + visible.screenY2) / 2
-    val badgeColor = MaterialTheme.colorScheme.inverseSurface
-    val textColor = MaterialTheme.colorScheme.inverseOnSurface
-
-    val minX = minOf(visible.screenX1, visible.screenX2)
-    val maxX = maxOf(visible.screenX1, visible.screenX2)
-    val minY = minOf(visible.screenY1, visible.screenY2)
-    val maxY = maxOf(visible.screenY1, visible.screenY2)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .drawBehind {
-                // Skip drawing entirely if the segment's bounding box is off the
-                // canvas — after a big pan the dotted line would otherwise render
-                // a meaningless diagonal across the visible area.
-                if (maxX < 0f || minX > size.width || maxY < 0f || minY > size.height) {
-                    return@drawBehind
-                }
-                val p1 = Offset(visible.screenX1, visible.screenY1)
-                val p2 = Offset(visible.screenX2, visible.screenY2)
-                val strokeWidth = 2.5.dp.toPx()
-                val shadowWidth = strokeWidth + 2.dp.toPx()
-                val dotRadius = 5.dp.toPx()
-                val dashEffect = PathEffect.dashPathEffect(
-                    floatArrayOf(10.dp.toPx(), 8.dp.toPx())
-                )
-
-                drawLine(
-                    Color.White.copy(alpha = 0.6f * alpha), p1, p2,
-                    strokeWidth = shadowWidth, cap = StrokeCap.Round, pathEffect = dashEffect
-                )
-                drawLine(
-                    Color.Black.copy(alpha = 0.8f * alpha), p1, p2,
-                    strokeWidth = strokeWidth, cap = StrokeCap.Round, pathEffect = dashEffect
-                )
-
-                drawCircle(Color.White.copy(alpha = alpha), dotRadius + 1.dp.toPx(), p1)
-                drawCircle(Color.Black.copy(alpha = 0.8f * alpha), dotRadius, p1)
-                drawCircle(Color.White.copy(alpha = alpha), dotRadius + 1.dp.toPx(), p2)
-                drawCircle(Color.Black.copy(alpha = 0.8f * alpha), dotRadius, p2)
-            }
-            .semantics { contentDescription = distanceText }
-    ) {
-        val badgeGap = with(density) { 20.dp.roundToPx() }
-        Text(
-            text = distanceText,
-            style = MaterialTheme.typography.titleMedium,
-            color = textColor.copy(alpha = alpha),
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val offScreen = maxX < 0f || minX > constraints.maxWidth ||
-                        maxY < 0f || minY > constraints.maxHeight
-                    layout(placeable.width, placeable.height) {
-                        if (offScreen) return@layout
-                        val x = (midX.toInt() - placeable.width / 2)
-                            .coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0))
-                        val y = (midY.toInt() - placeable.height - badgeGap)
-                            .coerceIn(0, (constraints.maxHeight - placeable.height).coerceAtLeast(0))
-                        placeable.placeRelative(x, y)
-                    }
-                }
-                .background(
-                    color = badgeColor.copy(alpha = alpha),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 6.dp)
         )
     }
 }

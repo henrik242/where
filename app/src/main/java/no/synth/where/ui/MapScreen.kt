@@ -90,8 +90,7 @@ fun MapScreen(
     val isRecording by viewModel.isRecording.collectAsState()
     val currentTrack by viewModel.currentTrack.collectAsState()
     val viewingTrack by viewModel.viewingTrack.collectAsState()
-    val showTrackBanner by viewModel.trackBannerVisible.collectAsState()
-    val showDeleteTrackConfirm by viewModel.showDeleteTrackConfirm.collectAsState()
+    val trackFocused by viewModel.trackFocused.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val viewerCount by viewModel.userPreferences.viewerCount.collectAsState()
     val liveShareUntilMillis by viewModel.userPreferences.liveShareUntilMillis.collectAsState()
@@ -131,9 +130,12 @@ fun MapScreen(
         }
     }
 
-    // In track-view the only exit is Close (X); map system back to it so back
-    // dismisses the view instead of popping the map route and leaving the app.
-    BackHandler(enabled = viewingTrack != null) { viewModel.clearViewingTrack() }
+    // Back first deselects a focused track (chrome returns, line stays), then on a
+    // second press clears the viewing track. Without this, back would pop the map
+    // route and leave the app while a track is still shown.
+    BackHandler(enabled = viewingTrack != null) {
+        if (trackFocused) viewModel.deselectTrack() else viewModel.clearViewingTrack()
+    }
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
 
@@ -425,7 +427,7 @@ fun MapScreen(
         viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrack = viewingTrack,
-        showTrackBanner = showTrackBanner,
+        trackFocused = trackFocused,
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",
         showViewingPoint = viewingPoint != null,
@@ -509,8 +511,8 @@ fun MapScreen(
         onRulerSaveAsTrack = { viewModel.openSaveRulerAsTrackDialog() },
         onOfflineIndicatorClick = onOfflineSettingsClick,
         onOnlineTrackingClick = onOnlineTrackingSettingsClick,
-        onRemoveViewingTrack = { viewModel.requestDeleteViewingTrack() },
-        onCloseViewingTrack = { viewModel.clearViewingTrack() },
+        onCloseTrack = { viewModel.clearViewingTrack() },
+        onCollapseTrack = { viewModel.deselectTrack() },
         onCloseViewingPoint = onClearViewingPoint,
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
         onSearchResultClick = { result ->
@@ -568,7 +570,8 @@ fun MapScreen(
                 onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },
                 onPointClick = { point -> viewModel.openPointInfoDialog(point) },
-                onTrackClick = { viewModel.onTrackTapped() },
+                onTrackClick = { viewModel.selectTrack() },
+                onMapClickOutsideTrack = { viewModel.deselectTrack() },
                 onTwoFingerMeasure = { twoFingerMeasurement = it },
                 isTwoFingerMeasurementVisible = twoFingerMeasurement != null,
                 twoFingerMeasurement = twoFingerMeasurement,
@@ -595,14 +598,6 @@ fun MapScreen(
                 }
             },
             onDismiss = { viewModel.dismissStopTrackDialog() }
-        )
-    }
-
-    if (showDeleteTrackConfirm) {
-        MapDialogs.DeleteTrackDialog(
-            trackName = viewingTrack?.name ?: "",
-            onConfirm = { viewModel.confirmDeleteViewingTrack() },
-            onDismiss = { viewModel.dismissDeleteTrackConfirm() }
         )
     }
 
@@ -789,8 +784,8 @@ private fun ViewingTrackBannerPreview() {
                 .fillMaxWidth()
                 .padding(16.dp),
             trackName = "Bymarka → Lian",
-            onRemove = {},
-            onClose = {}
+            onCloseTrack = {},
+            onCollapse = {}
         )
     }
 }
@@ -825,7 +820,7 @@ private fun MapScreenFullPreview() {
             onlineTrackingEnabled = false,
             recordingDistance = 2450.0,
             viewingTrack = sampleTrack,
-            showTrackBanner = true,
+            trackFocused = true,
             viewingPointName = null,
             viewingPointColor = "#FF5722",
             showViewingPoint = false,
@@ -848,7 +843,7 @@ private fun MapScreenFullPreview() {
             onRulerUndo = {},
             onRulerClear = {},
             onRulerSaveAsTrack = {},
-            onCloseViewingTrack = {},
+            onCloseTrack = {},
             onCloseViewingPoint = {},
             onSearchQueryChange = {},
             onSearchResultClick = {},

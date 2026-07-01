@@ -8,7 +8,7 @@ import kotlin.math.sqrt
 
 object TrackUtils {
 
-    /** Tap target radius in map pixels; ~44dp finger diameter at typical densities. */
+    /** Tap target radius in logical map pixels (~44dp finger diameter). */
     const val TAP_RADIUS_PX = 22.0
 
     /**

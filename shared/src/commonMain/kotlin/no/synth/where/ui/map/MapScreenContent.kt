@@ -1,5 +1,8 @@
 package no.synth.where.ui.map
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -46,7 +49,7 @@ fun MapScreenContent(
     isLiveSharing: Boolean = false,
     recordingDistance: Double?,
     viewingTrack: no.synth.where.data.Track? = null,
-    showTrackBanner: Boolean = false,
+    trackFocused: Boolean = false,
     viewingPointName: String?,
     viewingPointColor: String,
     showViewingPoint: Boolean,
@@ -76,8 +79,8 @@ fun MapScreenContent(
     onRulerSaveAsTrack: () -> Unit,
     onOnlineTrackingClick: () -> Unit = {},
     onOfflineIndicatorClick: () -> Unit = {},
-    onRemoveViewingTrack: () -> Unit = {},
-    onCloseViewingTrack: () -> Unit,
+    onCloseTrack: () -> Unit,
+    onCollapseTrack: () -> Unit = {},
     onCloseViewingPoint: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
@@ -95,7 +98,11 @@ fun MapScreenContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (viewingTrack == null) {
+            AnimatedVisibility(
+                visible = !trackFocused,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
                 MapFabColumn(
                     isRecording = isRecording,
                     rulerActive = rulerState.isActive,
@@ -149,7 +156,7 @@ fun MapScreenContent(
                 liveShareUntilMillis = liveShareUntilMillis,
                 isLiveSharing = isLiveSharing,
                 viewingTrack = viewingTrack,
-                showTrackBanner = showTrackBanner,
+                trackFocused = trackFocused,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,
                 showSearch = showSearch,
@@ -165,8 +172,8 @@ fun MapScreenContent(
                 onRulerSaveAsTrack = onRulerSaveAsTrack,
                 onOnlineTrackingClick = onOnlineTrackingClick,
                 onOfflineIndicatorClick = onOfflineIndicatorClick,
-                onRemoveViewingTrack = onRemoveViewingTrack,
-                onCloseViewingTrack = onCloseViewingTrack,
+                onCloseTrack = onCloseTrack,
+                onCollapseTrack = onCollapseTrack,
                 onCloseViewingPoint = onCloseViewingPoint,
                 onSearchQueryChange = onSearchQueryChange,
                 onSearchResultClick = onSearchResultClick,

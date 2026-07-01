@@ -162,8 +162,7 @@ fun IosMapScreen(
     var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
     // Track view state
-    val showTrackBanner by trackRepository.trackBannerVisible.collectAsState()
-    var showDeleteTrackConfirm by remember { mutableStateOf(false) }
+    val trackFocused by trackRepository.trackFocused.collectAsState()
 
     val showCoordGrid by userPreferences.showCoordGrid.collectAsState()
     val crosshairActive by userPreferences.crosshairActive.collectAsState()
@@ -405,7 +404,9 @@ fun IosMapScreen(
                     val tolerance = TrackUtils.metersPerPixel(latitude, cameraZoom) *
                         TrackUtils.TAP_RADIUS_PX
                     if (TrackUtils.findTappedTrack(tapLocation, viewingTrack, tolerance) != null) {
-                        trackRepository.toggleTrackBanner()
+                        trackRepository.setTrackFocused(true)
+                    } else if (viewingTrack != null) {
+                        trackRepository.setTrackFocused(false)
                     }
                 }
             }
@@ -539,18 +540,6 @@ fun IosMapScreen(
         )
     }
 
-    if (showDeleteTrackConfirm) {
-        MapDialogs.DeleteTrackDialog(
-            trackName = viewingTrack?.name ?: "",
-            onConfirm = {
-                trackRepository.deleteViewingTrack()
-                mapViewProvider.clearTrackLine()
-                showDeleteTrackConfirm = false
-            },
-            onDismiss = { showDeleteTrackConfirm = false }
-        )
-    }
-
     MapScreenContent(
         snackbarHostState = snackbarHostState,
         isRecording = isRecording,
@@ -578,7 +567,7 @@ fun IosMapScreen(
         viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrack = viewingTrack,
-        showTrackBanner = showTrackBanner,
+        trackFocused = trackFocused,
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",
         showViewingPoint = viewingPoint != null,
@@ -707,11 +696,11 @@ fun IosMapScreen(
                 isResolvingRulerName = false
             }
         },
-        onRemoveViewingTrack = { showDeleteTrackConfirm = true },
-        onCloseViewingTrack = {
+        onCloseTrack = {
             trackRepository.clearViewingTrack()
             mapViewProvider.clearTrackLine()
         },
+        onCollapseTrack = { trackRepository.setTrackFocused(false) },
         onCloseViewingPoint = { onClearViewingPoint() },
         onSearchQueryChange = { searchQuery = it },
         onSearchResultClick = { result ->

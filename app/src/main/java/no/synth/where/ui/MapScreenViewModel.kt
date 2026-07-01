@@ -29,7 +29,7 @@ class MapScreenViewModel(
     val isRecording = trackRepository.isRecording
     val currentTrack = trackRepository.currentTrack
     val viewingTrack = trackRepository.viewingTrack
-    val trackBannerVisible = trackRepository.trackBannerVisible
+    val trackFocused = trackRepository.trackFocused
     val tracks = trackRepository.tracks
     val onlineTrackingEnabled = userPreferences.onlineTrackingEnabled
 
@@ -346,18 +346,8 @@ class MapScreenViewModel(
     }
 
     // Viewing track
-    private val _showDeleteTrackConfirm = MutableStateFlow(false)
-    val showDeleteTrackConfirm: StateFlow<Boolean> = _showDeleteTrackConfirm.asStateFlow()
-
-    fun onTrackTapped() = trackRepository.toggleTrackBanner()
-
-    fun requestDeleteViewingTrack() { _showDeleteTrackConfirm.value = true }
-    fun dismissDeleteTrackConfirm() { _showDeleteTrackConfirm.value = false }
-
-    fun confirmDeleteViewingTrack() {
-        trackRepository.deleteViewingTrack()
-        _showDeleteTrackConfirm.value = false
-    }
+    fun selectTrack() = trackRepository.setTrackFocused(true)
+    fun deselectTrack() = trackRepository.setTrackFocused(false)
 
     fun clearViewingTrack() {
         trackRepository.clearViewingTrack()
