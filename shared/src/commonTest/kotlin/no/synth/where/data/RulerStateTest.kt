@@ -88,6 +88,34 @@ class RulerStateTest {
     }
 
     @Test
+    fun activatedWithSeedsPointsAndActivates() {
+        val state = RulerState().activatedWith(
+            listOf(LatLng(60.0, 10.0), LatLng(61.0, 11.0))
+        )
+        assertTrue(state.isActive)
+        assertEquals(2, state.points.size)
+        assertEquals(60.0, state.points[0].latLng.latitude)
+        assertEquals(11.0, state.points[1].latLng.longitude)
+    }
+
+    @Test
+    fun activatedWithReplacesExistingPoints() {
+        val state = RulerState()
+            .addPoint(LatLng(1.0, 1.0))
+            .activatedWith(listOf(LatLng(60.0, 10.0), LatLng(61.0, 11.0)))
+        assertEquals(2, state.points.size)
+        assertEquals(60.0, state.points[0].latLng.latitude)
+        assertTrue(state.points.none { it.latLng.latitude == 1.0 })
+    }
+
+    @Test
+    fun activatedWithEmptyListActivatesWithNoPoints() {
+        val state = RulerState().activatedWith(emptyList())
+        assertTrue(state.isActive)
+        assertTrue(state.points.isEmpty())
+    }
+
+    @Test
     fun addPointPreservesActiveState() {
         val active = RulerState(isActive = true).addPoint(LatLng(60.0, 10.0))
         assertTrue(active.isActive)

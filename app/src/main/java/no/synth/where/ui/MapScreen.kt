@@ -472,7 +472,15 @@ fun MapScreen(
                 }
             }
         },
-        onRulerToggle = { viewModel.toggleRuler() },
+        onRulerToggle = {
+            val measurement = twoFingerMeasurement
+            if (!rulerState.isActive && measurement != null) {
+                viewModel.startRulerFrom(measurement.endpoints)
+                twoFingerMeasurement = null
+            } else {
+                viewModel.toggleRuler()
+            }
+        },
         onSettingsClick = onSettingsClick,
         onZoomIn = {
             mapInstance?.let { map ->

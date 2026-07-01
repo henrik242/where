@@ -117,6 +117,18 @@ class MapGeoJsonTest {
     }
 
     @Test
+    fun twoFingerMeasurementEndpointsAreTheTwoTouchPoints() {
+        val m = TwoFingerMeasurement(
+            lat1 = 60.0, lng1 = 10.0, lat2 = 62.0, lng2 = 14.0,
+            distanceMeters = 500.0
+        )
+        val endpoints = m.endpoints
+        assertEquals(2, endpoints.size)
+        assertEquals(LatLng(60.0, 10.0), endpoints[0])
+        assertEquals(LatLng(62.0, 14.0), endpoints[1])
+    }
+
+    @Test
     fun emptyListsProduceValidGeoJson() {
         val trackJson = buildTrackGeoJson(emptyList())
         assertContains(trackJson, "\"type\":\"LineString\"")

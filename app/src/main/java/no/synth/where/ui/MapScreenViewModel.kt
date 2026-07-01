@@ -272,6 +272,10 @@ class MapScreenViewModel(
         _rulerState.value = _rulerState.value.addPoint(latLng)
     }
 
+    fun startRulerFrom(latLngs: List<LatLng>) {
+        _rulerState.value = _rulerState.value.activatedWith(latLngs)
+    }
+
     fun removeLastRulerPoint() {
         _rulerState.value = _rulerState.value.removeLastPoint()
     }

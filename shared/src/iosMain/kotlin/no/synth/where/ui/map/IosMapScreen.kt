@@ -626,7 +626,11 @@ fun IosMapScreen(
             }
         },
         onRulerToggle = {
-            rulerState = if (rulerState.isActive) {
+            val measurement = twoFingerMeasurement
+            rulerState = if (!rulerState.isActive && measurement != null) {
+                twoFingerMeasurement = null
+                rulerState.activatedWith(measurement.endpoints)
+            } else if (rulerState.isActive) {
                 mapViewProvider.clearRuler()
                 rulerState.clear()
             } else {

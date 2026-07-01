@@ -33,6 +33,11 @@ data class RulerState(
         return copy(points = points + RulerPoint(latLng))
     }
 
+    /** Replaces all points with the given ones and marks the ruler active. */
+    fun activatedWith(latLngs: List<LatLng>): RulerState {
+        return copy(points = latLngs.map { RulerPoint(it) }, isActive = true)
+    }
+
     fun removeLastPoint(): RulerState {
         return if (points.isNotEmpty()) {
             copy(points = points.dropLast(1))
