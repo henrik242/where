@@ -5,7 +5,11 @@ import android.location.Location
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.Track
 import no.synth.where.data.RulerState
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import org.maplibre.android.location.LocationComponent
 import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.engine.LocationEngineRequest
@@ -13,6 +17,7 @@ import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.TransitionOptions
@@ -571,10 +576,18 @@ object MapRenderUtils {
         }
     }
 
-    /**
-     * Force a mock location on emulator for testing.
-     */
-    private val navLayerIds = listOf("nav-offcourse", "nav-remaining", "nav-completed")
+    // "nav-arrows" first so its layer is removed before the shared nav-remaining source it rides on.
+    private val navLayerIds = listOf("nav-arrows", "nav-offcourse", "nav-remaining", "nav-completed")
+    private const val NAV_ARROW_IMAGE = "nav-arrow"
+
+    // Navigation line styling. Keep in sync with MapViewFactory.swift applyNavigation.
+    private const val NAV_COMPLETED_COLOR = "#9E9E9E"
+    private const val NAV_REMAINING_COLOR = "#1E88E5"
+    private const val NAV_OFFCOURSE_COLOR = "#E53935"
+    private const val NAV_COMPLETED_WIDTH = 4f
+    private const val NAV_REMAINING_WIDTH = 6f
+    private const val NAV_OFFCOURSE_WIDTH = 3f
+    private const val NAV_ARROW_SPACING = 48f
 
     fun updateNavigationOnMap(
         style: Style,
@@ -592,25 +605,39 @@ object MapRenderUtils {
             style.addSource(GeoJsonSource("nav-completed-source", completedGeoJson))
             style.addLayer(
                 LineLayer("nav-completed-layer", "nav-completed-source").withProperties(
-                    PropertyFactory.lineColor("#9E9E9E"),
-                    PropertyFactory.lineWidth(4f),
+                    PropertyFactory.lineColor(NAV_COMPLETED_COLOR),
+                    PropertyFactory.lineWidth(NAV_COMPLETED_WIDTH),
                     PropertyFactory.lineOpacity(0.7f)
                 )
             )
             style.addSource(GeoJsonSource("nav-remaining-source", remainingGeoJson))
             style.addLayer(
                 LineLayer("nav-remaining-layer", "nav-remaining-source").withProperties(
-                    PropertyFactory.lineColor("#1E88E5"),
-                    PropertyFactory.lineWidth(6f),
+                    PropertyFactory.lineColor(NAV_REMAINING_COLOR),
+                    PropertyFactory.lineWidth(NAV_REMAINING_WIDTH),
                     PropertyFactory.lineOpacity(0.9f)
+                )
+            )
+            // Direction arrows repeated along the remaining line, rotated to follow it.
+            if (style.getImage(NAV_ARROW_IMAGE) == null) {
+                style.addImage(NAV_ARROW_IMAGE, navArrowImage())
+            }
+            style.addLayer(
+                SymbolLayer("nav-arrows-layer", "nav-remaining-source").withProperties(
+                    PropertyFactory.iconImage(NAV_ARROW_IMAGE),
+                    PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
+                    PropertyFactory.symbolSpacing(NAV_ARROW_SPACING),
+                    PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true)
                 )
             )
             if (offCourseGeoJson != null) {
                 style.addSource(GeoJsonSource("nav-offcourse-source", offCourseGeoJson))
                 style.addLayer(
                     LineLayer("nav-offcourse-layer", "nav-offcourse-source").withProperties(
-                        PropertyFactory.lineColor("#E53935"),
-                        PropertyFactory.lineWidth(3f),
+                        PropertyFactory.lineColor(NAV_OFFCOURSE_COLOR),
+                        PropertyFactory.lineWidth(NAV_OFFCOURSE_WIDTH),
                         PropertyFactory.lineDasharray(arrayOf(2f, 2f))
                     )
                 )
@@ -631,6 +658,37 @@ object MapRenderUtils {
         }
     }
 
+    // White chevron with a dark outline for contrast on the blue line, pointing +x (east);
+    // the symbol layer rotates it to the line's travel direction.
+    private fun navArrowImage(): Bitmap {
+        val size = 28
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val path = Path().apply {
+            moveTo(8f, 6f)
+            lineTo(22f, 14f)
+            lineTo(8f, 22f)
+            lineTo(13f, 14f)
+            close()
+        }
+        val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(180, 0, 0, 0)
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+            strokeJoin = Paint.Join.ROUND
+        }
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        }
+        canvas.drawPath(path, outline)
+        canvas.drawPath(path, fill)
+        return bmp
+    }
+
+    /**
+     * Force a mock location on emulator for testing.
+     */
     @SuppressWarnings("MissingPermission")
     private fun forceLocationOnEmulator(locationComponent: LocationComponent) {
         try {

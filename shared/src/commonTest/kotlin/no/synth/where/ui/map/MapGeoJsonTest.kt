@@ -2,8 +2,10 @@ package no.synth.where.ui.map
 
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.SavedPoint
+import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.util.formatDistance
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -11,6 +13,76 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MapGeoJsonTest {
+
+    private fun track3() = Track(
+        name = "t",
+        startTime = 0L,
+        points = listOf(
+            TrackPoint(LatLng(60.0, 10.0), timestamp = 0),
+            TrackPoint(LatLng(60.0, 10.1), timestamp = 1),
+            TrackPoint(LatLng(60.0, 10.2), timestamp = 2)
+        )
+    )
+
+    private fun progress(
+        onCourse: Boolean,
+        snapped: LatLng,
+        segment: Int = 0,
+        atEnd: Boolean = false,
+        location: LatLng = LatLng(60.0, 10.0),
+    ) = NavigationProgress(
+        onCourse = onCourse, offCourseMeters = if (onCourse) 5.0 else 200.0,
+        snapped = snapped, segment = segment, location = location, remainingMeters = 100.0,
+        remainingAscent = null, remainingDescent = null, atEnd = atEnd
+    )
+
+    @Test
+    fun navigationLayersSplitWhenOnCourse() {
+        val layers = buildNavigationLayers(
+            track3(), reversed = false,
+            progress = progress(onCourse = true, snapped = LatLng(60.0, 10.05), segment = 0)
+        )
+        assertContains(layers.completed, "[10.05,60.0]")   // completed ends at the snap
+        assertContains(layers.remaining, "[10.05,60.0]")   // remaining starts at the snap
+        assertContains(layers.remaining, "[10.2,60.0]")    // ...through the end
+    }
+
+    @Test
+    fun navigationLayersSplitReversed() {
+        // Reversed: the route is walked end-to-start, so completed starts at the last vertex.
+        val layers = buildNavigationLayers(
+            track3(), reversed = true,
+            progress = progress(onCourse = true, snapped = LatLng(60.0, 10.15), segment = 0)
+        )
+        assertContains(layers.completed, "[10.2,60.0]")    // reversed start = original last vertex
+        assertContains(layers.remaining, "[10.0,60.0]")    // ...through the original first vertex
+    }
+
+    @Test
+    fun navigationLayersShowWholeRouteWhenOffCourse() {
+        // Off course: completed is empty and the entire route is the remaining line to follow.
+        val layers = buildNavigationLayers(
+            track3(), reversed = false,
+            progress = progress(
+                onCourse = false, snapped = LatLng(60.0, 10.2), segment = 2,
+                location = LatLng(60.5, 10.0)
+            )
+        )
+        assertEquals("""{"type":"Feature","geometry":{"type":"LineString","coordinates":[]}}""", layers.completed)
+        assertContains(layers.remaining, "[10.0,60.0]")
+        assertContains(layers.remaining, "[10.2,60.0]")
+        assertTrue(layers.offCourse != null)
+    }
+
+    @Test
+    fun navigationLayersNoConnectorWhenArrivedOffCourse() {
+        // Arrived overrides off course: no dashed connector even when onCourse is false.
+        val layers = buildNavigationLayers(
+            track3(), reversed = false,
+            progress = progress(onCourse = false, snapped = LatLng(60.0, 10.2), segment = 2, atEnd = true)
+        )
+        assertEquals(null, layers.offCourse)
+    }
 
     @Test
     fun buildTrackGeoJsonProducesLineString() {

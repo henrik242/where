@@ -396,13 +396,8 @@ fun IosMapScreen(
     LaunchedEffect(navigationProgress) {
         val p = navigationProgress
         val nav = navigation
-        val activeNavigator = navigator
-        if (p != null && nav != null && activeNavigator != null) {
-            val loc = mapViewProvider.getUserLocation()
-            val userLoc = if (loc != null && loc.size >= 2) LatLng(loc[0], loc[1]) else null
-            val layers = buildNavigationLayers(
-                nav.track, nav.reversed, activeNavigator.currentSegment(), p, userLoc
-            )
+        if (p != null && nav != null) {
+            val layers = buildNavigationLayers(nav.track, nav.reversed, p)
             mapViewProvider.updateNavigation(layers.completed, layers.remaining, layers.offCourse)
         } else {
             mapViewProvider.clearNavigation()
@@ -612,6 +607,7 @@ fun IosMapScreen(
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrack = viewingTrack,
         trackFocused = trackFocused,
+        isNavigating = navigation != null,
         navigationProgress = navigationProgress,
         onToggleReverse = { trackRepository.toggleNavigationReverse() },
         onStopNavigation = {

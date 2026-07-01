@@ -26,8 +26,8 @@ class TrackNavigator(
 
     private val n = points.size
     private val cumDist = DoubleArray(n)         // distance from start to vertex i
-    private val ascTo = DoubleArray(n)           // ascent from vertex i to end
-    private val descTo = DoubleArray(n)          // descent from vertex i to end
+    private val ascUpTo = DoubleArray(n)         // cumulative ascent from start to vertex i
+    private val descUpTo = DoubleArray(n)        // cumulative descent from start to vertex i
     private val hasAltitude: Boolean =
         points.count { it.altitude != null } >= 2
 
@@ -42,18 +42,30 @@ class TrackNavigator(
         }
         total = if (n > 0) cumDist[n - 1] else 0.0
 
-        for (i in n - 2 downTo 0) {
-            val a = points[i].altitude
-            val b = points[i + 1].altitude
-            var up = 0.0
-            var down = 0.0
-            if (a != null && b != null) {
-                val delta = b - a
-                if (delta > altDeadbandM) up = delta
-                else if (-delta > altDeadbandM) down = -delta
+        // Accumulate ascent/descent against a moving reference elevation, confirming a change
+        // only once it exceeds the dead-band. Thresholding the running total (not each adjacent
+        // pair) makes the result independent of point spacing, so a densely-sampled route where
+        // every step is under the dead-band still reports its true climb.
+        var ref: Double? = null
+        for (i in 0 until n) {
+            if (i > 0) {
+                ascUpTo[i] = ascUpTo[i - 1]
+                descUpTo[i] = descUpTo[i - 1]
             }
-            ascTo[i] = ascTo[i + 1] + up
-            descTo[i] = descTo[i + 1] + down
+            val alt = points[i].altitude ?: continue
+            val r = ref
+            if (r == null) {
+                ref = alt
+                continue
+            }
+            val delta = alt - r
+            if (delta > altDeadbandM) {
+                ascUpTo[i] += delta
+                ref = alt
+            } else if (-delta > altDeadbandM) {
+                descUpTo[i] += -delta
+                ref = alt
+            }
         }
     }
 
@@ -62,6 +74,7 @@ class TrackNavigator(
             val only = points.firstOrNull()?.latLng ?: location
             return NavigationProgress(
                 onCourse = true, offCourseMeters = 0.0, snapped = only,
+                segment = 0, location = location,
                 remainingMeters = 0.0, remainingAscent = null, remainingDescent = null,
                 atEnd = true
             )
@@ -83,13 +96,17 @@ class TrackNavigator(
             else match.distanceMeters <= offCourseEnterM
         wasOffCourse = !onCourse
 
-        val atEnd = remaining < arrivalM ||
-            location.distanceTo(points[n - 1].latLng) < arrivalM
+        // Arrival requires being both near the route (on course) and at the end of it. Small
+        // "remaining" alone is not enough: standing far off-track next to the finish point (or,
+        // after reversing, next to what is now the end) would otherwise read as arrived.
+        val atEnd = onCourse && remaining < arrivalM
 
         return NavigationProgress(
             onCourse = onCourse,
             offCourseMeters = match.distanceMeters,
             snapped = match.point,
+            segment = match.segment,
+            location = location,
             remainingMeters = remaining,
             remainingAscent = remAscent,
             remainingDescent = remDescent,
@@ -111,12 +128,11 @@ class TrackNavigator(
      */
     private fun findClosestSegment(location: LatLng): SegmentMatch {
         val windowed = bestSegmentIn(cursor..min(n - 2, cursor + WINDOW), location)
-        val best = if (windowed.distanceMeters > REACQUIRE_M) {
+        return if (windowed.distanceMeters > REACQUIRE_M) {
             minOf(windowed, bestSegmentIn(0..n - 2, location), compareBy { it.distanceMeters })
         } else {
             windowed
         }
-        return best
     }
 
     private fun bestSegmentIn(range: IntRange, location: LatLng): SegmentMatch {
@@ -133,23 +149,17 @@ class TrackNavigator(
     /** Remaining ascent/descent from the snapped position on [segment] (at fraction [t]) to the end. */
     private fun remainingAltitude(segment: Int, t: Double): Pair<Double?, Double?> {
         if (!hasAltitude) return null to null
-        val altA = points[segment].altitude
-        val altB = points[segment + 1].altitude
-        if (altA == null || altB == null) {
-            // altitude present overall but missing on this segment: fall back to suffix only
-            return ascTo[segment + 1] to descTo[segment + 1]
-        }
-        val snappedAlt = altA + t * (altB - altA)
-        val partialUp = (altB - snappedAlt).coerceAtLeast(0.0)
-        val partialDown = (snappedAlt - altB).coerceAtLeast(0.0)
-        return (ascTo[segment + 1] + partialUp) to (descTo[segment + 1] + partialDown)
+        val totalAsc = ascUpTo[n - 1]
+        val totalDesc = descUpTo[n - 1]
+        val segUp = ascUpTo[segment + 1] - ascUpTo[segment]
+        val segDown = descUpTo[segment + 1] - descUpTo[segment]
+        val remAsc = (totalAsc - ascUpTo[segment] - segUp * t).coerceAtLeast(0.0)
+        val remDesc = (totalDesc - descUpTo[segment] - segDown * t).coerceAtLeast(0.0)
+        return remAsc to remDesc
     }
 
-    // Exposed for the split-line renderer.
-    fun currentSegment(): Int = cursor
-
     private companion object {
-        const val WINDOW = 40
-        const val REACQUIRE_M = 60.0
+        const val WINDOW = 40          // segments ahead of the cursor to search before reacquiring
+        const val REACQUIRE_M = 60.0   // if the windowed best is worse than this, search the whole route
     }
 }

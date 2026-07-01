@@ -63,6 +63,27 @@ class TrackNavigatorTest {
     }
 
     @Test
+    fun freshNavigatorOnCourseInsideEnterThreshold() {
+        // 30 m off a fresh navigator is on course (below enter=35); the hysteresis only holds
+        // it off-course once tripped (covered separately). Proves the enter/exit asymmetry.
+        val nav = TrackNavigator(straightTrack(), reversed = false)
+        assertTrue(nav.progressAt(at(50.0, 30.0)).onCourse)
+    }
+
+    @Test
+    fun windowKeepsCursorOnOutboundLegPastReturnLeg() {
+        // Out (51 pts, 4 m north) then back (50 pts, on the axis). Standing 1 m north of the axis
+        // is closer to the return leg, but with the cursor mid-outbound the return leg is beyond
+        // the forward window, so the match stays on the outbound leg (segments 0..49).
+        val out = (0..50).map { at(it * 10.0, 4.0) to null }
+        val back = (49 downTo 0).map { at(it * 10.0, 0.0) to null }
+        val nav = TrackNavigator(track(out + back), reversed = false)
+        nav.progressAt(at(55.0, 4.0))                    // advance cursor onto the outbound leg
+        val p = nav.progressAt(at(55.0, 1.0))            // nearer the return leg in raw distance
+        assertTrue(p.segment in 0..49, "snapped to segment ${p.segment}, expected outbound")
+    }
+
+    @Test
     fun remainingMonotonicOnOutAndBack() {
         // Out east 0..300, then back to 0 (return leg appended).
         val out = (0..3).map { at(it * 100.0, 0.0) to null }
@@ -152,8 +173,9 @@ class TrackNavigatorTest {
     }
 
     @Test
-    fun altitudeMissingOnCurrentSegmentFallsBackToSuffix() {
-        // Altitude present overall but null on the current segment -> suffix-only, not null.
+    fun altitudeCountsAcrossNullGap() {
+        // Altitude present overall but null on one vertex: the walk skips the gap and still
+        // counts the full 100 -> 150 -> 160 climb (60 m) from the start.
         val nav = TrackNavigator(
             track(
                 listOf(
@@ -166,7 +188,20 @@ class TrackNavigatorTest {
             reversed = false
         )
         val p = nav.progressAt(at(0.0, 0.0))
-        assertEquals(10.0, p.remainingAscent ?: -1.0, 1.0)
+        assertEquals(60.0, p.remainingAscent ?: -1.0, 1.0)
+        assertEquals(0.0, p.remainingDescent ?: -1.0, 1.0)
+    }
+
+    @Test
+    fun denselySampledClimbIsNotZeroedByDeadband() {
+        // 800 vertices climbing 1 m each: every adjacent step is under the 2 m dead-band, but the
+        // route still gains ~800 m. Thresholding the running total (not each pair) must capture it.
+        val nav = TrackNavigator(
+            track((0..800).map { at(it * 5.0, 0.0) to 100.0 + it }),
+            reversed = false
+        )
+        val p = nav.progressAt(at(0.0, 0.0))
+        assertTrue((p.remainingAscent ?: 0.0) > 780.0, "ascent was ${p.remainingAscent}")
         assertEquals(0.0, p.remainingDescent ?: -1.0, 1.0)
     }
 
@@ -178,30 +213,44 @@ class TrackNavigatorTest {
             track((0..49).map { at(it * 100.0, 0.0) to null }),
             reversed = false
         )
-        nav.progressAt(at(550.0, 0.0))
-        assertEquals(5, nav.currentSegment())
-        nav.progressAt(at(4850.0, 0.0))
-        assertEquals(48, nav.currentSegment())
+        assertEquals(5, nav.progressAt(at(550.0, 0.0)).segment)
+        assertEquals(48, nav.progressAt(at(4850.0, 0.0)).segment)
     }
 
     @Test
-    fun atEndViaDistanceToLastPointOnLoop() {
-        // Loop whose last point sits next to the start: standing at the start snaps to the first
-        // segment (remaining large) yet we are within arrival distance of the finish.
+    fun loopDoesNotArriveUntilWalked() {
+        // Loop that starts and ends at the same point. Standing at the start must NOT report
+        // arrival just because the end point is nearby; only route progress counts.
         val nav = TrackNavigator(
             track(
                 listOf(
                     at(0.0, 0.0) to null,
                     at(300.0, 0.0) to null,
                     at(300.0, 300.0) to null,
-                    at(5.0, 5.0) to null
+                    at(0.0, 300.0) to null,
+                    at(0.0, 0.0) to null
                 )
             ),
             reversed = false
         )
-        val p = nav.progressAt(at(0.0, 0.0))
-        assertTrue(p.atEnd)
-        assertTrue(p.remainingMeters > 25.0, "remaining was ${p.remainingMeters}")
+        val start = nav.progressAt(at(0.0, 0.0))
+        assertFalse(start.atEnd)
+        assertTrue(start.remainingMeters > 25.0, "remaining was ${start.remainingMeters}")
+
+        // Walk the loop; arrival is reported only once we return to the finish.
+        listOf(at(150.0, 0.0), at(300.0, 150.0), at(150.0, 300.0)).forEach { nav.progressAt(it) }
+        val end = nav.progressAt(at(0.0, 0.0))
+        assertTrue(end.atEnd)
+    }
+
+    @Test
+    fun noArrivalWhenFarOffCourse() {
+        // Standing far to the side of the end point: remaining is ~0 but we are off course, so
+        // this must not report arrival (regression: reversing a distant route showed "arrived").
+        val nav = TrackNavigator(straightTrack(), reversed = false)
+        val p = nav.progressAt(at(200.0, 300.0))
+        assertFalse(p.onCourse)
+        assertFalse(p.atEnd)
     }
 
     @Test

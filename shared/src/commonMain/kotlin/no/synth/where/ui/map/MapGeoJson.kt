@@ -87,14 +87,18 @@ data class NavigationLayers(val completed: String, val remaining: String, val of
 fun buildNavigationLayers(
     track: Track,
     reversed: Boolean,
-    currentSegment: Int,
     progress: NavigationProgress,
-    userLocation: LatLng?,
 ): NavigationLayers {
     val ordered = if (reversed) track.points.asReversed() else track.points
-    val (completed, remaining) = buildRouteSplitGeoJson(ordered, currentSegment, progress.snapped)
-    val offCourse = if (!progress.onCourse && !progress.atEnd && userLocation != null) {
-        buildOffCourseGeoJson(userLocation, progress.snapped)
+    val (completed, remaining) = if (progress.onCourse) {
+        buildRouteSplitGeoJson(ordered, progress.segment, progress.snapped)
+    } else {
+        // Off course the snap point is unreliable; show the whole route to follow rather than a
+        // split that could grey out the entire line (e.g. when the nearest point is the far end).
+        buildTrackGeoJson(emptyList()) to buildTrackGeoJson(ordered)
+    }
+    val offCourse = if (!progress.onCourse && !progress.atEnd) {
+        buildOffCourseGeoJson(progress.location, progress.snapped)
     } else {
         null
     }

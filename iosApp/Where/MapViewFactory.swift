@@ -67,6 +67,16 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let navRemainingLayerId = "nav-remaining-layer"
     private let navOffCourseSourceId = "nav-offcourse-source"
     private let navOffCourseLayerId = "nav-offcourse-layer"
+    private let navArrowsLayerId = "nav-arrows-layer"
+    private let navArrowImageName = "nav-arrow"
+    // Navigation line styling. Keep in sync with MapRenderUtils.kt updateNavigationOnMap.
+    private let navCompletedColor = "#9E9E9E"
+    private let navRemainingColor = "#1E88E5"
+    private let navOffCourseColor = "#E53935"
+    private let navCompletedWidth = 4
+    private let navRemainingWidth = 6
+    private let navOffCourseWidth = 3
+    private let navArrowSpacing = 48
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -690,8 +700,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             style.addSource(source)
 
             let layer = MLNLineStyleLayer(identifier: navCompletedLayerId, source: source)
-            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: "#9E9E9E"))
-            layer.lineWidth = NSExpression(forConstantValue: 4)
+            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: navCompletedColor))
+            layer.lineWidth = NSExpression(forConstantValue: navCompletedWidth)
             layer.lineOpacity = NSExpression(forConstantValue: 0.7)
             layer.lineCap = NSExpression(forConstantValue: "round")
             layer.lineJoin = NSExpression(forConstantValue: "round")
@@ -705,12 +715,25 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             style.addSource(source)
 
             let layer = MLNLineStyleLayer(identifier: navRemainingLayerId, source: source)
-            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: "#1E88E5"))
-            layer.lineWidth = NSExpression(forConstantValue: 6)
+            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: navRemainingColor))
+            layer.lineWidth = NSExpression(forConstantValue: navRemainingWidth)
             layer.lineOpacity = NSExpression(forConstantValue: 0.9)
             layer.lineCap = NSExpression(forConstantValue: "round")
             layer.lineJoin = NSExpression(forConstantValue: "round")
             style.addLayer(layer)
+
+            // Direction arrows repeated along the remaining line, rotated to follow it.
+            if style.image(forName: navArrowImageName) == nil {
+                style.setImage(navArrowImage(), forName: navArrowImageName)
+            }
+            let arrows = MLNSymbolStyleLayer(identifier: navArrowsLayerId, source: source)
+            arrows.iconImageName = NSExpression(forConstantValue: navArrowImageName)
+            arrows.symbolPlacement = NSExpression(forConstantValue: "line")
+            arrows.iconRotationAlignment = NSExpression(forConstantValue: "map")
+            arrows.symbolSpacing = NSExpression(forConstantValue: navArrowSpacing)
+            arrows.iconAllowsOverlap = NSExpression(forConstantValue: true)
+            arrows.iconIgnoresPlacement = NSExpression(forConstantValue: true)
+            style.addLayer(arrows)
         }
 
         // Off-course connector (red dashed), optional.
@@ -721,14 +744,39 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             style.addSource(source)
 
             let layer = MLNLineStyleLayer(identifier: navOffCourseLayerId, source: source)
-            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: "#E53935"))
-            layer.lineWidth = NSExpression(forConstantValue: 3)
+            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: navOffCourseColor))
+            layer.lineWidth = NSExpression(forConstantValue: navOffCourseWidth)
             layer.lineDashPattern = NSExpression(forConstantValue: [2, 2])
             style.addLayer(layer)
         }
     }
 
+    private func navArrowImage() -> UIImage {
+        // White chevron with a dark outline for contrast on the blue line, pointing +x;
+        // the symbol layer rotates it to the line's travel direction.
+        let size = CGSize(width: 28, height: 28)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            let c = ctx.cgContext
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: 8, y: 6))
+            path.addLine(to: CGPoint(x: 22, y: 14))
+            path.addLine(to: CGPoint(x: 8, y: 22))
+            path.addLine(to: CGPoint(x: 13, y: 14))
+            path.closeSubpath()
+            c.addPath(path)
+            c.setStrokeColor(UIColor.black.withAlphaComponent(0.7).cgColor)
+            c.setLineWidth(3)
+            c.setLineJoin(.round)
+            c.strokePath()
+            c.addPath(path)
+            c.setFillColor(UIColor.white.cgColor)
+            c.fillPath()
+        }
+    }
+
     private func removeNavigation(style: MLNStyle) {
+        if let layer = style.layer(withIdentifier: navArrowsLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: navOffCourseLayerId) { style.removeLayer(layer) }
         if let source = style.source(withIdentifier: navOffCourseSourceId) { style.removeSource(source) }
         if let layer = style.layer(withIdentifier: navRemainingLayerId) { style.removeLayer(layer) }

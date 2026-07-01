@@ -176,16 +176,10 @@ fun MapScreen(
     LaunchedEffect(navigationProgress) {
         val p = navigationProgress
         val nav = navigation
-        val activeNavigator = navigator
         val style = mapInstance?.style
         if (style != null) {
-            if (p != null && nav != null && activeNavigator != null) {
-                val userLoc = runCatching {
-                    mapInstance?.locationComponent?.lastKnownLocation
-                }.getOrNull()?.let { LatLng(it.latitude, it.longitude) }
-                val layers = buildNavigationLayers(
-                    nav.track, nav.reversed, activeNavigator.currentSegment(), p, userLoc
-                )
+            if (p != null && nav != null) {
+                val layers = buildNavigationLayers(nav.track, nav.reversed, p)
                 MapRenderUtils.updateNavigationOnMap(style, layers.completed, layers.remaining, layers.offCourse)
             } else {
                 MapRenderUtils.updateNavigationOnMap(style, null, null, null)
@@ -484,6 +478,7 @@ fun MapScreen(
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrack = viewingTrack,
         trackFocused = trackFocused,
+        isNavigating = navigation != null,
         navigationProgress = navigationProgress,
         onToggleReverse = { viewModel.toggleNavigationReverse() },
         onStopNavigation = { viewModel.stopNavigation() },

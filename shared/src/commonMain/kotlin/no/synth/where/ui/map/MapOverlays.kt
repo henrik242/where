@@ -254,12 +254,12 @@ fun ViewingTrackBanner(
 @Composable
 fun NavigationCard(
     modifier: Modifier = Modifier,
-    progress: NavigationProgress,
+    progress: NavigationProgress?,
     onToggleReverse: () -> Unit,
     onStop: () -> Unit,
 ) {
     // Arrival takes priority over off-course: at the end we drop the error styling and connector.
-    val offCourse = !progress.onCourse && !progress.atEnd
+    val offCourse = progress != null && !progress.onCourse && !progress.atEnd
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -272,21 +272,11 @@ fun NavigationCard(
             else MaterialTheme.colorScheme.onSurface
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                if (progress.atEnd) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            stringResource(Res.string.nav_arrived),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = onStop) {
-                            Icon(painterResource(Res.drawable.ic_close),
-                                contentDescription = stringResource(Res.string.nav_stop))
-                        }
-                    }
+                if (progress == null) {
+                    // Session started but no location fix yet: keep Stop reachable.
+                    NavStatusRow(stringResource(Res.string.locating), onStop)
+                } else if (progress.atEnd) {
+                    NavStatusRow(stringResource(Res.string.nav_arrived), onStop)
                 } else {
                     if (offCourse) {
                         Text(
@@ -295,13 +285,13 @@ fun NavigationCard(
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Numbers keep their natural width; the spacer absorbs the slack and
+                        // pins the compact action buttons to the end.
                         Text(
                             stringResource(Res.string.nav_remaining, progress.remainingMeters.formatDistance()),
                             style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
+                            maxLines = 1
                         )
                         val ascent = progress.remainingAscent
                         val descent = progress.remainingDescent
@@ -309,17 +299,35 @@ fun NavigationCard(
                             AscentDescent(ascent, descent)
                         }
                         Spacer(Modifier.weight(1f))
-                        IconButton(onClick = onToggleReverse) {
-                            Icon(painterResource(Res.drawable.ic_refresh),
-                                contentDescription = stringResource(Res.string.nav_reverse))
-                        }
-                        IconButton(onClick = onStop) {
-                            Icon(painterResource(Res.drawable.ic_close),
-                                contentDescription = stringResource(Res.string.nav_stop))
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            IconButton(onClick = onToggleReverse, modifier = Modifier.size(32.dp)) {
+                                Icon(painterResource(Res.drawable.ic_u_turn),
+                                    contentDescription = stringResource(Res.string.nav_reverse),
+                                    modifier = Modifier.size(20.dp))
+                            }
+                            IconButton(onClick = onStop, modifier = Modifier.size(32.dp)) {
+                                Icon(painterResource(Res.drawable.ic_close),
+                                    contentDescription = stringResource(Res.string.nav_stop),
+                                    modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NavStatusRow(text: String, onStop: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(text, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+        IconButton(onClick = onStop) {
+            Icon(painterResource(Res.drawable.ic_close),
+                contentDescription = stringResource(Res.string.nav_stop))
         }
     }
 }
@@ -567,6 +575,7 @@ fun BoxScope.MapOverlays(
     viewerCount: Int = 0,
     viewingTrack: no.synth.where.data.Track?,
     trackFocused: Boolean = false,
+    isNavigating: Boolean = false,
     navigationProgress: NavigationProgress? = null,
     onToggleReverse: () -> Unit = {},
     onStopNavigation: () -> Unit = {},
@@ -604,7 +613,7 @@ fun BoxScope.MapOverlays(
     val focusedTrack = if (trackFocused) viewingTrack else null
     val hasTopOverlay = showSearch ||
         focusedTrack != null ||
-        navigationProgress != null ||
+        isNavigating ||
         (showViewingPoint && viewingPointName != null) ||
         followedClientId != null
 
@@ -721,7 +730,7 @@ fun BoxScope.MapOverlays(
         }
     }
 
-    if (navigationProgress != null) {
+    if (isNavigating) {
         NavigationCard(
             modifier = Modifier
                 .align(Alignment.TopCenter)
