@@ -81,7 +81,6 @@ fun MapScreenContent(
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit,
-    twoFingerMeasurement: TwoFingerMeasurement? = null,
     // Follow friend state
     followedClientId: String? = null,
     isFollowConnecting: Boolean = false,
@@ -167,7 +166,6 @@ fun MapScreenContent(
                 onSearchResultClick = onSearchResultClick,
                 onSearchResultHover = onSearchResultHover,
                 onSearchClose = onSearchClose,
-                twoFingerMeasurement = twoFingerMeasurement,
                 followedClientId = followedClientId,
                 isFollowConnecting = isFollowConnecting,
                 isFollowedTrackActive = isFollowedTrackActive,

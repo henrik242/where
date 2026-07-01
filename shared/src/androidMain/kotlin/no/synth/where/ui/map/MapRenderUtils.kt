@@ -15,6 +15,7 @@ import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.layers.TransitionOptions
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -34,6 +35,13 @@ object MapRenderUtils {
     private const val ACCURACY_RING_ALPHA = 0.30f
     // Saturated blue, readable over Kartverket's yellow/green topo tints.
     private const val ACCURACY_RING_COLOR = "#1E88E5"
+
+    private const val MEASURE_LINE_SOURCE = "measure-line-source"
+    private const val MEASURE_CASING_LAYER = "measure-casing-layer"
+    private const val MEASURE_LINE_LAYER = "measure-line-layer"
+    private const val MEASURE_POINT_SOURCE = "measure-point-source"
+    private const val MEASURE_POINT_LAYER = "measure-point-layer"
+    private const val MEASURE_LABEL_LAYER = "measure-label-layer"
 
     /**
      * Update track visualization on the map.
@@ -206,6 +214,94 @@ object MapRenderUtils {
         } catch (e: Exception) {
             Logger.e(e, "Map render error")
         }
+    }
+
+    /**
+     * Update two-finger measurement visualization on the map.
+     */
+    fun updateMeasurementOnMap(style: Style, measurement: TwoFingerMeasurement?) {
+        try {
+            if (measurement == null) {
+                fadeOutMeasurementLayers(style)
+                return
+            }
+            removeMeasurementLayers(style)
+
+            style.addSource(GeoJsonSource(MEASURE_LINE_SOURCE, buildMeasurementLineGeoJson(measurement)))
+
+            style.addLayer(LineLayer(MEASURE_CASING_LAYER, MEASURE_LINE_SOURCE).withProperties(
+                PropertyFactory.lineColor("#FFFFFF"),
+                PropertyFactory.lineWidth(4.5f),
+                PropertyFactory.lineOpacity(0.6f),
+                PropertyFactory.lineCap("round")
+            ))
+            style.addLayer(LineLayer(MEASURE_LINE_LAYER, MEASURE_LINE_SOURCE).withProperties(
+                PropertyFactory.lineColor("#000000"),
+                PropertyFactory.lineWidth(2.5f),
+                PropertyFactory.lineOpacity(0.8f),
+                PropertyFactory.lineCap("round"),
+                PropertyFactory.lineDasharray(arrayOf(3f, 2f))
+            ))
+
+            style.addSource(GeoJsonSource(MEASURE_POINT_SOURCE, buildMeasurementPointsGeoJson(measurement)))
+
+            val endpointFilter = Expression.eq(Expression.get("role"), Expression.literal("endpoint"))
+            val labelFilter = Expression.eq(Expression.get("role"), Expression.literal("label"))
+
+            style.addLayer(CircleLayer(MEASURE_POINT_LAYER, MEASURE_POINT_SOURCE).withProperties(
+                PropertyFactory.circlePitchAlignment("viewport"),
+                PropertyFactory.circleRadius(5f),
+                PropertyFactory.circleColor("#000000"),
+                PropertyFactory.circleOpacity(0.8f),
+                PropertyFactory.circleStrokeWidth(1.5f),
+                PropertyFactory.circleStrokeColor("#FFFFFF")
+            ).also { it.setFilter(endpointFilter) })
+
+            style.addLayer(SymbolLayer(MEASURE_LABEL_LAYER, MEASURE_POINT_SOURCE).withProperties(
+                PropertyFactory.textField(Expression.get("label")),
+                PropertyFactory.textFont(arrayOf("NotoSansRegular")),
+                PropertyFactory.textSize(14f),
+                PropertyFactory.textColor("#000000"),
+                PropertyFactory.textHaloColor("#FFFFFF"),
+                PropertyFactory.textHaloWidth(2f),
+                PropertyFactory.textAnchor("bottom"),
+                PropertyFactory.textOffset(arrayOf(0f, -0.6f)),
+                PropertyFactory.textAllowOverlap(true),
+                PropertyFactory.textIgnorePlacement(true)
+            ).also { it.setFilter(labelFilter) })
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
+    /** Fade the measurement layers to transparent; call [removeMeasurementLayers] after the fade. */
+    private fun fadeOutMeasurementLayers(style: Style) {
+        val fade = TransitionOptions(TwoFingerTap.FADE_OUT_MS, 0)
+        (style.getLayer(MEASURE_CASING_LAYER) as? LineLayer)?.apply {
+            setLineOpacityTransition(fade)
+            setProperties(PropertyFactory.lineOpacity(0f))
+        }
+        (style.getLayer(MEASURE_LINE_LAYER) as? LineLayer)?.apply {
+            setLineOpacityTransition(fade)
+            setProperties(PropertyFactory.lineOpacity(0f))
+        }
+        (style.getLayer(MEASURE_POINT_LAYER) as? CircleLayer)?.apply {
+            setCircleOpacityTransition(fade)
+            setProperties(PropertyFactory.circleOpacity(0f))
+        }
+        (style.getLayer(MEASURE_LABEL_LAYER) as? SymbolLayer)?.apply {
+            setTextOpacityTransition(fade)
+            setProperties(PropertyFactory.textOpacity(0f))
+        }
+    }
+
+    fun removeMeasurementLayers(style: Style) {
+        style.getLayer(MEASURE_LABEL_LAYER)?.let { style.removeLayer(it) }
+        style.getLayer(MEASURE_POINT_LAYER)?.let { style.removeLayer(it) }
+        style.getLayer(MEASURE_LINE_LAYER)?.let { style.removeLayer(it) }
+        style.getLayer(MEASURE_CASING_LAYER)?.let { style.removeLayer(it) }
+        style.getSource(MEASURE_POINT_SOURCE)?.let { style.removeSource(it) }
+        style.getSource(MEASURE_LINE_SOURCE)?.let { style.removeSource(it) }
     }
 
     /**

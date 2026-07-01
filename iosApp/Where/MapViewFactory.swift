@@ -16,6 +16,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingSavedPointsGeoJson: String?
     private var pendingRulerLineGeoJson: String?
     private var pendingRulerPointsGeoJson: String?
+    private var pendingMeasurementLineGeoJson: String?
+    private var pendingMeasurementPointsGeoJson: String?
     private var pendingSearchResultsGeoJson: String?
     private var pendingSearchHighlightGeoJson: String?
     private var pendingFriendTrackGeoJson: String?
@@ -36,6 +38,12 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let rulerLineLayerId = "ruler-line-layer"
     private let rulerPointSourceId = "ruler-point-source"
     private let rulerPointLayerId = "ruler-point-layer"
+    private let measureLineSourceId = "measure-line-source"
+    private let measureCasingLayerId = "measure-casing-layer"
+    private let measureLineLayerId = "measure-line-layer"
+    private let measurePointSourceId = "measure-point-source"
+    private let measurePointLayerId = "measure-point-layer"
+    private let measureLabelLayerId = "measure-label-layer"
     private let searchResultsSourceId = "search-results-source"
     private let searchResultsLayerId = "search-results-layer"
     private let searchHighlightSourceId = "search-highlight-source"
@@ -122,12 +130,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         guard screenDist >= 48 else { return }
         let c1 = mapView.convert(p1, toCoordinateFrom: mapView)
         let c2 = mapView.convert(p2, toCoordinateFrom: mapView)
-        let scale = mapView.window?.screen.scale ?? UIScreen.main.scale
-        // CGPoints are in UIKit logical points; the Compose overlay draws in
-        // pixels, so multiply by screen scale before sending coordinates over.
         twoFingerTapCallback?.onTwoFingerTap(
-            screenX1: Float(p1.x * scale), screenY1: Float(p1.y * scale),
-            screenX2: Float(p2.x * scale), screenY2: Float(p2.y * scale),
             lat1: c1.latitude, lng1: c1.longitude,
             lat2: c2.latitude, lng2: c2.longitude
         )
@@ -299,6 +302,43 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         removeRuler(style: style)
     }
 
+    func updateMeasurement(lineGeoJson: String, pointsGeoJson: String) {
+        guard let mapView = self.mapView, let style = mapView.style else {
+            pendingMeasurementLineGeoJson = lineGeoJson
+            pendingMeasurementPointsGeoJson = pointsGeoJson
+            return
+        }
+        applyMeasurement(style: style, lineGeoJson: lineGeoJson, pointsGeoJson: pointsGeoJson)
+    }
+
+    func fadeMeasurement(durationMs: Double) {
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        let transition = MLNTransition(duration: durationMs / 1000.0, delay: 0)
+        if let casing = style.layer(withIdentifier: measureCasingLayerId) as? MLNLineStyleLayer {
+            casing.lineOpacityTransition = transition
+            casing.lineOpacity = NSExpression(forConstantValue: 0)
+        }
+        if let line = style.layer(withIdentifier: measureLineLayerId) as? MLNLineStyleLayer {
+            line.lineOpacityTransition = transition
+            line.lineOpacity = NSExpression(forConstantValue: 0)
+        }
+        if let dots = style.layer(withIdentifier: measurePointLayerId) as? MLNCircleStyleLayer {
+            dots.circleOpacityTransition = transition
+            dots.circleOpacity = NSExpression(forConstantValue: 0)
+        }
+        if let label = style.layer(withIdentifier: measureLabelLayerId) as? MLNSymbolStyleLayer {
+            label.textOpacityTransition = transition
+            label.textOpacity = NSExpression(forConstantValue: 0)
+        }
+    }
+
+    func clearMeasurement() {
+        pendingMeasurementLineGeoJson = nil
+        pendingMeasurementPointsGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeMeasurement(style: style)
+    }
+
     func updateSearchResults(geoJson: String) {
         guard let mapView = self.mapView, let style = mapView.style else {
             pendingSearchResultsGeoJson = geoJson
@@ -392,14 +432,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
                 KotlinDouble(value: location.coordinate.longitude)]
     }
 
-    func projectToScreen(latitude: Double, longitude: Double) -> ScreenPoint? {
-        guard let mapView = self.mapView else { return nil }
-        let coord = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-        let point = mapView.convert(coord, toPointTo: mapView)
-        let scale = mapView.window?.screen.scale ?? UIScreen.main.scale
-        return ScreenPoint(x: Float(point.x * scale), y: Float(point.y * scale))
-    }
-
     // MARK: - UIGestureRecognizerDelegate
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -428,6 +460,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
         if let lineGeoJson = pendingRulerLineGeoJson, let pointsGeoJson = pendingRulerPointsGeoJson {
             applyRuler(style: style, lineGeoJson: lineGeoJson, pointsGeoJson: pointsGeoJson)
+        }
+        if let lineGeoJson = pendingMeasurementLineGeoJson, let pointsGeoJson = pendingMeasurementPointsGeoJson {
+            applyMeasurement(style: style, lineGeoJson: lineGeoJson, pointsGeoJson: pointsGeoJson)
         }
         if let geoJson = pendingSearchResultsGeoJson {
             applySearchResults(style: style, geoJson: geoJson)
@@ -549,6 +584,72 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let source = style.source(withIdentifier: rulerLineSourceId) { style.removeSource(source) }
         if let layer = style.layer(withIdentifier: rulerPointLayerId) { style.removeLayer(layer) }
         if let source = style.source(withIdentifier: rulerPointSourceId) { style.removeSource(source) }
+    }
+
+    private func applyMeasurement(style: MLNStyle, lineGeoJson: String, pointsGeoJson: String) {
+        removeMeasurement(style: style)
+
+        if let lineData = lineGeoJson.data(using: .utf8),
+           let lineShape = try? MLNShape(data: lineData, encoding: String.Encoding.utf8.rawValue) {
+            let lineSource = MLNShapeSource(identifier: measureLineSourceId, shape: lineShape, options: nil)
+            style.addSource(lineSource)
+
+            let casing = MLNLineStyleLayer(identifier: measureCasingLayerId, source: lineSource)
+            casing.lineColor = NSExpression(forConstantValue: UIColor.white)
+            casing.lineWidth = NSExpression(forConstantValue: 4.5)
+            casing.lineOpacity = NSExpression(forConstantValue: 0.6)
+            casing.lineCap = NSExpression(forConstantValue: "round")
+            style.addLayer(casing)
+
+            let line = MLNLineStyleLayer(identifier: measureLineLayerId, source: lineSource)
+            line.lineColor = NSExpression(forConstantValue: UIColor.black)
+            line.lineWidth = NSExpression(forConstantValue: 2.5)
+            line.lineOpacity = NSExpression(forConstantValue: 0.8)
+            line.lineCap = NSExpression(forConstantValue: "round")
+            line.lineDashPattern = NSExpression(forConstantValue: [3, 2])
+            style.addLayer(line)
+        }
+
+        if let pointsData = pointsGeoJson.data(using: .utf8),
+           let pointsShape = try? MLNShape(data: pointsData, encoding: String.Encoding.utf8.rawValue) {
+            let pointSource = MLNShapeSource(identifier: measurePointSourceId, shape: pointsShape, options: nil)
+            style.addSource(pointSource)
+
+            let dots = MLNCircleStyleLayer(identifier: measurePointLayerId, source: pointSource)
+            dots.predicate = NSPredicate(format: "role == 'endpoint'")
+            dots.circlePitchAlignment = NSExpression(forConstantValue: "viewport")
+            dots.circleRadius = NSExpression(forConstantValue: 5)
+            dots.circleColor = NSExpression(forConstantValue: UIColor.black)
+            dots.circleOpacity = NSExpression(forConstantValue: 0.8)
+            dots.circleStrokeWidth = NSExpression(forConstantValue: 1.5)
+            dots.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+            style.addLayer(dots)
+
+            let label = MLNSymbolStyleLayer(identifier: measureLabelLayerId, source: pointSource)
+            label.predicate = NSPredicate(format: "role == 'label'")
+            label.text = NSExpression(forKeyPath: "label")
+            label.textFontSize = NSExpression(forConstantValue: 14)
+            label.textColor = NSExpression(forConstantValue: UIColor.black)
+            label.textHaloColor = NSExpression(forConstantValue: UIColor.white)
+            label.textHaloWidth = NSExpression(forConstantValue: 2)
+            label.textAnchor = NSExpression(forConstantValue: "bottom")
+            label.textOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -0.6)))
+            label.textAllowsOverlap = NSExpression(forConstantValue: true)
+            label.textIgnoresPlacement = NSExpression(forConstantValue: true)
+            style.addLayer(label)
+        }
+
+        pendingMeasurementLineGeoJson = lineGeoJson
+        pendingMeasurementPointsGeoJson = pointsGeoJson
+    }
+
+    private func removeMeasurement(style: MLNStyle) {
+        for id in [measureLabelLayerId, measurePointLayerId, measureLineLayerId, measureCasingLayerId] {
+            if let layer = style.layer(withIdentifier: id) { style.removeLayer(layer) }
+        }
+        for id in [measurePointSourceId, measureLineSourceId] {
+            if let source = style.source(withIdentifier: id) { style.removeSource(source) }
+        }
     }
 
     private func applySearchResults(style: MLNStyle, geoJson: String) {

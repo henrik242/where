@@ -25,27 +25,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
@@ -481,7 +471,6 @@ fun BoxScope.MapOverlays(
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit,
-    twoFingerMeasurement: TwoFingerMeasurement? = null,
     followedClientId: String? = null,
     isFollowConnecting: Boolean = false,
     isFollowedTrackActive: Boolean = false,
@@ -651,98 +640,6 @@ fun BoxScope.MapOverlays(
 
     if (crosshairActive) {
         CrosshairOverlay()
-    }
-
-    TwoFingerDistanceOverlay(measurement = twoFingerMeasurement)
-}
-
-@Composable
-fun TwoFingerDistanceOverlay(measurement: TwoFingerMeasurement?) {
-    var lastMeasurement by remember { mutableStateOf<TwoFingerMeasurement?>(null) }
-    if (measurement != null) {
-        lastMeasurement = measurement
-    }
-    val alpha by animateFloatAsState(
-        targetValue = if (measurement != null) 1f else 0f,
-        animationSpec = tween(durationMillis = if (measurement != null) 0 else TwoFingerTap.FADE_OUT_MS),
-        label = "twoFingerOverlayAlpha"
-    )
-    val visible = lastMeasurement
-    if (alpha <= 0f || visible == null) return
-
-    val distanceText = visible.distanceMeters.formatDistance()
-    val density = LocalDensity.current
-    val midX = (visible.screenX1 + visible.screenX2) / 2
-    val midY = (visible.screenY1 + visible.screenY2) / 2
-    val badgeColor = MaterialTheme.colorScheme.inverseSurface
-    val textColor = MaterialTheme.colorScheme.inverseOnSurface
-
-    val minX = minOf(visible.screenX1, visible.screenX2)
-    val maxX = maxOf(visible.screenX1, visible.screenX2)
-    val minY = minOf(visible.screenY1, visible.screenY2)
-    val maxY = maxOf(visible.screenY1, visible.screenY2)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .drawBehind {
-                // Skip drawing entirely if the segment's bounding box is off the
-                // canvas — after a big pan the dotted line would otherwise render
-                // a meaningless diagonal across the visible area.
-                if (maxX < 0f || minX > size.width || maxY < 0f || minY > size.height) {
-                    return@drawBehind
-                }
-                val p1 = Offset(visible.screenX1, visible.screenY1)
-                val p2 = Offset(visible.screenX2, visible.screenY2)
-                val strokeWidth = 2.5.dp.toPx()
-                val shadowWidth = strokeWidth + 2.dp.toPx()
-                val dotRadius = 5.dp.toPx()
-                val dashEffect = PathEffect.dashPathEffect(
-                    floatArrayOf(10.dp.toPx(), 8.dp.toPx())
-                )
-
-                drawLine(
-                    Color.White.copy(alpha = 0.6f * alpha), p1, p2,
-                    strokeWidth = shadowWidth, cap = StrokeCap.Round, pathEffect = dashEffect
-                )
-                drawLine(
-                    Color.Black.copy(alpha = 0.8f * alpha), p1, p2,
-                    strokeWidth = strokeWidth, cap = StrokeCap.Round, pathEffect = dashEffect
-                )
-
-                drawCircle(Color.White.copy(alpha = alpha), dotRadius + 1.dp.toPx(), p1)
-                drawCircle(Color.Black.copy(alpha = 0.8f * alpha), dotRadius, p1)
-                drawCircle(Color.White.copy(alpha = alpha), dotRadius + 1.dp.toPx(), p2)
-                drawCircle(Color.Black.copy(alpha = 0.8f * alpha), dotRadius, p2)
-            }
-            .semantics { contentDescription = distanceText }
-    ) {
-        val badgeGap = with(density) { 20.dp.roundToPx() }
-        Text(
-            text = distanceText,
-            style = MaterialTheme.typography.titleMedium,
-            color = textColor.copy(alpha = alpha),
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val offScreen = maxX < 0f || minX > constraints.maxWidth ||
-                        maxY < 0f || minY > constraints.maxHeight
-                    layout(placeable.width, placeable.height) {
-                        if (offScreen) return@layout
-                        val x = (midX.toInt() - placeable.width / 2)
-                            .coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0))
-                        val y = (midY.toInt() - placeable.height - badgeGap)
-                            .coerceIn(0, (constraints.maxHeight - placeable.height).coerceAtLeast(0))
-                        placeable.placeRelative(x, y)
-                    }
-                }
-                .background(
-                    color = badgeColor.copy(alpha = alpha),
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        )
     }
 }
 

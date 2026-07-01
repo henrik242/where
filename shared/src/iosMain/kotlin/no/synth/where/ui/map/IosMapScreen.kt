@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -255,9 +256,6 @@ fun IosMapScreen(
                     bearing < 0.5 || bearing > 359.5 -> false
                     else -> isCompassVisible
                 }
-                twoFingerMeasurement
-                    ?.reprojectedWith(mapViewProvider::projectToScreen)
-                    ?.let { twoFingerMeasurement = it }
             }
         })
         onDispose { mapViewProvider.setOnCameraMoveCallback(null) }
@@ -265,14 +263,10 @@ fun IosMapScreen(
 
     // Two-finger tap callback for distance measurement
     DisposableEffect(Unit) {
-        mapViewProvider.setOnTwoFingerTapCallback(MapTwoFingerTapCallback { sx1, sy1, sx2, sy2, lat1, lng1, lat2, lng2 ->
+        mapViewProvider.setOnTwoFingerTapCallback(MapTwoFingerTapCallback { lat1, lng1, lat2, lng2 ->
             val ll1 = LatLng(lat1, lng1)
             val ll2 = LatLng(lat2, lng2)
-            twoFingerMeasurement = TwoFingerMeasurement(
-                sx1, sy1, sx2, sy2,
-                lat1, lng1, lat2, lng2,
-                ll1.distanceTo(ll2)
-            )
+            twoFingerMeasurement = TwoFingerMeasurement(lat1, lng1, lat2, lng2, ll1.distanceTo(ll2))
         })
         onDispose { mapViewProvider.setOnTwoFingerTapCallback(null) }
     }
@@ -353,6 +347,17 @@ fun IosMapScreen(
                 mapViewProvider.updateTrackLine(buildTrackGeoJson(track.points), "#0000FF")
             }
             track.bounds()?.let { mapViewProvider.animateToBounds(it) }
+        }
+    }
+
+    LaunchedEffect(twoFingerMeasurement) {
+        val m = twoFingerMeasurement
+        if (m != null) {
+            mapViewProvider.updateMeasurement(buildMeasurementLineGeoJson(m), buildMeasurementPointsGeoJson(m))
+        } else {
+            mapViewProvider.fadeMeasurement(TwoFingerTap.FADE_OUT_MS.toDouble())
+            delay(TwoFingerTap.FADE_OUT_MS)
+            mapViewProvider.clearMeasurement()
         }
     }
 
@@ -707,7 +712,6 @@ fun IosMapScreen(
             searchQuery = ""
             searchResults = emptyList()
         },
-        twoFingerMeasurement = twoFingerMeasurement,
         followedClientId = followedClientId,
         isFollowConnecting = followState is LiveTrackingFollower.FollowState.Connecting,
         isFollowedTrackActive = (followState as? LiveTrackingFollower.FollowState.Following)?.tracks?.any { it.isActive } == true,

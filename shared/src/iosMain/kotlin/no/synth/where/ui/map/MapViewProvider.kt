@@ -16,8 +16,6 @@ interface MapCameraMoveCallback {
 
 fun interface MapTwoFingerTapCallback {
     fun onTwoFingerTap(
-        screenX1: Float, screenY1: Float,
-        screenX2: Float, screenY2: Float,
         lat1: Double, lng1: Double,
         lat2: Double, lng2: Double
     )
@@ -42,6 +40,9 @@ interface MapViewProvider {
     fun setOnMapClickCallback(callback: MapClickCallback?)
     fun updateRuler(lineGeoJson: String, pointsGeoJson: String)
     fun clearRuler()
+    fun updateMeasurement(lineGeoJson: String, pointsGeoJson: String)
+    fun fadeMeasurement(durationMs: Double)
+    fun clearMeasurement()
     fun updateSearchResults(geoJson: String)
     fun clearSearchResults()
     fun highlightSearchResult(geoJson: String)
@@ -54,5 +55,4 @@ interface MapViewProvider {
     fun clearCoordGrid()
     fun setOnCameraMoveCallback(callback: MapCameraMoveCallback?)
     fun setOnTwoFingerTapCallback(callback: MapTwoFingerTapCallback?)
-    fun projectToScreen(latitude: Double, longitude: Double): ScreenPoint?
 }

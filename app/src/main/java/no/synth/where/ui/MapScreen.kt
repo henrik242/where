@@ -58,7 +58,6 @@ import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.ui.map.MapZoomLevels
 import no.synth.where.ui.map.animateToBounds
 import no.synth.where.ui.map.MapScreenContent
-import no.synth.where.ui.map.ScreenPoint
 import no.synth.where.ui.map.TwoFingerMeasurement
 import no.synth.where.ui.map.rememberAutoDismissingTwoFingerMeasurement
 import no.synth.where.ui.map.RecordingCard
@@ -281,12 +280,6 @@ fun MapScreen(
                 bearing < 0.5 || bearing > 359.5 -> false
                 else -> isCompassVisible
             }
-            twoFingerMeasurement
-                ?.reprojectedWith { lat, lng ->
-                    val pt = map.projection.toScreenLocation(LatLng(lat, lng).toMapLibre())
-                    ScreenPoint(pt.x, pt.y)
-                }
-                ?.let { twoFingerMeasurement = it }
         }
     }
 
@@ -523,7 +516,6 @@ fun MapScreen(
             highlightedSearchResult = null
             viewModel.closeSearch()
         },
-        twoFingerMeasurement = twoFingerMeasurement,
         followedClientId = followedClientId,
         isFollowConnecting = followState is LiveTrackingFollower.FollowState.Connecting,
         isFollowedTrackActive = (followState as? LiveTrackingFollower.FollowState.Following)?.tracks?.any { it.isActive } == true,
@@ -561,6 +553,7 @@ fun MapScreen(
                 onPointClick = { point -> viewModel.openPointInfoDialog(point) },
                 onTwoFingerMeasure = { twoFingerMeasurement = it },
                 isTwoFingerMeasurementVisible = twoFingerMeasurement != null,
+                twoFingerMeasurement = twoFingerMeasurement,
                 coordGridGeoJson = coordGridGeoJson
             )
         }

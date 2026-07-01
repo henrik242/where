@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -68,6 +69,7 @@ fun MapLibreMapView(
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {},
     onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
     isTwoFingerMeasurementVisible: Boolean = false,
+    twoFingerMeasurement: TwoFingerMeasurement? = null,
     coordGridGeoJson: String? = null
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -153,6 +155,7 @@ fun MapLibreMapView(
                                 isCurrentTrack = current != null
                             )
                             MapRenderUtils.updateRulerOnMap(style, rulerState)
+                            MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
                             MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
 
                             if (showSavedPoints && savedPoints.isNotEmpty()) {
@@ -193,6 +196,16 @@ fun MapLibreMapView(
         }
     }
 
+    LaunchedEffect(twoFingerMeasurement, map) {
+        val measurement = twoFingerMeasurement
+        map?.getStyle { style -> MapRenderUtils.updateMeasurementOnMap(style, measurement) }
+        if (measurement == null) {
+            // updateMeasurementOnMap started the fade; tear the layers down once it finishes.
+            delay(TwoFingerTap.FADE_OUT_MS)
+            map?.getStyle { style -> MapRenderUtils.removeMeasurementLayers(style) }
+        }
+    }
+
     LaunchedEffect(isOnline, map) {
         if (wasInitialized && isOnline && map != null) {
 
@@ -226,6 +239,7 @@ fun MapLibreMapView(
                                     isCurrentTrack = current != null
                                 )
                                 MapRenderUtils.updateRulerOnMap(style, rulerState)
+                                MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
                                 MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
 
                                 if (showSavedPoints && savedPoints.isNotEmpty()) {
@@ -352,7 +366,6 @@ fun MapLibreMapView(
                         val ll2 = proj.fromScreenLocation(p2).toCommon()
                         onTwoFingerMeasure(
                             TwoFingerMeasurement(
-                                p1.x, p1.y, p2.x, p2.y,
                                 ll1.latitude, ll1.longitude,
                                 ll2.latitude, ll2.longitude,
                                 ll1.distanceTo(ll2)
@@ -415,6 +428,7 @@ fun MapLibreMapView(
                                     )
                                     MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
                                     MapRenderUtils.updateRulerOnMap(style, rulerState)
+                                    MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
                                     MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
                                     mapInstance.triggerRepaint()
                                 }

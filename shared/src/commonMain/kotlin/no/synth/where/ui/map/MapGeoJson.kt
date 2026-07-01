@@ -4,6 +4,7 @@ import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.TrackPoint
+import no.synth.where.util.formatDistance
 
 fun buildTrackGeoJson(points: List<TrackPoint>): String {
     val coordinates = points.joinToString(",") { point ->
@@ -33,6 +34,19 @@ fun buildRulerPointsGeoJson(points: List<RulerPoint>): String {
         """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]}}"""
     }
     return """{"type":"FeatureCollection","features":[$features]}"""
+}
+
+fun buildMeasurementLineGeoJson(m: TwoFingerMeasurement): String =
+    """{"type":"Feature","geometry":{"type":"LineString","coordinates":""" +
+        "[[${m.lng1},${m.lat1}],[${m.lng2},${m.lat2}]]}}"
+
+fun buildMeasurementPointsGeoJson(m: TwoFingerMeasurement): String {
+    val label = m.distanceMeters.formatDistance().replace("\"", "\\\"")
+    return """{"type":"FeatureCollection","features":[""" +
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${m.lng1},${m.lat1}]},"properties":{"role":"endpoint"}},""" +
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${m.lng2},${m.lat2}]},"properties":{"role":"endpoint"}},""" +
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${m.midLng},${m.midLat}]},"properties":{"role":"label","label":"$label"}}""" +
+        "]}"
 }
 
 fun buildSearchResultsGeoJson(results: List<PlaceSearchClient.SearchResult>): String {

@@ -4,6 +4,7 @@ import no.synth.where.data.RulerPoint
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.TrackPoint
 import no.synth.where.data.geo.LatLng
+import no.synth.where.util.formatDistance
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -76,6 +77,43 @@ class MapGeoJsonTest {
         val json = buildRulerPointsGeoJson(points)
         assertContains(json, "[10.0,60.0]")
         assertEquals(1, Regex("\"type\":\"Point\"").findAll(json).count())
+    }
+
+    @Test
+    fun buildMeasurementLineGeoJsonProducesLineStringWithTwoCoords() {
+        val m = TwoFingerMeasurement(
+            lat1 = 60.0, lng1 = 10.0, lat2 = 61.0, lng2 = 11.0,
+            distanceMeters = 500.0
+        )
+        val json = buildMeasurementLineGeoJson(m)
+        assertContains(json, "\"type\":\"LineString\"")
+        assertContains(json, "[[10.0,60.0],[11.0,61.0]]")
+    }
+
+    @Test
+    fun buildMeasurementPointsGeoJsonProducesEndpointsAndLabel() {
+        val m = TwoFingerMeasurement(
+            lat1 = 60.0, lng1 = 10.0, lat2 = 62.0, lng2 = 14.0,
+            distanceMeters = 500.0
+        )
+        val json = buildMeasurementPointsGeoJson(m)
+        assertContains(json, "\"type\":\"FeatureCollection\"")
+        assertEquals(2, Regex("\"role\":\"endpoint\"").findAll(json).count())
+        assertContains(json, "\"coordinates\":[10.0,60.0]")
+        assertContains(json, "\"coordinates\":[14.0,62.0]")
+        assertContains(json, "\"role\":\"label\"")
+        assertContains(json, "\"coordinates\":[12.0,61.0]")
+        assertContains(json, "\"label\":\"${500.0.formatDistance()}\"")
+    }
+
+    @Test
+    fun twoFingerMeasurementMidpointIsAverage() {
+        val m = TwoFingerMeasurement(
+            lat1 = 60.0, lng1 = 10.0, lat2 = 62.0, lng2 = 14.0,
+            distanceMeters = 500.0
+        )
+        assertEquals(61.0, m.midLat)
+        assertEquals(12.0, m.midLng)
     }
 
     @Test
