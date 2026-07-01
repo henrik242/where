@@ -31,6 +31,7 @@ import no.synth.where.data.TerrainClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointUtils
+import no.synth.where.data.TrackUtils
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
@@ -159,6 +160,10 @@ fun IosMapScreen(
     // Edit point state (tap)
     var showPointInfoDialog by remember { mutableStateOf(false) }
     var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
+
+    // Track view state
+    val showTrackBanner by trackRepository.trackBannerVisible.collectAsState()
+    var showDeleteTrackConfirm by remember { mutableStateOf(false) }
 
     val showCoordGrid by userPreferences.showCoordGrid.collectAsState()
     val crosshairActive by userPreferences.crosshairActive.collectAsState()
@@ -396,6 +401,12 @@ fun IosMapScreen(
                 if (nearest != null) {
                     clickedPoint = nearest
                     showPointInfoDialog = true
+                } else {
+                    val tolerance = TrackUtils.metersPerPixel(latitude, cameraZoom) *
+                        TrackUtils.TAP_RADIUS_PX
+                    if (TrackUtils.findTappedTrack(tapLocation, viewingTrack, tolerance) != null) {
+                        trackRepository.toggleTrackBanner()
+                    }
                 }
             }
         })
@@ -528,6 +539,18 @@ fun IosMapScreen(
         )
     }
 
+    if (showDeleteTrackConfirm) {
+        MapDialogs.DeleteTrackDialog(
+            trackName = viewingTrack?.name ?: "",
+            onConfirm = {
+                trackRepository.deleteViewingTrack()
+                mapViewProvider.clearTrackLine()
+                showDeleteTrackConfirm = false
+            },
+            onDismiss = { showDeleteTrackConfirm = false }
+        )
+    }
+
     MapScreenContent(
         snackbarHostState = snackbarHostState,
         isRecording = isRecording,
@@ -554,7 +577,8 @@ fun IosMapScreen(
         isLiveSharing = isLiveSharing,
         viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
-        viewingTrackName = viewingTrack?.name,
+        viewingTrack = viewingTrack,
+        showTrackBanner = showTrackBanner,
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",
         showViewingPoint = viewingPoint != null,
@@ -683,6 +707,7 @@ fun IosMapScreen(
                 isResolvingRulerName = false
             }
         },
+        onRemoveViewingTrack = { showDeleteTrackConfirm = true },
         onCloseViewingTrack = {
             trackRepository.clearViewingTrack()
             mapViewProvider.clearTrackLine()

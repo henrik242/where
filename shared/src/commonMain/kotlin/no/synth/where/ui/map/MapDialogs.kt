@@ -50,6 +50,29 @@ object MapDialogs {
     }
 
     @Composable
+    fun DeleteTrackDialog(
+        trackName: String,
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(Res.string.delete_track_title)) },
+            text = { Text(stringResource(Res.string.delete_track_confirm, trackName)) },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text(stringResource(Res.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
+    @Composable
     fun BackgroundLocationDisclosureDialog(
         onAllow: () -> Unit,
         onDeny: () -> Unit

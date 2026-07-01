@@ -177,6 +177,7 @@
     <string name="no_saved_tracks">Ingen lagrede spor ennå</string>
     <string name="delete_track_title">Slette spor?</string>
     <string name="delete_track_confirm">Er du sikker på at du vil slette «%1$s»?</string>
+    <string name="remove_track">Slett spor</string>
     <string name="import_failed">Importering feilet</string>
     <string name="rename_track">Gi nytt navn til spor</string>
     <string name="share_track_chooser">Del spor</string>

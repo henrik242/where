@@ -31,6 +31,9 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val _viewingTrack = MutableStateFlow<Track?>(null)
     val viewingTrack: StateFlow<Track?> = _viewingTrack.asStateFlow()
 
+    private val _trackBannerVisible = MutableStateFlow(false)
+    val trackBannerVisible: StateFlow<Boolean> = _trackBannerVisible.asStateFlow()
+
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
 
@@ -194,10 +197,21 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     fun setViewingTrack(track: Track) {
         _viewingTrack.value = track
+        _trackBannerVisible.value = false
     }
 
     fun clearViewingTrack() {
         _viewingTrack.value = null
+        _trackBannerVisible.value = false
+    }
+
+    fun toggleTrackBanner() {
+        _trackBannerVisible.value = !_trackBannerVisible.value
+    }
+
+    fun deleteViewingTrack() {
+        _viewingTrack.value?.let { deleteTrack(it) }
+        clearViewingTrack()
     }
 
     fun importTrack(gpxContent: String): Track? {

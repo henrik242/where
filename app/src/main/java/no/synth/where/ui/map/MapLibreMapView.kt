@@ -27,6 +27,7 @@ import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.Track
+import no.synth.where.data.TrackUtils
 import no.synth.where.location.GpsKeepAlive
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.toCommon
@@ -67,6 +68,7 @@ fun MapLibreMapView(
     onRulerPointAdded: (LatLng) -> Unit = {},
     onLongPress: (LatLng) -> Unit = {},
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {},
+    onTrackClick: () -> Unit = {},
     onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
     isTwoFingerMeasurementVisible: Boolean = false,
     twoFingerMeasurement: TwoFingerMeasurement? = null,
@@ -300,6 +302,7 @@ fun MapLibreMapView(
     }
 
     val measurementVisibleState = rememberUpdatedState(isTwoFingerMeasurementVisible)
+    val viewingTrackState = rememberUpdatedState(viewingTrack)
 
     LaunchedEffect(rulerState.isActive, savedPoints.size, map) {
         map?.let { mapInstance ->
@@ -323,7 +326,15 @@ fun MapLibreMapView(
                         onPointClick(clickedSavedPoint)
                         true
                     } else {
-                        false
+                        val tolerance = TrackUtils.metersPerPixel(
+                            commonPoint.latitude, mapInstance.cameraPosition.zoom
+                        ) * TrackUtils.TAP_RADIUS_PX
+                        if (TrackUtils.findTappedTrack(commonPoint, viewingTrackState.value, tolerance) != null) {
+                            onTrackClick()
+                            true
+                        } else {
+                            false
+                        }
                     }
                 }
             }
