@@ -574,6 +574,63 @@ object MapRenderUtils {
     /**
      * Force a mock location on emulator for testing.
      */
+    private val navLayerIds = listOf("nav-offcourse", "nav-remaining", "nav-completed")
+
+    fun updateNavigationOnMap(
+        style: Style,
+        completedGeoJson: String?,
+        remainingGeoJson: String?,
+        offCourseGeoJson: String?,
+    ) {
+        try {
+            navLayerIds.forEach { id ->
+                style.getLayer("$id-layer")?.let { style.removeLayer(it) }
+                style.getSource("$id-source")?.let { style.removeSource(it) }
+            }
+            if (completedGeoJson == null || remainingGeoJson == null) return
+
+            style.addSource(GeoJsonSource("nav-completed-source", completedGeoJson))
+            style.addLayer(
+                LineLayer("nav-completed-layer", "nav-completed-source").withProperties(
+                    PropertyFactory.lineColor("#9E9E9E"),
+                    PropertyFactory.lineWidth(4f),
+                    PropertyFactory.lineOpacity(0.7f)
+                )
+            )
+            style.addSource(GeoJsonSource("nav-remaining-source", remainingGeoJson))
+            style.addLayer(
+                LineLayer("nav-remaining-layer", "nav-remaining-source").withProperties(
+                    PropertyFactory.lineColor("#1E88E5"),
+                    PropertyFactory.lineWidth(6f),
+                    PropertyFactory.lineOpacity(0.9f)
+                )
+            )
+            if (offCourseGeoJson != null) {
+                style.addSource(GeoJsonSource("nav-offcourse-source", offCourseGeoJson))
+                style.addLayer(
+                    LineLayer("nav-offcourse-layer", "nav-offcourse-source").withProperties(
+                        PropertyFactory.lineColor("#E53935"),
+                        PropertyFactory.lineWidth(3f),
+                        PropertyFactory.lineDasharray(arrayOf(2f, 2f))
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
+    fun clearNavigation(style: Style) {
+        try {
+            navLayerIds.forEach { id ->
+                style.getLayer("$id-layer")?.let { style.removeLayer(it) }
+                style.getSource("$id-source")?.let { style.removeSource(it) }
+            }
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
     @SuppressWarnings("MissingPermission")
     private fun forceLocationOnEmulator(locationComponent: LocationComponent) {
         try {

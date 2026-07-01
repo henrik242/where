@@ -239,4 +239,12 @@
     <string name="slope_format">%1$s°</string>
     <string name="loading_dots">…</string>
     <string name="no_data">Ingen data</string>
+    <string name="navigate">Naviger</string>
+    <string name="nav_off_course">Utenfor sporet · %1$s</string>
+    <string name="nav_remaining">%1$s igjen</string>
+    <string name="nav_ascent">Stigning %1$s</string>
+    <string name="nav_descent">Nedstigning %1$s</string>
+    <string name="nav_arrived">Fremme</string>
+    <string name="nav_reverse">Snu retning</string>
+    <string name="nav_stop">Stopp navigering</string>
 </resources>

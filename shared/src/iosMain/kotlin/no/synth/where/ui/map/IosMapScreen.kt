@@ -35,6 +35,8 @@ import no.synth.where.data.TrackUtils
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
+import no.synth.where.data.navigation.NavigationProgress
+import no.synth.where.data.navigation.TrackNavigator
 import no.synth.where.di.AppDependencies
 import no.synth.where.location.IosLocationTracker
 import no.synth.where.resources.Res
@@ -97,6 +99,11 @@ fun IosMapScreen(
     val isRecording by trackRepository.isRecording.collectAsState()
     val currentTrack by trackRepository.currentTrack.collectAsState()
     val viewingTrack by trackRepository.viewingTrack.collectAsState()
+    val navigation by trackRepository.navigation.collectAsState()
+    var navigationProgress by remember { mutableStateOf<NavigationProgress?>(null) }
+    val navigator = remember(navigation?.track?.id, navigation?.reversed) {
+        navigation?.let { TrackNavigator(it.track, it.reversed) }
+    }
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val viewerCount by userPreferences.viewerCount.collectAsState()
@@ -344,10 +351,14 @@ fun IosMapScreen(
     }
 
     // Fit camera to viewing track bounds and render blue track line
-    LaunchedEffect(viewingTrack) {
+    LaunchedEffect(viewingTrack, navigation) {
         val track = viewingTrack
         if (track != null && !isRecording) {
-            if (track.points.size >= 2) {
+            // While navigating, the grey/blue split line replaces the plain track
+            // line; drawing both would leave the base blue bleeding under the grey.
+            if (navigation != null) {
+                mapViewProvider.clearTrackLine()
+            } else if (track.points.size >= 2) {
                 mapViewProvider.updateTrackLine(buildTrackGeoJson(track.points), "#0000FF")
             }
             track.bounds()?.let { mapViewProvider.animateToBounds(it) }
@@ -362,6 +373,39 @@ fun IosMapScreen(
             mapViewProvider.fadeMeasurement(TwoFingerTap.FADE_OUT_MS.toDouble())
             delay(TwoFingerTap.FADE_OUT_MS)
             mapViewProvider.clearMeasurement()
+        }
+    }
+
+    // Poll the user location ~1s while navigating; compute progress.
+    LaunchedEffect(navigator) {
+        val nav = navigator
+        if (nav == null) {
+            navigationProgress = null
+            return@LaunchedEffect
+        }
+        while (true) {
+            val loc = mapViewProvider.getUserLocation()
+            if (loc != null && loc.size >= 2) {
+                navigationProgress = nav.progressAt(LatLng(loc[0], loc[1]))
+            }
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+
+    // Render nav layers whenever progress changes.
+    LaunchedEffect(navigationProgress) {
+        val p = navigationProgress
+        val nav = navigation
+        val activeNavigator = navigator
+        if (p != null && nav != null && activeNavigator != null) {
+            val loc = mapViewProvider.getUserLocation()
+            val userLoc = if (loc != null && loc.size >= 2) LatLng(loc[0], loc[1]) else null
+            val layers = buildNavigationLayers(
+                nav.track, nav.reversed, activeNavigator.currentSegment(), p, userLoc
+            )
+            mapViewProvider.updateNavigation(layers.completed, layers.remaining, layers.offCourse)
+        } else {
+            mapViewProvider.clearNavigation()
         }
     }
 
@@ -568,6 +612,13 @@ fun IosMapScreen(
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrack = viewingTrack,
         trackFocused = trackFocused,
+        navigationProgress = navigationProgress,
+        onToggleReverse = { trackRepository.toggleNavigationReverse() },
+        onStopNavigation = {
+            trackRepository.stopNavigation()
+            mapViewProvider.clearNavigation()
+            mapViewProvider.clearTrackLine()
+        },
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",
         showViewingPoint = viewingPoint != null,
@@ -750,12 +801,13 @@ fun IosMapScreen(
                     mapViewProvider.setStyle(styleJson)
                     mapViewProvider.setShowsUserLocation(true)
 
-                    // Track rendering: recording (red) takes precedence over viewing (blue)
+                    // Track rendering: recording (red) takes precedence over viewing (blue).
+                    // While navigating, the grey/blue split line replaces the plain line.
                     val recording = currentTrack
                     if (recording != null && recording.points.size >= 2) {
                         val geoJson = buildTrackGeoJson(recording.points)
                         mapViewProvider.updateTrackLine(geoJson, "#FF0000")
-                    } else if (!isRecording) {
+                    } else if (!isRecording && navigation == null) {
                         val viewing = viewingTrack
                         if (viewing != null && viewing.points.size >= 2) {
                             val geoJson = buildTrackGeoJson(viewing.points)

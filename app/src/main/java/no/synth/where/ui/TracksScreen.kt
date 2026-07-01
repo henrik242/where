@@ -26,7 +26,8 @@ fun TracksScreen(
     pendingImportFileUri: String? = null,
     onBackClick: () -> Unit,
     onContinueTrack: (Track) -> Unit,
-    onShowTrackOnMap: (Track) -> Unit
+    onShowTrackOnMap: (Track) -> Unit,
+    onNavigateTrack: (Track) -> Unit
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as no.synth.where.WhereApplication
@@ -193,7 +194,8 @@ fun TracksScreen(
         onDismissRename = { trackToRename = null },
         onDismissImportError = { showImportError = false },
         onContinue = onContinueTrack,
-        onShowOnMap = onShowTrackOnMap
+        onShowOnMap = onShowTrackOnMap,
+        onNavigate = onNavigateTrack
     )
 }
 

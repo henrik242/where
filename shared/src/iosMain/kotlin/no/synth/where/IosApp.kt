@@ -229,6 +229,10 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onShowOnMap = { track ->
                         trackRepository.setViewingTrack(track)
                         navigateToMap()
+                    },
+                    onNavigate = { track ->
+                        trackRepository.startNavigation(track, reversed = false)
+                        navigateToMap()
                     }
                 )
             }

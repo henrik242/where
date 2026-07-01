@@ -23,6 +23,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingFriendTrackGeoJson: String?
     private var pendingFriendTrackColor: String?
     private var pendingCoordGridGeoJson: String?
+    private var pendingNavCompletedGeoJson: String?
+    private var pendingNavRemainingGeoJson: String?
+    private var pendingNavOffCourseGeoJson: String?
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
@@ -58,6 +61,12 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let coordGridZoneLayerId = "coord-grid-zone-layer"
     private let coordGridLabelLayerId = "coord-grid-label-layer"
     private let coordGridCellLayerId = "coord-grid-cell-layer"
+    private let navCompletedSourceId = "nav-completed-source"
+    private let navCompletedLayerId = "nav-completed-layer"
+    private let navRemainingSourceId = "nav-remaining-source"
+    private let navRemainingLayerId = "nav-remaining-layer"
+    private let navOffCourseSourceId = "nav-offcourse-source"
+    private let navOffCourseLayerId = "nav-offcourse-layer"
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -383,6 +392,22 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         removeFriendTrackLine(style: style)
     }
 
+    func updateNavigation(completedGeoJson: String, remainingGeoJson: String, offCourseGeoJson: String?) {
+        pendingNavCompletedGeoJson = completedGeoJson
+        pendingNavRemainingGeoJson = remainingGeoJson
+        pendingNavOffCourseGeoJson = offCourseGeoJson
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        applyNavigation(style: style, completedGeoJson: completedGeoJson, remainingGeoJson: remainingGeoJson, offCourseGeoJson: offCourseGeoJson)
+    }
+
+    func clearNavigation() {
+        pendingNavCompletedGeoJson = nil
+        pendingNavRemainingGeoJson = nil
+        pendingNavOffCourseGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeNavigation(style: style)
+    }
+
     func setConnected(connected: Bool) {
         isMapConnected = connected
         MLNNetworkConfiguration.sharedManager.delegate = connected ? nil : self
@@ -475,6 +500,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
         if let geoJson = pendingCoordGridGeoJson {
             applyCoordGrid(style: style, geoJson: geoJson)
+        }
+        if let completed = pendingNavCompletedGeoJson, let remaining = pendingNavRemainingGeoJson {
+            applyNavigation(style: style, completedGeoJson: completed, remainingGeoJson: remaining, offCourseGeoJson: pendingNavOffCourseGeoJson)
         }
     }
 
@@ -650,6 +678,63 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         for id in [measurePointSourceId, measureLineSourceId] {
             if let source = style.source(withIdentifier: id) { style.removeSource(source) }
         }
+    }
+
+    private func applyNavigation(style: MLNStyle, completedGeoJson: String, remainingGeoJson: String, offCourseGeoJson: String?) {
+        removeNavigation(style: style)
+
+        // Completed leg (grey) - added first so the remaining line sits above it.
+        if let data = completedGeoJson.data(using: .utf8),
+           let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) {
+            let source = MLNShapeSource(identifier: navCompletedSourceId, shape: shape, options: nil)
+            style.addSource(source)
+
+            let layer = MLNLineStyleLayer(identifier: navCompletedLayerId, source: source)
+            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: "#9E9E9E"))
+            layer.lineWidth = NSExpression(forConstantValue: 4)
+            layer.lineOpacity = NSExpression(forConstantValue: 0.7)
+            layer.lineCap = NSExpression(forConstantValue: "round")
+            layer.lineJoin = NSExpression(forConstantValue: "round")
+            style.addLayer(layer)
+        }
+
+        // Remaining leg (blue).
+        if let data = remainingGeoJson.data(using: .utf8),
+           let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) {
+            let source = MLNShapeSource(identifier: navRemainingSourceId, shape: shape, options: nil)
+            style.addSource(source)
+
+            let layer = MLNLineStyleLayer(identifier: navRemainingLayerId, source: source)
+            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: "#1E88E5"))
+            layer.lineWidth = NSExpression(forConstantValue: 6)
+            layer.lineOpacity = NSExpression(forConstantValue: 0.9)
+            layer.lineCap = NSExpression(forConstantValue: "round")
+            layer.lineJoin = NSExpression(forConstantValue: "round")
+            style.addLayer(layer)
+        }
+
+        // Off-course connector (red dashed), optional.
+        if let offCourseGeoJson = offCourseGeoJson,
+           let data = offCourseGeoJson.data(using: .utf8),
+           let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) {
+            let source = MLNShapeSource(identifier: navOffCourseSourceId, shape: shape, options: nil)
+            style.addSource(source)
+
+            let layer = MLNLineStyleLayer(identifier: navOffCourseLayerId, source: source)
+            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: "#E53935"))
+            layer.lineWidth = NSExpression(forConstantValue: 3)
+            layer.lineDashPattern = NSExpression(forConstantValue: [2, 2])
+            style.addLayer(layer)
+        }
+    }
+
+    private func removeNavigation(style: MLNStyle) {
+        if let layer = style.layer(withIdentifier: navOffCourseLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: navOffCourseSourceId) { style.removeSource(source) }
+        if let layer = style.layer(withIdentifier: navRemainingLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: navRemainingSourceId) { style.removeSource(source) }
+        if let layer = style.layer(withIdentifier: navCompletedLayerId) { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: navCompletedSourceId) { style.removeSource(source) }
     }
 
     private func applySearchResults(style: MLNStyle, geoJson: String) {

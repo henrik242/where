@@ -20,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
@@ -31,6 +32,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
@@ -54,6 +58,7 @@ import no.synth.where.data.RulerState
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
@@ -243,6 +248,97 @@ fun ViewingTrackBanner(
                 Icon(painterResource(Res.drawable.ic_close), contentDescription = stringResource(Res.string.collapse))
             }
         }
+    }
+}
+
+@Composable
+fun NavigationCard(
+    modifier: Modifier = Modifier,
+    progress: NavigationProgress,
+    onToggleReverse: () -> Unit,
+    onStop: () -> Unit,
+) {
+    // Arrival takes priority over off-course: at the end we drop the error styling and connector.
+    val offCourse = !progress.onCourse && !progress.atEnd
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = if (offCourse)
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
+            else MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        val contentColor = if (offCourse) MaterialTheme.colorScheme.onErrorContainer
+            else MaterialTheme.colorScheme.onSurface
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                if (progress.atEnd) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            stringResource(Res.string.nav_arrived),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = onStop) {
+                            Icon(painterResource(Res.drawable.ic_close),
+                                contentDescription = stringResource(Res.string.nav_stop))
+                        }
+                    }
+                } else {
+                    if (offCourse) {
+                        Text(
+                            stringResource(Res.string.nav_off_course, progress.offCourseMeters.formatDistance()),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            stringResource(Res.string.nav_remaining, progress.remainingMeters.formatDistance()),
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        val ascent = progress.remainingAscent
+                        val descent = progress.remainingDescent
+                        if (ascent != null && descent != null) {
+                            AscentDescent(ascent, descent)
+                        }
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = onToggleReverse) {
+                            Icon(painterResource(Res.drawable.ic_refresh),
+                                contentDescription = stringResource(Res.string.nav_reverse))
+                        }
+                        IconButton(onClick = onStop) {
+                            Icon(painterResource(Res.drawable.ic_close),
+                                contentDescription = stringResource(Res.string.nav_stop))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AscentDescent(ascent: Double, descent: Double) {
+    val label = stringResource(Res.string.nav_ascent, ascent.formatDistance()) + ", " +
+        stringResource(Res.string.nav_descent, descent.formatDistance())
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = label }
+    ) {
+        Icon(painterResource(Res.drawable.ic_expand_less), contentDescription = null,
+            modifier = Modifier.size(16.dp))
+        Text(ascent.formatDistance(), style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.width(6.dp))
+        Icon(painterResource(Res.drawable.ic_expand_more), contentDescription = null,
+            modifier = Modifier.size(16.dp))
+        Text(descent.formatDistance(), style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -471,6 +567,9 @@ fun BoxScope.MapOverlays(
     viewerCount: Int = 0,
     viewingTrack: no.synth.where.data.Track?,
     trackFocused: Boolean = false,
+    navigationProgress: NavigationProgress? = null,
+    onToggleReverse: () -> Unit = {},
+    onStopNavigation: () -> Unit = {},
     viewingPointName: String?,
     viewingPointColor: String,
     showSearch: Boolean,
@@ -505,6 +604,7 @@ fun BoxScope.MapOverlays(
     val focusedTrack = if (trackFocused) viewingTrack else null
     val hasTopOverlay = showSearch ||
         focusedTrack != null ||
+        navigationProgress != null ||
         (showViewingPoint && viewingPointName != null) ||
         followedClientId != null
 
@@ -621,7 +721,17 @@ fun BoxScope.MapOverlays(
         }
     }
 
-    if (focusedTrack != null) {
+    if (navigationProgress != null) {
+        NavigationCard(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 16.dp)
+                .padding(horizontal = 16.dp),
+            progress = navigationProgress,
+            onToggleReverse = onToggleReverse,
+            onStop = onStopNavigation,
+        )
+    } else if (focusedTrack != null) {
         ViewingTrackBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)

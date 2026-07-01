@@ -243,4 +243,12 @@
     <string name="location_permission_required">Location permission required</string>
     <string name="unnamed_point">Unnamed point</string>
     <string name="locating">Locating…</string>
+    <string name="navigate">Navigate</string>
+    <string name="nav_off_course">Off course · %1$s</string>
+    <string name="nav_remaining">%1$s left</string>
+    <string name="nav_ascent">Ascent %1$s</string>
+    <string name="nav_descent">Descent %1$s</string>
+    <string name="nav_arrived">Arrived</string>
+    <string name="nav_reverse">Reverse direction</string>
+    <string name="nav_stop">Stop navigation</string>
 </resources>

@@ -49,6 +49,9 @@ import org.jetbrains.compose.resources.stringResource
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
 import no.synth.where.data.geo.CoordFormat
+import no.synth.where.data.navigation.NavigationProgress
+import no.synth.where.data.navigation.TrackNavigator
+import no.synth.where.ui.map.buildNavigationLayers
 import no.synth.where.WhereApplication
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.map.CoordGrid
@@ -138,6 +141,57 @@ fun MapScreen(
     }
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
+
+    val navigation by viewModel.navigation.collectAsState()
+    var navigationProgress by remember { mutableStateOf<NavigationProgress?>(null) }
+
+    // Rebuild the navigator when the session (track id or direction) changes.
+    val navigator = remember(navigation?.track?.id, navigation?.reversed) {
+        navigation?.let { TrackNavigator(it.track, it.reversed) }
+    }
+
+    // Poll the puck ~1s while navigating; compute progress.
+    LaunchedEffect(navigator, mapInstance) {
+        val nav = navigator
+        if (nav == null) {
+            navigationProgress = null
+            return@LaunchedEffect
+        }
+        while (true) {
+            try {
+                val lc = mapInstance?.locationComponent
+                if (lc != null && lc.isLocationComponentEnabled) {
+                    lc.lastKnownLocation?.let { loc ->
+                        navigationProgress = nav.progressAt(LatLng(loc.latitude, loc.longitude))
+                    }
+                }
+            } catch (e: Exception) {
+                Logger.d("Nav location read failed: %s", e.message ?: "unknown")
+            }
+            delay(1000)
+        }
+    }
+
+    // Render nav layers whenever progress changes.
+    LaunchedEffect(navigationProgress) {
+        val p = navigationProgress
+        val nav = navigation
+        val activeNavigator = navigator
+        val style = mapInstance?.style
+        if (style != null) {
+            if (p != null && nav != null && activeNavigator != null) {
+                val userLoc = runCatching {
+                    mapInstance?.locationComponent?.lastKnownLocation
+                }.getOrNull()?.let { LatLng(it.latitude, it.longitude) }
+                val layers = buildNavigationLayers(
+                    nav.track, nav.reversed, activeNavigator.currentSegment(), p, userLoc
+                )
+                MapRenderUtils.updateNavigationOnMap(style, layers.completed, layers.remaining, layers.offCourse)
+            } else {
+                MapRenderUtils.updateNavigationOnMap(style, null, null, null)
+            }
+        }
+    }
 
     // Zoom to friend track when first data arrives
     var hasZoomedToFriend by rememberSaveable { mutableStateOf(false) }
@@ -254,15 +308,17 @@ fun MapScreen(
         )
     }
 
-    LaunchedEffect(currentTrack, viewingTrack, mapInstance) {
+    LaunchedEffect(currentTrack, viewingTrack, navigation, mapInstance) {
         val viewing = viewingTrack
         val trackToShow = currentTrack ?: viewing
         val map = mapInstance
 
         map?.style?.let { style ->
+            // While navigating, the grey/blue split line replaces the plain track
+            // line; drawing both would leave the base blue bleeding under the grey.
             MapRenderUtils.updateTrackOnMap(
                 style,
-                trackToShow,
+                if (navigation != null) null else trackToShow,
                 isCurrentTrack = currentTrack != null
             )
 
@@ -428,6 +484,9 @@ fun MapScreen(
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrack = viewingTrack,
         trackFocused = trackFocused,
+        navigationProgress = navigationProgress,
+        onToggleReverse = { viewModel.toggleNavigationReverse() },
+        onStopNavigation = { viewModel.stopNavigation() },
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",
         showViewingPoint = viewingPoint != null,

@@ -49,6 +49,8 @@ interface MapViewProvider {
     fun clearHighlightedSearchResult()
     fun updateFriendTrackLine(geoJson: String, color: String)
     fun clearFriendTrackLine()
+    fun updateNavigation(completedGeoJson: String, remainingGeoJson: String, offCourseGeoJson: String?)
+    fun clearNavigation()
     fun setConnected(connected: Boolean)
     fun getCameraCenter(): List<Double>?
     fun updateCoordGrid(geoJson: String)

@@ -51,7 +51,8 @@ fun TracksScreenContent(
     onDismissRename: () -> Unit,
     onDismissImportError: () -> Unit,
     onContinue: (Track) -> Unit,
-    onShowOnMap: (Track) -> Unit
+    onShowOnMap: (Track) -> Unit,
+    onNavigate: (Track) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -140,7 +141,8 @@ fun TracksScreenContent(
                         onDelete = { onDeleteRequest(track) },
                         onRename = { onRenameRequest(track) },
                         onContinue = { onContinue(track) },
-                        onShowOnMap = { onShowOnMap(track) }
+                        onShowOnMap = { onShowOnMap(track) },
+                        onNavigate = { onNavigate(track) }
                     )
                     HorizontalDivider()
                 }
@@ -217,7 +219,8 @@ fun TrackItem(
     onDelete: () -> Unit,
     onRename: () -> Unit,
     onContinue: () -> Unit,
-    onShowOnMap: () -> Unit
+    onShowOnMap: () -> Unit,
+    onNavigate: () -> Unit = {}
 ) {
     val highlightColor by animateColorAsState(
         targetValue = if (highlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent,
@@ -271,6 +274,19 @@ fun TrackItem(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(stringResource(Res.string.show_on_map))
+                }
+                OutlinedButton(
+                    onClick = onNavigate,
+                    modifier = Modifier.weight(1f),
+                    enabled = track.points.size >= 2
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_my_location),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(Res.string.navigate))
                 }
             }
             Row(

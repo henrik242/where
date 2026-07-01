@@ -17,6 +17,7 @@ import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.navigation.NavigationProgress
 
 @Composable
 fun MapScreenContent(
@@ -50,6 +51,9 @@ fun MapScreenContent(
     recordingDistance: Double?,
     viewingTrack: no.synth.where.data.Track? = null,
     trackFocused: Boolean = false,
+    navigationProgress: NavigationProgress? = null,
+    onToggleReverse: () -> Unit = {},
+    onStopNavigation: () -> Unit = {},
     viewingPointName: String?,
     viewingPointColor: String,
     showViewingPoint: Boolean,
@@ -157,6 +161,9 @@ fun MapScreenContent(
                 isLiveSharing = isLiveSharing,
                 viewingTrack = viewingTrack,
                 trackFocused = trackFocused,
+                navigationProgress = navigationProgress,
+                onToggleReverse = onToggleReverse,
+                onStopNavigation = onStopNavigation,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,
                 showSearch = showSearch,

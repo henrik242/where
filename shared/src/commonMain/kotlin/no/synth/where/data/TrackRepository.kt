@@ -16,6 +16,8 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
 
+data class NavigationSession(val track: Track, val reversed: Boolean)
+
 class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val json = Json { ignoreUnknownKeys = true }
     private val tracksFile = filesDir.resolve("tracks.json")
@@ -33,6 +35,9 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     private val _trackFocused = MutableStateFlow(false)
     val trackFocused: StateFlow<Boolean> = _trackFocused.asStateFlow()
+
+    private val _navigation = MutableStateFlow<NavigationSession?>(null)
+    val navigation: StateFlow<NavigationSession?> = _navigation.asStateFlow()
 
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
@@ -207,6 +212,21 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     fun setTrackFocused(focused: Boolean) {
         _trackFocused.value = focused
+    }
+
+    fun startNavigation(track: Track, reversed: Boolean = false) {
+        _navigation.value = NavigationSession(track, reversed)
+        _viewingTrack.value = track   // reuse route rendering + bounds-fit
+    }
+
+    fun toggleNavigationReverse() {
+        val current = _navigation.value ?: return
+        _navigation.value = current.copy(reversed = !current.reversed)
+    }
+
+    fun stopNavigation() {
+        _navigation.value = null
+        _viewingTrack.value = null
     }
 
     fun importTrack(gpxContent: String): Track? {
