@@ -13,6 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import no.synth.where.data.Track
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -31,6 +34,7 @@ fun TracksScreen(
     onNavigateTrack: (Track) -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val app = context.applicationContext as no.synth.where.WhereApplication
     val viewModel: TracksScreenViewModel = viewModel { TracksScreenViewModel(app.trackRepository) }
     val tracks by viewModel.tracks.collectAsState()
@@ -99,23 +103,26 @@ fun TracksScreen(
                 TextButton(onClick = {
                     val uri = uriString.toUri()
                     fileUriToConfirm = null
-                    try {
-                        val bytes = context.contentResolver.openInputStream(uri)?.use { stream ->
-                            stream.readBytes()
-                        }
-                        if (bytes != null) {
-                            val importedTrack = viewModel.importTrackFromBytes(bytes)
-                            if (importedTrack == null) {
-                                importErrorMessage = importGpxCorruptedStr
+                    scope.launch {
+                        try {
+                            val bytes = withContext(Dispatchers.IO) {
+                                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                            }
+                            if (bytes != null) {
+                                viewModel.importTrackFromBytes(bytes) { importedTrack ->
+                                    if (importedTrack == null) {
+                                        importErrorMessage = importGpxCorruptedStr
+                                        showImportError = true
+                                    }
+                                }
+                            } else {
+                                importErrorMessage = importGpxReadFailedStr
                                 showImportError = true
                             }
-                        } else {
-                            importErrorMessage = importGpxReadFailedStr
+                        } catch (e: Exception) {
+                            importErrorMessage = String.format(importGpxErrorFmt, e.message)
                             showImportError = true
                         }
-                    } catch (e: Exception) {
-                        importErrorMessage = String.format(importGpxErrorFmt, e.message)
-                        showImportError = true
                     }
                 }) { Text(stringResource(Res.string.import_label)) }
             },
@@ -131,24 +138,27 @@ fun TracksScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            try {
-                val bytes = context.contentResolver.openInputStream(it)?.use { stream ->
-                    stream.readBytes()
-                }
+            scope.launch {
+                try {
+                    val bytes = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes() }
+                    }
 
-                if (bytes != null) {
-                    val importedTrack = viewModel.importTrackFromBytes(bytes)
-                    if (importedTrack == null) {
-                        importErrorMessage = importGpxCorruptedStr
+                    if (bytes != null) {
+                        viewModel.importTrackFromBytes(bytes) { importedTrack ->
+                            if (importedTrack == null) {
+                                importErrorMessage = importGpxCorruptedStr
+                                showImportError = true
+                            }
+                        }
+                    } else {
+                        importErrorMessage = importGpxReadFailedStr
                         showImportError = true
                     }
-                } else {
-                    importErrorMessage = importGpxReadFailedStr
+                } catch (e: Exception) {
+                    importErrorMessage = String.format(importGpxErrorFmt, e.message)
                     showImportError = true
                 }
-            } catch (e: Exception) {
-                importErrorMessage = String.format(importGpxErrorFmt, e.message)
-                showImportError = true
             }
         }
     }

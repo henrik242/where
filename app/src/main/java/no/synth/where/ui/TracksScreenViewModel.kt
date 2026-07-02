@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import no.synth.where.data.TrackUrlImporter
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
@@ -34,15 +35,17 @@ class TracksScreenViewModel(
         trackRepository.renameTrack(track, newName)
     }
 
-    fun importTrack(gpxContent: String): Track? {
-        return trackRepository.importTrack(gpxContent)?.also {
-            _newlyImportedTrackId.value = it.id
-        }
-    }
-
-    fun importTrackFromBytes(data: ByteArray): Track? {
-        return trackRepository.importTrackFromBytes(data)?.also {
-            _newlyImportedTrackId.value = it.id
+    fun importTrackFromBytes(data: ByteArray, onResult: (Track?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val imported = trackRepository.importTrackFromBytes(data)?.also {
+                    _newlyImportedTrackId.value = it.id
+                }
+                onResult(imported)
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to import track from bytes")
+                onResult(null)
+            }
         }
     }
 
@@ -60,7 +63,8 @@ class TracksScreenViewModel(
                 } else {
                     onResult(null)
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to import track from URL")
                 onResult(null)
             } finally {
                 _isImportingUrl.value = false

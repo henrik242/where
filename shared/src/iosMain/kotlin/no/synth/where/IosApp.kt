@@ -172,17 +172,19 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onImport = {
                         IosPlatformActions.pickFile(listOf("public.xml", "org.topografix.gpx", "public.data")) { bytes ->
                             if (bytes == null) return@pickFile
-                            try {
-                                val imported = trackRepository.importTrackFromBytes(bytes)
-                                if (imported == null) {
-                                    importErrorMessage = gpxCorruptedMsg
+                            scope.launch {
+                                try {
+                                    val imported = trackRepository.importTrackFromBytes(bytes)
+                                    if (imported == null) {
+                                        importErrorMessage = gpxCorruptedMsg
+                                        showImportError = true
+                                    } else {
+                                        newlyImportedTrackId = imported.id
+                                    }
+                                } catch (e: Exception) {
+                                    importErrorMessage = e.message ?: gpxCorruptedMsg
                                     showImportError = true
-                                } else {
-                                    newlyImportedTrackId = imported.id
                                 }
-                            } catch (e: Exception) {
-                                importErrorMessage = e.message ?: gpxCorruptedMsg
-                                showImportError = true
                             }
                         }
                     },

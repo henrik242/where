@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.synth.where.data.db.TrackDao
 import no.synth.where.data.db.TrackEntity
@@ -257,20 +258,18 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         _navigation.value = null
     }
 
-    fun importTrack(gpxContent: String): Track? {
-        val track = Track.fromGPX(gpxContent) ?: return null
-        val uniqueName = NamingUtils.makeUnique(track.name, _tracks.value.map { it.name })
-        val trackWithUniqueName = track.copy(name = uniqueName)
-        saveTrack(trackWithUniqueName)
-        return trackWithUniqueName
-    }
+    suspend fun importTrack(gpxContent: String): Track? = importParsed { Track.fromGPX(gpxContent) }
 
-    fun importTrackFromBytes(data: ByteArray): Track? {
-        val track = Track.fromBytes(data) ?: return null
+    suspend fun importTrackFromBytes(data: ByteArray): Track? = importParsed { Track.fromBytes(data) }
+
+    // Parsing large tracks (e.g. FIT files with thousands of points) runs off the main
+    // thread so the UI stays responsive; [parse] is invoked on the background dispatcher.
+    private suspend fun importParsed(parse: () -> Track?): Track? = withContext(Dispatchers.Default) {
+        val track = parse() ?: return@withContext null
         val uniqueName = NamingUtils.makeUnique(track.name, _tracks.value.map { it.name })
         val trackWithUniqueName = track.copy(name = uniqueName)
         saveTrack(trackWithUniqueName)
-        return trackWithUniqueName
+        trackWithUniqueName
     }
 
     fun createTrackFromPoints(name: String, rulerPoints: List<RulerPoint>) {
