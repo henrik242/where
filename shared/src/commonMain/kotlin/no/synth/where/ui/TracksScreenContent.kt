@@ -18,11 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.gestures.animateScrollBy
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import no.synth.where.data.Track
 import no.synth.where.util.formatDateTime
 import no.synth.where.util.formatKm
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -68,7 +70,10 @@ fun TracksScreenContent(
         selectedIds.clear()
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (selectionMode) {
                 TopAppBar(
@@ -104,19 +109,29 @@ fun TracksScreenContent(
         }
     ) { padding ->
         val listState = rememberLazyListState()
+        val uiScope = rememberCoroutineScope()
         var expandedTrackId by remember { mutableStateOf<String?>(null) }
         var highlightedTrackId by remember { mutableStateOf<String?>(null) }
 
+        // Re-runs whenever a new import id arrives or the track list updates. It waits (returns
+        // early) until the imported track is actually loaded, then confirms it exactly once.
+        // The scroll/highlight/snackbar run in uiScope so consuming the id (which cancels this
+        // effect) doesn't abort them mid-animation.
         LaunchedEffect(newlyImportedTrackId, tracks) {
             val id = newlyImportedTrackId ?: return@LaunchedEffect
             val index = tracks.indexOfFirst { it.id == id }
-            if (index >= 0) {
-                expandedTrackId = id
+            if (index < 0) return@LaunchedEffect
+            val name = tracks[index].name
+            onNewlyImportedTrackConsumed()
+            expandedTrackId = id
+            uiScope.launch {
                 listState.animateScrollToItem(index + 1) // +1 for ImportSection
-                onNewlyImportedTrackConsumed()
                 highlightedTrackId = id
-                delay(800)
-                highlightedTrackId = null
+                delay(1500)
+                if (highlightedTrackId == id) highlightedTrackId = null
+            }
+            uiScope.launch {
+                snackbarHostState.showSnackbar(getString(Res.string.track_imported, name))
             }
         }
 

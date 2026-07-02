@@ -184,6 +184,7 @@
     <string name="saved_to_path">Lagret til %1$s</string>
     <string name="failed_to_save_track">Kunne ikke lagre spor: %1$s</string>
     <string name="open_track_chooser">Åpne spor med</string>
+    <string name="track_imported">Importerte «%1$s»</string>
     <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d punkter</string>
     <string name="duration_hours_minutes">%1$dt %2$dm</string>
     <string name="duration_minutes">%1$dm</string>

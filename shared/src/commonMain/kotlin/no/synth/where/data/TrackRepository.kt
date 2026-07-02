@@ -113,30 +113,32 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     }
 
     private fun saveTrack(track: Track) {
-        scope.launch {
-            try {
-                val entity = TrackEntity(
-                    id = track.id,
-                    name = track.name,
-                    startTime = track.startTime,
-                    endTime = track.endTime,
-                    isRecording = false
+        scope.launch { persistTrack(track) }
+    }
+
+    private suspend fun persistTrack(track: Track) {
+        try {
+            val entity = TrackEntity(
+                id = track.id,
+                name = track.name,
+                startTime = track.startTime,
+                endTime = track.endTime,
+                isRecording = false
+            )
+            val pointEntities = track.points.mapIndexed { index, point ->
+                TrackPointEntity(
+                    trackId = track.id,
+                    latitude = point.latLng.latitude,
+                    longitude = point.latLng.longitude,
+                    timestamp = point.timestamp,
+                    altitude = point.altitude,
+                    accuracy = point.accuracy,
+                    orderIndex = index
                 )
-                val pointEntities = track.points.mapIndexed { index, point ->
-                    TrackPointEntity(
-                        trackId = track.id,
-                        latitude = point.latLng.latitude,
-                        longitude = point.latLng.longitude,
-                        timestamp = point.timestamp,
-                        altitude = point.altitude,
-                        accuracy = point.accuracy,
-                        orderIndex = index
-                    )
-                }
-                trackDao.insertTrackWithPoints(entity, pointEntities)
-            } catch (e: Exception) {
-                Logger.e(e, "Track repository error")
             }
+            trackDao.insertTrackWithPoints(entity, pointEntities)
+        } catch (e: Exception) {
+            Logger.e(e, "Track repository error")
         }
     }
 
@@ -264,11 +266,13 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     // Parsing large tracks (e.g. FIT files with thousands of points) runs off the main
     // thread so the UI stays responsive; [parse] is invoked on the background dispatcher.
+    // The DB write is awaited so the track is persisted (and about to appear in [tracks])
+    // by the time this returns.
     private suspend fun importParsed(parse: () -> Track?): Track? = withContext(Dispatchers.Default) {
         val track = parse() ?: return@withContext null
         val uniqueName = NamingUtils.makeUnique(track.name, _tracks.value.map { it.name })
         val trackWithUniqueName = track.copy(name = uniqueName)
-        saveTrack(trackWithUniqueName)
+        persistTrack(trackWithUniqueName)
         trackWithUniqueName
     }
 
