@@ -307,11 +307,13 @@ fun MapScreen(
         }
     }
 
-    // Fit the camera to the union of the viewing set whenever the set changes (adding/removing a
-    // track), but not when merely focusing one.
+    // Fit the camera whenever the viewing set changes (adding/removing a track), but not when
+    // merely tap-focusing one (focusedTrackId is deliberately not a key). When the set change
+    // brought a focused track along (opening a single track focuses it), zoom to that track;
+    // otherwise fit the union of the whole set (bulk multi-select).
     LaunchedEffect(viewingTracks, mapInstance) {
         val map = mapInstance ?: return@LaunchedEffect
-        val bounds = Track.combinedBounds(viewingTracks) ?: return@LaunchedEffect
+        val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
         delay(100)
         map.animateToBounds(bounds)
     }

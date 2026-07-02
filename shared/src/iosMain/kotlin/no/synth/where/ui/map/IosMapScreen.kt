@@ -368,9 +368,12 @@ fun IosMapScreen(
         mapViewProvider.updateTracks(tracksGeoJson)
     }
 
-    // Fit the camera to the union of the viewing set whenever the set changes (not on focus).
+    // Fit the camera whenever the viewing set changes, but not on tap-focus (focusedTrackId is
+    // deliberately not a key). Opening a single track focuses it, so zoom to that track; a bulk
+    // multi-select clears focus, so fit the union of the whole set.
     LaunchedEffect(viewingTracks) {
-        Track.combinedBounds(viewingTracks)?.let { mapViewProvider.animateToBounds(it) }
+        val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
+        mapViewProvider.animateToBounds(bounds)
     }
 
     LaunchedEffect(twoFingerMeasurement) {

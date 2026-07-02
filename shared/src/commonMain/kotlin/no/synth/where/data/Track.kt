@@ -77,6 +77,14 @@ $trackPointsXml
         fun combinedBounds(tracks: List<Track>): LatLngBounds? =
             tracks.flatMap { track -> track.points.map { it.latLng } }.bounds()
 
+        /**
+         * Camera envelope for the viewing set: the focused track alone when [focusedId] is one of
+         * [tracks], otherwise the union of all of them. A focused track with no bounds falls back
+         * to the union. Null when nothing has points.
+         */
+        fun focusOrCombinedBounds(tracks: List<Track>, focusedId: String?): LatLngBounds? =
+            focusedId?.let { id -> tracks.find { it.id == id } }?.bounds() ?: combinedBounds(tracks)
+
         fun fromFIT(data: ByteArray): Track? {
             val points = FitParser.parse(data)
             if (points.isEmpty()) return null
