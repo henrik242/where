@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -283,39 +284,40 @@ fun NavigationCard(
         val contentColor = if (offCourse) MaterialTheme.colorScheme.onErrorContainer
             else MaterialTheme.colorScheme.onSurface
         CompositionLocalProvider(LocalContentColor provides contentColor) {
-            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 if (progress == null) {
                     // Session started but no location fix yet: keep Stop reachable.
                     NavStatusRow(stringResource(Res.string.locating), onStop)
                 } else if (progress.atEnd) {
                     NavStatusRow(stringResource(Res.string.nav_arrived), onStop)
                 } else {
+                    // Distance on the left, action buttons pinned to the right edge of the
+                    // (full-width) card; off-course status and elevation sit on their own lines.
+                    val ascent = progress.remainingAscent
+                    val descent = progress.remainingDescent
                     if (offCourse) {
                         Text(
                             stringResource(Res.string.nav_off_course, progress.offCourseMeters.formatDistance()),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Numbers keep their natural width; the spacer absorbs the slack and
-                        // pins the compact action buttons to the end.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             stringResource(Res.string.nav_remaining, progress.remainingMeters.formatDistance()),
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1
                         )
-                        val ascent = progress.remainingAscent
-                        val descent = progress.remainingDescent
-                        if (ascent != null && descent != null) {
-                            AscentDescent(ascent, descent)
-                        }
                         Spacer(Modifier.weight(1f))
                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             IconButton(onClick = onToggleReverse, modifier = Modifier.size(32.dp)) {
+                                // The ic_u_turn glyph points upward; a quarter-turn makes it read
+                                // as a reverse-direction control rather than a back arrow.
                                 Icon(painterResource(Res.drawable.ic_u_turn),
                                     contentDescription = stringResource(Res.string.nav_reverse),
-                                    modifier = Modifier.size(20.dp))
+                                    modifier = Modifier.size(20.dp).rotate(-90f))
                             }
                             IconButton(onClick = onStop, modifier = Modifier.size(32.dp)) {
                                 Icon(painterResource(Res.drawable.ic_close),
@@ -323,6 +325,9 @@ fun NavigationCard(
                                     modifier = Modifier.size(20.dp))
                             }
                         }
+                    }
+                    if (ascent != null && descent != null) {
+                        AscentDescent(ascent, descent)
                     }
                 }
             }
@@ -640,6 +645,10 @@ fun BoxScope.MapOverlays(
     var chartHeight by remember { mutableStateOf(0.dp) }
     val bottomCardsOffset = if (chartVisible) chartHeight else 0.dp
 
+    // While navigating, the full-width NavigationCard occupies the top band, so the top-right
+    // chips are pushed below it by the card's measured height.
+    var navCardHeight by remember { mutableStateOf(0.dp) }
+
     if (isLocating && !hasTopOverlay) {
         LocatingPill(
             modifier = Modifier
@@ -673,7 +682,10 @@ fun BoxScope.MapOverlays(
     ) {
         Column(
             modifier = Modifier
-                .padding(top = 16.dp, end = offlineChipEnd),
+                .padding(
+                    top = if (navigation.isNavigating) navCardHeight + 8.dp else 16.dp,
+                    end = offlineChipEnd
+                ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End
         ) {
@@ -746,11 +758,16 @@ fun BoxScope.MapOverlays(
     }
 
     if (navigation.isNavigating) {
+        // Full width, but inset on the left to clear the top-left zoom controls
+        // (16dp inset + 48dp button + 8dp gap = 72dp), so the card fills the available
+        // width instead of floating narrow in the center.
         NavigationCard(
             modifier = Modifier
                 .align(Alignment.TopCenter)
+                .fillMaxWidth()
                 .padding(top = 16.dp)
-                .padding(horizontal = 16.dp),
+                .padding(start = 72.dp, end = 16.dp)
+                .onSizeChanged { navCardHeight = with(density) { it.height.toDp() } },
             progress = navigation.progress,
             onToggleReverse = navigation.onToggleReverse,
             onStop = navigation.onStop,
