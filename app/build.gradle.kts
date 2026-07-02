@@ -20,8 +20,7 @@ val gitShortSha = providers.exec {
 
 android {
     namespace = "no.synth.where"
-    compileSdk = 36
-    compileSdkMinor = 1
+    compileSdk = 37
 
     signingConfigs {
         create("release") {
@@ -52,7 +51,7 @@ android {
     defaultConfig {
         applicationId = "no.synth.where"
         minSdk = 33
-        targetSdk = 36
+        targetSdk = 37
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -74,6 +73,7 @@ android {
         }
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

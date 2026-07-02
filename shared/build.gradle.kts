@@ -85,7 +85,7 @@ kotlin {
 
     android {
         namespace = "no.synth.where.shared"
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 33
 
         compilerOptions {
