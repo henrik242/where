@@ -61,6 +61,7 @@
     <string name="zoom_out">Zoom Out</string>
     <string name="tap_to_measure">Tap to measure</string>
     <string name="n_points">%1$d points</string>
+    <string name="n_selected">%1$d selected</string>
     <string name="remove_last_point">Remove Last Point</string>
     <string name="clear_all">Clear All</string>
     <string name="save_as_track">Save as Track</string>

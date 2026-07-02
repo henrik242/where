@@ -117,7 +117,7 @@ class MapScreenRegressionTest {
             "selectedLayer" to "Current map layer (OSM, Kartverket, etc)",
             "hasLocationPermission" to "Whether location permission is granted",
             "currentTrack" to "Currently recording track",
-            "viewingTrack" to "Track being viewed on map",
+            "viewingTracks" to "Tracks being viewed on map",
             "rulerState" to "State of the ruler measurement tool",
             "onRulerPointAdded" to "Callback for ruler measurements"
         )

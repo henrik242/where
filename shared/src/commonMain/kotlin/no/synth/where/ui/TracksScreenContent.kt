@@ -2,8 +2,10 @@ package no.synth.where.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -52,19 +54,53 @@ fun TracksScreenContent(
     onDismissImportError: () -> Unit,
     onContinue: (Track) -> Unit,
     onShowOnMap: (Track) -> Unit,
+    onShowSelectedOnMap: (List<Track>) -> Unit = {},
     onNavigate: (Track) -> Unit = {},
     isRecording: Boolean = false,
 ) {
+    // Multi-select mode: long-press a track to enter it, then tap rows to build a set and show them
+    // all on the map at once.
+    var selectionMode by remember { mutableStateOf(false) }
+    val selectedIds = remember { mutableStateListOf<String>() }
+
+    fun exitSelection() {
+        selectionMode = false
+        selectedIds.clear()
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(Res.string.saved_tracks)) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
+            if (selectionMode) {
+                TopAppBar(
+                    title = { Text(stringResource(Res.string.n_selected, selectedIds.size)) },
+                    navigationIcon = {
+                        IconButton(onClick = { exitSelection() }) {
+                            Icon(painterResource(Res.drawable.ic_close), contentDescription = stringResource(Res.string.cancel))
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                val selected = tracks.filter { it.id in selectedIds }
+                                if (selected.isNotEmpty()) onShowSelectedOnMap(selected)
+                                exitSelection()
+                            },
+                            enabled = selectedIds.isNotEmpty()
+                        ) {
+                            Icon(painterResource(Res.drawable.ic_map), contentDescription = stringResource(Res.string.show_on_map))
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                TopAppBar(
+                    title = { Text(stringResource(Res.string.saved_tracks)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(painterResource(Res.drawable.ic_arrow_back), contentDescription = stringResource(Res.string.back))
+                        }
+                    }
+                )
+            }
         }
     ) { padding ->
         val listState = rememberLazyListState()
@@ -133,6 +169,15 @@ fun TracksScreenContent(
                         track = track,
                         expanded = expandedTrackId == track.id,
                         highlighted = highlightedTrackId == track.id,
+                        selectionMode = selectionMode,
+                        selected = track.id in selectedIds,
+                        onLongPress = {
+                            selectionMode = true
+                            if (track.id !in selectedIds) selectedIds.add(track.id)
+                        },
+                        onSelectToggle = {
+                            if (track.id in selectedIds) selectedIds.remove(track.id) else selectedIds.add(track.id)
+                        },
                         onExpandToggle = {
                             expandedTrackId = if (expandedTrackId == track.id) null else track.id
                         },
@@ -209,11 +254,16 @@ fun TracksScreenContent(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TrackItem(
     track: Track,
     expanded: Boolean = false,
     highlighted: Boolean = false,
+    selectionMode: Boolean = false,
+    selected: Boolean = false,
+    onLongPress: () -> Unit = {},
+    onSelectToggle: () -> Unit = {},
     onExpandToggle: () -> Unit = {},
     onExport: () -> Unit,
     onSave: (() -> Unit)? = null,
@@ -234,7 +284,10 @@ fun TrackItem(
         modifier = Modifier
             .fillMaxWidth()
             .background(highlightColor)
-            .clickable { onExpandToggle() }
+            .combinedClickable(
+                onClick = { if (selectionMode) onSelectToggle() else onExpandToggle() },
+                onLongClick = onLongPress
+            )
             .padding(16.dp)
     ) {
         Row(
@@ -242,6 +295,13 @@ fun TrackItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (selectionMode) {
+                Checkbox(
+                    checked = selected,
+                    onCheckedChange = { onSelectToggle() }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = track.name,
@@ -254,13 +314,15 @@ fun TrackItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Icon(
-                painter = if (expanded) painterResource(Res.drawable.ic_expand_less) else painterResource(Res.drawable.ic_expand_more),
-                contentDescription = if (expanded) stringResource(Res.string.collapse) else stringResource(Res.string.expand)
-            )
+            if (!selectionMode) {
+                Icon(
+                    painter = if (expanded) painterResource(Res.drawable.ic_expand_less) else painterResource(Res.drawable.ic_expand_more),
+                    contentDescription = if (expanded) stringResource(Res.string.collapse) else stringResource(Res.string.expand)
+                )
+            }
         }
 
-        if (expanded) {
+        if (expanded && !selectionMode) {
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),

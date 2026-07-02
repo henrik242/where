@@ -31,6 +31,7 @@ import no.synth.where.data.TerrainClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointUtils
+import no.synth.where.data.Track
 import no.synth.where.data.TrackUtils
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
@@ -96,7 +97,8 @@ fun IosMapScreen(
 
     val isRecording by trackRepository.isRecording.collectAsState()
     val currentTrack by trackRepository.currentTrack.collectAsState()
-    val viewingTrack by trackRepository.viewingTrack.collectAsState()
+    val viewingTracks by trackRepository.viewingTracks.collectAsState()
+    val focusedTrackId by trackRepository.focusedTrackId.collectAsState()
     val navigation by trackRepository.navigation.collectAsState()
     val navigationProgress = rememberNavigationProgress(
         session = navigation,
@@ -174,7 +176,13 @@ fun IosMapScreen(
     var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
     // Track view state
-    val trackFocused by trackRepository.trackFocused.collectAsState()
+    // All visible track lines (viewing set + recording) as one data-driven FeatureCollection.
+    // While navigating, the grey/blue split line replaces the plain lines, so draw nothing here.
+    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, navigation != null) {
+        val renderTracks = if (navigation != null) emptyList()
+        else renderableTracks(viewingTracks, focusedTrackId, currentTrack)
+        buildTracksGeoJson(renderTracks)
+    }
 
     val showCoordGrid by userPreferences.showCoordGrid.collectAsState()
     val crosshairActive by userPreferences.crosshairActive.collectAsState()
@@ -355,19 +363,14 @@ fun IosMapScreen(
         }
     }
 
-    // Fit camera to viewing track bounds and render blue track line
-    LaunchedEffect(viewingTrack, navigation) {
-        val track = viewingTrack
-        if (track != null && !isRecording) {
-            // While navigating, the grey/blue split line replaces the plain track
-            // line; drawing both would leave the base blue bleeding under the grey.
-            if (navigation != null) {
-                mapViewProvider.clearTrackLine()
-            } else if (track.points.size >= 2) {
-                mapViewProvider.updateTrackLine(buildTrackGeoJson(track.points), "#0000FF")
-            }
-            track.bounds()?.let { mapViewProvider.animateToBounds(it) }
-        }
+    // Render every visible track line from the shared data-driven FeatureCollection.
+    LaunchedEffect(tracksGeoJson) {
+        mapViewProvider.updateTracks(tracksGeoJson)
+    }
+
+    // Fit the camera to the union of the viewing set whenever the set changes (not on focus).
+    LaunchedEffect(viewingTracks) {
+        Track.combinedBounds(viewingTracks)?.let { mapViewProvider.animateToBounds(it) }
     }
 
     LaunchedEffect(twoFingerMeasurement) {
@@ -419,10 +422,11 @@ fun IosMapScreen(
                 } else {
                     val tolerance = TrackUtils.metersPerPixel(latitude, cameraZoom) *
                         TrackUtils.TAP_RADIUS_PX
-                    if (TrackUtils.findTappedTrack(tapLocation, viewingTrack, tolerance) != null) {
-                        trackRepository.setTrackFocused(true)
-                    } else if (viewingTrack != null) {
-                        trackRepository.setTrackFocused(false)
+                    val tapped = TrackUtils.findTappedTrack(tapLocation, viewingTracks, tolerance)
+                    if (tapped != null) {
+                        trackRepository.toggleFocusedTrack(tapped.id)
+                    } else if (viewingTracks.isNotEmpty()) {
+                        trackRepository.setFocusedTrack(null)
                     }
                 }
             }
@@ -582,8 +586,8 @@ fun IosMapScreen(
         isLiveSharing = isLiveSharing,
         viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
-        viewingTrack = viewingTrack,
-        trackFocused = trackFocused,
+        viewingTracks = viewingTracks,
+        focusedTrackId = focusedTrackId,
         navigation = NavigationUiState(
             isNavigating = navigation != null,
             progress = navigationProgress,
@@ -723,11 +727,8 @@ fun IosMapScreen(
                 isResolvingRulerName = false
             }
         },
-        onCloseTrack = {
-            trackRepository.clearViewingTrack()
-            mapViewProvider.clearTrackLine()
-        },
-        onCollapseTrack = { trackRepository.setTrackFocused(false) },
+        onCloseTrack = { focusedTrackId?.let { trackRepository.removeViewingTrack(it) } },
+        onCollapseTrack = { trackRepository.setFocusedTrack(null) },
         onCloseViewingPoint = { onClearViewingPoint() },
         onSearchQueryChange = { searchQuery = it },
         onSearchResultClick = { result ->
@@ -777,21 +778,9 @@ fun IosMapScreen(
                     mapViewProvider.setStyle(styleJson)
                     mapViewProvider.setShowsUserLocation(true)
 
-                    // Track rendering: recording (red) takes precedence over viewing (blue).
-                    // While navigating, the grey/blue split line replaces the plain line.
-                    val recording = currentTrack
-                    if (recording != null && recording.points.size >= 2) {
-                        val geoJson = buildTrackGeoJson(recording.points)
-                        mapViewProvider.updateTrackLine(geoJson, "#FF0000")
-                    } else if (!isRecording && navigation == null) {
-                        val viewing = viewingTrack
-                        if (viewing != null && viewing.points.size >= 2) {
-                            val geoJson = buildTrackGeoJson(viewing.points)
-                            mapViewProvider.updateTrackLine(geoJson, "#0000FF")
-                        } else {
-                            mapViewProvider.clearTrackLine()
-                        }
-                    }
+                    // All track lines (viewing set + recording) from the shared data-driven
+                    // FeatureCollection; empty while navigating so only the split line shows.
+                    mapViewProvider.updateTracks(tracksGeoJson)
 
                     // Friend track rendering
                     val friendGeoJson = friendTrackGeoJson

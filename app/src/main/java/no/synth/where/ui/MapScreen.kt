@@ -62,6 +62,8 @@ import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.MapLibreMapView
 import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.ui.map.MapZoomLevels
+import no.synth.where.ui.map.buildTracksGeoJson
+import no.synth.where.ui.map.renderableTracks
 import no.synth.where.ui.map.animateToBounds
 import no.synth.where.ui.map.MapScreenContent
 import no.synth.where.ui.map.TwoFingerMeasurement
@@ -94,8 +96,8 @@ fun MapScreen(
     val savedPoints by viewModel.savedPoints.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
     val currentTrack by viewModel.currentTrack.collectAsState()
-    val viewingTrack by viewModel.viewingTrack.collectAsState()
-    val trackFocused by viewModel.trackFocused.collectAsState()
+    val viewingTracks by viewModel.viewingTracks.collectAsState()
+    val focusedTrackId by viewModel.focusedTrackId.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val viewerCount by viewModel.userPreferences.viewerCount.collectAsState()
     val liveShareUntilMillis by viewModel.userPreferences.liveShareUntilMillis.collectAsState()
@@ -168,11 +170,11 @@ fun MapScreen(
     // Back exits the active mode in order: stop navigation, then unfocus a track (chrome returns,
     // line stays), then clear the track. Handling navigation first avoids a half-exited state where
     // the route is hidden but the session keeps polling.
-    BackHandler(enabled = navigation != null || viewingTrack != null) {
+    BackHandler(enabled = navigation != null || viewingTracks.isNotEmpty()) {
         when {
             navigation != null -> viewModel.stopNavigation()
-            trackFocused -> viewModel.deselectTrack()
-            else -> viewModel.clearViewingTrack()
+            focusedTrackId != null -> viewModel.unfocusTrack()
+            else -> viewModel.clearViewingTracks()
         }
     }
 
@@ -291,26 +293,27 @@ fun MapScreen(
         )
     }
 
-    LaunchedEffect(currentTrack, viewingTrack, navigation, mapInstance) {
-        val viewing = viewingTrack
-        val trackToShow = currentTrack ?: viewing
-        val map = mapInstance
+    // All visible track lines (viewing set + recording) as one data-driven FeatureCollection.
+    // While navigating, the grey/blue split line replaces the plain lines, so draw nothing here.
+    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, navigation != null) {
+        val renderTracks = if (navigation != null) emptyList()
+        else renderableTracks(viewingTracks, focusedTrackId, currentTrack)
+        buildTracksGeoJson(renderTracks)
+    }
 
-        map?.style?.let { style ->
-            // While navigating, the grey/blue split line replaces the plain track
-            // line; drawing both would leave the base blue bleeding under the grey.
-            MapRenderUtils.updateTrackOnMap(
-                style,
-                if (navigation != null) null else trackToShow,
-                isCurrentTrack = currentTrack != null
-            )
-
-            val bounds = viewing?.bounds()
-            if (bounds != null) {
-                delay(100)
-                map.animateToBounds(bounds)
-            }
+    LaunchedEffect(tracksGeoJson, mapInstance) {
+        mapInstance?.style?.let { style ->
+            MapRenderUtils.updateTracksOnMap(style, tracksGeoJson)
         }
+    }
+
+    // Fit the camera to the union of the viewing set whenever the set changes (adding/removing a
+    // track), but not when merely focusing one.
+    LaunchedEffect(viewingTracks, mapInstance) {
+        val map = mapInstance ?: return@LaunchedEffect
+        val bounds = Track.combinedBounds(viewingTracks) ?: return@LaunchedEffect
+        delay(100)
+        map.animateToBounds(bounds)
     }
 
     LaunchedEffect(mapInstance) {
@@ -395,9 +398,9 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(hasLocationPermission, mapInstance, viewingTrack, currentTrack) {
+    LaunchedEffect(hasLocationPermission, mapInstance, viewingTracks, currentTrack) {
         val map = mapInstance
-        if (hasLocationPermission && map != null && !hasZoomedToLocation && viewingTrack == null && currentTrack == null) {
+        if (hasLocationPermission && map != null && !hasZoomedToLocation && viewingTracks.isEmpty() && currentTrack == null) {
             try {
                 val locationManager =
                     context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
@@ -465,8 +468,8 @@ fun MapScreen(
         isLiveSharing = isLiveSharing,
         viewerCount = viewerCount,
         recordingDistance = currentTrack?.getDistanceMeters(),
-        viewingTrack = viewingTrack,
-        trackFocused = trackFocused,
+        viewingTracks = viewingTracks,
+        focusedTrackId = focusedTrackId,
         navigation = NavigationUiState(
             isNavigating = navigation != null,
             progress = navigationProgress,
@@ -556,8 +559,8 @@ fun MapScreen(
         onRulerSaveAsTrack = { viewModel.openSaveRulerAsTrackDialog() },
         onOfflineIndicatorClick = onOfflineSettingsClick,
         onOnlineTrackingClick = onOnlineTrackingSettingsClick,
-        onCloseTrack = { viewModel.clearViewingTrack() },
-        onCollapseTrack = { viewModel.deselectTrack() },
+        onCloseTrack = { focusedTrackId?.let { viewModel.removeViewingTrack(it) } },
+        onCollapseTrack = { viewModel.unfocusTrack() },
         onCloseViewingPoint = onClearViewingPoint,
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
         onSearchResultClick = { result ->
@@ -604,7 +607,8 @@ fun MapScreen(
                 showSavedPoints = showSavedPoints,
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,
-                viewingTrack = viewingTrack,
+                viewingTracks = viewingTracks,
+                tracksGeoJson = tracksGeoJson,
                 friendTrackGeoJson = friendTrackGeoJson,
                 savedCameraLat = savedCameraLat,
                 savedCameraLon = savedCameraLon,
@@ -615,8 +619,8 @@ fun MapScreen(
                 onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },
                 onPointClick = { point -> viewModel.openPointInfoDialog(point) },
-                onTrackClick = { viewModel.selectTrack() },
-                onMapClickOutsideTrack = { viewModel.deselectTrack() },
+                onTrackClick = { id -> viewModel.onTrackTapped(id) },
+                onMapClickOutsideTrack = { viewModel.unfocusTrack() },
                 onTwoFingerMeasure = { twoFingerMeasurement = it },
                 isTwoFingerMeasurementVisible = twoFingerMeasurement != null,
                 twoFingerMeasurement = twoFingerMeasurement,
@@ -864,8 +868,8 @@ private fun MapScreenFullPreview() {
             showAvalancheZones = false,
             onlineTrackingEnabled = false,
             recordingDistance = 2450.0,
-            viewingTrack = sampleTrack,
-            trackFocused = true,
+            viewingTracks = listOf(sampleTrack),
+            focusedTrackId = sampleTrack.id,
             viewingPointName = null,
             viewingPointColor = "#FF5722",
             showViewingPoint = false,

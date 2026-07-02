@@ -61,6 +61,7 @@
     <string name="zoom_out">Zoom ut</string>
     <string name="tap_to_measure">Trykk for å måle</string>
     <string name="n_points">%1$d punkter</string>
+    <string name="n_selected">%1$d valgt</string>
     <string name="remove_last_point">Fjern siste punkt</string>
     <string name="clear_all">Fjern alle</string>
     <string name="save_as_track">Lagre som spor</string>

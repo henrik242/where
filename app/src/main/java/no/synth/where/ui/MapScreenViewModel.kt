@@ -29,8 +29,8 @@ class MapScreenViewModel(
     val savedPoints = savedPointsRepository.savedPoints
     val isRecording = trackRepository.isRecording
     val currentTrack = trackRepository.currentTrack
-    val viewingTrack = trackRepository.viewingTrack
-    val trackFocused = trackRepository.trackFocused
+    val viewingTracks = trackRepository.viewingTracks
+    val focusedTrackId = trackRepository.focusedTrackId
     val tracks = trackRepository.tracks
     val onlineTrackingEnabled = userPreferences.onlineTrackingEnabled
 
@@ -346,12 +346,13 @@ class MapScreenViewModel(
         }
     }
 
-    // Viewing track
-    fun selectTrack() = trackRepository.setTrackFocused(true)
-    fun deselectTrack() = trackRepository.setTrackFocused(false)
+    // Viewing tracks
+    fun onTrackTapped(id: String) = trackRepository.toggleFocusedTrack(id)
+    fun unfocusTrack() = trackRepository.setFocusedTrack(null)
+    fun removeViewingTrack(id: String) = trackRepository.removeViewingTrack(id)
 
-    fun clearViewingTrack() {
-        trackRepository.clearViewingTrack()
+    fun clearViewingTracks() {
+        trackRepository.clearViewingTracks()
     }
 
     // Navigation

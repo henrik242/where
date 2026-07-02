@@ -32,6 +32,21 @@ object TrackUtils {
         return if (minDistanceToTrackMeters(tap, track) <= maxDistanceMeters) track else null
     }
 
+    /**
+     * The track closest to [tap] among [tracks], or null if none is within [maxDistanceMeters].
+     * Used when several tracks are drawn at once so a tap focuses the nearest line.
+     */
+    fun findTappedTrack(
+        tap: LatLng,
+        tracks: List<Track>,
+        maxDistanceMeters: Double,
+    ): Track? =
+        tracks.filter { it.points.size >= 2 }
+            .map { it to minDistanceToTrackMeters(tap, it) }
+            .filter { it.second <= maxDistanceMeters }
+            .minByOrNull { it.second }
+            ?.first
+
     /** Minimum distance from [tap] to the track polyline, in meters. */
     fun minDistanceToTrackMeters(tap: LatLng, track: Track): Double =
         track.points.asSequence()

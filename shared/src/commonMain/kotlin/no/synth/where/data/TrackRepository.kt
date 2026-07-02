@@ -30,11 +30,14 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val _currentTrack = MutableStateFlow<Track?>(null)
     val currentTrack: StateFlow<Track?> = _currentTrack.asStateFlow()
 
-    private val _viewingTrack = MutableStateFlow<Track?>(null)
-    val viewingTrack: StateFlow<Track?> = _viewingTrack.asStateFlow()
+    // Multiple saved tracks can be shown at once. Order = the palette color index, so it is kept
+    // stable across add/remove. [focusedTrackId] is the one whose banner + altitude chart show and
+    // that is emphasized on the map; null means nothing is focused.
+    private val _viewingTracks = MutableStateFlow<List<Track>>(emptyList())
+    val viewingTracks: StateFlow<List<Track>> = _viewingTracks.asStateFlow()
 
-    private val _trackFocused = MutableStateFlow(false)
-    val trackFocused: StateFlow<Boolean> = _trackFocused.asStateFlow()
+    private val _focusedTrackId = MutableStateFlow<String?>(null)
+    val focusedTrackId: StateFlow<String?> = _focusedTrackId.asStateFlow()
 
     private val _navigation = MutableStateFlow<NavigationSession?>(null)
     val navigation: StateFlow<NavigationSession?> = _navigation.asStateFlow()
@@ -202,24 +205,47 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         }
     }
 
-    fun setViewingTrack(track: Track) {
-        _viewingTrack.value = track
-        _trackFocused.value = false
+    /** Add a track to the viewing set (if not already present) and focus it. */
+    fun addViewingTrack(track: Track) {
+        if (_viewingTracks.value.none { it.id == track.id }) {
+            _viewingTracks.value = _viewingTracks.value + track
+        }
+        _focusedTrackId.value = track.id
     }
 
-    fun clearViewingTrack() {
-        _viewingTrack.value = null
-        _trackFocused.value = false
+    /** Replace the whole viewing set (bulk multi-select), clearing any focus. */
+    fun setViewingTracks(tracks: List<Track>) {
+        _viewingTracks.value = tracks
+        _focusedTrackId.value = null
     }
 
-    fun setTrackFocused(focused: Boolean) {
-        _trackFocused.value = focused
+    fun removeViewingTrack(id: String) {
+        _viewingTracks.value = _viewingTracks.value.filterNot { it.id == id }
+        if (_focusedTrackId.value == id || _viewingTracks.value.isEmpty()) {
+            _focusedTrackId.value = null
+        }
+    }
+
+    fun clearViewingTracks() {
+        _viewingTracks.value = emptyList()
+        _focusedTrackId.value = null
+    }
+
+    fun setFocusedTrack(id: String?) {
+        _focusedTrackId.value = id
+    }
+
+    fun toggleFocusedTrack(id: String) {
+        _focusedTrackId.value = if (_focusedTrackId.value == id) null else id
     }
 
     fun startNavigation(track: Track, reversed: Boolean = false) {
         if (_isRecording.value) return   // recording and navigation are mutually exclusive
+        // Navigation takes over the view; hide any passively-viewed tracks so only the
+        // grey/blue split line shows.
+        _viewingTracks.value = emptyList()
+        _focusedTrackId.value = null
         _navigation.value = NavigationSession(track, reversed)
-        _viewingTrack.value = track   // reuse route rendering + bounds-fit
     }
 
     fun toggleNavigationReverse() {
@@ -229,7 +255,6 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     fun stopNavigation() {
         _navigation.value = null
-        _viewingTrack.value = null
     }
 
     fun importTrack(gpxContent: String): Track? {

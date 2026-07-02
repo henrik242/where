@@ -13,6 +13,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private static let staleFixThreshold: TimeInterval = 30.0
     private var pendingTrackGeoJson: String?
     private var pendingTrackColor: String?
+    private var pendingTracksGeoJson: String?
     private var pendingSavedPointsGeoJson: String?
     private var pendingRulerLineGeoJson: String?
     private var pendingRulerPointsGeoJson: String?
@@ -255,9 +256,16 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         applyTrackLine(style: style, geoJson: geoJson, color: color)
     }
 
+    func updateTracks(geoJson: String) {
+        pendingTracksGeoJson = geoJson
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        applyTracks(style: style, geoJson: geoJson)
+    }
+
     func clearTrackLine() {
         pendingTrackGeoJson = nil
         pendingTrackColor = nil
+        pendingTracksGeoJson = nil
         guard let mapView = self.mapView, let style = mapView.style else { return }
         removeTrackLine(style: style)
     }
@@ -487,7 +495,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     }
 
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
-        if let geoJson = pendingTrackGeoJson, let color = pendingTrackColor {
+        if let geoJson = pendingTracksGeoJson {
+            applyTracks(style: style, geoJson: geoJson)
+        } else if let geoJson = pendingTrackGeoJson, let color = pendingTrackColor {
             applyTrackLine(style: style, geoJson: geoJson, color: color)
         }
         if let geoJson = pendingSavedPointsGeoJson {
@@ -540,6 +550,31 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
         pendingTrackGeoJson = geoJson
         pendingTrackColor = color
+    }
+
+    // Draws any number of track lines from one FeatureCollection, styling each feature from its own
+    // color/width/opacity properties (data-driven), so the whole viewing set uses one source/layer.
+    private func applyTracks(style: MLNStyle, geoJson: String) {
+        removeTrackLine(style: style)
+
+        guard let data = geoJson.data(using: .utf8),
+              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+            print("Failed to parse tracks GeoJSON")
+            return
+        }
+
+        let source = MLNShapeSource(identifier: trackSourceId, shape: shape, options: nil)
+        style.addSource(source)
+
+        let layer = MLNLineStyleLayer(identifier: trackLayerId, source: source)
+        layer.lineColor = NSExpression(forKeyPath: "color")
+        layer.lineWidth = NSExpression(forKeyPath: "width")
+        layer.lineOpacity = NSExpression(forKeyPath: "opacity")
+        layer.lineCap = NSExpression(forConstantValue: "round")
+        layer.lineJoin = NSExpression(forConstantValue: "round")
+        style.addLayer(layer)
+
+        pendingTracksGeoJson = geoJson
     }
 
     private func removeTrackLine(style: MLNStyle) {

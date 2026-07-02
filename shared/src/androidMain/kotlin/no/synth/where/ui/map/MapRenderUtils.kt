@@ -3,7 +3,6 @@ package no.synth.where.ui.map
 import android.content.Context
 import android.location.Location
 import no.synth.where.data.PlaceSearchClient
-import no.synth.where.data.Track
 import no.synth.where.data.RulerState
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -49,34 +48,31 @@ object MapRenderUtils {
     private const val MEASURE_LABEL_LAYER = "measure-label-layer"
 
     /**
-     * Update track visualization on the map.
+     * Render any number of track lines from a single FeatureCollection, using data-driven paint so
+     * each feature's `color`/`width`/`opacity` properties style it. One source + one layer handles
+     * the whole viewing set (plus the recording track), so adding/removing tracks never churns the
+     * style. An empty collection clears the lines.
      */
-    fun updateTrackOnMap(style: Style, track: Track?, isCurrentTrack: Boolean = true) {
+    fun updateTracksOnMap(style: Style, geoJson: String) {
         try {
             val sourceId = "track-source"
             val layerId = "track-layer"
 
-            style.getLayer(layerId)?.let { style.removeLayer(it) }
-            style.getSource(sourceId)?.let { style.removeSource(it) }
-
-            if (track != null && track.points.size >= 2) {
-                val points =
-                    track.points.map { Point.fromLngLat(it.latLng.longitude, it.latLng.latitude) }
-                val lineString = LineString.fromLngLats(points)
-                val feature = Feature.fromGeometry(lineString)
-
-                val source = GeoJsonSource(sourceId, feature)
-                style.addSource(source)
-
-                val lineColor = if (isCurrentTrack) "#FF0000" else "#0000FF"
-
-                val lineLayer = LineLayer(layerId, sourceId).withProperties(
-                    PropertyFactory.lineColor(lineColor),
-                    PropertyFactory.lineWidth(4f),
-                    PropertyFactory.lineOpacity(0.8f)
-                )
-                style.addLayer(lineLayer)
+            val existing = style.getSourceAs<GeoJsonSource>(sourceId)
+            if (existing != null) {
+                existing.setGeoJson(geoJson)
+                return
             }
+
+            style.addSource(GeoJsonSource(sourceId, geoJson))
+            val lineLayer = LineLayer(layerId, sourceId).withProperties(
+                PropertyFactory.lineColor(Expression.get("color")),
+                PropertyFactory.lineWidth(Expression.get("width")),
+                PropertyFactory.lineOpacity(Expression.get("opacity")),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
+            )
+            style.addLayer(lineLayer)
         } catch (e: Exception) {
             Logger.e(e, "Map render error")
         }

@@ -27,6 +27,7 @@ fun TracksScreen(
     onBackClick: () -> Unit,
     onContinueTrack: (Track) -> Unit,
     onShowTrackOnMap: (Track) -> Unit,
+    onShowTracksOnMap: (List<Track>) -> Unit = {},
     onNavigateTrack: (Track) -> Unit
 ) {
     val context = LocalContext.current
@@ -196,6 +197,7 @@ fun TracksScreen(
         onDismissImportError = { showImportError = false },
         onContinue = onContinueTrack,
         onShowOnMap = onShowTrackOnMap,
+        onShowSelectedOnMap = onShowTracksOnMap,
         onNavigate = onNavigateTrack,
         isRecording = isRecording
     )

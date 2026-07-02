@@ -122,7 +122,7 @@ class MapScreenStateTest {
             "showSavedPoints",
             "savedPoints",
             "currentTrack",
-            "viewingTrack",
+            "viewingTracks",
             "savedCameraLat",
             "savedCameraLon",
             "savedCameraZoom",

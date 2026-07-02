@@ -73,6 +73,10 @@ $trackPointsXml
     fun bounds(): LatLngBounds? = points.map { it.latLng }.bounds()
 
     companion object {
+        /** Combined lat/lng envelope over all [tracks], or null when none have points. */
+        fun combinedBounds(tracks: List<Track>): LatLngBounds? =
+            tracks.flatMap { track -> track.points.map { it.latLng } }.bounds()
+
         fun fromFIT(data: ByteArray): Track? {
             val points = FitParser.parse(data)
             if (points.isEmpty()) return null

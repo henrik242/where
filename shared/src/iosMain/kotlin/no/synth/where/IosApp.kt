@@ -228,7 +228,11 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onDismissImportError = { showImportError = false },
                     onContinue = {},
                     onShowOnMap = { track ->
-                        trackRepository.setViewingTrack(track)
+                        trackRepository.addViewingTrack(track)
+                        navigateToMap()
+                    },
+                    onShowSelectedOnMap = { tracks ->
+                        trackRepository.setViewingTracks(tracks)
                         navigateToMap()
                     },
                     onNavigate = { track ->

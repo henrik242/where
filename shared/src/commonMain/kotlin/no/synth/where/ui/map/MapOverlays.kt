@@ -213,6 +213,7 @@ fun RecordingCard(
 fun ViewingTrackBanner(
     modifier: Modifier = Modifier,
     trackName: String,
+    trackColorHex: String? = null,
     onCloseTrack: () -> Unit,
     onCollapse: () -> Unit
 ) {
@@ -227,11 +228,19 @@ fun ViewingTrackBanner(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Icon(
-                painterResource(Res.drawable.ic_map),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
+            if (trackColorHex != null) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .background(parseHexColor(trackColorHex), CircleShape)
+                )
+            } else {
+                Icon(
+                    painterResource(Res.drawable.ic_map),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             Text(
                 text = trackName,
                 style = MaterialTheme.typography.titleMedium,
@@ -576,8 +585,8 @@ fun BoxScope.MapOverlays(
     recordingDistance: Double?,
     onlineTrackingEnabled: Boolean,
     viewerCount: Int = 0,
-    viewingTrack: Track?,
-    trackFocused: Boolean = false,
+    viewingTracks: List<Track> = emptyList(),
+    focusedTrackId: String? = null,
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -609,8 +618,10 @@ fun BoxScope.MapOverlays(
     liveShareUntilMillis: Long = 0L,
     isLiveSharing: Boolean = false
 ) {
-    // The track whose name banner + altitude chart are shown, or null when not focused.
-    val focusedTrack = if (trackFocused) viewingTrack else null
+    // The track whose name banner + altitude chart are shown, or null when nothing is focused.
+    val focusedTrack = viewingTracks.firstOrNull { it.id == focusedTrackId }
+    val focusedTrackColor = viewingTracks.indexOfFirst { it.id == focusedTrackId }
+        .takeIf { it >= 0 }?.let { TrackColors.forIndex(it) }
     val hasTopOverlay = showSearch ||
         focusedTrack != null ||
         navigation.isNavigating ||
@@ -747,6 +758,7 @@ fun BoxScope.MapOverlays(
                 .padding(top = 16.dp)
                 .padding(horizontal = 16.dp),
             trackName = focusedTrack.name,
+            trackColorHex = focusedTrackColor,
             onCloseTrack = onCloseTrack,
             onCollapse = onCollapseTrack
         )

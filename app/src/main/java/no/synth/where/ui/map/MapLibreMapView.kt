@@ -57,7 +57,8 @@ fun MapLibreMapView(
     showSavedPoints: Boolean = true,
     savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
     currentTrack: Track? = null,
-    viewingTrack: Track? = null,
+    viewingTracks: List<Track> = emptyList(),
+    tracksGeoJson: String = "",
     savedCameraLat: Double = 65.0,
     savedCameraLon: Double = 10.0,
     savedCameraZoom: Double = 5.0,
@@ -68,7 +69,7 @@ fun MapLibreMapView(
     onRulerPointAdded: (LatLng) -> Unit = {},
     onLongPress: (LatLng) -> Unit = {},
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {},
-    onTrackClick: () -> Unit = {},
+    onTrackClick: (String) -> Unit = {},
     onMapClickOutsideTrack: () -> Unit = {},
     onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
     isTwoFingerMeasurementVisible: Boolean = false,
@@ -84,6 +85,10 @@ fun MapLibreMapView(
     val gpsKeepAlive = remember(context) { GpsKeepAlive(context) }
     val hasLocationPermissionState = rememberUpdatedState(hasLocationPermission)
     val isRecordingState = rememberUpdatedState(isRecording)
+    // Kept current so the async onStyleLoaded callbacks redraw the latest tracks without the
+    // style-reload effects needing to key on them.
+    val tracksGeoJsonState = rememberUpdatedState(tracksGeoJson)
+    val viewingTracksState = rememberUpdatedState(viewingTracks)
 
     DisposableEffect(context) {
         val connectivityManager =
@@ -138,8 +143,8 @@ fun MapLibreMapView(
                     showHillshade = showHillshade,
                     glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
                 )
-                val viewing = viewingTrack
                 val current = currentTrack
+                val hasNoTracks = viewingTracks.isEmpty() && current == null
                 mapInstance.setStyle(
                     Style.Builder().fromJson(styleJson),
                     object : Style.OnStyleLoaded {
@@ -150,13 +155,8 @@ fun MapLibreMapView(
                                 context,
                                 hasLocationPermission
                             )
-                            val trackToShow = current ?: viewing
                             MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
-                            MapRenderUtils.updateTrackOnMap(
-                                style,
-                                trackToShow,
-                                isCurrentTrack = current != null
-                            )
+                            MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
                             MapRenderUtils.updateRulerOnMap(style, rulerState)
                             MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
                             MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
@@ -165,7 +165,7 @@ fun MapLibreMapView(
                                 MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
                             }
 
-                            if (viewing == null && current == null) {
+                            if (hasNoTracks) {
                                 mapInstance.cameraPosition = CameraPosition.Builder()
                                     .target(LatLng(savedCameraLat, savedCameraLon).toMapLibre())
                                     .zoom(savedCameraZoom)
@@ -220,9 +220,6 @@ fun MapLibreMapView(
                     showHillshade = showHillshade,
                     glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
                 )
-                val viewing = viewingTrack
-                val current = currentTrack
-
                 try {
                     mapInstance.setStyle(
                         Style.Builder().fromJson(styleJson),
@@ -234,13 +231,8 @@ fun MapLibreMapView(
                                     context,
                                     hasLocationPermission
                                 )
-                                val trackToShow = current ?: viewing
                                 MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
-                                MapRenderUtils.updateTrackOnMap(
-                                    style,
-                                    trackToShow,
-                                    isCurrentTrack = current != null
-                                )
+                                MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
                                 MapRenderUtils.updateRulerOnMap(style, rulerState)
                                 MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
                                 MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
@@ -303,7 +295,6 @@ fun MapLibreMapView(
     }
 
     val measurementVisibleState = rememberUpdatedState(isTwoFingerMeasurementVisible)
-    val viewingTrackState = rememberUpdatedState(viewingTrack)
 
     LaunchedEffect(rulerState.isActive, savedPoints.size, map) {
         map?.let { mapInstance ->
@@ -330,11 +321,12 @@ fun MapLibreMapView(
                         val tolerance = TrackUtils.metersPerPixel(
                             commonPoint.latitude, mapInstance.cameraPosition.zoom
                         ) * TrackUtils.TAP_RADIUS_PX
-                        if (TrackUtils.findTappedTrack(commonPoint, viewingTrackState.value, tolerance) != null) {
-                            onTrackClick()
+                        val tapped = TrackUtils.findTappedTrack(commonPoint, viewingTracksState.value, tolerance)
+                        if (tapped != null) {
+                            onTrackClick(tapped.id)
                             true
                         } else {
-                            if (viewingTrackState.value != null) onMapClickOutsideTrack()
+                            if (viewingTracksState.value.isNotEmpty()) onMapClickOutsideTrack()
                             false
                         }
                     }
@@ -421,8 +413,6 @@ fun MapLibreMapView(
                             showHillshade = showHillshade,
                             glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
                         )
-                        val viewing = viewingTrack
-                        val current = currentTrack
                         mapInstance.setStyle(
                             Style.Builder().fromJson(styleJson),
                             object : Style.OnStyleLoaded {
@@ -433,12 +423,7 @@ fun MapLibreMapView(
                                         ctx,
                                         hasLocationPermission
                                     )
-                                    val trackToShow = current ?: viewing
-                                    MapRenderUtils.updateTrackOnMap(
-                                        style,
-                                        trackToShow,
-                                        isCurrentTrack = current != null
-                                    )
+                                    MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
                                     MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
                                     MapRenderUtils.updateRulerOnMap(style, rulerState)
                                     MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)

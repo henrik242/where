@@ -16,6 +16,71 @@ fun buildTrackGeoJson(points: List<TrackPoint>): String {
     return """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coordinates]}}"""
 }
 
+/** One track to draw, with its resolved paint properties. */
+data class RenderableTrack(
+    val id: String,
+    val points: List<TrackPoint>,
+    val color: String,
+    val width: Double,
+    val opacity: Double,
+)
+
+/**
+ * Resolve paint for every track to draw at once. Viewing tracks get palette colors by their
+ * position in [viewing]; when [focusedId] is non-null the focused track is emphasized (wider,
+ * opaque) and the others are dimmed so the tapped one stands out. The [recording] track, if any,
+ * is always red and appended last so it draws on top.
+ */
+fun renderableTracks(
+    viewing: List<Track>,
+    focusedId: String?,
+    recording: Track?,
+): List<RenderableTrack> {
+    val out = ArrayList<RenderableTrack>(viewing.size + 1)
+    viewing.forEachIndexed { index, track ->
+        if (track.points.size < 2) return@forEachIndexed
+        val isFocused = track.id == focusedId
+        val dimmed = focusedId != null && !isFocused
+        out.add(
+            RenderableTrack(
+                id = track.id,
+                points = track.points,
+                color = TrackColors.forIndex(index),
+                width = if (isFocused) 6.0 else 4.0,
+                opacity = if (dimmed) 0.3 else 0.9,
+            )
+        )
+    }
+    if (recording != null && recording.points.size >= 2) {
+        out.add(
+            RenderableTrack(
+                id = recording.id,
+                points = recording.points,
+                color = TrackColors.RECORDING,
+                width = 4.0,
+                opacity = 0.9,
+            )
+        )
+    }
+    return out
+}
+
+/**
+ * A single FeatureCollection holding every track line, each feature carrying its own
+ * `color`/`width`/`opacity` so one data-driven line layer can render all of them. Tracks with
+ * fewer than two points are skipped.
+ */
+fun buildTracksGeoJson(tracks: List<RenderableTrack>): String {
+    val features = tracks.joinToString(",") { track ->
+        val coordinates = track.points.joinToString(",") { point ->
+            "[${point.latLng.longitude},${point.latLng.latitude}]"
+        }
+        """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coordinates]},""" +
+            """"properties":{"id":"${track.id}","color":"${track.color}","width":${track.width},"opacity":${track.opacity}}}"""
+    }
+    return """{"type":"FeatureCollection","features":[$features]}"""
+}
+
 fun buildSavedPointsGeoJson(points: List<SavedPoint>): String {
     val features = points.joinToString(",") { point ->
         val name = point.name.replace("\"", "\\\"")

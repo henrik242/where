@@ -49,8 +49,8 @@ fun MapScreenContent(
     liveShareUntilMillis: Long = 0L,
     isLiveSharing: Boolean = false,
     recordingDistance: Double?,
-    viewingTrack: Track? = null,
-    trackFocused: Boolean = false,
+    viewingTracks: List<Track> = emptyList(),
+    focusedTrackId: String? = null,
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -101,7 +101,7 @@ fun MapScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !trackFocused && !navigation.isNavigating,
+                visible = focusedTrackId == null && !navigation.isNavigating,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -157,8 +157,8 @@ fun MapScreenContent(
                 viewerCount = viewerCount,
                 liveShareUntilMillis = liveShareUntilMillis,
                 isLiveSharing = isLiveSharing,
-                viewingTrack = viewingTrack,
-                trackFocused = trackFocused,
+                viewingTracks = viewingTracks,
+                focusedTrackId = focusedTrackId,
                 navigation = navigation,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,
