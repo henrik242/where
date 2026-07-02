@@ -100,8 +100,10 @@ fun MapScreenContent(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
+            // Hidden only while a track is focused. startNavigation() clears focusedTrackId,
+            // so the FAB column stays available during navigation.
             AnimatedVisibility(
-                visible = focusedTrackId == null && !navigation.isNavigating,
+                visible = focusedTrackId == null,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -116,6 +118,7 @@ fun MapScreenContent(
                     showAvalancheZones = showAvalancheZones,
                     showHillshade = showHillshade,
                     showCoordGrid = showCoordGrid,
+                    showRecordFab = !navigation.isNavigating,
                     onSearchClick = onSearchClick,
                     onLayerMenuToggle = onLayerMenuToggle,
                     onLayerSelected = onLayerSelected,

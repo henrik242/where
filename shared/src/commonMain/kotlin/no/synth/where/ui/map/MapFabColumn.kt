@@ -61,6 +61,7 @@ fun MapFabColumn(
     showAvalancheZones: Boolean,
     showHillshade: Boolean = false,
     showCoordGrid: Boolean = false,
+    showRecordFab: Boolean = true,
     onSearchClick: () -> Unit,
     onLayerMenuToggle: (Boolean) -> Unit,
     onLayerSelected: (MapLayer) -> Unit,
@@ -118,19 +119,23 @@ fun MapFabColumn(
             }
         }
 
-        Spacer(modifier = Modifier.size(8.dp))
+        // Recording and navigation are mutually exclusive, so the record FAB is hidden while
+        // navigating (see MapScreenContent).
+        if (showRecordFab) {
+            Spacer(modifier = Modifier.size(8.dp))
 
-        SmallFloatingActionButton(
-            onClick = onRecordStopClick,
-            modifier = Modifier.size(48.dp),
-            containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Icon(
-                if (isRecording) painterResource(Res.drawable.ic_stop) else painterResource(Res.drawable.ic_fiber_manual_record),
-                contentDescription = if (isRecording) stringResource(Res.string.stop_recording) else stringResource(Res.string.start_recording),
-                modifier = if (isRecording) Modifier else Modifier.size(18.dp),
-                tint = if (isRecording) Color.White else Color.Red
-            )
+            SmallFloatingActionButton(
+                onClick = onRecordStopClick,
+                modifier = Modifier.size(48.dp),
+                containerColor = if (isRecording) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Icon(
+                    if (isRecording) painterResource(Res.drawable.ic_stop) else painterResource(Res.drawable.ic_fiber_manual_record),
+                    contentDescription = if (isRecording) stringResource(Res.string.stop_recording) else stringResource(Res.string.start_recording),
+                    modifier = if (isRecording) Modifier else Modifier.size(18.dp),
+                    tint = if (isRecording) Color.White else Color.Red
+                )
+            }
         }
 
         Spacer(modifier = Modifier.size(8.dp))

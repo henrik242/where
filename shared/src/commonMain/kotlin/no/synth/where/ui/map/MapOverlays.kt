@@ -622,11 +622,15 @@ fun BoxScope.MapOverlays(
     val focusedTrack = viewingTracks.firstOrNull { it.id == focusedTrackId }
     val focusedTrackColor = viewingTracks.indexOfFirst { it.id == focusedTrackId }
         .takeIf { it >= 0 }?.let { TrackColors.forIndex(it) }
-    val hasTopOverlay = showSearch ||
-        focusedTrack != null ||
-        navigation.isNavigating ||
-        (showViewingPoint && viewingPointName != null) ||
-        followedClientId != null
+    val topOverlay = topOverlayState(
+        showSearch = showSearch,
+        hasFocusedTrack = focusedTrack != null,
+        hasViewingPoint = showViewingPoint && viewingPointName != null,
+        isFollowing = followedClientId != null,
+        isNavigating = navigation.isNavigating,
+    )
+    val hideCornerControls = topOverlay.hidesCornerControls
+    val hasTopOverlay = topOverlay.hidesTopCenter
 
     // The altitude chart is pinned bottom-center; when it is shown the bottom-left
     // cards (recording/ruler/crosshair) are lifted above its measured height so they
@@ -649,7 +653,7 @@ fun BoxScope.MapOverlays(
     )
 
     AnimatedVisibility(
-        visible = !hasTopOverlay,
+        visible = !hideCornerControls,
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = Modifier.align(Alignment.TopStart)
@@ -662,7 +666,7 @@ fun BoxScope.MapOverlays(
     }
 
     AnimatedVisibility(
-        visible = !hasTopOverlay,
+        visible = !hideCornerControls,
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = Modifier.align(Alignment.TopEnd)
