@@ -13,9 +13,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import no.synth.where.data.Track
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -34,12 +31,12 @@ fun TracksScreen(
     onNavigateTrack: (Track) -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val app = context.applicationContext as no.synth.where.WhereApplication
     val viewModel: TracksScreenViewModel = viewModel { TracksScreenViewModel(app.trackRepository) }
     val tracks by viewModel.tracks.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
     val isImportingUrl by viewModel.isImportingUrl.collectAsState()
+    val isImporting by viewModel.isImporting.collectAsState()
     val newlyImportedTrackId by viewModel.newlyImportedTrackId.collectAsState()
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
@@ -54,8 +51,6 @@ fun TracksScreen(
     // Pre-resolve strings for use in non-composable lambdas
     val importUrlErrorStr = stringResource(Res.string.import_url_error)
     val importGpxCorruptedStr = stringResource(Res.string.import_gpx_corrupted)
-    val importGpxReadFailedStr = stringResource(Res.string.import_gpx_read_failed)
-    val importGpxErrorFmt = stringResource(Res.string.import_gpx_error)
     val shareTrackChooserStr = stringResource(Res.string.share_track_chooser)
     val openTrackChooserStr = stringResource(Res.string.open_track_chooser)
     val savedToPathFmt = stringResource(Res.string.saved_to_path)
@@ -103,24 +98,11 @@ fun TracksScreen(
                 TextButton(onClick = {
                     val uri = uriString.toUri()
                     fileUriToConfirm = null
-                    scope.launch {
-                        try {
-                            val bytes = withContext(Dispatchers.IO) {
-                                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                            }
-                            if (bytes != null) {
-                                viewModel.importTrackFromBytes(bytes) { importedTrack ->
-                                    if (importedTrack == null) {
-                                        importErrorMessage = importGpxCorruptedStr
-                                        showImportError = true
-                                    }
-                                }
-                            } else {
-                                importErrorMessage = importGpxReadFailedStr
-                                showImportError = true
-                            }
-                        } catch (e: Exception) {
-                            importErrorMessage = String.format(importGpxErrorFmt, e.message)
+                    viewModel.importTrackFromBytes(
+                        readBytes = { context.contentResolver.openInputStream(uri)?.use { it.readBytes() } }
+                    ) { importedTrack ->
+                        if (importedTrack == null) {
+                            importErrorMessage = importGpxCorruptedStr
                             showImportError = true
                         }
                     }
@@ -137,26 +119,12 @@ fun TracksScreen(
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                try {
-                    val bytes = withContext(Dispatchers.IO) {
-                        context.contentResolver.openInputStream(it)?.use { stream -> stream.readBytes() }
-                    }
-
-                    if (bytes != null) {
-                        viewModel.importTrackFromBytes(bytes) { importedTrack ->
-                            if (importedTrack == null) {
-                                importErrorMessage = importGpxCorruptedStr
-                                showImportError = true
-                            }
-                        }
-                    } else {
-                        importErrorMessage = importGpxReadFailedStr
-                        showImportError = true
-                    }
-                } catch (e: Exception) {
-                    importErrorMessage = String.format(importGpxErrorFmt, e.message)
+        uri?.let { picked ->
+            viewModel.importTrackFromBytes(
+                readBytes = { context.contentResolver.openInputStream(picked)?.use { it.readBytes() } }
+            ) { importedTrack ->
+                if (importedTrack == null) {
+                    importErrorMessage = importGpxCorruptedStr
                     showImportError = true
                 }
             }
@@ -171,6 +139,7 @@ fun TracksScreen(
         showImportError = showImportError,
         importErrorMessage = importErrorMessage,
         isImportingUrl = isImportingUrl,
+        isImporting = isImporting,
         newlyImportedTrackId = newlyImportedTrackId,
         onNewlyImportedTrackConsumed = { viewModel.clearNewlyImportedTrackId() },
         onBackClick = onBackClick,

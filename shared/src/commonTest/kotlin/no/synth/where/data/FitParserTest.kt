@@ -6,6 +6,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 class FitParserTest {
 
@@ -313,6 +315,51 @@ class FitParserTest {
         assertNotNull(track)
         assertEquals("Unionsleden Karlstad - Moss", track.name)
         assertEquals(10, track.points.size)
+    }
+
+    @Test
+    fun fromGPX_selfClosingWaypoints() {
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1">
+              <wpt lat="60.0" lon="10.8"/>
+              <wpt lat="60.1" lon="10.9"/>
+            </gpx>"""
+        val track = Track.fromGPX(gpx)
+        assertNotNull(track)
+        assertEquals(2, track.points.size)
+        assertEquals(60.0, track.points[0].latLng.latitude, 0.0001)
+        assertEquals(10.9, track.points[1].latLng.longitude, 0.0001)
+    }
+
+    @Test
+    fun fromGPX_recoversFromUnclosedTag() {
+        // The middle <trkpt> has no </trkpt>; points before and after it must still parse.
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1"><trk><trkseg>
+              <trkpt lat="60.0" lon="10.0"><ele>1</ele></trkpt>
+              <trkpt lat="60.1" lon="10.1">
+              <trkpt lat="60.2" lon="10.2"><ele>3</ele></trkpt>
+            </trkseg></trk></gpx>"""
+        val track = Track.fromGPX(gpx)
+        assertNotNull(track)
+        assertEquals(3, track.points.size)
+        assertEquals(60.1, track.points[1].latLng.latitude, 0.0001)
+        assertEquals(60.2, track.points[2].latLng.latitude, 0.0001)
+    }
+
+    @Test
+    fun fromGPX_largeInput_parsesInLinearTime() {
+        val n = 50000
+        val gpx = buildString {
+            append("<gpx version=\"1.1\"><trk><trkseg>")
+            repeat(n) { append("<trkpt lat=\"59.9\" lon=\"10.7\"><ele>100</ele></trkpt>") }
+            append("</trkseg></trk></gpx>")
+        }
+        // Guards against a regression to the old O(n^2) tag scan, which took minutes at this size.
+        val elapsed = measureTime {
+            assertEquals(n, Track.fromGPX(gpx)?.points?.size)
+        }
+        assertTrue(elapsed < 10.seconds, "Parsing $n points took $elapsed; expected near-linear time")
     }
 
     // Builds a minimal FIT file with a single Record message (lat, lon, timestamp)

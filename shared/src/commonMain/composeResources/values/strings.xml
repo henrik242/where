@@ -177,8 +177,6 @@
     <string name="import_from_message">Import track from %1$s?</string>
     <string name="import_file_message">Import track from file %1$s?</string>
     <string name="import_gpx_corrupted">Failed to import file. The file may be corrupted or in an unsupported format.</string>
-    <string name="import_gpx_read_failed">Failed to read file.</string>
-    <string name="import_gpx_error">Error importing file: %1$s</string>
     <string name="no_saved_tracks">No saved tracks yet</string>
     <string name="delete_track_title">Delete Track?</string>
     <string name="delete_track_confirm">Are you sure you want to delete \'%1$s\'?</string>
@@ -189,6 +187,7 @@
     <string name="failed_to_save_track">Failed to save track: %1$s</string>
     <string name="open_track_chooser">Open Track With</string>
     <string name="track_imported">Imported \"%1$s\"</string>
+    <string name="importing_track">Importing track…</string>
     <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d points</string>
     <string name="duration_hours_minutes">%1$dh %2$dm</string>
     <string name="duration_minutes">%1$dm</string>

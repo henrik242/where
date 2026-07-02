@@ -105,24 +105,27 @@ $trackPointsXml
 
         private fun parsePointsFromTag(gpxContent: String, lower: String, tagName: String, points: MutableList<TrackPoint>) {
             val tagLower = tagName.lowercase()
+            val openMarker = "<$tagLower "
             var searchFrom = 0
             while (true) {
-                val start = lower.indexOf("<$tagLower ", searchFrom)
+                val start = lower.indexOf(openMarker, searchFrom)
                 if (start < 0) break
 
-                val closingTag = lower.indexOf("</$tagLower>", start)
-                val selfClosing = lower.indexOf("/>", start)
-                val nextOpen = lower.indexOf("<", start + 1)
+                // Find the end of the opening tag with a local scan and detect self-closing from
+                // the char before it. A non-self-closing element runs until the next tag of the
+                // same type (or end of document) — bounding by the next open tag keeps this
+                // linear. Scanning for "</tag>" or "/>" from `start` would instead rescan toward
+                // end-of-document on every point (tags close with </trkpt>) or on unclosed tags,
+                // making the parse O(n^2).
+                val openEnd = lower.indexOf('>', start)
+                if (openEnd < 0) break
 
-                val (tag, nextSearchFrom) = when {
-                    selfClosing >= 0 && (closingTag < 0 || selfClosing < closingTag) &&
-                        (nextOpen < 0 || selfClosing <= nextOpen) -> {
-                        gpxContent.substring(start, selfClosing + 2) to selfClosing + 2
-                    }
-                    closingTag >= 0 -> {
-                        gpxContent.substring(start, closingTag) to closingTag + tagName.length + 3
-                    }
-                    else -> break
+                val (tag, nextSearchFrom) = if (lower[openEnd - 1] == '/') {
+                    gpxContent.substring(start, openEnd + 1) to openEnd + 1
+                } else {
+                    val next = lower.indexOf(openMarker, openEnd)
+                    val end = if (next < 0) gpxContent.length else next
+                    gpxContent.substring(start, end) to end
                 }
 
                 searchFrom = nextSearchFrom

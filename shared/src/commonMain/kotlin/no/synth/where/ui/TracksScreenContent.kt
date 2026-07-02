@@ -38,6 +38,7 @@ fun TracksScreenContent(
     showImportError: Boolean,
     importErrorMessage: String,
     isImportingUrl: Boolean,
+    isImporting: Boolean = false,
     newlyImportedTrackId: String?,
     onNewlyImportedTrackConsumed: () -> Unit,
     onBackClick: () -> Unit,
@@ -163,7 +164,26 @@ fun TracksScreenContent(
                     onUrlImport = onUrlImport
                 )
             }
-            if (tracks.isEmpty()) {
+            if (isImporting) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            text = stringResource(Res.string.importing_track),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    HorizontalDivider()
+                }
+            }
+            if (tracks.isEmpty() && !isImporting) {
                 item {
                     Box(
                         modifier = Modifier

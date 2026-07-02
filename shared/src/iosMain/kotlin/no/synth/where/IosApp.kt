@@ -152,6 +152,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 var showImportError by remember { mutableStateOf(false) }
                 var importErrorMessage by remember { mutableStateOf("") }
                 var isImportingUrl by remember { mutableStateOf(false) }
+                var isImporting by remember { mutableStateOf(false) }
                 var newlyImportedTrackId by remember { mutableStateOf<String?>(null) }
                 val gpxCorruptedMsg = stringResource(Res.string.import_gpx_corrupted)
                 val importUrlErrorMsg = stringResource(Res.string.import_url_error)
@@ -166,6 +167,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     showImportError = showImportError,
                     importErrorMessage = importErrorMessage,
                     isImportingUrl = isImportingUrl,
+                    isImporting = isImporting,
                     newlyImportedTrackId = newlyImportedTrackId,
                     onNewlyImportedTrackConsumed = { newlyImportedTrackId = null },
                     onBackClick = { navigateBack() },
@@ -173,6 +175,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         IosPlatformActions.pickFile(listOf("public.xml", "org.topografix.gpx", "public.data")) { bytes ->
                             if (bytes == null) return@pickFile
                             scope.launch {
+                                isImporting = true
                                 try {
                                     val imported = trackRepository.importTrackFromBytes(bytes)
                                     if (imported == null) {
@@ -184,6 +187,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                                 } catch (e: Exception) {
                                     importErrorMessage = e.message ?: gpxCorruptedMsg
                                     showImportError = true
+                                } finally {
+                                    isImporting = false
                                 }
                             }
                         }
