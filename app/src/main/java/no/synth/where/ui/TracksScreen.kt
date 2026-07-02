@@ -33,6 +33,7 @@ fun TracksScreen(
     val app = context.applicationContext as no.synth.where.WhereApplication
     val viewModel: TracksScreenViewModel = viewModel { TracksScreenViewModel(app.trackRepository) }
     val tracks by viewModel.tracks.collectAsState()
+    val isRecording by viewModel.isRecording.collectAsState()
     val isImportingUrl by viewModel.isImportingUrl.collectAsState()
     val newlyImportedTrackId by viewModel.newlyImportedTrackId.collectAsState()
 
@@ -195,7 +196,8 @@ fun TracksScreen(
         onDismissImportError = { showImportError = false },
         onContinue = onContinueTrack,
         onShowOnMap = onShowTrackOnMap,
-        onNavigate = onNavigateTrack
+        onNavigate = onNavigateTrack,
+        isRecording = isRecording
     )
 }
 

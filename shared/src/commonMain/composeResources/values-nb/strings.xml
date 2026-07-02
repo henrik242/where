@@ -236,10 +236,14 @@
     <string name="crosshair">Kryssmarkør</string>
     <string name="coordinate_grid">Koordinatrutenett</string>
     <string name="elevation_format">%1$s m</string>
+    <string name="chart_gain">↑ %1$s m</string>
+    <string name="chart_range">%1$s–%2$s m</string>
+    <string name="chart_elevation_profile">Høydeprofil</string>
     <string name="slope_format">%1$s°</string>
     <string name="loading_dots">…</string>
     <string name="no_data">Ingen data</string>
     <string name="navigate">Naviger</string>
+    <string name="nav_unavailable_while_recording">Stopp opptak for å navigere</string>
     <string name="nav_off_course">Utenfor sporet · %1$s</string>
     <string name="nav_remaining">%1$s igjen</string>
     <string name="nav_ascent">Stigning %1$s</string>

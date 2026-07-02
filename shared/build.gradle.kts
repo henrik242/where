@@ -95,6 +95,10 @@ kotlin {
         androidResources {
             enable = true
         }
+
+        // Run commonTest on the JVM as host tests so CI / Android-only machines execute the
+        // shared unit tests without an iOS simulator.
+        withHostTest {}
     }
 
     listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->

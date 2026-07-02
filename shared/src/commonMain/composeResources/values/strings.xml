@@ -226,6 +226,9 @@
     <string name="crosshair">Crosshair</string>
     <string name="coordinate_grid">Coordinate Grid</string>
     <string name="elevation_format">%1$s m</string>
+    <string name="chart_gain">↑ %1$s m</string>
+    <string name="chart_range">%1$s–%2$s m</string>
+    <string name="chart_elevation_profile">Elevation profile</string>
     <string name="slope_format">%1$s°</string>
     <string name="loading_dots">…</string>
     <string name="no_data">No data</string>
@@ -244,6 +247,7 @@
     <string name="unnamed_point">Unnamed point</string>
     <string name="locating">Locating…</string>
     <string name="navigate">Navigate</string>
+    <string name="nav_unavailable_while_recording">Stop recording to navigate</string>
     <string name="nav_off_course">Off course · %1$s</string>
     <string name="nav_remaining">%1$s left</string>
     <string name="nav_ascent">Ascent %1$s</string>

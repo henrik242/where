@@ -1,7 +1,9 @@
 package no.synth.where.data.navigation
 
+import no.synth.where.data.ALTITUDE_DEADBAND_M
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
+import no.synth.where.data.accumulateAltitude
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.projectOntoSegment
 import kotlin.math.min
@@ -17,10 +19,16 @@ class TrackNavigator(
     track: Track,
     val reversed: Boolean,
     private val offCourseEnterM: Double = 35.0,
-    private val offCourseExitM: Double = 25.0,   // hysteresis; must be <= enter
+    private val offCourseExitM: Double = 25.0,   // hysteresis; the off-course clear threshold
     private val arrivalM: Double = 25.0,
-    private val altDeadbandM: Double = 2.0,      // per-segment altitude noise floor
+    private val altDeadbandM: Double = ALTITUDE_DEADBAND_M,
 ) {
+    init {
+        require(offCourseExitM <= offCourseEnterM) {
+            "offCourseExitM ($offCourseExitM) must be <= offCourseEnterM ($offCourseEnterM) for hysteresis"
+        }
+    }
+
     private val points: List<TrackPoint> =
         if (reversed) track.points.asReversed() else track.points
 
@@ -42,30 +50,9 @@ class TrackNavigator(
         }
         total = if (n > 0) cumDist[n - 1] else 0.0
 
-        // Accumulate ascent/descent against a moving reference elevation, confirming a change
-        // only once it exceeds the dead-band. Thresholding the running total (not each adjacent
-        // pair) makes the result independent of point spacing, so a densely-sampled route where
-        // every step is under the dead-band still reports its true climb.
-        var ref: Double? = null
-        for (i in 0 until n) {
-            if (i > 0) {
-                ascUpTo[i] = ascUpTo[i - 1]
-                descUpTo[i] = descUpTo[i - 1]
-            }
-            val alt = points[i].altitude ?: continue
-            val r = ref
-            if (r == null) {
-                ref = alt
-                continue
-            }
-            val delta = alt - r
-            if (delta > altDeadbandM) {
-                ascUpTo[i] += delta
-                ref = alt
-            } else if (-delta > altDeadbandM) {
-                descUpTo[i] += -delta
-                ref = alt
-            }
+        accumulateAltitude(points.map { it.altitude }, altDeadbandM) { i, asc, desc ->
+            ascUpTo[i] = asc
+            descUpTo[i] = desc
         }
     }
 

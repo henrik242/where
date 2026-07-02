@@ -55,6 +55,7 @@ import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.hasElevationData
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
+import no.synth.where.data.Track
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
@@ -244,8 +245,10 @@ fun ViewingTrackBanner(
                     contentDescription = stringResource(Res.string.close_track)
                 )
             }
+            // A chevron (not another X) so this non-destructive "collapse" reads differently from
+            // the eye-off "remove from map" button beside it.
             IconButton(onClick = onCollapse, modifier = Modifier.size(36.dp)) {
-                Icon(painterResource(Res.drawable.ic_close), contentDescription = stringResource(Res.string.collapse))
+                Icon(painterResource(Res.drawable.ic_expand_more), contentDescription = stringResource(Res.string.collapse))
             }
         }
     }
@@ -573,12 +576,9 @@ fun BoxScope.MapOverlays(
     recordingDistance: Double?,
     onlineTrackingEnabled: Boolean,
     viewerCount: Int = 0,
-    viewingTrack: no.synth.where.data.Track?,
+    viewingTrack: Track?,
     trackFocused: Boolean = false,
-    isNavigating: Boolean = false,
-    navigationProgress: NavigationProgress? = null,
-    onToggleReverse: () -> Unit = {},
-    onStopNavigation: () -> Unit = {},
+    navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
     showSearch: Boolean,
@@ -613,7 +613,7 @@ fun BoxScope.MapOverlays(
     val focusedTrack = if (trackFocused) viewingTrack else null
     val hasTopOverlay = showSearch ||
         focusedTrack != null ||
-        isNavigating ||
+        navigation.isNavigating ||
         (showViewingPoint && viewingPointName != null) ||
         followedClientId != null
 
@@ -730,15 +730,15 @@ fun BoxScope.MapOverlays(
         }
     }
 
-    if (isNavigating) {
+    if (navigation.isNavigating) {
         NavigationCard(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 16.dp)
                 .padding(horizontal = 16.dp),
-            progress = navigationProgress,
-            onToggleReverse = onToggleReverse,
-            onStop = onStopNavigation,
+            progress = navigation.progress,
+            onToggleReverse = navigation.onToggleReverse,
+            onStop = navigation.onStop,
         )
     } else if (focusedTrack != null) {
         ViewingTrackBanner(

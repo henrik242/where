@@ -48,10 +48,12 @@ import no.synth.where.resources.*
 import org.jetbrains.compose.resources.stringResource
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.RulerState
+import no.synth.where.data.SavedPoint
+import no.synth.where.data.Track
+import no.synth.where.data.TrackPoint
 import no.synth.where.data.geo.CoordFormat
-import no.synth.where.data.navigation.NavigationProgress
-import no.synth.where.data.navigation.TrackNavigator
-import no.synth.where.ui.map.buildNavigationLayers
+import no.synth.where.ui.map.NavigationUiState
+import no.synth.where.ui.map.rememberNavigationProgress
 import no.synth.where.WhereApplication
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.map.CoordGrid
@@ -83,11 +85,11 @@ fun MapScreen(
     onSettingsClick: () -> Unit,
     onOfflineSettingsClick: () -> Unit = {},
     onOnlineTrackingSettingsClick: () -> Unit = {},
-    viewingPoint: no.synth.where.data.SavedPoint? = null,
+    viewingPoint: SavedPoint? = null,
     onClearViewingPoint: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as no.synth.where.WhereApplication
+    val app = context.applicationContext as WhereApplication
     val viewModel: MapScreenViewModel = viewModel { MapScreenViewModel(app.trackRepository, app.savedPointsRepository, app.userPreferences) }
     val savedPoints by viewModel.savedPoints.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
@@ -133,57 +135,44 @@ fun MapScreen(
         }
     }
 
-    // Back first deselects a focused track (chrome returns, line stays), then on a
-    // second press clears the viewing track. Without this, back would pop the map
-    // route and leave the app while a track is still shown.
-    BackHandler(enabled = viewingTrack != null) {
-        if (trackFocused) viewModel.deselectTrack() else viewModel.clearViewingTrack()
-    }
-
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
 
     val navigation by viewModel.navigation.collectAsState()
-    var navigationProgress by remember { mutableStateOf<NavigationProgress?>(null) }
-
-    // Rebuild the navigator when the session (track id or direction) changes.
-    val navigator = remember(navigation?.track?.id, navigation?.reversed) {
-        navigation?.let { TrackNavigator(it.track, it.reversed) }
-    }
-
-    // Poll the puck ~1s while navigating; compute progress.
-    LaunchedEffect(navigator, mapInstance) {
-        val nav = navigator
-        if (nav == null) {
-            navigationProgress = null
-            return@LaunchedEffect
-        }
-        while (true) {
+    val navigationProgress = rememberNavigationProgress(
+        session = navigation,
+        location = {
             try {
                 val lc = mapInstance?.locationComponent
                 if (lc != null && lc.isLocationComponentEnabled) {
-                    lc.lastKnownLocation?.let { loc ->
-                        navigationProgress = nav.progressAt(LatLng(loc.latitude, loc.longitude))
-                    }
+                    lc.lastKnownLocation?.let { LatLng(it.latitude, it.longitude) }
+                } else {
+                    null
                 }
             } catch (e: Exception) {
                 Logger.d("Nav location read failed: %s", e.message ?: "unknown")
+                null
             }
-            delay(1000)
-        }
-    }
+        },
+        onRenderLayers = { layers ->
+            mapInstance?.style?.let {
+                MapRenderUtils.updateNavigationOnMap(it, layers.completed, layers.remaining, layers.offCourse)
+            }
+        },
+        onClearLayers = {
+            mapInstance?.style?.let {
+                MapRenderUtils.updateNavigationOnMap(it, null, null, null)
+            }
+        },
+    )
 
-    // Render nav layers whenever progress changes.
-    LaunchedEffect(navigationProgress) {
-        val p = navigationProgress
-        val nav = navigation
-        val style = mapInstance?.style
-        if (style != null) {
-            if (p != null && nav != null) {
-                val layers = buildNavigationLayers(nav.track, nav.reversed, p)
-                MapRenderUtils.updateNavigationOnMap(style, layers.completed, layers.remaining, layers.offCourse)
-            } else {
-                MapRenderUtils.updateNavigationOnMap(style, null, null, null)
-            }
+    // Back exits the active mode in order: stop navigation, then unfocus a track (chrome returns,
+    // line stays), then clear the track. Handling navigation first avoids a half-exited state where
+    // the route is hidden but the session keeps polling.
+    BackHandler(enabled = navigation != null || viewingTrack != null) {
+        when {
+            navigation != null -> viewModel.stopNavigation()
+            trackFocused -> viewModel.deselectTrack()
+            else -> viewModel.clearViewingTrack()
         }
     }
 
@@ -478,10 +467,12 @@ fun MapScreen(
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrack = viewingTrack,
         trackFocused = trackFocused,
-        isNavigating = navigation != null,
-        navigationProgress = navigationProgress,
-        onToggleReverse = { viewModel.toggleNavigationReverse() },
-        onStopNavigation = { viewModel.stopNavigation() },
+        navigation = NavigationUiState(
+            isNavigating = navigation != null,
+            progress = navigationProgress,
+            onToggleReverse = { viewModel.toggleNavigationReverse() },
+            onStop = { viewModel.stopNavigation() },
+        ),
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",
         showViewingPoint = viewingPoint != null,
@@ -761,12 +752,12 @@ private val sampleRulerState = RulerState(
     isActive = true
 )
 
-private val sampleTrack = no.synth.where.data.Track(
+private val sampleTrack = Track(
     name = "Bymarka → Lian",
     points = listOf(
-        no.synth.where.data.TrackPoint(LatLng(63.43, 10.39), timestamp = 0L, altitude = 120.0),
-        no.synth.where.data.TrackPoint(LatLng(63.435, 10.40), timestamp = 1L, altitude = 180.0),
-        no.synth.where.data.TrackPoint(LatLng(63.44, 10.41), timestamp = 2L, altitude = 150.0),
+        TrackPoint(LatLng(63.43, 10.39), timestamp = 0L, altitude = 120.0),
+        TrackPoint(LatLng(63.435, 10.40), timestamp = 1L, altitude = 180.0),
+        TrackPoint(LatLng(63.44, 10.41), timestamp = 2L, altitude = 150.0),
     ),
     startTime = 0L,
 )

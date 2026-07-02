@@ -52,7 +52,8 @@ fun TracksScreenContent(
     onDismissImportError: () -> Unit,
     onContinue: (Track) -> Unit,
     onShowOnMap: (Track) -> Unit,
-    onNavigate: (Track) -> Unit = {}
+    onNavigate: (Track) -> Unit = {},
+    isRecording: Boolean = false,
 ) {
     Scaffold(
         topBar = {
@@ -142,7 +143,8 @@ fun TracksScreenContent(
                         onRename = { onRenameRequest(track) },
                         onContinue = { onContinue(track) },
                         onShowOnMap = { onShowOnMap(track) },
-                        onNavigate = { onNavigate(track) }
+                        onNavigate = { onNavigate(track) },
+                        canNavigate = !isRecording
                     )
                     HorizontalDivider()
                 }
@@ -220,7 +222,8 @@ fun TrackItem(
     onRename: () -> Unit,
     onContinue: () -> Unit,
     onShowOnMap: () -> Unit,
-    onNavigate: () -> Unit = {}
+    onNavigate: () -> Unit = {},
+    canNavigate: Boolean = true
 ) {
     val highlightColor by animateColorAsState(
         targetValue = if (highlighted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent,
@@ -278,7 +281,7 @@ fun TrackItem(
                 OutlinedButton(
                     onClick = onNavigate,
                     modifier = Modifier.weight(1f),
-                    enabled = track.points.size >= 2
+                    enabled = track.points.size >= 2 && canNavigate
                 ) {
                     Icon(
                         painterResource(Res.drawable.ic_my_location),

@@ -17,34 +17,46 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.Track
 import no.synth.where.data.elevationProfileOrNull
+import no.synth.where.resources.Res
+import no.synth.where.resources.chart_elevation_profile
+import no.synth.where.resources.chart_gain
+import no.synth.where.resources.chart_range
 import no.synth.where.util.formatDistance
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 @Composable
 fun TrackAltitudeChart(track: Track, modifier: Modifier = Modifier) {
-    val profile = remember(track.id, track.points.size) { track.elevationProfileOrNull() } ?: return
+    val profile = remember(track.id, track.points) { track.elevationProfileOrNull() } ?: return
 
     val line = MaterialTheme.colorScheme.primary
     val fill = line.copy(alpha = 0.18f)
     val bg = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
     val label = MaterialTheme.colorScheme.onSurfaceVariant
 
+    val gainText = stringResource(Res.string.chart_gain, profile.gain.roundToInt().toString())
+    val distanceText = profile.totalDistance.formatDistance()
+    val rangeText = stringResource(
+        Res.string.chart_range, profile.minEle.roundToInt().toString(), profile.maxEle.roundToInt().toString(),
+    )
+    val chartLabel = stringResource(Res.string.chart_elevation_profile)
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(bg, RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .semantics { contentDescription = "$chartLabel: $gainText, $distanceText, $rangeText" },
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("↑ ${profile.gain.roundToInt()} m", style = MaterialTheme.typography.labelSmall, color = label)
-            Text(profile.totalDistance.formatDistance(), style = MaterialTheme.typography.labelSmall, color = label)
-            Text(
-                "${profile.minEle.roundToInt()}–${profile.maxEle.roundToInt()} m",
-                style = MaterialTheme.typography.labelSmall, color = label,
-            )
+            Text(gainText, style = MaterialTheme.typography.labelSmall, color = label)
+            Text(distanceText, style = MaterialTheme.typography.labelSmall, color = label)
+            Text(rangeText, style = MaterialTheme.typography.labelSmall, color = label)
         }
         Spacer(Modifier.height(4.dp))
         Canvas(Modifier.fillMaxWidth().height(88.dp)) {

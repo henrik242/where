@@ -15,9 +15,9 @@ import androidx.compose.ui.Modifier
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
+import no.synth.where.data.Track
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
-import no.synth.where.data.navigation.NavigationProgress
 
 @Composable
 fun MapScreenContent(
@@ -49,12 +49,9 @@ fun MapScreenContent(
     liveShareUntilMillis: Long = 0L,
     isLiveSharing: Boolean = false,
     recordingDistance: Double?,
-    viewingTrack: no.synth.where.data.Track? = null,
+    viewingTrack: Track? = null,
     trackFocused: Boolean = false,
-    isNavigating: Boolean = false,
-    navigationProgress: NavigationProgress? = null,
-    onToggleReverse: () -> Unit = {},
-    onStopNavigation: () -> Unit = {},
+    navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
     showViewingPoint: Boolean,
@@ -104,7 +101,7 @@ fun MapScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             AnimatedVisibility(
-                visible = !trackFocused,
+                visible = !trackFocused && !navigation.isNavigating,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -162,10 +159,7 @@ fun MapScreenContent(
                 isLiveSharing = isLiveSharing,
                 viewingTrack = viewingTrack,
                 trackFocused = trackFocused,
-                isNavigating = isNavigating,
-                navigationProgress = navigationProgress,
-                onToggleReverse = onToggleReverse,
-                onStopNavigation = onStopNavigation,
+                navigation = navigation,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,
                 showSearch = showSearch,

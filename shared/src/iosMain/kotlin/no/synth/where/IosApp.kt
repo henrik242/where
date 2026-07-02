@@ -67,6 +67,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val downloadElevationData by userPreferences.downloadElevationData.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val tracks by trackRepository.tracks.collectAsState()
+    val isRecording by trackRepository.isRecording.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val downloadState by downloadManager.downloadState.collectAsState()
 
@@ -233,7 +234,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onNavigate = { track ->
                         trackRepository.startNavigation(track, reversed = false)
                         navigateToMap()
-                    }
+                    },
+                    isRecording = isRecording
                 )
             }
 

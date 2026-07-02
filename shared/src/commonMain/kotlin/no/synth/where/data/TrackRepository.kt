@@ -137,6 +137,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     }
 
     fun startNewTrack(name: String = "Track ${currentTimeMillis()}") {
+        if (_navigation.value != null) return   // recording and navigation are mutually exclusive
         val track = Track(
             name = name,
             points = emptyList(),
@@ -148,6 +149,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     }
 
     fun continueTrack(track: Track) {
+        if (_navigation.value != null) return   // recording and navigation are mutually exclusive
         _currentTrack.value = track.copy(isRecording = true)
         _isRecording.value = true
         scope.launch {
@@ -215,6 +217,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     }
 
     fun startNavigation(track: Track, reversed: Boolean = false) {
+        if (_isRecording.value) return   // recording and navigation are mutually exclusive
         _navigation.value = NavigationSession(track, reversed)
         _viewingTrack.value = track   // reuse route rendering + bounds-fit
     }

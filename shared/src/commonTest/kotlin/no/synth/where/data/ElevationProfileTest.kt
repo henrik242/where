@@ -59,12 +59,21 @@ class ElevationProfileTest {
     }
 
     @Test
-    fun minMaxComeFromDownsampledSet() {
-        // Spike at index 950 falls between sampled indices (0,100,..,900,999) and is dropped.
+    fun rangeComesFromFullResolutionNotDrawnLine() {
+        // Spike at index 950 falls between drawn samples (0,100,..,900,999) but must still
+        // define maxEle: the label reports the true range even though the spike is not drawn.
         val altitudes = (0 until 1000).map { if (it == 950) 9999.0 else it.toDouble() }
         val p = track(altitudes).elevationProfileOrNull(maxSamples = 10)!!
-        assertEquals(p.elevations.max(), p.maxEle)
-        assertEquals(p.elevations.min(), p.minEle)
-        assertTrue(p.maxEle < 9999.0, "the un-sampled spike must not define maxEle")
+        assertEquals(9999.0, p.maxEle, "the un-drawn spike still defines maxEle")
+        assertEquals(0.0, p.minEle)
+        assertTrue(p.elevations.max() < 9999.0, "the drawn line is downsampled and omits the spike")
+    }
+
+    @Test
+    fun gainNotInflatedBySubDeadbandNoise() {
+        // A flat track with tiny ±0.5m wiggles must not accumulate gain from the noise.
+        val altitudes = (0 until 100).map { 100.0 + if (it % 2 == 0) 0.5 else -0.5 }
+        val p = track(altitudes).elevationProfileOrNull()!!
+        assertEquals(0.0, p.gain, "sub-deadband noise must not inflate gain")
     }
 }

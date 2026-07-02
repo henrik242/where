@@ -7,6 +7,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -37,6 +38,13 @@ class TrackNavigatorTest {
             at(200.0, 0.0) to null
         )
     )
+
+    @Test
+    fun rejectsInvertedHysteresisThresholds() {
+        assertFailsWith<IllegalArgumentException> {
+            TrackNavigator(straightTrack(), reversed = false, offCourseEnterM = 20.0, offCourseExitM = 30.0)
+        }
+    }
 
     @Test
     fun standingOnMiddleVertex() {

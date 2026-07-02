@@ -35,8 +35,6 @@ import no.synth.where.data.TrackUtils
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
-import no.synth.where.data.navigation.NavigationProgress
-import no.synth.where.data.navigation.TrackNavigator
 import no.synth.where.di.AppDependencies
 import no.synth.where.location.IosLocationTracker
 import no.synth.where.resources.Res
@@ -100,10 +98,17 @@ fun IosMapScreen(
     val currentTrack by trackRepository.currentTrack.collectAsState()
     val viewingTrack by trackRepository.viewingTrack.collectAsState()
     val navigation by trackRepository.navigation.collectAsState()
-    var navigationProgress by remember { mutableStateOf<NavigationProgress?>(null) }
-    val navigator = remember(navigation?.track?.id, navigation?.reversed) {
-        navigation?.let { TrackNavigator(it.track, it.reversed) }
-    }
+    val navigationProgress = rememberNavigationProgress(
+        session = navigation,
+        location = {
+            val loc = mapViewProvider.getUserLocation()
+            if (loc != null && loc.size >= 2) LatLng(loc[0], loc[1]) else null
+        },
+        onRenderLayers = { layers ->
+            mapViewProvider.updateNavigation(layers.completed, layers.remaining, layers.offCourse)
+        },
+        onClearLayers = { mapViewProvider.clearNavigation() },
+    )
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val viewerCount by userPreferences.viewerCount.collectAsState()
@@ -376,34 +381,6 @@ fun IosMapScreen(
         }
     }
 
-    // Poll the user location ~1s while navigating; compute progress.
-    LaunchedEffect(navigator) {
-        val nav = navigator
-        if (nav == null) {
-            navigationProgress = null
-            return@LaunchedEffect
-        }
-        while (true) {
-            val loc = mapViewProvider.getUserLocation()
-            if (loc != null && loc.size >= 2) {
-                navigationProgress = nav.progressAt(LatLng(loc[0], loc[1]))
-            }
-            kotlinx.coroutines.delay(1000)
-        }
-    }
-
-    // Render nav layers whenever progress changes.
-    LaunchedEffect(navigationProgress) {
-        val p = navigationProgress
-        val nav = navigation
-        if (p != null && nav != null) {
-            val layers = buildNavigationLayers(nav.track, nav.reversed, p)
-            mapViewProvider.updateNavigation(layers.completed, layers.remaining, layers.offCourse)
-        } else {
-            mapViewProvider.clearNavigation()
-        }
-    }
-
     // Set gesture callbacks
     LaunchedEffect(rulerState.isActive, savedPoints.size) {
         mapViewProvider.setOnLongPressCallback(object : MapLongPressCallback {
@@ -607,14 +584,17 @@ fun IosMapScreen(
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTrack = viewingTrack,
         trackFocused = trackFocused,
-        isNavigating = navigation != null,
-        navigationProgress = navigationProgress,
-        onToggleReverse = { trackRepository.toggleNavigationReverse() },
-        onStopNavigation = {
-            trackRepository.stopNavigation()
-            mapViewProvider.clearNavigation()
-            mapViewProvider.clearTrackLine()
-        },
+        navigation = NavigationUiState(
+            isNavigating = navigation != null,
+            progress = navigationProgress,
+            onToggleReverse = { trackRepository.toggleNavigationReverse() },
+            // The shared render effect clears the nav layers when the session ends; we only need to
+            // drop the plain track line here.
+            onStop = {
+                trackRepository.stopNavigation()
+                mapViewProvider.clearTrackLine()
+            },
+        ),
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",
         showViewingPoint = viewingPoint != null,
