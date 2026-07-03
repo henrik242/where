@@ -244,7 +244,12 @@
     <string name="no_data">Ingen data</string>
     <string name="navigate">Naviger</string>
     <string name="nav_unavailable_while_recording">Stopp opptak for å navigere</string>
-    <string name="nav_off_course">Utenfor sporet · %1$s</string>
+    <string name="nav_off_course">Utenfor sporet · %1$s · %2$s</string>
+    <string name="nav_heading">mot %1$s</string>
+    <string name="compass_n">N</string>
+    <string name="compass_e">Ø</string>
+    <string name="compass_s">S</string>
+    <string name="compass_w">V</string>
     <string name="nav_remaining">%1$s igjen</string>
     <string name="nav_ascent">Stigning %1$s</string>
     <string name="nav_descent">Nedstigning %1$s</string>

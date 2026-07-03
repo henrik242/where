@@ -60,6 +60,7 @@ import no.synth.where.data.Track
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.compassPoint8
 import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -299,8 +300,17 @@ fun NavigationCard(
                     val ascent = progress.remainingAscent
                     val descent = progress.remainingDescent
                     if (offCourse) {
+                        // Direction the user should head to get back to the nearest point on the route.
+                        val direction = compassPoint8(
+                            progress.location.bearingTo(progress.snapped),
+                            stringResource(Res.string.compass_n),
+                            stringResource(Res.string.compass_e),
+                            stringResource(Res.string.compass_s),
+                            stringResource(Res.string.compass_w)
+                        )
+                        val heading = stringResource(Res.string.nav_heading, direction)
                         Text(
-                            stringResource(Res.string.nav_off_course, progress.offCourseMeters.formatDistance()),
+                            stringResource(Res.string.nav_off_course, progress.offCourseMeters.formatDistance(), heading),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }

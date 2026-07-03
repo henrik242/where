@@ -18,6 +18,16 @@ data class LatLng(val latitude: Double, val longitude: Double) {
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return r * c
     }
+
+    // Initial great-circle bearing from this point to [other], in degrees clockwise from north [0, 360).
+    fun bearingTo(other: LatLng): Double {
+        val lat1 = latitude.toRadians()
+        val lat2 = other.latitude.toRadians()
+        val dLon = (other.longitude - longitude).toRadians()
+        val y = sin(dLon) * cos(lat2)
+        val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        return (atan2(y, x).toDegrees() + 360.0) % 360.0
+    }
 }
 
 data class LatLngBounds(
@@ -56,3 +66,4 @@ fun List<LatLng>.bounds(): LatLngBounds? {
 }
 
 private fun Double.toRadians(): Double = this * PI / 180.0
+private fun Double.toDegrees(): Double = this * 180.0 / PI

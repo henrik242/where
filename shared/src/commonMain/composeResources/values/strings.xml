@@ -248,7 +248,12 @@
     <string name="locating">Locating…</string>
     <string name="navigate">Navigate</string>
     <string name="nav_unavailable_while_recording">Stop recording to navigate</string>
-    <string name="nav_off_course">Off course · %1$s</string>
+    <string name="nav_off_course">Off course · %1$s · %2$s</string>
+    <string name="nav_heading">head %1$s</string>
+    <string name="compass_n">N</string>
+    <string name="compass_e">E</string>
+    <string name="compass_s">S</string>
+    <string name="compass_w">W</string>
     <string name="nav_remaining">%1$s left</string>
     <string name="nav_ascent">Ascent %1$s</string>
     <string name="nav_descent">Descent %1$s</string>
