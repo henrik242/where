@@ -25,7 +25,6 @@ fun TracksScreen(
     pendingImportUrl: String? = null,
     pendingImportFileUri: String? = null,
     onBackClick: () -> Unit,
-    onContinueTrack: (Track) -> Unit,
     onShowTrackOnMap: (Track) -> Unit,
     onShowTracksOnMap: (List<Track>) -> Unit = {},
     onNavigateTrack: (Track) -> Unit
@@ -174,7 +173,6 @@ fun TracksScreen(
         },
         onDismissRename = { trackToRename = null },
         onDismissImportError = { showImportError = false },
-        onContinue = onContinueTrack,
         onShowOnMap = onShowTrackOnMap,
         onShowSelectedOnMap = onShowTracksOnMap,
         onNavigate = onNavigateTrack,

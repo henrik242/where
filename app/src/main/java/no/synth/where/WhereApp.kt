@@ -15,7 +15,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.util.CrashReporter
 import no.synth.where.data.SavedPoint
 import no.synth.where.navigation.*
-import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
 
 
@@ -127,11 +126,6 @@ fun WhereApp(
                 pendingImportUrl = route.importUrl,
                 pendingImportFileUri = route.importFileUri,
                 onBackClick = { navController.popBackStack() },
-                onContinueTrack = { track ->
-                    trackRepository.continueTrack(track)
-                    LocationTrackingService.start(context)
-                    navController.popBackStack<MapRoute>(false)
-                },
                 onShowTrackOnMap = { track ->
                     trackRepository.addViewingTrack(track)
                     navController.popBackStack<MapRoute>(false)

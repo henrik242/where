@@ -154,15 +154,6 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         _isRecording.value = true
     }
 
-    fun continueTrack(track: Track) {
-        if (_navigation.value != null) return   // recording and navigation are mutually exclusive
-        _currentTrack.value = track.copy(isRecording = true)
-        _isRecording.value = true
-        scope.launch {
-            trackDao.deleteTrack(track.id)
-        }
-    }
-
     fun addTrackPoint(latLng: LatLng, altitude: Double? = null, accuracy: Float? = null) {
         val current = _currentTrack.value ?: return
         val point = TrackPoint(

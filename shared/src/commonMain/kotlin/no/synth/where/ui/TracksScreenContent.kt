@@ -55,7 +55,6 @@ fun TracksScreenContent(
     onConfirmRename: () -> Unit,
     onDismissRename: () -> Unit,
     onDismissImportError: () -> Unit,
-    onContinue: (Track) -> Unit,
     onShowOnMap: (Track) -> Unit,
     onShowSelectedOnMap: (List<Track>) -> Unit = {},
     onNavigate: (Track) -> Unit = {},
@@ -221,7 +220,6 @@ fun TracksScreenContent(
                         onOpen = onOpen?.let { { it(track) } },
                         onDelete = { onDeleteRequest(track) },
                         onRename = { onRenameRequest(track) },
-                        onContinue = { onContinue(track) },
                         onShowOnMap = { onShowOnMap(track) },
                         onNavigate = { onNavigate(track) },
                         canNavigate = !isRecording
@@ -305,7 +303,6 @@ fun TrackItem(
     onOpen: (() -> Unit)? = null,
     onDelete: () -> Unit,
     onRename: () -> Unit,
-    onContinue: () -> Unit,
     onShowOnMap: () -> Unit,
     onNavigate: () -> Unit = {},
     canNavigate: Boolean = true
@@ -323,7 +320,8 @@ fun TrackItem(
                 onClick = { if (selectionMode) onSelectToggle() else onExpandToggle() },
                 onLongClick = onLongPress
             )
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -358,7 +356,6 @@ fun TrackItem(
         }
 
         if (expanded && !selectionMode) {
-            Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -389,55 +386,25 @@ fun TrackItem(
                     Text(stringResource(Res.string.navigate))
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onContinue,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        painterResource(Res.drawable.ic_play_arrow),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(Res.string.continue_label))
-                }
-                if (onSave != null) {
-                    OutlinedButton(
-                        onClick = onSave,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_save),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(Res.string.save))
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = onExport,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_share),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(Res.string.share))
-                    }
-                }
-            }
-            if (onOpen != null || onSave != null) {
+            if (onSave != null || onOpen != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    if (onSave != null) {
+                        OutlinedButton(
+                            onClick = onSave,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                painterResource(Res.drawable.ic_save),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(stringResource(Res.string.save))
+                        }
+                    }
                     if (onOpen != null) {
                         OutlinedButton(
                             onClick = onOpen,
@@ -452,19 +419,19 @@ fun TrackItem(
                             Text(stringResource(Res.string.open))
                         }
                     }
-                    OutlinedButton(
-                        onClick = onExport,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_share),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(Res.string.share))
-                    }
                 }
+            }
+            OutlinedButton(
+                onClick = onExport,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_share),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(stringResource(Res.string.share))
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),

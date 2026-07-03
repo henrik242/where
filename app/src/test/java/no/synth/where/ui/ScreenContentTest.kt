@@ -96,12 +96,11 @@ class ScreenContentTest {
             "onConfirmRename",
             "onDismissRename",
             "onDismissImportError",
-            "onContinue",
             "onShowOnMap"
         )
         assertEquals(
-            "TracksScreenContent must have 23 parameters",
-            23,
+            "TracksScreenContent must have 22 parameters",
+            22,
             requiredParameters.size
         )
     }

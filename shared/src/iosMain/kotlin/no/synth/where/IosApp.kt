@@ -233,7 +233,6 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     },
                     onDismissRename = { trackToRename = null },
                     onDismissImportError = { showImportError = false },
-                    onContinue = {},
                     onShowOnMap = { track ->
                         trackRepository.addViewingTrack(track)
                         navigateToMap()

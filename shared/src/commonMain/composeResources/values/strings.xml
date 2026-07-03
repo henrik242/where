@@ -20,7 +20,6 @@
     <string name="open">Open</string>
     <string name="download">Download</string>
     <string name="show_on_map">Show on Map</string>
-    <string name="continue_label">Continue</string>
 
     <!-- Map Dialogs -->
     <string name="background_location_access">Background Location Access</string>
