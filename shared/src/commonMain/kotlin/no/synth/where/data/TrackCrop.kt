@@ -1,5 +1,24 @@
 package no.synth.where.data
 
+import kotlin.math.abs
+
+/**
+ * Index of the point whose cumulative distance is closest to [meters]; [cum] must be ascending
+ * (as returned by [cumulativeDistances]). Returns 0 for an empty list.
+ */
+fun nearestPointIndex(cum: List<Double>, meters: Double): Int {
+    if (cum.isEmpty()) return 0
+    var lo = 0
+    var hi = cum.lastIndex
+    while (lo < hi) {
+        val mid = (lo + hi) / 2
+        if (cum[mid] < meters) lo = mid + 1 else hi = mid
+    }
+    // lo is the first index with cum[lo] >= meters; compare with the previous one.
+    if (lo > 0 && abs(cum[lo - 1] - meters) <= abs(cum[lo] - meters)) return lo - 1
+    return lo
+}
+
 /**
  * Coerce a raw (start, end) crop selection into a valid range for a track with [pointCount] points:
  * both indices in bounds and `start < end`, so the cropped track always keeps at least two points.

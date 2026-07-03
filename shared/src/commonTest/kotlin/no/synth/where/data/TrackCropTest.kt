@@ -115,4 +115,24 @@ class TrackCropTest {
         assertEquals(3 to 4, clampCropRange(5, 4, 1))     // start clamped to last-1, end to start+1
         assertEquals(1 to 3, clampCropRange(5, 1, 3))     // already valid, unchanged
     }
+
+    @Test
+    fun nearestPointIndexFindsClosestAndClamps() {
+        val cum = listOf(0.0, 10.0, 20.0, 30.0)
+        assertEquals(0, nearestPointIndex(cum, 0.0))
+        assertEquals(1, nearestPointIndex(cum, 9.0))     // closer to 10 than 0
+        assertEquals(0, nearestPointIndex(cum, 5.0))     // tie -> lower index
+        assertEquals(2, nearestPointIndex(cum, 24.0))    // closer to 20 than 30
+        assertEquals(3, nearestPointIndex(cum, 100.0))   // past the end -> last
+        assertEquals(0, nearestPointIndex(cum, -5.0))    // before the start -> first
+        assertEquals(0, nearestPointIndex(emptyList(), 5.0))
+    }
+
+    @Test
+    fun nearestPointIndexHitsExactVerticesAndSingleElement() {
+        val cum = listOf(0.0, 10.0, 20.0, 30.0)
+        assertEquals(1, nearestPointIndex(cum, 10.0))         // exact interior vertex
+        assertEquals(3, nearestPointIndex(cum, 30.0))         // exact last vertex
+        assertEquals(0, nearestPointIndex(listOf(0.0), 7.0))  // single element
+    }
 }

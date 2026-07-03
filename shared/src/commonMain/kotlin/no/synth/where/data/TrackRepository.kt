@@ -46,6 +46,11 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val _navigation = MutableStateFlow<NavigationSession?>(null)
     val navigation: StateFlow<NavigationSession?> = _navigation.asStateFlow()
 
+    // Index into the focused track's points marked by scrubbing its altitude chart, or null when
+    // none. Transient: cleared whenever the focused track / view changes.
+    private val _elevationMarker = MutableStateFlow<Int?>(null)
+    val elevationMarker: StateFlow<Int?> = _elevationMarker.asStateFlow()
+
     // Active crop of the focused viewing track, or null when not cropping.
     private val _cropState = MutableStateFlow<TrackCropState?>(null)
     val cropState: StateFlow<TrackCropState?> = _cropState.asStateFlow()
@@ -237,6 +242,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     fun setViewingTracks(tracks: List<Track>) {
         _viewingTracks.value = tracks
         _focusedTrackId.value = null
+        _elevationMarker.value = null
     }
 
     fun removeViewingTrack(id: String) {
@@ -245,12 +251,14 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
             _focusedTrackId.value = null
         }
         if (_cropState.value?.trackId == id) _cropState.value = null
+        _elevationMarker.value = null
     }
 
     fun clearViewingTracks() {
         _viewingTracks.value = emptyList()
         _focusedTrackId.value = null
         _cropState.value = null
+        _elevationMarker.value = null
     }
 
     /** Begin cropping the given viewing track, starting with the full range selected. */
@@ -259,6 +267,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         if (track.points.size < 2) return
         _focusedTrackId.value = trackId
         _cropState.value = TrackCropState(trackId, 0, track.points.lastIndex)
+        _elevationMarker.value = null
     }
 
     fun updateCrop(startIndex: Int, endIndex: Int) {
@@ -300,12 +309,19 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         _viewingTracks.value = _viewingTracks.value.map { if (it.id == track.id) track else it }
     }
 
+    /** Set (or clear, with null) the focused track's point index marked by scrubbing its chart. */
+    fun setElevationMarker(index: Int?) {
+        _elevationMarker.value = index
+    }
+
     fun setFocusedTrack(id: String?) {
         _focusedTrackId.value = id
+        _elevationMarker.value = null
     }
 
     fun toggleFocusedTrack(id: String) {
         _focusedTrackId.value = if (_focusedTrackId.value == id) null else id
+        _elevationMarker.value = null
     }
 
     fun startNavigation(track: Track, reversed: Boolean = false) {
@@ -315,6 +331,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         _viewingTracks.value = emptyList()
         _focusedTrackId.value = null
         _cropState.value = null
+        _elevationMarker.value = null
         _navigation.value = NavigationSession(track, reversed)
     }
 

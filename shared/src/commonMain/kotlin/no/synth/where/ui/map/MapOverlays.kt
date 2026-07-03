@@ -655,6 +655,8 @@ fun BoxScope.MapOverlays(
     onCropChange: (Int, Int) -> Unit = { _, _ -> },
     onCancelCrop: () -> Unit = {},
     onApplyCrop: () -> Unit = {},
+    elevationMarker: Int? = null,
+    onElevationScrub: (Int?) -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -933,6 +935,9 @@ fun BoxScope.MapOverlays(
         } else {
             TrackAltitudeChart(
                 track = focusedTrack,
+                onScrub = onElevationScrub,
+                markerIndex = elevationMarker,
+                markerColorHex = focusedTrackColor,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }

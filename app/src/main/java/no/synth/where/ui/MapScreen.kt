@@ -64,6 +64,7 @@ import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.MapLibreMapView
 import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.ui.map.MapZoomLevels
+import no.synth.where.ui.map.buildTrackMarkerGeoJson
 import no.synth.where.ui.map.buildTracksGeoJson
 import no.synth.where.ui.map.renderableTracks
 import no.synth.where.ui.map.animateToBounds
@@ -327,6 +328,16 @@ fun MapScreen(
         }
     }
 
+    val elevationMarker by viewModel.elevationMarker.collectAsState()
+    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks) {
+        buildTrackMarkerGeoJson(viewingTracks, focusedTrackId, elevationMarker)
+    }
+    LaunchedEffect(elevationMarkerGeoJson, mapInstance) {
+        mapInstance?.style?.let { style ->
+            MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJson)
+        }
+    }
+
     // Fit the camera whenever the viewing set changes (adding/removing a track), but not when
     // merely tap-focusing one (focusedTrackId is deliberately not a key). When the set change
     // brought a focused track along (opening a single track focuses it), zoom to that track;
@@ -496,6 +507,8 @@ fun MapScreen(
         onCropChange = { start, end -> viewModel.updateCrop(start, end) },
         onCancelCrop = { viewModel.cancelCrop() },
         onApplyCrop = { viewModel.applyCrop() },
+        elevationMarker = elevationMarker,
+        onElevationScrub = { viewModel.setElevationMarker(it) },
         navigation = NavigationUiState(
             isNavigating = navigation != null,
             progress = navigationProgress,
@@ -635,6 +648,7 @@ fun MapScreen(
                 currentTrack = currentTrack,
                 viewingTracks = viewingTracks,
                 tracksGeoJson = tracksGeoJson,
+                elevationMarkerGeoJson = elevationMarkerGeoJson,
                 friendTrackGeoJson = friendTrackGeoJson,
                 savedCameraLat = savedCameraLat,
                 savedCameraLon = savedCameraLon,

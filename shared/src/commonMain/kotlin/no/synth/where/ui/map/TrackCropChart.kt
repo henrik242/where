@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import no.synth.where.data.Track
 import no.synth.where.data.cumulativeDistances
 import no.synth.where.data.elevationProfileOrNull
+import no.synth.where.data.nearestPointIndex
 import no.synth.where.resources.Res
 import no.synth.where.resources.crop_kept_distance
 import no.synth.where.util.formatDistance
@@ -100,7 +101,7 @@ fun TrackCropChart(
                             change.consume()
                             val w = size.width.toFloat()
                             val dist = (change.position.x / w).coerceIn(0f, 1f) * total
-                            val idx = nearestIndex(cum, dist)
+                            val idx = nearestPointIndex(cum, dist)
                             // Keep the active handle from crossing the other; updateCrop clamps to bounds.
                             if (active == Handle.Start) {
                                 onChange.value(idx.coerceAtMost(endState.value - 1), endState.value)
@@ -153,17 +154,4 @@ fun TrackCropChart(
             }
         }
     }
-}
-
-/** Index of the point whose cumulative distance is closest to [dist]; [cum] is ascending. */
-private fun nearestIndex(cum: List<Double>, dist: Double): Int {
-    var lo = 0
-    var hi = cum.lastIndex
-    while (lo < hi) {
-        val mid = (lo + hi) / 2
-        if (cum[mid] < dist) lo = mid + 1 else hi = mid
-    }
-    // lo is the first index with cum[lo] >= dist; compare with the previous one.
-    if (lo > 0 && abs(cum[lo - 1] - dist) <= abs(cum[lo] - dist)) return lo - 1
-    return lo
 }

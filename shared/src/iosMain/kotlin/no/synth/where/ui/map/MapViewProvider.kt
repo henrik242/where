@@ -42,6 +42,8 @@ interface MapViewProvider {
     fun setCameraBounds(south: Double, west: Double, north: Double, east: Double, padding: Int, maxZoom: Int)
     fun updateSavedPoints(geoJson: String)
     fun clearSavedPoints()
+    /** Single elevation-scrub marker point; an empty FeatureCollection clears it. */
+    fun updateElevationMarker(geoJson: String)
     fun setOnLongPressCallback(callback: MapLongPressCallback?)
     fun setOnMapClickCallback(callback: MapClickCallback?)
     fun updateRuler(lineGeoJson: String, pointsGeoJson: String)

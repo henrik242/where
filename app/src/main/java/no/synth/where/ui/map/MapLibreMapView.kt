@@ -59,6 +59,7 @@ fun MapLibreMapView(
     currentTrack: Track? = null,
     viewingTracks: List<Track> = emptyList(),
     tracksGeoJson: String = "",
+    elevationMarkerGeoJson: String = "",
     savedCameraLat: Double = 65.0,
     savedCameraLon: Double = 10.0,
     savedCameraZoom: Double = 5.0,
@@ -88,6 +89,7 @@ fun MapLibreMapView(
     // Kept current so the async onStyleLoaded callbacks redraw the latest tracks without the
     // style-reload effects needing to key on them.
     val tracksGeoJsonState = rememberUpdatedState(tracksGeoJson)
+    val elevationMarkerGeoJsonState = rememberUpdatedState(elevationMarkerGeoJson)
     val viewingTracksState = rememberUpdatedState(viewingTracks)
 
     DisposableEffect(context) {
@@ -157,6 +159,7 @@ fun MapLibreMapView(
                             )
                             MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
                             MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
+                            MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJsonState.value)
                             MapRenderUtils.updateRulerOnMap(style, rulerState)
                             MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
                             MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
@@ -233,6 +236,7 @@ fun MapLibreMapView(
                                 )
                                 MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
                                 MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
+                                MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJsonState.value)
                                 MapRenderUtils.updateRulerOnMap(style, rulerState)
                                 MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
                                 MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
@@ -424,6 +428,7 @@ fun MapLibreMapView(
                                         hasLocationPermission
                                     )
                                     MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
+                                    MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJsonState.value)
                                     MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
                                     MapRenderUtils.updateRulerOnMap(style, rulerState)
                                     MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)

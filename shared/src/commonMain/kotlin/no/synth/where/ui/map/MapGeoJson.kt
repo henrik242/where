@@ -108,6 +108,22 @@ fun buildTracksGeoJson(tracks: List<RenderableTrack>): String {
     return """{"type":"FeatureCollection","features":[$features]}"""
 }
 
+/**
+ * Marker point for the focused track's scrub [markerIndex], carrying the track's palette color as a
+ * `color` property so the map dot matches its line. Empty collection (draws nothing) when nothing is
+ * marked or the index is out of range.
+ */
+fun buildTrackMarkerGeoJson(viewing: List<Track>, focusedId: String?, markerIndex: Int?): String {
+    val empty = """{"type":"FeatureCollection","features":[]}"""
+    if (markerIndex == null || focusedId == null) return empty
+    val trackIndex = viewing.indexOfFirst { it.id == focusedId }
+    if (trackIndex < 0) return empty
+    val point = viewing[trackIndex].points.getOrNull(markerIndex) ?: return empty
+    val color = TrackColors.forIndex(trackIndex)
+    return """{"type":"FeatureCollection","features":[""" +
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"color":"$color"}}]}"""
+}
+
 fun buildSavedPointsGeoJson(points: List<SavedPoint>): String {
     val features = points.joinToString(",") { point ->
         val name = point.name.replace("\"", "\\\"")

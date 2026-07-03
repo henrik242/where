@@ -169,4 +169,23 @@ class MultiTrackRenderTest {
     fun combinedBoundsEmptyIsNull() {
         assertNull(Track.combinedBounds(emptyList()))
     }
+
+    @Test
+    fun trackMarkerGeoJsonEmptyWhenNoMarker() {
+        val empty = """{"type":"FeatureCollection","features":[]}"""
+        val t = track("a", 60.0, count = 3)
+        assertEquals(empty, buildTrackMarkerGeoJson(listOf(t), "a", null))
+        assertEquals(empty, buildTrackMarkerGeoJson(listOf(t), null, 1))
+        assertEquals(empty, buildTrackMarkerGeoJson(listOf(t), "missing", 1))
+        assertEquals(empty, buildTrackMarkerGeoJson(listOf(t), "a", 99)) // index out of range
+    }
+
+    @Test
+    fun trackMarkerGeoJsonEmitsColoredPointInLngLatOrder() {
+        val t = track("a", 60.0, count = 3) // points at (60.0, 10.000/10.001/10.002)
+        val json = buildTrackMarkerGeoJson(listOf(t), "a", 1)
+        assertTrue(json.contains(""""type":"Point""""))
+        assertTrue(json.contains("""[10.001,60.0]"""))   // GeoJSON is [lng,lat] of index 1
+        assertTrue(json.contains(""""color":"${TrackColors.forIndex(0)}""""))
+    }
 }

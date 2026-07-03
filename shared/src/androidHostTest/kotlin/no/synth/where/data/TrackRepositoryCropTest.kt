@@ -211,4 +211,29 @@ class TrackRepositoryCropTest {
             assertNull(cropState.value)
         }
     }
+
+    @Test
+    fun setElevationMarkerRoundTripsAndClears() {
+        val repo = repo()
+        repo.addViewingTrack(sampleTrack())
+        repo.setElevationMarker(3)
+        assertEquals(3, repo.elevationMarker.value)
+        repo.setElevationMarker(null)
+        assertNull(repo.elevationMarker.value)
+    }
+
+    @Test
+    fun viewChangesClearElevationMarker() {
+        fun withMarker(): TrackRepository = repo().apply {
+            addViewingTrack(sampleTrack())
+            setElevationMarker(2)
+        }
+        withMarker().apply { setFocusedTrack(null); assertNull(elevationMarker.value) }
+        withMarker().apply { toggleFocusedTrack("t1"); assertNull(elevationMarker.value) }
+        withMarker().apply { removeViewingTrack("t1"); assertNull(elevationMarker.value) }
+        withMarker().apply { clearViewingTracks(); assertNull(elevationMarker.value) }
+        withMarker().apply { setViewingTracks(emptyList()); assertNull(elevationMarker.value) }
+        withMarker().apply { startCrop("t1"); assertNull(elevationMarker.value) }
+        withMarker().apply { startNavigation(sampleTrack()); assertNull(elevationMarker.value) }
+    }
 }

@@ -79,6 +79,34 @@ object MapRenderUtils {
     }
 
     /**
+     * Single marker for elevation-chart scrubbing. An empty FeatureCollection draws nothing, so the
+     * caller can pass the marker geojson unconditionally. Updates the source in place for smooth drag.
+     */
+    fun updateElevationMarkerOnMap(style: Style, geoJson: String) {
+        try {
+            val sourceId = "elevation-marker-source"
+            val layerId = "elevation-marker-layer"
+
+            val existing = style.getSourceAs<GeoJsonSource>(sourceId)
+            if (existing != null) {
+                existing.setGeoJson(geoJson)
+                return
+            }
+
+            style.addSource(GeoJsonSource(sourceId, geoJson))
+            val circleLayer = CircleLayer(layerId, sourceId).withProperties(
+                PropertyFactory.circleRadius(7f),
+                PropertyFactory.circleColor("#FFFFFF"),
+                PropertyFactory.circleStrokeWidth(3f),
+                PropertyFactory.circleStrokeColor(Expression.get("color"))
+            )
+            style.addLayer(circleLayer)
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
+    /**
      * Update friend's track visualization on the map (dashed blue line).
      */
     fun updateFriendTrackOnMap(style: Style, geoJson: String?) {

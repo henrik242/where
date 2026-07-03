@@ -106,6 +106,7 @@ fun IosMapScreen(
     val navigation by trackRepository.navigation.collectAsState()
     val cropState by trackRepository.cropState.collectAsState()
     val cropUndo by trackRepository.cropUndo.collectAsState()
+    val elevationMarker by trackRepository.elevationMarker.collectAsState()
     val navigationProgress = rememberNavigationProgress(
         session = navigation,
         location = {
@@ -387,6 +388,13 @@ fun IosMapScreen(
         mapViewProvider.updateTracks(tracksGeoJson)
     }
 
+    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks) {
+        buildTrackMarkerGeoJson(viewingTracks, focusedTrackId, elevationMarker)
+    }
+    LaunchedEffect(elevationMarkerGeoJson) {
+        mapViewProvider.updateElevationMarker(elevationMarkerGeoJson)
+    }
+
     // Fit the camera whenever the viewing set changes, but not on tap-focus (focusedTrackId is
     // deliberately not a key). Opening a single track focuses it, so zoom to that track; a bulk
     // multi-select clears focus, so fit the union of the whole set.
@@ -614,6 +622,8 @@ fun IosMapScreen(
         onCropChange = { start, end -> trackRepository.updateCrop(start, end) },
         onCancelCrop = { trackRepository.cancelCrop() },
         onApplyCrop = { trackRepository.applyCrop() },
+        elevationMarker = elevationMarker,
+        onElevationScrub = { trackRepository.setElevationMarker(it) },
         navigation = NavigationUiState(
             isNavigating = navigation != null,
             progress = navigationProgress,

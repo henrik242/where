@@ -364,6 +364,10 @@ class MapScreenViewModel(
     fun undoCrop() = trackRepository.undoCrop()
     fun clearCropUndo() = trackRepository.clearCropUndo()
 
+    // Elevation-chart scrubbing marker (index into the focused track's points)
+    val elevationMarker = trackRepository.elevationMarker
+    fun setElevationMarker(index: Int?) = trackRepository.setElevationMarker(index)
+
     // Navigation
     val navigation = trackRepository.navigation
     fun startNavigation(track: Track, reversed: Boolean = false) =

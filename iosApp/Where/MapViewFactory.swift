@@ -15,6 +15,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingTrackColor: String?
     private var pendingTracksGeoJson: String?
     private var pendingSavedPointsGeoJson: String?
+    private var pendingElevationMarkerGeoJson: String?
     private var pendingRulerLineGeoJson: String?
     private var pendingRulerPointsGeoJson: String?
     private var pendingMeasurementLineGeoJson: String?
@@ -38,6 +39,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let trackLayerId = "track-layer"
     private let savedPointsSourceId = "saved-points-source"
     private let savedPointsLayerId = "saved-points-layer"
+    private let elevationMarkerSourceId = "elevation-marker-source"
+    private let elevationMarkerLayerId = "elevation-marker-layer"
     private let rulerLineSourceId = "ruler-line-source"
     private let rulerLineLayerId = "ruler-line-layer"
     private let rulerPointSourceId = "ruler-point-source"
@@ -313,6 +316,14 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         removeSavedPoints(style: style)
     }
 
+    func updateElevationMarker(geoJson: String) {
+        guard let mapView = self.mapView, let style = mapView.style else {
+            pendingElevationMarkerGeoJson = geoJson
+            return
+        }
+        applyElevationMarker(style: style, geoJson: geoJson)
+    }
+
     func updateRuler(lineGeoJson: String, pointsGeoJson: String) {
         guard let mapView = self.mapView, let style = mapView.style else {
             pendingRulerLineGeoJson = lineGeoJson
@@ -503,6 +514,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let geoJson = pendingSavedPointsGeoJson {
             applySavedPoints(style: style, geoJson: geoJson)
         }
+        if let geoJson = pendingElevationMarkerGeoJson {
+            applyElevationMarker(style: style, geoJson: geoJson)
+        }
         if let lineGeoJson = pendingRulerLineGeoJson, let pointsGeoJson = pendingRulerPointsGeoJson {
             applyRuler(style: style, lineGeoJson: lineGeoJson, pointsGeoJson: pointsGeoJson)
         }
@@ -613,6 +627,37 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             style.removeLayer(existingLayer)
         }
         if let existingSource = style.source(withIdentifier: savedPointsSourceId) {
+            style.removeSource(existingSource)
+        }
+    }
+
+    private func applyElevationMarker(style: MLNStyle, geoJson: String) {
+        removeElevationMarker(style: style)
+
+        guard let data = geoJson.data(using: .utf8),
+              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+            print("Failed to parse elevation marker GeoJSON")
+            return
+        }
+
+        let source = MLNShapeSource(identifier: elevationMarkerSourceId, shape: shape, options: nil)
+        style.addSource(source)
+
+        let layer = MLNCircleStyleLayer(identifier: elevationMarkerLayerId, source: source)
+        layer.circleRadius = NSExpression(forConstantValue: 7)
+        layer.circleColor = NSExpression(forConstantValue: UIColor.white)
+        layer.circleStrokeColor = NSExpression(forKeyPath: "color")   // focused track's palette color
+        layer.circleStrokeWidth = NSExpression(forConstantValue: 3)
+        style.addLayer(layer)
+
+        pendingElevationMarkerGeoJson = geoJson
+    }
+
+    private func removeElevationMarker(style: MLNStyle) {
+        if let existingLayer = style.layer(withIdentifier: elevationMarkerLayerId) {
+            style.removeLayer(existingLayer)
+        }
+        if let existingSource = style.source(withIdentifier: elevationMarkerSourceId) {
             style.removeSource(existingSource)
         }
     }
