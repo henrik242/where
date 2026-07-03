@@ -4,7 +4,9 @@ import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.Track
+import no.synth.where.data.TrackCropState
 import no.synth.where.data.TrackPoint
+import no.synth.where.data.clampCropRange
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.util.formatDistance
@@ -35,17 +37,23 @@ fun renderableTracks(
     viewing: List<Track>,
     focusedId: String?,
     recording: Track?,
+    crop: TrackCropState? = null,
 ): List<RenderableTrack> {
     val out = ArrayList<RenderableTrack>(viewing.size + 1)
     viewing.forEachIndexed { index, track ->
         if (track.points.size < 2) return@forEachIndexed
         val isFocused = track.id == focusedId
         val dimmed = focusedId != null && !isFocused
+        val color = TrackColors.forIndex(index)
+        if (crop != null && crop.trackId == track.id) {
+            out.addAll(croppedRenderables(track, color, crop))
+            return@forEachIndexed
+        }
         out.add(
             RenderableTrack(
                 id = track.id,
                 points = track.points,
-                color = TrackColors.forIndex(index),
+                color = color,
                 width = if (isFocused) 6.0 else 4.0,
                 opacity = if (dimmed) 0.3 else 0.9,
             )
@@ -63,6 +71,25 @@ fun renderableTracks(
         )
     }
     return out
+}
+
+/**
+ * The three parts drawn while cropping [track]: the kept span emphasized in [color], and the two
+ * trimmed ends greyed out. Boundary points are shared so the grey meets the colored kept span with
+ * no gap. Trimmed ends are omitted when the crop reaches an end of the track.
+ */
+private fun croppedRenderables(track: Track, color: String, crop: TrackCropState): List<RenderableTrack> {
+    val last = track.points.lastIndex
+    val (start, end) = clampCropRange(track.points.size, crop.startIndex, crop.endIndex)
+    val parts = ArrayList<RenderableTrack>(3)
+    if (start > 0) {
+        parts.add(RenderableTrack("${track.id}-head", track.points.subList(0, start + 1), TrackColors.TRIMMED, 4.0, 0.35))
+    }
+    parts.add(RenderableTrack("${track.id}-kept", track.points.subList(start, end + 1), color, 6.0, 0.9))
+    if (end < last) {
+        parts.add(RenderableTrack("${track.id}-tail", track.points.subList(end, last + 1), TrackColors.TRIMMED, 4.0, 0.35))
+    }
+    return parts
 }
 
 /**

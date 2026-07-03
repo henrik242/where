@@ -16,6 +16,7 @@ import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.Track
+import no.synth.where.data.TrackCropState
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
 
@@ -51,6 +52,10 @@ fun MapScreenContent(
     recordingDistance: Double?,
     viewingTracks: List<Track> = emptyList(),
     focusedTrackId: String? = null,
+    cropState: TrackCropState? = null,
+    onCropChange: (Int, Int) -> Unit = { _, _ -> },
+    onCancelCrop: () -> Unit = {},
+    onApplyCrop: () -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -162,6 +167,10 @@ fun MapScreenContent(
                 isLiveSharing = isLiveSharing,
                 viewingTracks = viewingTracks,
                 focusedTrackId = focusedTrackId,
+                cropState = cropState,
+                onCropChange = onCropChange,
+                onCancelCrop = onCancelCrop,
+                onApplyCrop = onApplyCrop,
                 navigation = navigation,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,

@@ -60,6 +60,7 @@ fun TracksScreenContent(
     onShowOnMap: (Track) -> Unit,
     onShowSelectedOnMap: (List<Track>) -> Unit = {},
     onNavigate: (Track) -> Unit = {},
+    onCrop: (Track) -> Unit = {},
     isRecording: Boolean = false,
 ) {
     // Multi-select mode: long-press a track to enter it, then tap rows to build a set and show them
@@ -232,6 +233,7 @@ fun TracksScreenContent(
                         onRename = { onRenameRequest(track) },
                         onShowOnMap = { onShowOnMap(track) },
                         onNavigate = { onNavigate(track) },
+                        onCrop = { onCrop(track) },
                         canNavigate = !isRecording
                     )
                     HorizontalDivider()
@@ -315,6 +317,7 @@ fun TrackItem(
     onRename: () -> Unit,
     onShowOnMap: () -> Unit,
     onNavigate: () -> Unit = {},
+    onCrop: () -> Unit = {},
     canNavigate: Boolean = true
 ) {
     val highlightColor by animateColorAsState(
@@ -442,6 +445,19 @@ fun TrackItem(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(stringResource(Res.string.share))
+            }
+            OutlinedButton(
+                onClick = onCrop,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = track.points.size >= 2
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_crop),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(stringResource(Res.string.crop_track))
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),

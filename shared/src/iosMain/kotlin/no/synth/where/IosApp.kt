@@ -245,6 +245,11 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         trackRepository.startNavigation(track, reversed = false)
                         navigateToMap()
                     },
+                    onCrop = { track ->
+                        trackRepository.addViewingTrack(track)
+                        trackRepository.startCrop(track.id)
+                        navigateToMap()
+                    },
                     isRecording = isRecording
                 )
             }

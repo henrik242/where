@@ -355,6 +355,15 @@ class MapScreenViewModel(
         trackRepository.clearViewingTracks()
     }
 
+    // Crop
+    val cropState = trackRepository.cropState
+    val cropUndo = trackRepository.cropUndo
+    fun updateCrop(startIndex: Int, endIndex: Int) = trackRepository.updateCrop(startIndex, endIndex)
+    fun cancelCrop() = trackRepository.cancelCrop()
+    fun applyCrop() = trackRepository.applyCrop()
+    fun undoCrop() = trackRepository.undoCrop()
+    fun clearCropUndo() = trackRepository.clearCropUndo()
+
     // Navigation
     val navigation = trackRepository.navigation
     fun startNavigation(track: Track, reversed: Boolean = false) =

@@ -29,7 +29,7 @@ map rendering and live-location polling are per-platform. Concretely:
 
 - Navigation logic: `shared/.../data/navigation/` (`TrackNavigator`, `NavigationProgress`)
 - Geometry primitives: `shared/.../data/geo/` (`SegmentProjection`, `LatLng`)
-- Elevation/track math: `shared/.../data/` (`ElevationProfile`, `TrackUtils`)
+- Elevation/track math: `shared/.../data/` (`ElevationProfile`, `TrackUtils`, `TrackCrop`)
 - GeoJSON builders (shared layer content): `shared/.../ui/map/MapGeoJson.kt`
 - Platform map rendering: `MapRenderUtils.kt` (Android, `shared/src/androidMain`) and
   `iosApp/Where/MapViewFactory.swift` (iOS) — keep their styling constants in sync

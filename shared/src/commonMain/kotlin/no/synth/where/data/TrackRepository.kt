@@ -19,6 +19,9 @@ import no.synth.where.util.currentTimeMillis
 
 data class NavigationSession(val track: Track, val reversed: Boolean)
 
+/** Active crop of a viewing track: keep points[startIndex..endIndex] (inclusive). */
+data class TrackCropState(val trackId: String, val startIndex: Int, val endIndex: Int)
+
 class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val json = Json { ignoreUnknownKeys = true }
     private val tracksFile = filesDir.resolve("tracks.json")
@@ -42,6 +45,15 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     private val _navigation = MutableStateFlow<NavigationSession?>(null)
     val navigation: StateFlow<NavigationSession?> = _navigation.asStateFlow()
+
+    // Active crop of the focused viewing track, or null when not cropping.
+    private val _cropState = MutableStateFlow<TrackCropState?>(null)
+    val cropState: StateFlow<TrackCropState?> = _cropState.asStateFlow()
+
+    // The pre-crop track after a crop is applied, held so the UI can offer a one-tap undo of the
+    // (otherwise irreversible) overwrite. Cleared once the undo affordance is consumed or dismissed.
+    private val _cropUndo = MutableStateFlow<Track?>(null)
+    val cropUndo: StateFlow<Track?> = _cropUndo.asStateFlow()
 
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
@@ -116,27 +128,41 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         scope.launch { persistTrack(track) }
     }
 
+    private fun entitiesFor(track: Track): Pair<TrackEntity, List<TrackPointEntity>> {
+        val entity = TrackEntity(
+            id = track.id,
+            name = track.name,
+            startTime = track.startTime,
+            endTime = track.endTime,
+            isRecording = false
+        )
+        val pointEntities = track.points.mapIndexed { index, point ->
+            TrackPointEntity(
+                trackId = track.id,
+                latitude = point.latLng.latitude,
+                longitude = point.latLng.longitude,
+                timestamp = point.timestamp,
+                altitude = point.altitude,
+                accuracy = point.accuracy,
+                orderIndex = index
+            )
+        }
+        return entity to pointEntities
+    }
+
     private suspend fun persistTrack(track: Track) {
         try {
-            val entity = TrackEntity(
-                id = track.id,
-                name = track.name,
-                startTime = track.startTime,
-                endTime = track.endTime,
-                isRecording = false
-            )
-            val pointEntities = track.points.mapIndexed { index, point ->
-                TrackPointEntity(
-                    trackId = track.id,
-                    latitude = point.latLng.latitude,
-                    longitude = point.latLng.longitude,
-                    timestamp = point.timestamp,
-                    altitude = point.altitude,
-                    accuracy = point.accuracy,
-                    orderIndex = index
-                )
-            }
+            val (entity, pointEntities) = entitiesFor(track)
             trackDao.insertTrackWithPoints(entity, pointEntities)
+        } catch (e: Exception) {
+            Logger.e(e, "Track repository error")
+        }
+    }
+
+    private suspend fun overwriteTrack(track: Track) {
+        try {
+            val (entity, pointEntities) = entitiesFor(track)
+            trackDao.replaceTrackWithPoints(entity, pointEntities)
         } catch (e: Exception) {
             Logger.e(e, "Track repository error")
         }
@@ -218,11 +244,60 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         if (_focusedTrackId.value == id || _viewingTracks.value.isEmpty()) {
             _focusedTrackId.value = null
         }
+        if (_cropState.value?.trackId == id) _cropState.value = null
     }
 
     fun clearViewingTracks() {
         _viewingTracks.value = emptyList()
         _focusedTrackId.value = null
+        _cropState.value = null
+    }
+
+    /** Begin cropping the given viewing track, starting with the full range selected. */
+    fun startCrop(trackId: String) {
+        val track = _viewingTracks.value.firstOrNull { it.id == trackId } ?: return
+        if (track.points.size < 2) return
+        _focusedTrackId.value = trackId
+        _cropState.value = TrackCropState(trackId, 0, track.points.lastIndex)
+    }
+
+    fun updateCrop(startIndex: Int, endIndex: Int) {
+        val current = _cropState.value ?: return
+        val track = _viewingTracks.value.firstOrNull { it.id == current.trackId } ?: return
+        val (start, end) = clampCropRange(track.points.size, startIndex, endIndex)
+        _cropState.value = current.copy(startIndex = start, endIndex = end)
+    }
+
+    fun cancelCrop() {
+        _cropState.value = null
+    }
+
+    /** Overwrite the cropped track in place with the selected span and exit crop mode. */
+    fun applyCrop() {
+        val current = _cropState.value ?: return
+        val track = _viewingTracks.value.firstOrNull { it.id == current.trackId } ?: return
+        _cropState.value = null
+        val cropped = track.cropped(current.startIndex, current.endIndex)
+        if (cropped === track) return   // full-range selection: nothing trimmed, skip the DB rewrite
+        replaceViewingTrack(cropped)
+        _cropUndo.value = track          // offer undo of the destructive overwrite
+        scope.launch { overwriteTrack(cropped) }
+    }
+
+    /** Restore the pre-crop track (reverses the last [applyCrop]). */
+    fun undoCrop() {
+        val original = _cropUndo.value ?: return
+        _cropUndo.value = null
+        replaceViewingTrack(original)
+        scope.launch { overwriteTrack(original) }
+    }
+
+    fun clearCropUndo() {
+        _cropUndo.value = null
+    }
+
+    private fun replaceViewingTrack(track: Track) {
+        _viewingTracks.value = _viewingTracks.value.map { if (it.id == track.id) track else it }
     }
 
     fun setFocusedTrack(id: String?) {
@@ -239,6 +314,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         // grey/blue split line shows.
         _viewingTracks.value = emptyList()
         _focusedTrackId.value = null
+        _cropState.value = null
         _navigation.value = NavigationSession(track, reversed)
     }
 

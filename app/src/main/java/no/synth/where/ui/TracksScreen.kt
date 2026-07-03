@@ -29,7 +29,8 @@ fun TracksScreen(
     onBackClick: () -> Unit,
     onShowTrackOnMap: (Track) -> Unit,
     onShowTracksOnMap: (List<Track>) -> Unit = {},
-    onNavigateTrack: (Track) -> Unit
+    onNavigateTrack: (Track) -> Unit,
+    onCropTrack: (Track) -> Unit = {}
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as no.synth.where.WhereApplication
@@ -181,6 +182,7 @@ fun TracksScreen(
         onShowOnMap = onShowTrackOnMap,
         onShowSelectedOnMap = onShowTracksOnMap,
         onNavigate = onNavigateTrack,
+        onCrop = onCropTrack,
         isRecording = isRecording
     )
 }

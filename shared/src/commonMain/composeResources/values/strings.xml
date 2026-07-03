@@ -71,6 +71,13 @@
     <string name="viewers_watching_plural">%1$d people are watching your track</string>
     <string name="close_track">Close track</string>
     <string name="close_point_view">Close Point View</string>
+    <string name="crop_track">Crop</string>
+    <string name="crop_title">Crop %1$s</string>
+    <string name="crop_save">Save crop</string>
+    <string name="crop_cancel">Cancel crop</string>
+    <string name="crop_kept_distance">Keeping %1$s</string>
+    <string name="track_cropped">Track cropped</string>
+    <string name="undo">Undo</string>
 
     <!-- Search Overlay -->
     <string name="search_places_hint">Search places\u2026</string>

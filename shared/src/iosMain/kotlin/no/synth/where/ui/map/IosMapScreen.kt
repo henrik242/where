@@ -2,6 +2,7 @@ package no.synth.where.ui.map
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,8 +48,10 @@ import no.synth.where.resources.point_saved
 import no.synth.where.resources.point_updated
 import no.synth.where.resources.recording_snackbar
 import no.synth.where.resources.saved_as_track_name
+import no.synth.where.resources.track_cropped
 import no.synth.where.resources.track_discarded
 import no.synth.where.resources.track_saved
+import no.synth.where.resources.undo
 import no.synth.where.resources.unnamed_point
 import no.synth.where.util.NamingUtils
 import org.jetbrains.compose.resources.stringResource
@@ -100,6 +103,8 @@ fun IosMapScreen(
     val viewingTracks by trackRepository.viewingTracks.collectAsState()
     val focusedTrackId by trackRepository.focusedTrackId.collectAsState()
     val navigation by trackRepository.navigation.collectAsState()
+    val cropState by trackRepository.cropState.collectAsState()
+    val cropUndo by trackRepository.cropUndo.collectAsState()
     val navigationProgress = rememberNavigationProgress(
         session = navigation,
         location = {
@@ -151,6 +156,15 @@ fun IosMapScreen(
     val pointDeletedMsg = stringResource(Res.string.point_deleted)
     val pointUpdatedMsg = stringResource(Res.string.point_updated)
     val locationPermissionMsg = stringResource(Res.string.location_permission_required)
+    val trackCroppedMsg = stringResource(Res.string.track_cropped)
+    val undoLabel = stringResource(Res.string.undo)
+
+    // After a crop overwrites the track, offer a one-tap undo of the (otherwise irreversible) change.
+    LaunchedEffect(cropUndo) {
+        if (cropUndo == null) return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(trackCroppedMsg, actionLabel = undoLabel)
+        if (result == SnackbarResult.ActionPerformed) trackRepository.undoCrop() else trackRepository.clearCropUndo()
+    }
     val unnamedPointStr = stringResource(Res.string.unnamed_point)
 
     var showStopTrackDialog by remember { mutableStateOf(false) }
@@ -178,9 +192,9 @@ fun IosMapScreen(
     // Track view state
     // All visible track lines (viewing set + recording) as one data-driven FeatureCollection.
     // While navigating, the grey/blue split line replaces the plain lines, so draw nothing here.
-    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, navigation != null) {
+    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, navigation != null, cropState) {
         val renderTracks = if (navigation != null) emptyList()
-        else renderableTracks(viewingTracks, focusedTrackId, currentTrack)
+        else renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState)
         buildTracksGeoJson(renderTracks)
     }
 
@@ -591,6 +605,10 @@ fun IosMapScreen(
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTracks = viewingTracks,
         focusedTrackId = focusedTrackId,
+        cropState = cropState,
+        onCropChange = { start, end -> trackRepository.updateCrop(start, end) },
+        onCancelCrop = { trackRepository.cancelCrop() },
+        onApplyCrop = { trackRepository.applyCrop() },
         navigation = NavigationUiState(
             isNavigating = navigation != null,
             progress = navigationProgress,

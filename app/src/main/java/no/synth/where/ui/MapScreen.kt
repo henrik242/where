@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -98,6 +99,8 @@ fun MapScreen(
     val currentTrack by viewModel.currentTrack.collectAsState()
     val viewingTracks by viewModel.viewingTracks.collectAsState()
     val focusedTrackId by viewModel.focusedTrackId.collectAsState()
+    val cropState by viewModel.cropState.collectAsState()
+    val cropUndo by viewModel.cropUndo.collectAsState()
     val onlineTrackingEnabled by viewModel.onlineTrackingEnabled.collectAsState()
     val viewerCount by viewModel.userPreferences.viewerCount.collectAsState()
     val liveShareUntilMillis by viewModel.userPreferences.liveShareUntilMillis.collectAsState()
@@ -170,8 +173,11 @@ fun MapScreen(
     // Back exits the active mode in order: stop navigation, then unfocus a track (chrome returns,
     // line stays), then clear the track. Handling navigation first avoids a half-exited state where
     // the route is hidden but the session keeps polling.
-    BackHandler(enabled = navigation != null || viewingTracks.isNotEmpty()) {
+    BackHandler(enabled = navigation != null || viewingTracks.isNotEmpty() || cropState != null) {
         when {
+            // While cropping, Back means "cancel crop" — otherwise unfocusing would hide the crop
+            // UI while leaving the crop session dangling.
+            cropState != null -> viewModel.cancelCrop()
             navigation != null -> viewModel.stopNavigation()
             focusedTrackId != null -> viewModel.unfocusTrack()
             else -> viewModel.clearViewingTracks()
@@ -261,6 +267,15 @@ fun MapScreen(
     val pointSavedMsg = stringResource(Res.string.point_saved)
     val pointDeletedMsg = stringResource(Res.string.point_deleted)
     val pointUpdatedMsg = stringResource(Res.string.point_updated)
+    val trackCroppedMsg = stringResource(Res.string.track_cropped)
+    val undoLabel = stringResource(Res.string.undo)
+
+    // After a crop overwrites the track, offer a one-tap undo of the (otherwise irreversible) change.
+    LaunchedEffect(cropUndo) {
+        if (cropUndo == null) return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(trackCroppedMsg, actionLabel = undoLabel)
+        if (result == SnackbarResult.ActionPerformed) viewModel.undoCrop() else viewModel.clearCropUndo()
+    }
 
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -295,9 +310,9 @@ fun MapScreen(
 
     // All visible track lines (viewing set + recording) as one data-driven FeatureCollection.
     // While navigating, the grey/blue split line replaces the plain lines, so draw nothing here.
-    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, navigation != null) {
+    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, navigation != null, cropState) {
         val renderTracks = if (navigation != null) emptyList()
-        else renderableTracks(viewingTracks, focusedTrackId, currentTrack)
+        else renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState)
         buildTracksGeoJson(renderTracks)
     }
 
@@ -472,6 +487,10 @@ fun MapScreen(
         recordingDistance = currentTrack?.getDistanceMeters(),
         viewingTracks = viewingTracks,
         focusedTrackId = focusedTrackId,
+        cropState = cropState,
+        onCropChange = { start, end -> viewModel.updateCrop(start, end) },
+        onCancelCrop = { viewModel.cancelCrop() },
+        onApplyCrop = { viewModel.applyCrop() },
         navigation = NavigationUiState(
             isNavigating = navigation != null,
             progress = navigationProgress,

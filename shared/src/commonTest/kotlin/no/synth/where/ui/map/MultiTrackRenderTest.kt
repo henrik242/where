@@ -1,6 +1,7 @@
 package no.synth.where.ui.map
 
 import no.synth.where.data.Track
+import no.synth.where.data.TrackCropState
 import no.synth.where.data.TrackPoint
 import no.synth.where.data.TrackUtils
 import no.synth.where.data.geo.LatLng
@@ -95,6 +96,65 @@ class MultiTrackRenderTest {
         val a = track("a", 60.0)
         val tap = LatLng(61.0, 11.0)
         assertNull(TrackUtils.findTappedTrack(tap, listOf(a), maxDistanceMeters = 50.0))
+    }
+
+    @Test
+    fun cropSplitsFocusedTrackIntoGreyEndsAndColoredKept() {
+        val t = track("a", 60.0, count = 6) // indices 0..5
+        val out = renderableTracks(
+            listOf(t), focusedId = "a", recording = null,
+            crop = TrackCropState("a", startIndex = 2, endIndex = 4),
+        )
+        val head = out.first { it.id == "a-head" }
+        val kept = out.first { it.id == "a-kept" }
+        val tail = out.first { it.id == "a-tail" }
+        assertEquals(TrackColors.TRIMMED, head.color)
+        assertEquals(TrackColors.TRIMMED, tail.color)
+        assertEquals(TrackColors.forIndex(0), kept.color)
+        // Boundary points shared: head 0..2 (3), kept 2..4 (3), tail 4..5 (2).
+        assertEquals(3, head.points.size)
+        assertEquals(3, kept.points.size)
+        assertEquals(2, tail.points.size)
+        assertTrue(kept.width > head.width)
+    }
+
+    @Test
+    fun cropAtStartOmitsHead() {
+        val t = track("a", 60.0, count = 6)
+        val out = renderableTracks(
+            listOf(t), focusedId = "a", recording = null,
+            crop = TrackCropState("a", startIndex = 0, endIndex = 3),
+        )
+        assertNull(out.firstOrNull { it.id == "a-head" })
+        assertNotNull(out.firstOrNull { it.id == "a-kept" })
+        assertNotNull(out.firstOrNull { it.id == "a-tail" })
+    }
+
+    @Test
+    fun cropAtEndOmitsTail() {
+        val t = track("a", 60.0, count = 6)
+        val out = renderableTracks(
+            listOf(t), focusedId = "a", recording = null,
+            crop = TrackCropState("a", startIndex = 2, endIndex = 5),
+        )
+        assertNotNull(out.firstOrNull { it.id == "a-head" })
+        assertNotNull(out.firstOrNull { it.id == "a-kept" })
+        assertNull(out.firstOrNull { it.id == "a-tail" })
+    }
+
+    @Test
+    fun cropSharesBoundaryCoordinates() {
+        val t = track("a", 60.0, count = 6)
+        val out = renderableTracks(
+            listOf(t), focusedId = "a", recording = null,
+            crop = TrackCropState("a", startIndex = 2, endIndex = 4),
+        )
+        val head = out.first { it.id == "a-head" }
+        val kept = out.first { it.id == "a-kept" }
+        val tail = out.first { it.id == "a-tail" }
+        // The split shares boundary points so grey meets color with no gap or off-by-one.
+        assertEquals(head.points.last().latLng, kept.points.first().latLng)
+        assertEquals(kept.points.last().latLng, tail.points.first().latLng)
     }
 
     @Test

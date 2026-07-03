@@ -57,6 +57,7 @@ import no.synth.where.data.hasElevationData
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.Track
+import no.synth.where.data.TrackCropState
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
@@ -260,6 +261,54 @@ fun ViewingTrackBanner(
             // the eye-off "remove from map" button beside it.
             IconButton(onClick = onCollapse, modifier = Modifier.size(36.dp)) {
                 Icon(painterResource(Res.drawable.ic_expand_more), contentDescription = stringResource(Res.string.collapse))
+            }
+        }
+    }
+}
+
+/** Top banner shown while cropping: title + Cancel (discard) and Save (overwrite the track in place). */
+@Composable
+fun TrackCropHeader(
+    modifier: Modifier = Modifier,
+    trackName: String,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                painterResource(Res.drawable.ic_crop),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = stringResource(Res.string.crop_title, trackName),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onCancel, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    painterResource(Res.drawable.ic_close),
+                    contentDescription = stringResource(Res.string.crop_cancel)
+                )
+            }
+            IconButton(onClick = onSave, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    painterResource(Res.drawable.ic_check),
+                    contentDescription = stringResource(Res.string.crop_save),
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -602,6 +651,10 @@ fun BoxScope.MapOverlays(
     viewerCount: Int = 0,
     viewingTracks: List<Track> = emptyList(),
     focusedTrackId: String? = null,
+    cropState: TrackCropState? = null,
+    onCropChange: (Int, Int) -> Unit = { _, _ -> },
+    onCancelCrop: () -> Unit = {},
+    onApplyCrop: () -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -635,6 +688,9 @@ fun BoxScope.MapOverlays(
 ) {
     // The track whose name banner + altitude chart are shown, or null when nothing is focused.
     val focusedTrack = viewingTracks.firstOrNull { it.id == focusedTrackId }
+    // Non-null only while the focused track is being cropped; the header + crop chart then replace
+    // the banner + read-only chart.
+    val activeCrop = focusedTrack?.let { ft -> cropState?.takeIf { it.trackId == ft.id } }
     val focusedTrackColor = viewingTracks.indexOfFirst { it.id == focusedTrackId }
         .takeIf { it >= 0 }?.let { TrackColors.forIndex(it) }
     val topOverlay = topOverlayState(
@@ -651,7 +707,9 @@ fun BoxScope.MapOverlays(
     // cards (recording/ruler/crosshair) are lifted above its measured height so they
     // don't overlap it. Height is 0 for tracks without elevation, so no phantom gap.
     val density = LocalDensity.current
-    val chartVisible = focusedTrack?.hasElevationData() == true
+    // The crop chart is always shown while cropping (even without elevation), so the bottom-left
+    // cards lift above it too.
+    val chartVisible = activeCrop != null || focusedTrack?.hasElevationData() == true
     var chartHeight by remember { mutableStateOf(0.dp) }
     val bottomCardsOffset = if (chartVisible) chartHeight else 0.dp
 
@@ -783,16 +841,28 @@ fun BoxScope.MapOverlays(
             onStop = navigation.onStop,
         )
     } else if (focusedTrack != null) {
-        ViewingTrackBanner(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
-                .padding(horizontal = 16.dp),
-            trackName = focusedTrack.name,
-            trackColorHex = focusedTrackColor,
-            onCloseTrack = onCloseTrack,
-            onCollapse = onCollapseTrack
-        )
+        if (activeCrop != null) {
+            TrackCropHeader(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+                    .padding(horizontal = 16.dp),
+                trackName = focusedTrack.name,
+                onCancel = onCancelCrop,
+                onSave = onApplyCrop
+            )
+        } else {
+            ViewingTrackBanner(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+                    .padding(horizontal = 16.dp),
+                trackName = focusedTrack.name,
+                trackColorHex = focusedTrackColor,
+                onCloseTrack = onCloseTrack,
+                onCollapse = onCollapseTrack
+            )
+        }
     }
 
     if (showViewingPoint && viewingPointName != null) {
@@ -850,12 +920,24 @@ fun BoxScope.MapOverlays(
     }
 
     if (focusedTrack != null) {
-        TrackAltitudeChart(
-            track = focusedTrack,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
-        )
+        if (activeCrop != null) {
+            TrackCropChart(
+                track = focusedTrack,
+                startIndex = activeCrop.startIndex,
+                endIndex = activeCrop.endIndex,
+                onCropChange = onCropChange,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
+            )
+        } else {
+            TrackAltitudeChart(
+                track = focusedTrack,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
+            )
+        }
     }
 }
 

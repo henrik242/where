@@ -71,6 +71,13 @@
     <string name="viewers_watching_plural">%1$d personer ser på sporet ditt</string>
     <string name="close_track">Lukk spor</string>
     <string name="close_point_view">Lukk punktvisning</string>
+    <string name="crop_track">Beskjær</string>
+    <string name="crop_title">Beskjær %1$s</string>
+    <string name="crop_save">Lagre beskjæring</string>
+    <string name="crop_cancel">Avbryt beskjæring</string>
+    <string name="crop_kept_distance">Beholder %1$s</string>
+    <string name="track_cropped">Spor beskjært</string>
+    <string name="undo">Angre</string>
 
     <!-- Search Overlay -->
     <string name="search_places_hint">Søk etter steder\u2026</string>

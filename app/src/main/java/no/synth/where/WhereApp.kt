@@ -137,6 +137,11 @@ fun WhereApp(
                 onNavigateTrack = { track ->
                     trackRepository.startNavigation(track, reversed = false)
                     navController.popBackStack<MapRoute>(false)
+                },
+                onCropTrack = { track ->
+                    trackRepository.addViewingTrack(track)
+                    trackRepository.startCrop(track.id)
+                    navController.popBackStack<MapRoute>(false)
                 }
             )
         }
