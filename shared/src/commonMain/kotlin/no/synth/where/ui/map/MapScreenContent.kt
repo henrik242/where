@@ -11,7 +11,9 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
@@ -103,7 +105,6 @@ fun MapScreenContent(
     mapContent: @Composable () -> Unit
 ) {
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             // Hidden only while a track is focused. startNavigation() clears focusedTrackId,
             // so the FAB column stays available during navigation.
@@ -199,6 +200,15 @@ fun MapScreenContent(
                 isFollowedTrackActive = isFollowedTrackActive,
                 onFollowBannerClick = onFollowBannerClick,
                 onStopFollowing = onStopFollowing
+            )
+
+            // Pinned bottom-left, left of the FAB column, so snackbars sit at the bottom of the
+            // screen rather than floating mid-screen above the tall FAB stack.
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 8.dp, end = 80.dp)
             )
         }
     }

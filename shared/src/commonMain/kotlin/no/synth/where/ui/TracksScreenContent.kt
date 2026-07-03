@@ -434,30 +434,35 @@ fun TrackItem(
                     }
                 }
             }
-            OutlinedButton(
-                onClick = onExport,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    painterResource(Res.drawable.ic_share),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(Res.string.share))
-            }
-            OutlinedButton(
-                onClick = onCrop,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = track.points.size >= 2
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    painterResource(Res.drawable.ic_crop),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(Res.string.crop_track))
+                OutlinedButton(
+                    onClick = onExport,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_share),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(Res.string.share))
+                }
+                OutlinedButton(
+                    onClick = onCrop,
+                    modifier = Modifier.weight(1f),
+                    enabled = track.points.size >= 2
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_crop),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(Res.string.crop_track))
+                }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),

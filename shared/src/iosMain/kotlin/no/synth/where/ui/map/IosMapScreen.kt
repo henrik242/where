@@ -1,6 +1,7 @@
 package no.synth.where.ui.map
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
@@ -162,7 +163,11 @@ fun IosMapScreen(
     // After a crop overwrites the track, offer a one-tap undo of the (otherwise irreversible) change.
     LaunchedEffect(cropUndo) {
         if (cropUndo == null) return@LaunchedEffect
-        val result = snackbarHostState.showSnackbar(trackCroppedMsg, actionLabel = undoLabel)
+        val result = snackbarHostState.showSnackbar(
+            trackCroppedMsg,
+            actionLabel = undoLabel,
+            duration = SnackbarDuration.Long
+        )
         if (result == SnackbarResult.ActionPerformed) trackRepository.undoCrop() else trackRepository.clearCropUndo()
     }
     val unnamedPointStr = stringResource(Res.string.unnamed_point)
