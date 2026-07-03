@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -92,7 +93,7 @@ fun TracksScreen(
     }
 
     fileUriToConfirm?.let { uriString ->
-        val fileName = uriString.toUri().lastPathSegment ?: uriString
+        val fileName = displayNameForUri(context, uriString.toUri())
         AlertDialog(
             onDismissRequest = { fileUriToConfirm = null },
             title = { Text(stringResource(Res.string.import_from_title)) },
@@ -188,6 +189,21 @@ fun TracksScreen(
 }
 
 private fun Track.gpxFileName() = "${name.replace(" ", "_").replace(":", "-")}.gpx"
+
+private fun displayNameForUri(context: android.content.Context, uri: Uri): String {
+    if (uri.scheme == "content") {
+        runCatching {
+            context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (index >= 0) cursor.getString(index)?.let { return it }
+                    }
+                }
+        }
+    }
+    return uri.lastPathSegment ?: uri.toString()
+}
 
 private fun friendlySourceName(url: String): String {
     val host = url.toUri().host ?: return url
