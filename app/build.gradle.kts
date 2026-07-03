@@ -51,7 +51,6 @@ android {
     defaultConfig {
         applicationId = "no.synth.where"
         minSdk = 33
-        targetSdk = 37
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
