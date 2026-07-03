@@ -46,6 +46,8 @@ fun TracksScreenContent(
     onUrlImport: (String) -> Unit,
     onExport: (Track) -> Unit,
     onSave: ((Track) -> Unit)? = null,
+    saveResultMessage: String? = null,
+    onSaveResultMessageShown: () -> Unit = {},
     onOpen: ((Track) -> Unit)? = null,
     onDeleteRequest: (Track) -> Unit,
     onConfirmDelete: () -> Unit,
@@ -71,6 +73,14 @@ fun TracksScreenContent(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Show the message once, then let it display fully before consuming it (consuming changes the
+    // effect key and would otherwise cancel showSnackbar mid-display).
+    LaunchedEffect(saveResultMessage) {
+        val message = saveResultMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        onSaveResultMessageShown()
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },

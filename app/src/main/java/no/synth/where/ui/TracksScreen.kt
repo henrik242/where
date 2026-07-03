@@ -1,7 +1,9 @@
 package no.synth.where.ui
 
+import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -46,6 +48,7 @@ fun TracksScreen(
 
     var urlToConfirm by remember { mutableStateOf<String?>(null) }
     var fileUriToConfirm by remember { mutableStateOf<String?>(null) }
+    var saveMessage by remember { mutableStateOf<String?>(null) }
 
     // Pre-resolve strings for use in non-composable lambdas
     val importUrlErrorStr = stringResource(Res.string.import_url_error)
@@ -152,7 +155,9 @@ fun TracksScreen(
             }
         },
         onExport = { track -> shareTrack(context, track, shareTrackChooserStr) },
-        onSave = { track -> saveTrackToDownloads(context, track, savedToPathFmt, failedToSaveTrackFmt) },
+        onSave = { track -> saveMessage = saveTrackToDownloads(context, track, savedToPathFmt, failedToSaveTrackFmt) },
+        saveResultMessage = saveMessage,
+        onSaveResultMessageShown = { saveMessage = null },
         onOpen = { track -> openTrack(context, track, openTrackChooserStr, shareTrackChooserStr) },
         onDeleteRequest = { track -> trackToDelete = track },
         onConfirmDelete = {
@@ -180,6 +185,8 @@ fun TracksScreen(
     )
 }
 
+private fun Track.gpxFileName() = "${name.replace(" ", "_").replace(":", "-")}.gpx"
+
 private fun friendlySourceName(url: String): String {
     val host = url.toUri().host ?: return url
     return when {
@@ -194,8 +201,7 @@ private fun friendlySourceName(url: String): String {
 private fun shareTrack(context: android.content.Context, track: Track, chooserTitle: String) {
     try {
         val gpxContent = track.toGPX()
-        val fileName = "${track.name.replace(" ", "_").replace(":", "-")}.gpx"
-        val file = File(context.cacheDir, fileName)
+        val file = File(context.cacheDir, track.gpxFileName())
         file.writeText(gpxContent)
 
         val uri = FileProvider.getUriForFile(
@@ -217,39 +223,41 @@ private fun shareTrack(context: android.content.Context, track: Track, chooserTi
     }
 }
 
-private fun saveTrackToDownloads(context: android.content.Context, track: Track, savedToPathFmt: String, failedToSaveFmt: String) {
-    try {
+private fun saveTrackToDownloads(context: android.content.Context, track: Track, savedFmt: String, failedFmt: String): String {
+    return try {
         val gpxContent = track.toGPX()
-        val fileName = "${track.name.replace(" ", "_").replace(":", "-")}.gpx"
-
-        val downloadsDir = File(context.getExternalFilesDir(null), "Tracks")
-        if (!downloadsDir.exists()) {
-            downloadsDir.mkdirs()
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, track.gpxFileName())
+            put(MediaStore.Downloads.MIME_TYPE, "application/gpx+xml")
+            put(MediaStore.Downloads.IS_PENDING, 1)
         }
 
-        val file = File(downloadsDir, fileName)
-        file.writeText(gpxContent)
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: throw java.io.IOException("Could not create Downloads entry")
 
-        android.widget.Toast.makeText(
-            context,
-            String.format(savedToPathFmt, file.absolutePath),
-            android.widget.Toast.LENGTH_LONG
-        ).show()
+        try {
+            resolver.openOutputStream(uri)?.use { it.write(gpxContent.toByteArray()) }
+                ?: throw java.io.IOException("Could not open output stream")
+            values.clear()
+            values.put(MediaStore.Downloads.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+        } catch (e: Exception) {
+            resolver.delete(uri, null, null)
+            throw e
+        }
+
+        String.format(savedFmt, android.os.Environment.DIRECTORY_DOWNLOADS)
     } catch (e: Exception) {
         Logger.e(e, "Track operation error")
-        android.widget.Toast.makeText(
-            context,
-            String.format(failedToSaveFmt, e.message),
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
+        String.format(failedFmt, e.message ?: e.toString())
     }
 }
 
 private fun openTrack(context: android.content.Context, track: Track, chooserTitle: String, shareChooserTitle: String) {
     try {
         val gpxContent = track.toGPX()
-        val fileName = "${track.name.replace(" ", "_").replace(":", "-")}.gpx"
-        val file = File(context.cacheDir, fileName)
+        val file = File(context.cacheDir, track.gpxFileName())
         file.writeText(gpxContent)
 
         val uri = FileProvider.getUriForFile(
