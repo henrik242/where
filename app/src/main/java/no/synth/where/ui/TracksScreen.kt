@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import no.synth.where.data.Track
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -41,6 +43,7 @@ fun TracksScreen(
     val isImportingUrl by viewModel.isImportingUrl.collectAsState()
     val isImporting by viewModel.isImporting.collectAsState()
     val newlyImportedTrackId by viewModel.newlyImportedTrackId.collectAsState()
+    val saveResultMessage by viewModel.saveResultMessage.collectAsState()
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var trackToRename by remember { mutableStateOf<Track?>(null) }
@@ -50,7 +53,6 @@ fun TracksScreen(
 
     var urlToConfirm by remember { mutableStateOf<String?>(null) }
     var fileUriToConfirm by remember { mutableStateOf<String?>(null) }
-    var saveMessage by remember { mutableStateOf<String?>(null) }
 
     // Pre-resolve strings for use in non-composable lambdas
     val importUrlErrorStr = stringResource(Res.string.import_url_error)
@@ -93,7 +95,12 @@ fun TracksScreen(
     }
 
     fileUriToConfirm?.let { uriString ->
-        val fileName = displayNameForUri(context, uriString.toUri())
+        // Resolve the display name off the main thread (a cross-process ContentResolver query),
+        // showing the cheap last-path-segment fallback until it returns, so it never runs in
+        // composition on every recomposition.
+        val fileName by produceState(uriString.toUri().lastPathSegment ?: uriString, uriString) {
+            value = withContext(Dispatchers.IO) { displayNameForUri(context, uriString.toUri()) }
+        }
         AlertDialog(
             onDismissRequest = { fileUriToConfirm = null },
             title = { Text(stringResource(Res.string.import_from_title)) },
@@ -157,9 +164,11 @@ fun TracksScreen(
             }
         },
         onExport = { track -> shareTrack(context, track, shareTrackChooserStr) },
-        onSave = { track -> saveMessage = saveTrackToDownloads(context, track, savedToPathFmt, failedToSaveTrackFmt) },
-        saveResultMessage = saveMessage,
-        onSaveResultMessageShown = { saveMessage = null },
+        onSave = { track ->
+            viewModel.saveTrack { saveTrackToDownloads(context, track, savedToPathFmt, failedToSaveTrackFmt) }
+        },
+        saveResultMessage = saveResultMessage,
+        onSaveResultMessageShown = { viewModel.onSaveResultMessageShown() },
         onOpen = { track -> openTrack(context, track, openTrackChooserStr, shareTrackChooserStr) },
         onDeleteRequest = { track -> trackToDelete = track },
         onConfirmDelete = {

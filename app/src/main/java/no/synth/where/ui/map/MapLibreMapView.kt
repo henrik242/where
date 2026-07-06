@@ -73,9 +73,9 @@ fun MapLibreMapView(
     onTrackClick: (String) -> Unit = {},
     onMapClickOutsideTrack: () -> Unit = {},
     onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
-    isTwoFingerMeasurementVisible: Boolean = false,
     twoFingerMeasurement: TwoFingerMeasurement? = null,
-    coordGridGeoJson: String? = null
+    coordGridGeoJson: String? = null,
+    navigationLayers: NavigationLayers? = null
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
@@ -86,11 +86,38 @@ fun MapLibreMapView(
     val gpsKeepAlive = remember(context) { GpsKeepAlive(context) }
     val hasLocationPermissionState = rememberUpdatedState(hasLocationPermission)
     val isRecordingState = rememberUpdatedState(isRecording)
-    // Kept current so the async onStyleLoaded callbacks redraw the latest tracks without the
+    // Kept current so the async onStyleLoaded callbacks redraw the latest overlays without the
     // style-reload effects needing to key on them.
     val tracksGeoJsonState = rememberUpdatedState(tracksGeoJson)
     val elevationMarkerGeoJsonState = rememberUpdatedState(elevationMarkerGeoJson)
     val viewingTracksState = rememberUpdatedState(viewingTracks)
+    val rulerStateState = rememberUpdatedState(rulerState)
+    val twoFingerMeasurementState = rememberUpdatedState(twoFingerMeasurement)
+    val friendTrackGeoJsonState = rememberUpdatedState(friendTrackGeoJson)
+    val coordGridGeoJsonState = rememberUpdatedState(coordGridGeoJson)
+    val savedPointsState = rememberUpdatedState(savedPoints)
+    val showSavedPointsState = rememberUpdatedState(showSavedPoints)
+    val navigationLayersState = rememberUpdatedState(navigationLayers)
+
+    // setStyle wipes every runtime layer, so each style (re)load must redraw the whole overlay set.
+    // Reads live values via the rememberUpdatedState holders so a reload restores the current
+    // overlays -- including the navigation route, which otherwise vanishes on a layer switch or
+    // reconnect until the next distinct GPS fix (the nav render effect only fires on progress change).
+    fun reapplyOverlays(mapInstance: MapLibreMap, style: Style) {
+        MapRenderUtils.enableLocationComponent(mapInstance, style, context, hasLocationPermissionState.value)
+        MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJsonState.value)
+        MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
+        MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJsonState.value)
+        MapRenderUtils.updateRulerOnMap(style, rulerStateState.value)
+        MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurementState.value)
+        MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJsonState.value)
+        if (showSavedPointsState.value && savedPointsState.value.isNotEmpty()) {
+            MapRenderUtils.updateSavedPointsOnMap(style, savedPointsState.value)
+        }
+        navigationLayersState.value?.let {
+            MapRenderUtils.updateNavigationOnMap(style, it.completed, it.remaining, it.offCourse)
+        }
+    }
 
     DisposableEffect(context) {
         val connectivityManager =
@@ -151,23 +178,7 @@ fun MapLibreMapView(
                     Style.Builder().fromJson(styleJson),
                     object : Style.OnStyleLoaded {
                         override fun onStyleLoaded(style: Style) {
-                            MapRenderUtils.enableLocationComponent(
-                                mapInstance,
-                                style,
-                                context,
-                                hasLocationPermission
-                            )
-                            MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
-                            MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
-                            MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJsonState.value)
-                            MapRenderUtils.updateRulerOnMap(style, rulerState)
-                            MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
-                            MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
-
-                            if (showSavedPoints && savedPoints.isNotEmpty()) {
-                                MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
-                            }
-
+                            reapplyOverlays(mapInstance, style)
                             if (hasNoTracks) {
                                 mapInstance.cameraPosition = CameraPosition.Builder()
                                     .target(LatLng(savedCameraLat, savedCameraLon).toMapLibre())
@@ -228,22 +239,7 @@ fun MapLibreMapView(
                         Style.Builder().fromJson(styleJson),
                         object : Style.OnStyleLoaded {
                             override fun onStyleLoaded(style: Style) {
-                                MapRenderUtils.enableLocationComponent(
-                                    mapInstance,
-                                    style,
-                                    context,
-                                    hasLocationPermission
-                                )
-                                MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
-                                MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
-                                MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJsonState.value)
-                                MapRenderUtils.updateRulerOnMap(style, rulerState)
-                                MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
-                                MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
-
-                                if (showSavedPoints && savedPoints.isNotEmpty()) {
-                                    MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
-                                }
+                                reapplyOverlays(mapInstance, style)
                             }
                         })
                 } catch (e: Exception) {
@@ -298,8 +294,6 @@ fun MapLibreMapView(
         }
     }
 
-    val measurementVisibleState = rememberUpdatedState(isTwoFingerMeasurementVisible)
-
     LaunchedEffect(rulerState.isActive, savedPoints.size, map) {
         map?.let { mapInstance ->
             // Remove old listeners if they exist
@@ -308,7 +302,7 @@ fun MapLibreMapView(
 
             // Create and add new click listener
             val newClickListener = MapLibreMap.OnMapClickListener { point ->
-                if (measurementVisibleState.value) {
+                if (twoFingerMeasurementState.value != null) {
                     onTwoFingerMeasure(null)
                 }
                 val commonPoint = point.toCommon()
@@ -421,18 +415,7 @@ fun MapLibreMapView(
                             Style.Builder().fromJson(styleJson),
                             object : Style.OnStyleLoaded {
                                 override fun onStyleLoaded(style: Style) {
-                                    MapRenderUtils.enableLocationComponent(
-                                        mapInstance,
-                                        style,
-                                        ctx,
-                                        hasLocationPermission
-                                    )
-                                    MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
-                                    MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJsonState.value)
-                                    MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
-                                    MapRenderUtils.updateRulerOnMap(style, rulerState)
-                                    MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurement)
-                                    MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJson)
+                                    reapplyOverlays(mapInstance, style)
                                     mapInstance.triggerRepaint()
                                 }
                             })

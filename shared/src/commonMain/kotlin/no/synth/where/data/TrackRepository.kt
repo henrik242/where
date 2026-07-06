@@ -232,14 +232,17 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     /** Add a track to the viewing set (if not already present) and focus it. */
     fun addViewingTrack(track: Track) {
+        _navigation.value = null   // entering track-view ends any active navigation (mutually exclusive)
         if (_viewingTracks.value.none { it.id == track.id }) {
             _viewingTracks.value = _viewingTracks.value + track
         }
         _focusedTrackId.value = track.id
+        _elevationMarker.value = null
     }
 
     /** Replace the whole viewing set (bulk multi-select), clearing any focus. */
     fun setViewingTracks(tracks: List<Track>) {
+        _navigation.value = null   // entering track-view ends any active navigation (mutually exclusive)
         _viewingTracks.value = tracks
         _focusedTrackId.value = null
         _elevationMarker.value = null
@@ -315,14 +318,21 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     }
 
     fun setFocusedTrack(id: String?) {
+        // A stray map tap must not unfocus (and so hide) the track being cropped; Cancel/Back are
+        // the explicit exits. Clearing focus mid-crop would leave the crop session dangling.
+        if (id == null && isCroppingFocused()) return
         _focusedTrackId.value = id
         _elevationMarker.value = null
     }
 
     fun toggleFocusedTrack(id: String) {
+        if (_focusedTrackId.value == id && isCroppingFocused()) return
         _focusedTrackId.value = if (_focusedTrackId.value == id) null else id
         _elevationMarker.value = null
     }
+
+    private fun isCroppingFocused(): Boolean =
+        _cropState.value != null && _cropState.value?.trackId == _focusedTrackId.value
 
     fun startNavigation(track: Track, reversed: Boolean = false) {
         if (_isRecording.value) return   // recording and navigation are mutually exclusive

@@ -92,6 +92,28 @@ class TrackNavigatorTest {
     }
 
     @Test
+    fun backtrackingAlongRouteStaysOnCourse() {
+        // 101 vertices 10 m apart going east. Advance to ~305 m, then step back to ~250 m: the short
+        // backtrack (well under REACQUIRE_M) must re-match on the route rather than read off-course,
+        // even though the forward window alone never looks behind the cursor.
+        val nav = TrackNavigator(track((0..100).map { at(it * 10.0, 0.0) to null }), reversed = false)
+        nav.progressAt(at(305.0, 0.0))
+        val p = nav.progressAt(at(250.0, 0.0))
+        assertTrue(p.onCourse, "backtrack read off-course at ${p.offCourseMeters} m")
+        assertTrue(p.segment in 23..26, "snapped to segment ${p.segment}, expected ~25")
+    }
+
+    @Test
+    fun backtrackingOnDenselySampledRouteStaysOnCourse() {
+        // Same ~55 m backtrack but at 1 m point spacing: a fixed segment-count look-behind would
+        // cover only a few meters and still read off-course, so the window must be distance-based.
+        val nav = TrackNavigator(track((0..600).map { at(it * 1.0, 0.0) to null }), reversed = false)
+        nav.progressAt(at(305.0, 0.0))
+        val p = nav.progressAt(at(250.0, 0.0))
+        assertTrue(p.onCourse, "dense backtrack read off-course at ${p.offCourseMeters} m")
+    }
+
+    @Test
     fun remainingMonotonicOnOutAndBack() {
         // Out east 0..300, then back to 0 (return leg appended).
         val out = (0..3).map { at(it * 100.0, 0.0) to null }

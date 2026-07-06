@@ -233,7 +233,44 @@ class TrackRepositoryCropTest {
         withMarker().apply { removeViewingTrack("t1"); assertNull(elevationMarker.value) }
         withMarker().apply { clearViewingTracks(); assertNull(elevationMarker.value) }
         withMarker().apply { setViewingTracks(emptyList()); assertNull(elevationMarker.value) }
+        withMarker().apply { addViewingTrack(sampleTrack("t2")); assertNull(elevationMarker.value) }
         withMarker().apply { startCrop("t1"); assertNull(elevationMarker.value) }
         withMarker().apply { startNavigation(sampleTrack()); assertNull(elevationMarker.value) }
+    }
+
+    @Test
+    fun enteringTrackViewEndsNavigation() {
+        // Showing a track (or a multi-select set) on the map takes over the view, so it must end an
+        // active navigation session rather than leave a half-rendered navigate+view state.
+        repo().apply {
+            val t = sampleTrack()
+            startNavigation(t)
+            assertNotNull(navigation.value)
+            addViewingTrack(t)
+            assertNull(navigation.value)
+        }
+        repo().apply {
+            val t = sampleTrack()
+            startNavigation(t)
+            setViewingTracks(listOf(t))
+            assertNull(navigation.value)
+        }
+    }
+
+    @Test
+    fun tapClearingFocusWhileCroppingKeepsCropEditorUp() {
+        // A stray map tap (unfocus) must not tear down the crop editor while a crop is active.
+        repo().apply {
+            val t = sampleTrack()
+            addViewingTrack(t)
+            startCrop(t.id)
+            setFocusedTrack(null)
+            assertEquals(t.id, focusedTrackId.value)
+            assertNotNull(cropState.value)
+            // The explicit exit (cancelCrop) still clears it, after which unfocus works again.
+            cancelCrop()
+            setFocusedTrack(null)
+            assertNull(focusedTrackId.value)
+        }
     }
 }

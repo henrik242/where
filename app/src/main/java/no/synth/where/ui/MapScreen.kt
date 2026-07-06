@@ -63,6 +63,7 @@ import no.synth.where.ui.map.MapDialogs
 import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.MapLibreMapView
 import no.synth.where.ui.map.MapRenderUtils
+import no.synth.where.ui.map.NavigationLayers
 import no.synth.where.ui.map.MapZoomLevels
 import no.synth.where.ui.map.buildTrackMarkerGeoJson
 import no.synth.where.ui.map.buildTracksGeoJson
@@ -145,6 +146,9 @@ fun MapScreen(
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
 
     val navigation by viewModel.navigation.collectAsState()
+    // The latest navigation route layers, held so MapLibreMapView can redraw them after a style
+    // reload (layer switch / reconnect); null when not navigating.
+    var navigationLayers by remember { mutableStateOf<NavigationLayers?>(null) }
     val navigationProgress = rememberNavigationProgress(
         session = navigation,
         location = {
@@ -161,11 +165,13 @@ fun MapScreen(
             }
         },
         onRenderLayers = { layers ->
+            navigationLayers = layers
             mapInstance?.style?.let {
                 MapRenderUtils.updateNavigationOnMap(it, layers.completed, layers.remaining, layers.offCourse)
             }
         },
         onClearLayers = {
+            navigationLayers = null
             mapInstance?.style?.let {
                 MapRenderUtils.updateNavigationOnMap(it, null, null, null)
             }
@@ -662,9 +668,9 @@ fun MapScreen(
                 onTrackClick = { id -> viewModel.onTrackTapped(id) },
                 onMapClickOutsideTrack = { viewModel.unfocusTrack() },
                 onTwoFingerMeasure = { twoFingerMeasurement = it },
-                isTwoFingerMeasurementVisible = twoFingerMeasurement != null,
                 twoFingerMeasurement = twoFingerMeasurement,
-                coordGridGeoJson = coordGridGeoJson
+                coordGridGeoJson = coordGridGeoJson,
+                navigationLayers = navigationLayers
             )
         }
     )

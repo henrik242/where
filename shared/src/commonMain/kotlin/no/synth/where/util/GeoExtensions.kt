@@ -20,3 +20,9 @@ fun Double.formatDistance(): String = when {
 }
 
 fun Double.formatKm(decimals: Int = 2): String = (this / 1000.0).roundToDecimals(decimals)
+
+/**
+ * Vertical distance (ascent/descent, elevation) always in whole meters — never converted to km the
+ * way [formatDistance] does, since a "1.50 km" climb readout would be nonsense.
+ */
+fun Double.formatElevation(): String = "${this.roundToDecimals(0)} m"

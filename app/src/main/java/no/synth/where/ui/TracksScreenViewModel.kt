@@ -28,8 +28,25 @@ class TracksScreenViewModel(
     private val _newlyImportedTrackId = MutableStateFlow<String?>(null)
     val newlyImportedTrackId: StateFlow<String?> = _newlyImportedTrackId
 
+    private val _saveResultMessage = MutableStateFlow<String?>(null)
+    val saveResultMessage: StateFlow<String?> = _saveResultMessage
+
     fun clearNewlyImportedTrackId() {
         _newlyImportedTrackId.value = null
+    }
+
+    fun onSaveResultMessageShown() {
+        _saveResultMessage.value = null
+    }
+
+    /**
+     * Runs the platform GPX save (GPX serialization + MediaStore writes) off the main thread and
+     * surfaces its result message. [save] returns the user-facing success/failure string.
+     */
+    fun saveTrack(save: suspend () -> String) {
+        viewModelScope.launch {
+            _saveResultMessage.value = withContext(Dispatchers.IO) { save() }
+        }
     }
 
     fun deleteTrack(track: Track) {

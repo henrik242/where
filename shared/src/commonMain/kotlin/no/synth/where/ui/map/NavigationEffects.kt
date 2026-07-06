@@ -41,14 +41,13 @@ fun rememberNavigationProgress(
     val navigator = remember(session?.track?.id, session?.reversed) {
         session?.let { TrackNavigator(it.track, it.reversed) }
     }
-    var progress by remember { mutableStateOf<NavigationProgress?>(null) }
+    // Keyed to the navigator so toggling direction (or switching tracks) resets to the "locating"
+    // state instead of leaving the previous direction's snapshot rendered against the new orientation
+    // until the next location fix arrives.
+    var progress by remember(navigator) { mutableStateOf<NavigationProgress?>(null) }
 
     LaunchedEffect(navigator) {
-        val nav = navigator
-        if (nav == null) {
-            progress = null
-            return@LaunchedEffect
-        }
+        val nav = navigator ?: return@LaunchedEffect
         while (true) {
             location()?.let { progress = nav.progressAt(it) }
             delay(NAV_POLL_INTERVAL_MS)

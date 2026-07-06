@@ -18,8 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -131,18 +129,7 @@ fun TrackAltitudeChart(
             fun x(dist: Double) = (dist / distRange * w).toFloat()
             fun y(el: Double) = (h - (el - profile.minEle) / eleRange * h).toFloat()
 
-            val path = Path().apply {
-                moveTo(x(profile.distances.first()), y(profile.elevations.first()))
-                for (k in 1 until profile.elevations.size) lineTo(x(profile.distances[k]), y(profile.elevations[k]))
-            }
-            val area = Path().apply {
-                addPath(path)
-                lineTo(x(profile.distances.last()), h)
-                lineTo(x(profile.distances.first()), h)
-                close()
-            }
-            drawPath(area, fill)
-            drawPath(path, line, style = Stroke(width = 2.dp.toPx()))
+            drawElevationProfile(profile, line, fill)
 
             // Marker indicator: vertical line + a dot on the profile at the marked distance. Clamp the
             // dot's y so it isn't clipped at the edges on a flat profile (which sits at the bottom).

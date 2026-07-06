@@ -19,22 +19,10 @@ object TrackUtils {
         156543.03392 * cos(latitude * PI / 180.0) / 2.0.pow(zoom)
 
     /**
-     * Returns [track] if [tap] falls within [maxDistanceMeters] of any of its
-     * segments, else null. Callers should pass a zoom-scaled tolerance
-     * (metersPerPixel * fingerRadiusPx) so the tap target is a consistent size.
-     */
-    fun findTappedTrack(
-        tap: LatLng,
-        track: Track?,
-        maxDistanceMeters: Double = 80.0,
-    ): Track? {
-        if (track == null || track.points.size < 2) return null
-        return if (minDistanceToTrackMeters(tap, track) <= maxDistanceMeters) track else null
-    }
-
-    /**
      * The track closest to [tap] among [tracks], or null if none is within [maxDistanceMeters].
-     * Used when several tracks are drawn at once so a tap focuses the nearest line.
+     * Used when several tracks are drawn at once so a tap focuses the nearest line. Callers should
+     * pass a zoom-scaled tolerance (metersPerPixel * fingerRadiusPx) so the tap target is a
+     * consistent size.
      */
     fun findTappedTrack(
         tap: LatLng,

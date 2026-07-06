@@ -17,8 +17,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -116,23 +114,9 @@ fun TrackCropChart(
             val h = size.height
             fun xAt(index: Int) = (cum[index] / total * w).toFloat()
 
-            // Profile line + fill, scaled exactly like TrackAltitudeChart; flat baseline when no elevation.
+            // Profile line + fill (shared with TrackAltitudeChart); flat baseline when no elevation.
             if (profile != null) {
-                val eleRange = (profile.maxEle - profile.minEle).takeIf { it > 1.0 } ?: 1.0
-                fun x(dist: Double) = (dist / total * w).toFloat()
-                fun y(el: Double) = (h - (el - profile.minEle) / eleRange * h).toFloat()
-                val linePath = Path().apply {
-                    moveTo(x(profile.distances.first()), y(profile.elevations.first()))
-                    for (k in 1 until profile.elevations.size) lineTo(x(profile.distances[k]), y(profile.elevations[k]))
-                }
-                val area = Path().apply {
-                    addPath(linePath)
-                    lineTo(x(profile.distances.last()), h)
-                    lineTo(x(profile.distances.first()), h)
-                    close()
-                }
-                drawPath(area, fillColor)
-                drawPath(linePath, lineColor, style = Stroke(width = 2.dp.toPx()))
+                drawElevationProfile(profile, lineColor, fillColor)
             } else {
                 val y = h * 0.7f
                 drawLine(lineColor, Offset(0f, y), Offset(w, y), strokeWidth = 2.dp.toPx())

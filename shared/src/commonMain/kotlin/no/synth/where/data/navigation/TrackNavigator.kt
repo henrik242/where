@@ -109,17 +109,29 @@ class TrackNavigator(
     )
 
     /**
-     * Closest segment to [location]. Searches a window forward of the cursor first, so
-     * out-and-back / looped tracks don't snap to a later leg; falls back to a global search
-     * only when the local best is poor (a large GPS jump / re-acquiring the route).
+     * Closest segment to [location]. Searches a window around the cursor first — forward for the
+     * usual case, and a short distance behind so a brief backtrack stays on course — so
+     * out-and-back / looped tracks don't snap to a later leg; falls back to a global search only
+     * when the local best is poor (a large GPS jump / re-acquiring the route).
      */
     private fun findClosestSegment(location: LatLng): SegmentMatch {
-        val windowed = bestSegmentIn(cursor..min(n - 2, cursor + WINDOW), location)
+        val windowed = bestSegmentIn(backtrackStart()..min(n - 2, cursor + WINDOW), location)
         return if (windowed.distanceMeters > REACQUIRE_M) {
             minOf(windowed, bestSegmentIn(0..n - 2, location), compareBy { it.distanceMeters })
         } else {
             windowed
         }
+    }
+
+    /**
+     * Lowest segment index within [REACQUIRE_M] behind the cursor. Distance-based (not a fixed
+     * segment count) so the look-behind covers the same sub-reacquire zone whether the track is
+     * coarsely or densely sampled, letting a short backtrack re-match without reading off-course.
+     */
+    private fun backtrackStart(): Int {
+        var start = cursor
+        while (start > 0 && cumDist[cursor] - cumDist[start - 1] <= REACQUIRE_M) start--
+        return start
     }
 
     private fun bestSegmentIn(range: IntRange, location: LatLng): SegmentMatch {

@@ -29,11 +29,10 @@ interface MapViewProvider {
     fun setShowsUserLocation(show: Boolean)
     fun zoomIn()
     fun zoomOut()
-    fun updateTrackLine(geoJson: String, color: String)
     /**
      * Render any number of track lines from a single FeatureCollection whose features carry their
      * own `color`/`width`/`opacity` properties (see buildTracksGeoJson). An empty collection clears
-     * them. Shares the track source/layer with [updateTrackLine]/[clearTrackLine].
+     * them. Shares the track source/layer with [clearTrackLine].
      */
     fun updateTracks(geoJson: String)
     fun clearTrackLine()

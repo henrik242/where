@@ -10,7 +10,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -144,6 +147,9 @@ fun MapScreenContent(
             }
         }
     ) { paddingValues ->
+        // Height of the bottom-center altitude/crop chart (0 when none), reported by MapOverlays so
+        // the snackbar can sit above it instead of covering it.
+        var bottomChartHeight by remember { mutableStateOf(0.dp) }
         Box(
             modifier = Modifier
                 .padding(paddingValues)
@@ -176,6 +182,7 @@ fun MapScreenContent(
                 onApplyCrop = onApplyCrop,
                 elevationMarker = elevationMarker,
                 onElevationScrub = onElevationScrub,
+                onBottomChartHeightChanged = { bottomChartHeight = it },
                 navigation = navigation,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,
@@ -207,12 +214,13 @@ fun MapScreenContent(
             )
 
             // Pinned bottom-left, left of the FAB column, so snackbars sit at the bottom of the
-            // screen rather than floating mid-screen above the tall FAB stack.
+            // screen rather than floating mid-screen above the tall FAB stack. Lifted above the
+            // bottom chart when one is shown so it doesn't cover it (e.g. the crop-undo snackbar).
             SnackbarHost(
                 snackbarHostState,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 8.dp, end = 80.dp)
+                    .padding(start = 8.dp, end = 80.dp, bottom = bottomChartHeight)
             )
         }
     }

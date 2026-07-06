@@ -631,7 +631,9 @@ object MapRenderUtils {
                 LineLayer("nav-completed-layer", "nav-completed-source").withProperties(
                     PropertyFactory.lineColor(NAV_COMPLETED_COLOR),
                     PropertyFactory.lineWidth(NAV_COMPLETED_WIDTH),
-                    PropertyFactory.lineOpacity(0.7f)
+                    PropertyFactory.lineOpacity(0.7f),
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
                 )
             )
             style.addSource(GeoJsonSource("nav-remaining-source", remainingGeoJson))
@@ -639,7 +641,9 @@ object MapRenderUtils {
                 LineLayer("nav-remaining-layer", "nav-remaining-source").withProperties(
                     PropertyFactory.lineColor(NAV_REMAINING_COLOR),
                     PropertyFactory.lineWidth(NAV_REMAINING_WIDTH),
-                    PropertyFactory.lineOpacity(0.9f)
+                    PropertyFactory.lineOpacity(0.9f),
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
                 )
             )
             // Direction arrows repeated along the remaining line, rotated to follow it.
@@ -665,17 +669,6 @@ object MapRenderUtils {
                         PropertyFactory.lineDasharray(arrayOf(2f, 2f))
                     )
                 )
-            }
-        } catch (e: Exception) {
-            Logger.e(e, "Map render error")
-        }
-    }
-
-    fun clearNavigation(style: Style) {
-        try {
-            navLayerIds.forEach { id ->
-                style.getLayer("$id-layer")?.let { style.removeLayer(it) }
-                style.getSource("$id-source")?.let { style.removeSource(it) }
             }
         } catch (e: Exception) {
             Logger.e(e, "Map render error")

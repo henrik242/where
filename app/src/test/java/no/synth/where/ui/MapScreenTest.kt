@@ -15,19 +15,6 @@ import no.synth.where.data.geo.LatLng
 class MapScreenTest {
 
     @Test
-    fun mapScreen_requiredParameters_areDocumented() {
-        val requiredParameters = listOf(
-            "onSettingsClick",
-            "onOfflineSettingsClick",
-            "onOnlineTrackingSettingsClick",
-            "viewingPoint",
-            "onClearViewingPoint"
-        )
-
-        assertEquals("MapScreen must have 5 required parameters", 5, requiredParameters.size)
-    }
-
-    @Test
     fun savedPointsToggle_changesState() {
         var showSavedPoints by mutableStateOf(false)
         var callbackInvoked = false
@@ -76,36 +63,6 @@ class MapScreenTest {
         onClearViewingPoint()
         assertNull("Viewing point should be cleared", viewingPoint)
         assertTrue("Clear callback should be invoked", clearCallbackInvoked)
-    }
-
-    @Test
-    fun mapLibreMapView_allParametersDocumented() {
-        // This test ensures all MapLibreMapView parameters are documented
-        // If parameters are missing during refactoring, this serves as a checklist
-
-        val requiredMapLibreMapViewParameters = listOf(
-            "onMapReady",
-            "selectedLayer",
-            "hasLocationPermission",
-            "showSavedPoints",
-            "savedPoints",
-            "currentTrack",
-            "viewingTracks",
-            "savedCameraLat",
-            "savedCameraLon",
-            "savedCameraZoom",
-            "rulerState",
-            "onRulerPointAdded",
-            "onLongPress",
-            "onPointClick"
-        )
-
-        assertEquals(
-            "MapLibreMapView must have 14 parameters. " +
-            "NEVER replace these with comment placeholders during refactoring!",
-            14,
-            requiredMapLibreMapViewParameters.size
-        )
     }
 
     @Test

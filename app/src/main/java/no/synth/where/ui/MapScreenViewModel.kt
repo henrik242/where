@@ -13,7 +13,6 @@ import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
-import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.util.NamingUtils
@@ -370,8 +369,6 @@ class MapScreenViewModel(
 
     // Navigation
     val navigation = trackRepository.navigation
-    fun startNavigation(track: Track, reversed: Boolean = false) =
-        trackRepository.startNavigation(track, reversed)
     fun toggleNavigationReverse() = trackRepository.toggleNavigationReverse()
     fun stopNavigation() = trackRepository.stopNavigation()
 

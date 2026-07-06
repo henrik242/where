@@ -11,8 +11,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private static let freshTintColor: UIColor = .systemBlue
     private static let staleTintColor: UIColor = .systemGray
     private static let staleFixThreshold: TimeInterval = 30.0
-    private var pendingTrackGeoJson: String?
-    private var pendingTrackColor: String?
     private var pendingTracksGeoJson: String?
     private var pendingSavedPointsGeoJson: String?
     private var pendingElevationMarkerGeoJson: String?
@@ -250,15 +248,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         mapView.setZoomLevel(mapView.zoomLevel - 1, animated: true)
     }
 
-    func updateTrackLine(geoJson: String, color: String) {
-        guard let mapView = self.mapView, let style = mapView.style else {
-            pendingTrackGeoJson = geoJson
-            pendingTrackColor = color
-            return
-        }
-        applyTrackLine(style: style, geoJson: geoJson, color: color)
-    }
-
     func updateTracks(geoJson: String) {
         pendingTracksGeoJson = geoJson
         guard let mapView = self.mapView, let style = mapView.style else { return }
@@ -266,8 +255,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     }
 
     func clearTrackLine() {
-        pendingTrackGeoJson = nil
-        pendingTrackColor = nil
         pendingTracksGeoJson = nil
         guard let mapView = self.mapView, let style = mapView.style else { return }
         removeTrackLine(style: style)
@@ -508,8 +495,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
         if let geoJson = pendingTracksGeoJson {
             applyTracks(style: style, geoJson: geoJson)
-        } else if let geoJson = pendingTrackGeoJson, let color = pendingTrackColor {
-            applyTrackLine(style: style, geoJson: geoJson, color: color)
         }
         if let geoJson = pendingSavedPointsGeoJson {
             applySavedPoints(style: style, geoJson: geoJson)
@@ -542,40 +527,25 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
     // MARK: - Private
 
-    private func applyTrackLine(style: MLNStyle, geoJson: String, color: String) {
-        removeTrackLine(style: style)
-
-        guard let data = geoJson.data(using: .utf8),
-              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
-            print("Failed to parse track GeoJSON")
-            return
-        }
-
-        let source = MLNShapeSource(identifier: trackSourceId, shape: shape, options: nil)
-        style.addSource(source)
-
-        let layer = MLNLineStyleLayer(identifier: trackLayerId, source: source)
-        layer.lineColor = NSExpression(forConstantValue: UIColor(hex: color))
-        layer.lineWidth = NSExpression(forConstantValue: 4)
-        layer.lineOpacity = NSExpression(forConstantValue: 0.8)
-        layer.lineCap = NSExpression(forConstantValue: "round")
-        layer.lineJoin = NSExpression(forConstantValue: "round")
-        style.addLayer(layer)
-
-        pendingTrackGeoJson = geoJson
-        pendingTrackColor = color
-    }
-
     // Draws any number of track lines from one FeatureCollection, styling each feature from its own
     // color/width/opacity properties (data-driven), so the whole viewing set uses one source/layer.
     private func applyTracks(style: MLNStyle, geoJson: String) {
-        removeTrackLine(style: style)
+        pendingTracksGeoJson = geoJson
 
         guard let data = geoJson.data(using: .utf8),
               let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
             print("Failed to parse tracks GeoJSON")
             return
         }
+
+        // Update the existing source in place (mirrors Android) so toggling tracks or advancing the
+        // recording line never tears down and rebuilds the style layer.
+        if let existing = style.source(withIdentifier: trackSourceId) as? MLNShapeSource,
+           style.layer(withIdentifier: trackLayerId) != nil {
+            existing.shape = shape
+            return
+        }
+        removeTrackLine(style: style)
 
         let source = MLNShapeSource(identifier: trackSourceId, shape: shape, options: nil)
         style.addSource(source)
@@ -587,8 +557,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         layer.lineCap = NSExpression(forConstantValue: "round")
         layer.lineJoin = NSExpression(forConstantValue: "round")
         style.addLayer(layer)
-
-        pendingTracksGeoJson = geoJson
     }
 
     private func removeTrackLine(style: MLNStyle) {
@@ -632,13 +600,22 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     }
 
     private func applyElevationMarker(style: MLNStyle, geoJson: String) {
-        removeElevationMarker(style: style)
+        pendingElevationMarkerGeoJson = geoJson
 
         guard let data = geoJson.data(using: .utf8),
               let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
             print("Failed to parse elevation marker GeoJSON")
             return
         }
+
+        // Update the source in place for smooth chart scrubbing (mirrors Android), rebuilding the
+        // layer only on first use.
+        if let existing = style.source(withIdentifier: elevationMarkerSourceId) as? MLNShapeSource,
+           style.layer(withIdentifier: elevationMarkerLayerId) != nil {
+            existing.shape = shape
+            return
+        }
+        removeElevationMarker(style: style)
 
         let source = MLNShapeSource(identifier: elevationMarkerSourceId, shape: shape, options: nil)
         style.addSource(source)
@@ -649,8 +626,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         layer.circleStrokeColor = NSExpression(forKeyPath: "color")   // focused track's palette color
         layer.circleStrokeWidth = NSExpression(forConstantValue: 3)
         style.addLayer(layer)
-
-        pendingElevationMarkerGeoJson = geoJson
     }
 
     private func removeElevationMarker(style: MLNStyle) {
@@ -746,6 +721,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             let label = MLNSymbolStyleLayer(identifier: measureLabelLayerId, source: pointSource)
             label.predicate = NSPredicate(format: "role == 'label'")
             label.text = NSExpression(forKeyPath: "label")
+            // The bundle only ships the NotoSansRegular glyph stack; without this the default
+            // "Open Sans" stack 404s and the distance label silently doesn't draw (matches Android
+            // and the coord-grid layers).
+            label.textFontNames = NSExpression(forConstantValue: ["NotoSansRegular"])
             label.textFontSize = NSExpression(forConstantValue: 14)
             label.textColor = NSExpression(forConstantValue: UIColor.black)
             label.textHaloColor = NSExpression(forConstantValue: UIColor.white)

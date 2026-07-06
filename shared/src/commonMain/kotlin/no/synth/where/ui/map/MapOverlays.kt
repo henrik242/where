@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,8 +26,6 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
@@ -51,6 +48,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.hasElevationData
@@ -66,6 +64,7 @@ import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
+import no.synth.where.util.formatElevation
 import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlin.math.roundToInt
 import no.synth.where.util.parseHexColor
@@ -410,19 +409,20 @@ private fun NavStatusRow(text: String, onStop: () -> Unit) {
 
 @Composable
 private fun AscentDescent(ascent: Double, descent: Double) {
-    val label = stringResource(Res.string.nav_ascent, ascent.formatDistance()) + ", " +
-        stringResource(Res.string.nav_descent, descent.formatDistance())
+    // Vertical meters, so use formatElevation (never km) — a "1.50 km" remaining-ascent reads wrong.
+    val label = stringResource(Res.string.nav_ascent, ascent.formatElevation()) + ", " +
+        stringResource(Res.string.nav_descent, descent.formatElevation())
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = label }
     ) {
         Icon(painterResource(Res.drawable.ic_expand_less), contentDescription = null,
             modifier = Modifier.size(16.dp))
-        Text(ascent.formatDistance(), style = MaterialTheme.typography.bodyMedium)
+        Text(ascent.formatElevation(), style = MaterialTheme.typography.bodyMedium)
         Spacer(Modifier.width(6.dp))
         Icon(painterResource(Res.drawable.ic_expand_more), contentDescription = null,
             modifier = Modifier.size(16.dp))
-        Text(descent.formatDistance(), style = MaterialTheme.typography.bodyMedium)
+        Text(descent.formatElevation(), style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -657,6 +657,7 @@ fun BoxScope.MapOverlays(
     onApplyCrop: () -> Unit = {},
     elevationMarker: Int? = null,
     onElevationScrub: (Int?) -> Unit = {},
+    onBottomChartHeightChanged: (Dp) -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -714,10 +715,15 @@ fun BoxScope.MapOverlays(
     val chartVisible = activeCrop != null || focusedTrack?.hasElevationData() == true
     var chartHeight by remember { mutableStateOf(0.dp) }
     val bottomCardsOffset = if (chartVisible) chartHeight else 0.dp
+    // Report the effective bottom-chart height (0 when no chart shows) so the screen can lift the
+    // snackbar above it, keeping the crop-undo snackbar from covering the chart it refers to.
+    LaunchedEffect(bottomCardsOffset) { onBottomChartHeightChanged(bottomCardsOffset) }
 
-    // While navigating, the full-width NavigationCard occupies the top band, so the top-right
-    // chips are pushed below it by the card's measured height.
+    // While navigating, the full-width NavigationCard occupies the top band, so the top-right chips
+    // and any secondary top-center banner are pushed below it. navCardHeight is measured without the
+    // card's 16dp top inset, so add it back plus an 8dp gap to land just under the card.
     var navCardHeight by remember { mutableStateOf(0.dp) }
+    val belowNavCard = navCardHeight + 16.dp + 8.dp
 
     if (isLocating && !hasTopOverlay) {
         LocatingPill(
@@ -753,7 +759,7 @@ fun BoxScope.MapOverlays(
         Column(
             modifier = Modifier
                 .padding(
-                    top = if (navigation.isNavigating) navCardHeight + 8.dp else 16.dp,
+                    top = if (navigation.isNavigating) belowNavCard else 16.dp,
                     end = offlineChipEnd
                 ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -871,7 +877,8 @@ fun BoxScope.MapOverlays(
         ViewingPointBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
+                // Sits under the NavigationCard while navigating so the two don't overlap.
+                .padding(top = if (navigation.isNavigating) belowNavCard else 16.dp)
                 .padding(horizontal = 16.dp),
             pointName = viewingPointName,
             pointColor = viewingPointColor,
@@ -881,10 +888,18 @@ fun BoxScope.MapOverlays(
 
     if (followedClientId != null && !showSearch) {
         val hasOtherBanner = focusedTrack != null || (showViewingPoint && viewingPointName != null)
+        // Stack below the NavigationCard while navigating, and a further step down when a point
+        // banner also shows (its ~64dp height), so the friend banner never lands on either.
+        val friendBannerTop = when {
+            navigation.isNavigating && hasOtherBanner -> belowNavCard + 64.dp
+            navigation.isNavigating -> belowNavCard
+            hasOtherBanner -> 80.dp
+            else -> 16.dp
+        }
         FollowingFriendBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = if (hasOtherBanner) 80.dp else 16.dp)
+                .padding(top = friendBannerTop)
                 .padding(horizontal = 16.dp),
             clientId = followedClientId,
             isConnecting = isFollowConnecting,

@@ -111,31 +111,6 @@ class MapScreenStateTest {
     }
 
     @Test
-    fun mapLibreMapViewParameters_allRequired() {
-        // This test documents all required parameters for MapLibreMapView
-        // If any are missing in the actual code, compilation will fail
-
-        val requiredParameters = listOf(
-            "onMapReady",
-            "selectedLayer",
-            "hasLocationPermission",
-            "showSavedPoints",
-            "savedPoints",
-            "currentTrack",
-            "viewingTracks",
-            "savedCameraLat",
-            "savedCameraLon",
-            "savedCameraZoom",
-            "rulerState",
-            "onRulerPointAdded",
-            "onLongPress",
-            "onPointClick"
-        )
-
-        assertTrue("MapLibreMapView requires 14 parameters", requiredParameters.size == 14)
-    }
-
-    @Test
     fun rulerAndTrackingModals_canBeBothActive() {
         // This test verifies that ruler and tracking can be active simultaneously
         // The UI should display both modals without overlap
