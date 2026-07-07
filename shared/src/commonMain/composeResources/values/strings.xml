@@ -266,4 +266,6 @@
     <string name="nav_arrived">Arrived</string>
     <string name="nav_reverse">Reverse direction</string>
     <string name="nav_stop">Stop navigation</string>
+    <string name="nav_stop_confirm_title">Stop navigation?</string>
+    <string name="nav_stop_confirm_message">This ends route guidance.</string>
 </resources>

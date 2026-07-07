@@ -177,6 +177,9 @@ fun IosMapScreen(
     var trackNameInput by remember { mutableStateOf("") }
     var isResolvingTrackName by remember { mutableStateOf(false) }
 
+    // Stopping navigation is confirmed first so an active route isn't ended by an accidental tap.
+    val stopNavConfirm = rememberStopNavigationConfirmState()
+
     // Search state
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -493,6 +496,17 @@ fun IosMapScreen(
         )
     }
 
+    StopNavigationConfirmDialog(
+        state = stopNavConfirm,
+        isNavigating = navigation != null,
+        onConfirm = {
+            trackRepository.stopNavigation()
+            // The shared render effect clears the nav layers when the session ends; we only need to
+            // drop the plain track line here.
+            mapViewProvider.clearTrackLine()
+        }
+    )
+
     if (showSavePointDialog && savePointLatLng != null) {
         val latLng = savePointLatLng ?: return
         MapDialogs.SavePointDialog(
@@ -628,12 +642,7 @@ fun IosMapScreen(
             isNavigating = navigation != null,
             progress = navigationProgress,
             onToggleReverse = { trackRepository.toggleNavigationReverse() },
-            // The shared render effect clears the nav layers when the session ends; we only need to
-            // drop the plain track line here.
-            onStop = {
-                trackRepository.stopNavigation()
-                mapViewProvider.clearTrackLine()
-            },
+            onStop = { stopNavConfirm.request() },
         ),
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",

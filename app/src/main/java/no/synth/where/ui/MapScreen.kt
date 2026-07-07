@@ -70,6 +70,8 @@ import no.synth.where.ui.map.buildTracksGeoJson
 import no.synth.where.ui.map.renderableTracks
 import no.synth.where.ui.map.animateToBounds
 import no.synth.where.ui.map.MapScreenContent
+import no.synth.where.ui.map.StopNavigationConfirmDialog
+import no.synth.where.ui.map.rememberStopNavigationConfirmState
 import no.synth.where.ui.map.TwoFingerMeasurement
 import no.synth.where.ui.map.rememberAutoDismissingTwoFingerMeasurement
 import no.synth.where.ui.map.RecordingCard
@@ -178,6 +180,9 @@ fun MapScreen(
         },
     )
 
+    // Stopping navigation is confirmed first so an active route isn't ended by an accidental tap.
+    val stopNavConfirm = rememberStopNavigationConfirmState()
+
     // Back exits the active mode in order: stop navigation, then unfocus a track (chrome returns,
     // line stays), then clear the track. Handling navigation first avoids a half-exited state where
     // the route is hidden but the session keeps polling.
@@ -186,7 +191,7 @@ fun MapScreen(
             // While cropping, Back means "cancel crop" — otherwise unfocusing would hide the crop
             // UI while leaving the crop session dangling.
             cropState != null -> viewModel.cancelCrop()
-            navigation != null -> viewModel.stopNavigation()
+            navigation != null -> stopNavConfirm.request()
             focusedTrackId != null -> viewModel.unfocusTrack()
             else -> viewModel.clearViewingTracks()
         }
@@ -519,7 +524,7 @@ fun MapScreen(
             isNavigating = navigation != null,
             progress = navigationProgress,
             onToggleReverse = { viewModel.toggleNavigationReverse() },
-            onStop = { viewModel.stopNavigation() },
+            onStop = { stopNavConfirm.request() },
         ),
         viewingPointName = viewingPoint?.name,
         viewingPointColor = viewingPoint?.color ?: "#FF5722",
@@ -695,6 +700,12 @@ fun MapScreen(
             onDismiss = { viewModel.dismissStopTrackDialog() }
         )
     }
+
+    StopNavigationConfirmDialog(
+        state = stopNavConfirm,
+        isNavigating = navigation != null,
+        onConfirm = { viewModel.stopNavigation() }
+    )
 
     if (showSavePointDialog && savePointLatLng != null) {
         val latLng = savePointLatLng ?: return

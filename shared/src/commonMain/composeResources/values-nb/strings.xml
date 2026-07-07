@@ -262,4 +262,6 @@
     <string name="nav_arrived">Fremme</string>
     <string name="nav_reverse">Snu retning</string>
     <string name="nav_stop">Stopp navigering</string>
+    <string name="nav_stop_confirm_title">Stoppe navigering?</string>
+    <string name="nav_stop_confirm_message">Dette avslutter ruteveiledningen.</string>
 </resources>
