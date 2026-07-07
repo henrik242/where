@@ -34,8 +34,8 @@
     <string name="enter_location_name">Enter a name for this location:</string>
     <string name="location_name">Location Name</string>
     <string name="edit_location">Edit Location</string>
-    <string name="save_route_as_track">Save Route as Track</string>
-    <string name="enter_route_name">Enter a name for this route:</string>
+    <string name="save_route_as_track">Save as Track</string>
+    <string name="enter_route_name">Enter a name for this track:</string>
     <string name="ruler_points_distance">%1$d points \u2022 %2$s</string>
 
     <!-- Map FAB Column -->
@@ -70,6 +70,8 @@
     <string name="viewers_watching">Someone is watching your track</string>
     <string name="viewers_watching_plural">%1$d people are watching your track</string>
     <string name="close_track">Close track</string>
+    <string name="close_track_confirm_title">Close track?</string>
+    <string name="close_track_confirm_message">This removes it from the map.</string>
     <string name="close_point_view">Close Point View</string>
     <string name="crop_track">Crop</string>
     <string name="crop_title">Crop %1$s</string>

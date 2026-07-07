@@ -72,6 +72,28 @@ object MapDialogs {
     }
 
     @Composable
+    fun ConfirmCloseTrackDialog(
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(Res.string.close_track_confirm_title)) },
+            text = { Text(stringResource(Res.string.close_track_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text(stringResource(Res.string.close_track))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
+    @Composable
     fun BackgroundLocationDisclosureDialog(
         onAllow: () -> Unit,
         onDeny: () -> Unit

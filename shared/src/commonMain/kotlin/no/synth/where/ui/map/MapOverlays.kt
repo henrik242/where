@@ -219,6 +219,16 @@ fun ViewingTrackBanner(
     onCloseTrack: () -> Unit,
     onCollapse: () -> Unit
 ) {
+    var confirmClose by remember { mutableStateOf(false) }
+    if (confirmClose) {
+        MapDialogs.ConfirmCloseTrackDialog(
+            onConfirm = {
+                confirmClose = false
+                onCloseTrack()
+            },
+            onDismiss = { confirmClose = false }
+        )
+    }
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -250,16 +260,14 @@ fun ViewingTrackBanner(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = onCloseTrack, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    painterResource(Res.drawable.ic_visibility_off),
-                    contentDescription = stringResource(Res.string.close_track)
-                )
-            }
-            // A chevron (not another X) so this non-destructive "collapse" reads differently from
-            // the eye-off "remove from map" button beside it.
             IconButton(onClick = onCollapse, modifier = Modifier.size(36.dp)) {
                 Icon(painterResource(Res.drawable.ic_expand_more), contentDescription = stringResource(Res.string.collapse))
+            }
+            IconButton(onClick = { confirmClose = true }, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    painterResource(Res.drawable.ic_close),
+                    contentDescription = stringResource(Res.string.close_track)
+                )
             }
         }
     }
