@@ -464,6 +464,7 @@ object MapRenderUtils {
         try {
             val sourceId = "coord-grid-source"
             val lineLayerId = "coord-grid-line-layer"
+            val casingLayerId = "coord-grid-line-casing-layer"
             val zoneLayerId = "coord-grid-zone-layer"
             val labelLayerId = "coord-grid-label-layer"
             val cellLayerId = "coord-grid-cell-layer"
@@ -472,6 +473,7 @@ object MapRenderUtils {
                 style.getLayer(cellLayerId)?.let { style.removeLayer(it) }
                 style.getLayer(labelLayerId)?.let { style.removeLayer(it) }
                 style.getLayer(lineLayerId)?.let { style.removeLayer(it) }
+                style.getLayer(casingLayerId)?.let { style.removeLayer(it) }
                 style.getLayer(zoneLayerId)?.let { style.removeLayer(it) }
                 style.getSource(sourceId)?.let { style.removeSource(it) }
                 return
@@ -494,6 +496,16 @@ object MapRenderUtils {
                 )
                 zoneLayer.setFilter(Expression.has("zone"))
                 if (overlayBelow != null) style.addLayerBelow(zoneLayer, overlayBelow) else style.addLayer(zoneLayer)
+
+                // White casing beneath the thin grid line so it stays visible over dark
+                // basemaps (e.g. satellite), mirroring the white halo used on the labels.
+                val lineCasingLayer = LineLayer(casingLayerId, sourceId).withProperties(
+                    PropertyFactory.lineColor("#FFFFFF"),
+                    PropertyFactory.lineWidth(1.6f),
+                    PropertyFactory.lineOpacity(0.35f)
+                )
+                lineCasingLayer.setFilter(Expression.not(Expression.has("zone")))
+                if (overlayBelow != null) style.addLayerBelow(lineCasingLayer, overlayBelow) else style.addLayer(lineCasingLayer)
 
                 val lineLayer = LineLayer(lineLayerId, sourceId).withProperties(
                     PropertyFactory.lineColor("#000000"),

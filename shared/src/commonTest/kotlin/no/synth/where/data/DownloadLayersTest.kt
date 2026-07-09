@@ -2,13 +2,20 @@ package no.synth.where.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class DownloadLayersTest {
 
     @Test
-    fun hasNineLayers() {
-        assertEquals(9, DownloadLayers.all.size)
+    fun hasTenLayers() {
+        assertEquals(10, DownloadLayers.all.size)
+    }
+
+    @Test
+    fun satelliteLayerIsCappedAtZoom14() {
+        val satellite = assertNotNull(DownloadLayers.all.find { it.id == "satellite" }, "Satellite layer should exist")
+        assertEquals(14, satellite.maxZoom, "Sentinel-2 has no detail past its native ~10 m resolution")
     }
 
     @Test

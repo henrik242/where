@@ -14,7 +14,7 @@ object MapStyle {
         showHillshade: Boolean = false,
         glyphsUrl: String = DEFAULT_GLYPHS_URL,
     ): String {
-        data class TileSource(val id: String, val tiles: String, val attribution: String)
+        data class TileSource(val id: String, val tiles: String, val attribution: String, val maxZoom: Int? = null)
 
         val baseSource = when (selectedLayer) {
             MapLayer.OSM -> TileSource("osm", "https://tile.openstreetmap.org/{z}/{x}/{y}.png", "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors")
@@ -23,7 +23,13 @@ object MapStyle {
             MapLayer.SJOKARTRASTER -> TileSource("sjokartraster", "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
             MapLayer.OPENTOPOMAP -> TileSource("opentopomap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", "© <a href='https://opentopomap.org'>OpenTopoMap</a> (CC-BY-SA)")
             MapLayer.MAPANT -> TileSource("mapant", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png", "© <a href='https://mapant.no'>MapAnt.no</a>")
+            // EOX Sentinel-2 cloudless annual mosaic (bump the year in the URL yearly).
+            // Capped at z14: native ~10 m resolution has no detail past z14, so MapLibre
+            // overzooms locally instead of fetching blurry upscaled tiles.
+            MapLayer.SATELLITE -> TileSource("satellite", "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg", "EOxCloudless <a href='https://cloudless.eox.at'>cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2025)", maxZoom = 14)
         }
+
+        val maxZoomLine = baseSource.maxZoom?.let { "\n      \"maxzoom\": $it," }.orEmpty()
 
         val sources = buildString {
             append("""
@@ -31,7 +37,7 @@ object MapStyle {
       "type": "raster",
       "scheme": "xyz",
       "tiles": ["${baseSource.tiles}"],
-      "tileSize": 256,
+      "tileSize": 256,$maxZoomLine
       "attribution": "${baseSource.attribution}"
     }""")
             if (showWaymarkedTrails) {

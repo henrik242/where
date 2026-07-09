@@ -29,6 +29,7 @@ private val dataSources = listOf(
     Attribution("OpenStreetMap", "Map data and tiles", "ODbL"),
     Attribution("OpenTopoMap", "Topographic map style", "CC-BY-SA"),
     Attribution("MapAnt.no", "Orienteering maps for Norway", ""),
+    Attribution("EOxCloudless", "Satellite imagery (modified Copernicus Sentinel data)", "CC BY-NC-SA 4.0"),
     Attribution("Waymarked Trails", "Hiking trail overlay", "CC-BY-SA"),
     Attribution("NVE", "Avalanche terrain data", "NLOD"),
     Attribution("Tilezen Joerd", "Terrain hillshade and elevation tiles", "Public Domain"),

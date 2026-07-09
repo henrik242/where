@@ -60,6 +60,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let friendTrackLabelLayerId = "friend-track-label-layer"
     private let coordGridSourceId = "coord-grid-source"
     private let coordGridLayerId = "coord-grid-line-layer"
+    private let coordGridLineCasingLayerId = "coord-grid-line-casing-layer"
     private let coordGridZoneLayerId = "coord-grid-zone-layer"
     private let coordGridLabelLayerId = "coord-grid-label-layer"
     private let coordGridCellLayerId = "coord-grid-cell-layer"
@@ -990,6 +991,15 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             zoneLayer.predicate = NSPredicate(format: "zone != nil")
             if let below = belowLayer { style.insertLayer(zoneLayer, below: below) } else { style.addLayer(zoneLayer) }
 
+            // White casing beneath the thin grid line so it stays visible over dark
+            // basemaps (e.g. satellite), mirroring the white halo used on the labels.
+            let lineCasingLayer = MLNLineStyleLayer(identifier: coordGridLineCasingLayerId, source: source)
+            lineCasingLayer.lineColor = NSExpression(forConstantValue: UIColor.white)
+            lineCasingLayer.lineWidth = NSExpression(forConstantValue: 1.6)
+            lineCasingLayer.lineOpacity = NSExpression(forConstantValue: 0.35)
+            lineCasingLayer.predicate = NSPredicate(format: "zone = nil")
+            if let below = belowLayer { style.insertLayer(lineCasingLayer, below: below) } else { style.addLayer(lineCasingLayer) }
+
             let lineLayer = MLNLineStyleLayer(identifier: coordGridLayerId, source: source)
             lineLayer.lineColor = NSExpression(forConstantValue: UIColor.black)
             lineLayer.lineWidth = NSExpression(forConstantValue: 0.8)
@@ -1030,6 +1040,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let layer = style.layer(withIdentifier: coordGridCellLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: coordGridLabelLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: coordGridLayerId) { style.removeLayer(layer) }
+        if let layer = style.layer(withIdentifier: coordGridLineCasingLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: coordGridZoneLayerId) { style.removeLayer(layer) }
         if let source = style.source(withIdentifier: coordGridSourceId) { style.removeSource(source) }
     }

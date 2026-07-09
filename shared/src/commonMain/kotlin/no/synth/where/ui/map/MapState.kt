@@ -9,6 +9,7 @@ enum class MapLayer {
     KARTVERKET,
     TOPORASTER,
     SJOKARTRASTER,
-    MAPANT
+    MAPANT,
+    SATELLITE
 }
 

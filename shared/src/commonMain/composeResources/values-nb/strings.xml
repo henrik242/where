@@ -45,6 +45,7 @@
     <string name="kartverket_norway">Kartverket (Norge)</string>
     <string name="kartverket_toporaster">Kartverket toporaster</string>
     <string name="kartverket_sjokart">Kartverket sjøkart</string>
+    <string name="satellite">Satellitt (Sentinel-2)</string>
     <string name="overlays">Overlegg</string>
     <string name="waymarked_trails_osm">Merkede stier (OSM)</string>
     <string name="avalanche_zones_nve">Brattkart (NVE)</string>

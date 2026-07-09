@@ -108,6 +108,7 @@ fun MapFabColumn(
             LayerMenuItem("MapAnt", selectedLayer == MapLayer.MAPANT) { onLayerSelected(MapLayer.MAPANT) }
             LayerMenuItem("OpenStreetMap", selectedLayer == MapLayer.OSM) { onLayerSelected(MapLayer.OSM) }
             LayerMenuItem("OpenTopoMap", selectedLayer == MapLayer.OPENTOPOMAP) { onLayerSelected(MapLayer.OPENTOPOMAP) }
+            LayerMenuItem(stringResource(Res.string.satellite), selectedLayer == MapLayer.SATELLITE) { onLayerSelected(MapLayer.SATELLITE) }
             HorizontalDivider()
             MenuSection(stringResource(Res.string.overlays))
             LayerMenuItem(stringResource(Res.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
