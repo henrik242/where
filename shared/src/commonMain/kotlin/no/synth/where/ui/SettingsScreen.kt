@@ -22,6 +22,7 @@ fun SettingsScreen(
     onOnlineTrackingClick: () -> Unit,
     onAttributionsClick: () -> Unit,
     onReleaseNotesClick: () -> Unit,
+    onGuideClick: () -> Unit,
     onCrashReportingChange: (Boolean) -> Unit,
     highlightOfflineMode: Boolean = false
 ) {
@@ -67,6 +68,7 @@ fun SettingsScreen(
         onCoordFormatSelected = { userPreferences.updateCoordFormat(it) },
         onAttributionsClick = onAttributionsClick,
         onReleaseNotesClick = onReleaseNotesClick,
+        onGuideClick = onGuideClick,
         onSponsorClick = onSponsorClick,
         highlightOfflineMode = highlightOfflineMode
     )

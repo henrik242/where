@@ -13,6 +13,7 @@ const OG_META_PATH = `${import.meta.dir}/og-meta.html`;
 const HTML_ALIASES = new Map([
   ['/', '/index.html'],
   ['/about', '/about.html'],
+  ['/guide', '/guide.html'],
   ['/privacy', '/privacy.html'],
 ]);
 

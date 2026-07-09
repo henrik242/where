@@ -70,6 +70,7 @@ fun SettingsScreenContent(
     onCoordFormatSelected: (CoordFormat) -> Unit,
     onAttributionsClick: () -> Unit,
     onReleaseNotesClick: () -> Unit,
+    onGuideClick: () -> Unit,
     onSponsorClick: () -> Unit,
     highlightOfflineMode: Boolean = false
 ) {
@@ -369,6 +370,33 @@ fun SettingsScreenContent(
 
                     HorizontalDivider()
                 }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onGuideClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(Res.string.user_guide),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = stringResource(Res.string.user_guide_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        painterResource(Res.drawable.ic_open_in_new),
+                        contentDescription = stringResource(Res.string.go_to_user_guide)
+                    )
+                }
+
+                HorizontalDivider()
 
                 Row(
                     modifier = Modifier

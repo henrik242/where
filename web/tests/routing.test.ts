@@ -63,6 +63,14 @@ describe('static routes', () => {
     expect(html).not.toContain('app.js');
   });
 
+  test('/guide serves guide.html', async () => {
+    const res = await fetch(`${SERVER_URL}/guide`);
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('Feature Guide');
+    expect(html).not.toContain('app.js');
+  });
+
   test('/privacy serves privacy.html', async () => {
     const res = await fetch(`${SERVER_URL}/privacy`);
     expect(res.status).toBe(200);

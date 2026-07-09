@@ -97,6 +97,9 @@ fun WhereApp(
                 onReleaseNotesClick = {
                     context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/henrik242/where/blob/main/RELEASES.md".toUri()))
                 },
+                onGuideClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://where.synth.no/guide".toUri()))
+                },
                 onCrashReportingChange = { enabled ->
                     userPreferences.updateCrashReportingEnabled(enabled)
                     CrashReporter.setEnabled(enabled)

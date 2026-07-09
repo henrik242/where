@@ -169,6 +169,9 @@
     <string name="data_sources">Datakilder</string>
     <string name="open_source_libraries">Biblioteker med åpen kildekode</string>
     <string name="release_notes">Versjonslogg</string>
+    <string name="user_guide">Funksjonsguide</string>
+    <string name="user_guide_description">Slik fungerer alt, åpnes i nettleseren</string>
+    <string name="go_to_user_guide">Åpne funksjonsguiden</string>
     <string name="sponsor">Støtt prosjektet</string>
     <string name="sponsor_description">Kjøp meg en kaffe</string>
     <string name="crash_reporting">Krasjrapportering</string>
