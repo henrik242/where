@@ -28,6 +28,10 @@ class MapDownloadManager(private val context: Context) {
     private val offlineManager by lazy { OfflineManager.getInstance(context) }
     private var styleServer: StyleServer? = null
     private val activeDownloads = mutableMapOf<String, OfflineRegion>()
+    // Regions whose createOfflineRegion callback hasn't fired yet, and those whose stop was
+    // requested during that window (so the callback drops them instead of activating).
+    private val creating = mutableSetOf<String>()
+    private val pendingStops = mutableSetOf<String>()
 
     init {
         startStyleServer()
@@ -86,11 +90,23 @@ class MapDownloadManager(private val context: Context) {
                     put("region", region.name)
                 }.toString().toByteArray()
 
+                creating.add(regionName)
                 offlineManager.createOfflineRegion(
                     definition,
                     metadata,
                     object : OfflineManager.CreateOfflineRegionCallback {
                         override fun onCreate(offlineRegion: OfflineRegion) {
+                            creating.remove(regionName)
+                            if (pendingStops.remove(regionName)) {
+                                // Stop/cancel arrived before this async callback — drop the region
+                                // instead of activating a download nothing is tracking anymore.
+                                offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                                offlineRegion.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
+                                    override fun onDelete() {}
+                                    override fun onError(error: String) {}
+                                })
+                                return
+                            }
                             activeDownloads[regionName] = offlineRegion
                             offlineRegion.setDownloadState(OfflineRegion.STATE_ACTIVE)
 
@@ -191,11 +207,16 @@ class MapDownloadManager(private val context: Context) {
     }
 
     fun stopDownload(regionName: String) {
-        activeDownloads[regionName]?.let { offlineRegion ->
+        val offlineRegion = activeDownloads[regionName]
+        if (offlineRegion != null) {
             offlineRegion.setDownloadState(OfflineRegion.STATE_INACTIVE)
             activeDownloads.remove(regionName)
             Logger.d("Stopped download for %s", regionName)
+        } else if (regionName in creating) {
+            // Creation callback hasn't fired yet; mark so it drops the region instead of activating.
+            pendingStops.add(regionName)
         }
+        // else: nothing in flight (e.g. already completed) — a stray stop is a no-op.
     }
 
     suspend fun getRegionTileInfo(

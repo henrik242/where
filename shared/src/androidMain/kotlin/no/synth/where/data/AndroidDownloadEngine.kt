@@ -51,6 +51,10 @@ class AndroidDownloadEngine(context: Context) : DownloadEngine {
             demJob?.await()
             mapOk
         } finally {
+            // Always deactivate the native pack on exit (completion, failure, or cancellation) so a
+            // cancelled/failed download can't leave a region stuck STATE_ACTIVE and downloading
+            // forever in the background.
+            manager.stopDownload(item.id)
             activeRegionId = null
         }
     }

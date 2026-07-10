@@ -13,6 +13,9 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
 
     override init() {
         super.init()
+        // Match Android: raise the ambient cache from MapLibre's ~50 MB default so tiles the user
+        // browsed stay available offline instead of being evicted after a little browsing.
+        MLNOfflineStorage.shared.setMaximumAmbientCacheSize(UInt(512 * 1024 * 1024)) { _ in }
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(offlinePackProgressChanged(_:)),

@@ -20,12 +20,17 @@ import no.synth.where.data.UserPreferences
 import no.synth.where.data.db.WhereDatabase
 import no.synth.where.util.CrashReporter
 import org.maplibre.android.MapLibre
+import org.maplibre.android.offline.OfflineManager
 import org.maplibre.android.storage.FileSource
 import timber.log.Timber
 import java.io.File
 
 private val Application.userPrefsDataStore by preferencesDataStore(name = "user_prefs")
 private val Application.clientPrefsDataStore by preferencesDataStore(name = "client_prefs")
+
+// Ambient cache ceiling for auto-saved browse tiles. MapLibre defaults to only 50 MB, which
+// evicts browsed areas quickly on an offline-first map; 512 MB keeps far more available offline.
+private const val AMBIENT_CACHE_SIZE_BYTES = 512L * 1024 * 1024
 
 class WhereApplication : Application() {
     private val database by lazy {
@@ -90,7 +95,16 @@ class WhereApplication : Application() {
         }
 
         FileSource.setResourcesCachePath(tilesDir.absolutePath, object : FileSource.ResourcesCachePathChangeCallback {
-            override fun onSuccess(path: String) {}
+            override fun onSuccess(path: String) {
+                // Give the ambient cache (tiles auto-saved while browsing) far more room than
+                // MapLibre's 50 MB default, so areas the user has panned over stay available
+                // offline instead of being evicted after ~50 MB of browsing.
+                OfflineManager.getInstance(this@WhereApplication)
+                    .setMaximumAmbientCacheSize(AMBIENT_CACHE_SIZE_BYTES, object : OfflineManager.FileSourceCallback {
+                        override fun onSuccess() {}
+                        override fun onError(message: String) {}
+                    })
+            }
             override fun onError(message: String) {}
         })
     }
