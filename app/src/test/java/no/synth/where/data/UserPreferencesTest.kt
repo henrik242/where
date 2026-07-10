@@ -83,6 +83,18 @@ class UserPreferencesTest {
     }
 
     @Test
+    fun defaults_downloadMaxZoomIsStandard() {
+        assertEquals(12, UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM)
+        assertEquals(UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM, prefs.downloadMaxZoom.value)
+    }
+
+    @Test
+    fun updateDownloadMaxZoom_updatesStateFlow() {
+        prefs.updateDownloadMaxZoom(16)
+        assertEquals(16, prefs.downloadMaxZoom.value)
+    }
+
+    @Test
     fun defaults_coordFormatIsLatLng() {
         assertEquals(CoordFormat.LATLNG, prefs.coordFormat.value)
     }

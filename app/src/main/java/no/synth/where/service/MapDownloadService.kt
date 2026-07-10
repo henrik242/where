@@ -25,6 +25,7 @@ import no.synth.where.data.DownloadState
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.Region
+import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLngBounds
 
 class MapDownloadService : Service() {
@@ -53,7 +54,7 @@ class MapDownloadService : Service() {
                 val regionName = intent.getStringExtra(EXTRA_REGION_NAME)
                 val layerName = intent.getStringExtra(EXTRA_LAYER_NAME)
                 val minZoom = intent.getIntExtra(EXTRA_MIN_ZOOM, 5)
-                val maxZoom = intent.getIntExtra(EXTRA_MAX_ZOOM, 12)
+                val maxZoom = intent.getIntExtra(EXTRA_MAX_ZOOM, UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM)
                 val south = intent.getDoubleExtra(EXTRA_SOUTH, Double.NaN)
                 val west = intent.getDoubleExtra(EXTRA_WEST, Double.NaN)
                 val north = intent.getDoubleExtra(EXTRA_NORTH, Double.NaN)
@@ -236,7 +237,7 @@ class MapDownloadService : Service() {
             region: Region,
             layerName: String,
             minZoom: Int = 5,
-            maxZoom: Int = 12,
+            maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
             downloadDem: Boolean = true
         ) {
             val intent = Intent(context, MapDownloadService::class.java).apply {

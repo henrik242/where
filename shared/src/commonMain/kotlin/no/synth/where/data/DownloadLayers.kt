@@ -14,7 +14,7 @@ object DownloadLayers {
         DownloadLayer("kartverket", "Kartverket", "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"),
         DownloadLayer("toporaster", "Kartverket Toporaster", "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"),
         DownloadLayer("sjokartraster", "Kartverket Sjøkart", "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png"),
-        DownloadLayer("mapant", "MapAnt", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png"),
+        DownloadLayer("mapant", "MapAnt", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png", maxZoom = 16),
         DownloadLayer("satellite", "Satellite (Sentinel-2)", "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg", maxZoom = 14),
         DownloadLayer("osm", "OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
         DownloadLayer("opentopomap", "OpenTopoMap", "https://tile.opentopomap.org/{z}/{x}/{y}.png"),
@@ -26,6 +26,16 @@ object DownloadLayers {
     fun tileUrlForLayer(layerName: String): String =
         all.find { it.id == layerName }?.tileUrl
             ?: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+
+    /**
+     * The zoom a region download should actually stop at: the user's requested detail level,
+     * clamped to the layer's own [DownloadLayer.maxZoom] so we never request tiles the source
+     * doesn't have (e.g. satellite tops out at 14, terrain at 15).
+     */
+    fun effectiveMaxZoom(layerId: String, requestedMaxZoom: Int): Int {
+        val layerMax = all.find { it.id == layerId }?.maxZoom ?: 18
+        return minOf(requestedMaxZoom, layerMax)
+    }
 
     private const val OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 

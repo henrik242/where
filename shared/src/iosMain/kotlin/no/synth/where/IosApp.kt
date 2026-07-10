@@ -65,6 +65,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val themeMode by userPreferences.themeMode.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val downloadElevationData by userPreferences.downloadElevationData.collectAsState()
+    val downloadMaxZoom by userPreferences.downloadMaxZoom.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val tracks by trackRepository.tracks.collectAsState()
     val isRecording by trackRepository.isRecording.collectAsState()
@@ -375,6 +376,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                             }
                         }
                     },
+                    downloadMaxZoom = downloadMaxZoom,
+                    onDownloadMaxZoomChange = { userPreferences.updateDownloadMaxZoom(it) },
                     getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },
                     refreshTrigger = refreshTrigger
                 )
@@ -387,6 +390,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     hexMapViewProvider = hexMapViewProvider,
                     downloadManager = downloadManager,
                     downloadElevationData = downloadElevationData,
+                    downloadMaxZoom = downloadMaxZoom,
                     offlineModeEnabled = offlineModeEnabled,
                     onOfflineChipClick = {
                         highlightOfflineMode = true

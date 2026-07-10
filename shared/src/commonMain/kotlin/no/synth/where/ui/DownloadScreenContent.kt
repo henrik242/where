@@ -2,6 +2,7 @@ package no.synth.where.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +18,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.LayerStats
+import no.synth.where.data.UserPreferences
 import no.synth.where.util.formatBytes
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -50,6 +54,8 @@ data class LayerInfo(
     val displayName: String,
     val description: String
 )
+
+private data class DetailLevelOption(val zoom: Int, val label: String, val sizeHint: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +75,8 @@ fun DownloadScreenContent(
     downloadElevationData: Boolean = true,
     demCacheSize: Long = 0L,
     onDownloadElevationDataChange: (Boolean) -> Unit = {},
+    downloadMaxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
+    onDownloadMaxZoomChange: (Int) -> Unit = {},
     getLayerStats: suspend (String) -> LayerStats,
     refreshTrigger: Int
 ) {
@@ -211,6 +219,72 @@ fun DownloadScreenContent(
                         checked = downloadElevationData,
                         onCheckedChange = onDownloadElevationDataChange
                     )
+                }
+            }
+
+            item {
+                val detailOptions = listOf(
+                    DetailLevelOption(
+                        UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
+                        stringResource(Res.string.download_detail_standard),
+                        stringResource(Res.string.download_detail_standard_hint)
+                    ),
+                    DetailLevelOption(14, stringResource(Res.string.download_detail_high), stringResource(Res.string.download_detail_high_hint)),
+                    DetailLevelOption(16, stringResource(Res.string.download_detail_maximum), stringResource(Res.string.download_detail_maximum_hint)),
+                )
+                var expanded by remember { mutableStateOf(false) }
+                val selectedLabel = detailOptions.find { it.zoom == downloadMaxZoom }?.label
+                    ?: detailOptions.first().label
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { expanded = true }
+                            .padding(horizontal = 4.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(Res.string.download_detail_level),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = stringResource(Res.string.download_detail_level_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Text(
+                            text = selectedLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        detailOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(option.label)
+                                        Text(
+                                            text = option.sizeHint,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    expanded = false
+                                    onDownloadMaxZoomChange(option.zoom)
+                                }
+                            )
+                        }
+                    }
                 }
             }
 

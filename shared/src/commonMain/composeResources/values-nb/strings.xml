@@ -171,6 +171,14 @@
     <string name="offline_mode_description">Bruk kun bufrede kart og data, ingen nettverksforespørsler</string>
     <string name="download_elevation_data">Last ned høydedata</string>
     <string name="download_elevation_data_description">Last ned høyde- og bratthetdata ved nedlasting av kartfliser for offline bruk</string>
+    <string name="download_detail_level">Detaljnivå</string>
+    <string name="download_detail_level_description">Høyere detaljnivå gir skarpere offline-kart, men mye større nedlastinger</string>
+    <string name="download_detail_standard">Standard</string>
+    <string name="download_detail_high">Høy</string>
+    <string name="download_detail_maximum">Maksimum</string>
+    <string name="download_detail_standard_hint">Minste nedlasting</string>
+    <string name="download_detail_high_hint">~16x større</string>
+    <string name="download_detail_maximum_hint">~256x større</string>
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Importer fil</string>

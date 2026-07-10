@@ -47,7 +47,7 @@ class MapDownloadManager(private val context: Context) {
         region: Region,
         layerName: String = "kartverket",
         minZoom: Int = 5,
-        maxZoom: Int = 15,
+        maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
         onProgress: (Int) -> Unit,
         onComplete: (Boolean) -> Unit
     ) {
@@ -202,7 +202,7 @@ class MapDownloadManager(private val context: Context) {
         region: Region,
         layerName: String = "kartverket",
         minZoom: Int = 5,
-        maxZoom: Int = 12
+        maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM
     ): RegionTileInfo = suspendCancellableCoroutine { continuation ->
         val regionName = "${region.name}-$layerName"
 

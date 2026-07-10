@@ -21,6 +21,7 @@ import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.RegionTileInfo
+import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.ui.map.MapClickCallback
 import no.synth.where.ui.map.MapViewProvider
@@ -35,11 +36,14 @@ fun IosLayerHexMapScreen(
     hexMapViewProvider: MapViewProvider,
     downloadManager: IosMapDownloadManager,
     downloadElevationData: Boolean = true,
+    downloadMaxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
     offlineModeEnabled: Boolean = false,
     onOfflineChipClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val downloadState by downloadManager.downloadState.collectAsState()
+
+    val effectiveMaxZoom = DownloadLayers.effectiveMaxZoom(layerId, downloadMaxZoom)
 
     var downloadedHexIds by remember { mutableStateOf(emptySet<String>()) }
     var selectedHex by remember { mutableStateOf<HexGrid.Hex?>(null) }
@@ -91,7 +95,7 @@ fun IosLayerHexMapScreen(
                     isLoadingHexName = true
                     scope.launch {
                         selectedHexInfo = downloadManager.getRegionTileInfo(
-                            HexGrid.hexToRegion(hex), layerId
+                            HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom
                         )
                     }
                     scope.launch {
@@ -135,7 +139,7 @@ fun IosLayerHexMapScreen(
                     region = HexGrid.hexToRegion(hex),
                     layerName = layerId,
                     minZoom = 5,
-                    maxZoom = 12,
+                    maxZoom = effectiveMaxZoom,
                     downloadDem = downloadElevationData
                 )
             }

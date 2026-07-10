@@ -25,7 +25,7 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         region: Region,
         layerName: String,
         minZoom: Int = 5,
-        maxZoom: Int = 12,
+        maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
         downloadDem: Boolean = true
     ) {
         val regionName = "${region.name}-$layerName"
@@ -157,7 +157,7 @@ class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
         region: Region,
         layerName: String,
         minZoom: Int = 5,
-        maxZoom: Int = 12
+        maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM
     ): RegionTileInfo {
         val regionName = "${region.name}-$layerName"
         val estimatedTileCount = TileUtils.estimateTileCount(region.boundingBox, minZoom, maxZoom)

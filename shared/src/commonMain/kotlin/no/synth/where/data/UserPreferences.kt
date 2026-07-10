@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.CoroutineScope
@@ -63,6 +64,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _downloadElevationData = MutableStateFlow(true)
     val downloadElevationData: StateFlow<Boolean> = _downloadElevationData.asStateFlow()
 
+    private val _downloadMaxZoom = MutableStateFlow(DEFAULT_DOWNLOAD_MAX_ZOOM)
+    val downloadMaxZoom: StateFlow<Int> = _downloadMaxZoom.asStateFlow()
+
     private val _themeMode = MutableStateFlow("system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
@@ -121,6 +125,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
                 _offlineModeEnabled.value = prefs[OFFLINE_MODE_ENABLED] ?: false
                 _downloadElevationData.value = prefs[DOWNLOAD_ELEVATION_DATA] ?: true
+                _downloadMaxZoom.value = prefs[DOWNLOAD_MAX_ZOOM] ?: DEFAULT_DOWNLOAD_MAX_ZOOM
                 _themeMode.value = prefs[THEME_MODE] ?: "system"
                 _coordFormat.value = try { CoordFormat.valueOf(prefs[COORD_FORMAT] ?: "LATLNG") } catch (_: Exception) { CoordFormat.LATLNG }
                 _searchHistory.value = deserializeSearchHistory(prefs[SEARCH_HISTORY])
@@ -242,6 +247,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         scope.launch { dataStore.edit { it[DOWNLOAD_ELEVATION_DATA] = value } }
     }
 
+    fun updateDownloadMaxZoom(value: Int) {
+        _downloadMaxZoom.value = value
+        scope.launch { dataStore.edit { it[DOWNLOAD_MAX_ZOOM] = value } }
+    }
+
     fun updateThemeMode(value: String) {
         _themeMode.value = value
         scope.launch {
@@ -325,6 +335,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     }
 
     companion object {
+        const val DEFAULT_DOWNLOAD_MAX_ZOOM = 12
         private const val MAX_FOLLOW_HISTORY = 5
         private const val MAX_SEARCH_HISTORY = 10
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
@@ -343,6 +354,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val TRACKING_SERVER_URL = stringPreferencesKey("tracking_server_url")
         private val OFFLINE_MODE_ENABLED = booleanPreferencesKey("offline_mode_enabled")
         private val DOWNLOAD_ELEVATION_DATA = booleanPreferencesKey("download_elevation_data")
+        private val DOWNLOAD_MAX_ZOOM = intPreferencesKey("download_max_zoom")
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val COORD_FORMAT = stringPreferencesKey("coord_format")
         private val SEARCH_HISTORY = stringPreferencesKey("search_history")

@@ -34,6 +34,7 @@ fun DownloadScreen(
     val downloadState by MapDownloadService.downloadState.collectAsState()
     val app = context.applicationContext as no.synth.where.WhereApplication
     val downloadElevationData by app.userPreferences.downloadElevationData.collectAsState()
+    val downloadMaxZoom by app.userPreferences.downloadMaxZoom.collectAsState()
 
     val kartverketDesc = stringResource(Res.string.layer_kartverket_desc)
     val toporasterDesc = stringResource(Res.string.layer_toporaster_desc)
@@ -122,6 +123,8 @@ fun DownloadScreen(
                 }
             }
         },
+        downloadMaxZoom = downloadMaxZoom,
+        onDownloadMaxZoomChange = { app.userPreferences.updateDownloadMaxZoom(it) },
         getLayerStats = { layerName -> downloadManager.getLayerStats(layerName) },
         refreshTrigger = refreshTrigger
     )

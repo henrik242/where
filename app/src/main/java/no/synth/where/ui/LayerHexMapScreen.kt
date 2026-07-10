@@ -52,6 +52,8 @@ fun LayerHexMapScreen(
     val downloadState by MapDownloadService.downloadState.collectAsState()
     val app = context.applicationContext as no.synth.where.WhereApplication
     val downloadElevationData by app.userPreferences.downloadElevationData.collectAsState()
+    val downloadMaxZoom by app.userPreferences.downloadMaxZoom.collectAsState()
+    val effectiveMaxZoom = DownloadLayers.effectiveMaxZoom(layerId, downloadMaxZoom)
 
     val hasLocationPermission = remember {
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -120,7 +122,7 @@ fun LayerHexMapScreen(
                     region = HexGrid.hexToRegion(hex),
                     layerName = layerId,
                     minZoom = 5,
-                    maxZoom = 12,
+                    maxZoom = effectiveMaxZoom,
                     downloadDem = downloadElevationData
                 )
             }
@@ -178,7 +180,7 @@ fun LayerHexMapScreen(
                         isLoadingHexName = true
                         scope.launch {
                             selectedHexInfo = downloadManager.getRegionTileInfo(
-                                HexGrid.hexToRegion(hex), layerId
+                                HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom
                             )
                         }
                         scope.launch {

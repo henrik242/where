@@ -175,6 +175,14 @@
     <string name="offline_mode_description">Only use cached maps and data, no network requests</string>
     <string name="download_elevation_data">Download elevation data</string>
     <string name="download_elevation_data_description">Download altitude and slope data when downloading map tiles for offline use</string>
+    <string name="download_detail_level">Detail level</string>
+    <string name="download_detail_level_description">Higher detail gives sharper offline maps but much larger downloads</string>
+    <string name="download_detail_standard">Standard</string>
+    <string name="download_detail_high">High</string>
+    <string name="download_detail_maximum">Maximum</string>
+    <string name="download_detail_standard_hint">Smallest download</string>
+    <string name="download_detail_high_hint">~16x larger</string>
+    <string name="download_detail_maximum_hint">~256x larger</string>
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Import file</string>

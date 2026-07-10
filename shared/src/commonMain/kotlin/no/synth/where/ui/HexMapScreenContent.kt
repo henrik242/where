@@ -240,7 +240,7 @@ fun HexMapScreenContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             else -> Text(
-                                "Not downloaded",
+                                "Not downloaded · ~${selectedHexInfo.totalTiles} tiles",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

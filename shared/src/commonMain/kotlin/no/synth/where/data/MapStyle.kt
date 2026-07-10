@@ -22,7 +22,9 @@ object MapStyle {
             MapLayer.TOPORASTER -> TileSource("toporaster", "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
             MapLayer.SJOKARTRASTER -> TileSource("sjokartraster", "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
             MapLayer.OPENTOPOMAP -> TileSource("opentopomap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", "© <a href='https://opentopomap.org'>OpenTopoMap</a> (CC-BY-SA)")
-            MapLayer.MAPANT -> TileSource("mapant", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png", "© <a href='https://mapant.no'>MapAnt.no</a>")
+            // MapAnt serves tiles only through z16 (z17+ returns 404), so cap here and let
+            // MapLibre overzoom locally instead of fetching missing tiles.
+            MapLayer.MAPANT -> TileSource("mapant", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png", "© <a href='https://mapant.no'>MapAnt.no</a>", maxZoom = 16)
             // EOX Sentinel-2 cloudless annual mosaic (bump the year in the URL yearly).
             // Capped at z14: native ~10 m resolution has no detail past z14, so MapLibre
             // overzooms locally instead of fetching blurry upscaled tiles.
