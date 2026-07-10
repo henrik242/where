@@ -188,6 +188,13 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
     }
 
+    func setHexDownloadingOpacity(opacity: Double) {
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        if let layer = style.layer(withIdentifier: "hex-downloading-fill") as? MLNFillStyleLayer {
+            layer.fillOpacity = NSExpression(forConstantValue: opacity)
+        }
+    }
+
     func setCamera(latitude: Double, longitude: Double, zoom: Double) {
         guard let mapView = self.mapView else { return }
         mapView.setCenter(

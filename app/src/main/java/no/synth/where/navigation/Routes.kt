@@ -8,5 +8,6 @@ import kotlinx.serialization.Serializable
 @Serializable object SavedPointsRoute
 @Serializable object OnlineTrackingRoute
 @Serializable object DownloadRoute
+@Serializable object DownloadQueueRoute
 @Serializable object AttributionsRoute
 @Serializable data class LayerRegionsRoute(val layerId: String)

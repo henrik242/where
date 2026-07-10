@@ -14,15 +14,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.sin
 import no.synth.where.data.DownloadLayers
+import no.synth.where.data.DownloadStatus
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.IosMapDownloadManager
+import no.synth.where.data.QueuedDownload
 import no.synth.where.data.RegionTileInfo
 import no.synth.where.data.UserPreferences
+import no.synth.where.data.downloadingHexIds
+import no.synth.where.data.forHex
+import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.data.summary
 import no.synth.where.ui.map.MapClickCallback
 import no.synth.where.ui.map.MapViewProvider
 
@@ -38,10 +46,11 @@ fun IosLayerHexMapScreen(
     downloadElevationData: Boolean = true,
     downloadMaxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
     offlineModeEnabled: Boolean = false,
-    onOfflineChipClick: () -> Unit = {}
+    onOfflineChipClick: () -> Unit = {},
+    onQueueChipClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
-    val downloadState by downloadManager.downloadState.collectAsState()
+    val queue by downloadManager.queue.collectAsState()
 
     val effectiveMaxZoom = DownloadLayers.effectiveMaxZoom(layerId, downloadMaxZoom)
 
@@ -57,8 +66,7 @@ fun IosLayerHexMapScreen(
         DownloadLayers.all.find { it.id == layerId }?.displayName ?: layerId
     }
 
-    val downloadingHexId = if (downloadState.isDownloading && downloadState.layerName == layerId)
-        downloadState.region?.name else null
+    val downloadingIds = queue.downloadingHexIds(layerId)
 
     val allHexes = remember { HexGrid.hexesInBounds(NORWAY_BOUNDS) }
 
@@ -67,16 +75,27 @@ fun IosLayerHexMapScreen(
     // downloadingHexId re-runs both when a download starts AND when it completes
     // (downloadingHexId → null). When not actively downloading, retry with a short
     // delay because MLNOfflineStorage.packs loads asynchronously on the Swift side.
-    LaunchedEffect(refreshTrigger, downloadingHexId) {
+    LaunchedEffect(refreshTrigger, downloadingIds) {
         downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
-        if (downloadingHexId == null) {
+        if (downloadingIds.isEmpty()) {
             // Packs may not be ready yet on first call or right after download completes
             delay(500)
             downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
         }
-        val hexGeoJson = buildHexGeoJson(allHexes, downloadedHexIds, downloadingHexId)
+        val hexGeoJson = buildHexGeoJson(allHexes, downloadedHexIds, downloadingIds)
         hexMapViewProvider.setStyle(buildHexMapStyle(layerId, hexGeoJson))
         hexMapViewProvider.setShowsUserLocation(true)
+    }
+
+    // Pulse the "downloading" hex fill while something is in progress.
+    LaunchedEffect(downloadingIds.isEmpty()) {
+        if (downloadingIds.isEmpty()) return@LaunchedEffect
+        var phase = 0.0
+        while (isActive) {
+            hexMapViewProvider.setHexDownloadingOpacity(0.35 + 0.2 * sin(phase))
+            phase += 0.35
+            delay(80)
+        }
     }
 
     DisposableEffect(Unit) {
@@ -115,14 +134,23 @@ fun IosLayerHexMapScreen(
     val hexTileInfo = selectedHexInfo
     val isHexDownloaded = hexTileInfo?.isFullyDownloaded == true
     val isHexPartial = (hexTileInfo?.downloadedTiles ?: 0) > 0
+    val selectedHexDownload = currentHex?.let { hex -> queue.forHex(hex.id, layerId) }
+    val queueSummary = queue.summary()
+
+    // Refresh the selected hex's tile info once its download finishes, so the panel flips from
+    // "downloading" to the downloaded size + Delete instead of a stale "Not downloaded".
+    LaunchedEffect(selectedHexDownload?.status) {
+        if (selectedHexDownload?.status == DownloadStatus.COMPLETED && currentHex != null) {
+            selectedHexInfo = downloadManager.getRegionTileInfo(
+                HexGrid.hexToRegion(currentHex), layerId, maxZoom = effectiveMaxZoom
+            )
+        }
+    }
 
     HexMapScreenContent(
         layerDisplayName = layerDisplayName,
-        isDownloading = downloadState.isDownloading,
-        demProgress = downloadState.demProgress,
-        downloadLayerId = downloadState.layerName,
-        currentLayerId = layerId,
-        downloadProgress = downloadState.progress,
+        selectedHexDownload = selectedHexDownload,
+        queueSummary = queueSummary,
         selectedHexInfo = hexTileInfo,
         selectedHexName = selectedHexName,
         isLoadingHexName = isLoadingHexName,
@@ -132,20 +160,21 @@ fun IosLayerHexMapScreen(
         offlineModeEnabled = offlineModeEnabled,
         showDeleteDialog = showDeleteDialog,
         onBackClick = onBackClick,
-        onStopDownload = { downloadManager.stopDownload() },
+        onCancelHexDownload = { selectedHexDownload?.let { downloadManager.cancel(it.id) } },
         onDownloadHex = {
             currentHex?.let { hex ->
-                downloadManager.startDownload(
-                    region = HexGrid.hexToRegion(hex),
-                    layerName = layerId,
-                    minZoom = 5,
-                    maxZoom = effectiveMaxZoom,
-                    downloadDem = downloadElevationData
+                val coord = CoordinateFormatter.formatLatLng(HexGrid.hexCenter(hex))
+                downloadManager.enqueue(
+                    QueuedDownload(
+                        region = HexGrid.hexToRegion(hex),
+                        layerId = layerId,
+                        layerDisplayName = layerDisplayName,
+                        label = selectedHexName?.let { "$it ($coord)" } ?: coord,
+                        maxZoom = effectiveMaxZoom,
+                        downloadDem = downloadElevationData,
+                    )
                 )
             }
-            selectedHex = null
-            selectedHexInfo = null
-            selectedHexName = null
         },
         onDeleteHexRequest = { showDeleteDialog = true },
         onConfirmDelete = {
@@ -168,6 +197,7 @@ fun IosLayerHexMapScreen(
         onZoomIn = { hexMapViewProvider.zoomIn() },
         onZoomOut = { hexMapViewProvider.zoomOut() },
         onOfflineChipClick = onOfflineChipClick,
+        onQueueChipClick = onQueueChipClick,
         onDismissDelete = { showDeleteDialog = false },
         onDismissHex = {
             selectedHex = null

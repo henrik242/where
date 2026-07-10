@@ -39,14 +39,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import no.synth.where.data.DownloadStatus
+import no.synth.where.data.QueueSummary
+import no.synth.where.data.QueuedDownload
 import no.synth.where.data.RegionTileInfo
 import no.synth.where.resources.Res
-import no.synth.where.resources.ic_arrow_back
-import no.synth.where.resources.ic_cloud_off
-import no.synth.where.resources.ic_close
-import no.synth.where.resources.elevation_data
-import no.synth.where.resources.map_tiles
-import no.synth.where.resources.offline_mode
+import no.synth.where.resources.*
 import no.synth.where.ui.map.ZoomControls
 import no.synth.where.util.formatBytes
 import org.jetbrains.compose.resources.painterResource
@@ -56,11 +54,8 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun HexMapScreenContent(
     layerDisplayName: String,
-    isDownloading: Boolean,
-    demProgress: Int = -1,
-    downloadLayerId: String?,
-    currentLayerId: String,
-    downloadProgress: Int,
+    selectedHexDownload: QueuedDownload?,
+    queueSummary: QueueSummary,
     selectedHexInfo: RegionTileInfo?,
     selectedHexName: String?,
     isLoadingHexName: Boolean,
@@ -70,7 +65,7 @@ fun HexMapScreenContent(
     offlineModeEnabled: Boolean,
     showDeleteDialog: Boolean,
     onBackClick: () -> Unit,
-    onStopDownload: () -> Unit,
+    onCancelHexDownload: () -> Unit,
     onDownloadHex: () -> Unit,
     onDeleteHexRequest: () -> Unit,
     onConfirmDelete: () -> Unit,
@@ -78,6 +73,7 @@ fun HexMapScreenContent(
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit,
     onOfflineChipClick: () -> Unit,
+    onQueueChipClick: () -> Unit,
     onDismissHex: () -> Unit,
     mapContent: @Composable BoxScope.() -> Unit
 ) {
@@ -106,83 +102,71 @@ fun HexMapScreenContent(
         ) {
             mapContent()
 
-            if (!(isDownloading && downloadLayerId == currentLayerId)) {
-                ZoomControls(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(16.dp),
-                    onZoomIn = onZoomIn,
-                    onZoomOut = onZoomOut
-                )
+            // Zoom controls and offline chip stay live while downloads run in the background,
+            // so the user can keep adding hexes to the queue.
+            ZoomControls(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp),
+                onZoomIn = onZoomIn,
+                onZoomOut = onZoomOut
+            )
 
-                if (offlineModeEnabled) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 16.dp, end = offlineChipEnd)
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .clickable { onOfflineChipClick() }
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_cloud_off),
-                            contentDescription = stringResource(Res.string.offline_mode),
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            if (offlineModeEnabled) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 16.dp, end = offlineChipEnd)
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+                            shape = RoundedCornerShape(16.dp)
                         )
-                        Text(
-                            text = stringResource(Res.string.offline_mode),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                        .clickable { onOfflineChipClick() }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_cloud_off),
+                        contentDescription = stringResource(Res.string.offline_mode),
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = stringResource(Res.string.offline_mode),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
-            // Download progress banner
-            val isDownloadingThisLayer = isDownloading && downloadLayerId == currentLayerId
-            val showDemProgress = demProgress in 0..99
-            if (isDownloadingThisLayer || showDemProgress) {
-                Card(
+            // Compact queue overview chip while downloads are in flight; tap to open Downloads.
+            if (queueSummary.total > 0 && !queueSummary.allDone) {
+                Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .align(Alignment.TopCenter),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clickable { onQueueChipClick() }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                        if (isDownloadingThisLayer) {
-                            Text(
-                                "Stop",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .align(Alignment.End)
-                                    .clickable { onStopDownload() }
-                                    .padding(bottom = 4.dp)
-                            )
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(stringResource(Res.string.map_tiles), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("$downloadProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            LinearProgressIndicator(progress = { downloadProgress / 100f }, modifier = Modifier.fillMaxWidth())
-                        }
-                        if (showDemProgress) {
-                            if (isDownloadingThisLayer) Spacer(modifier = Modifier.height(4.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(stringResource(Res.string.elevation_data), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("$demProgress%", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            LinearProgressIndicator(progress = { demProgress / 100f }, modifier = Modifier.fillMaxWidth())
-                        }
-                    }
+                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                    val activeName = queueSummary.activeName
+                    Text(
+                        text = if (activeName != null) {
+                            stringResource(Res.string.downloading_region, activeName) +
+                                " (${queueSummary.position}/${queueSummary.total})"
+                        } else {
+                            "${queueSummary.position}/${queueSummary.total}"
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
             }
 
@@ -223,7 +207,35 @@ fun HexMapScreenContent(
                             }
                         }
 
+                        val dl = selectedHexDownload
                         when {
+                            dl != null && dl.status == DownloadStatus.DOWNLOADING -> {
+                                LinearProgressIndicator(
+                                    progress = { dl.overallProgress / 100f },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    "${dl.mapProgress}%",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            dl != null && dl.status == DownloadStatus.QUEUED -> Text(
+                                stringResource(Res.string.queued),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            dl != null && dl.status == DownloadStatus.FAILED -> Text(
+                                stringResource(Res.string.download_failed),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            dl != null && dl.status == DownloadStatus.COMPLETED -> Text(
+                                stringResource(Res.string.downloaded),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                             selectedHexInfo == null -> Text(
                                 "Loading…",
                                 style = MaterialTheme.typography.bodySmall,
@@ -248,23 +260,29 @@ fun HexMapScreenContent(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        val activeInQueue = dl?.status == DownloadStatus.QUEUED || dl?.status == DownloadStatus.DOWNLOADING
+                        val isCompleted = dl?.status == DownloadStatus.COMPLETED
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (isHexDownloaded || isHexPartiallyDownloaded) {
+                            if (isHexDownloaded || isHexPartiallyDownloaded || isCompleted) {
                                 OutlinedButton(
                                     onClick = onDeleteHexRequest,
                                     colors = ButtonDefaults.outlinedButtonColors(
                                         contentColor = MaterialTheme.colorScheme.error
                                     )
                                 ) {
-                                    Text("Delete")
+                                    Text(stringResource(Res.string.delete))
                                 }
                             }
-                            if (!isHexDownloaded) {
+                            if (activeInQueue && dl != null) {
+                                Button(onClick = onCancelHexDownload) {
+                                    Text(if (dl.status == DownloadStatus.DOWNLOADING) stringResource(Res.string.stop) else stringResource(Res.string.cancel))
+                                }
+                            } else if (!isHexDownloaded && !isCompleted) {
                                 Button(
                                     onClick = onDownloadHex,
-                                    enabled = !isDownloading && !offlineModeEnabled
+                                    enabled = !offlineModeEnabled
                                 ) {
-                                    Text(if (isHexPartiallyDownloaded) "Continue" else "Download")
+                                    Text(if (isHexPartiallyDownloaded) stringResource(Res.string.continue_download) else stringResource(Res.string.download))
                                 }
                             }
                         }

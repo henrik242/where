@@ -1,163 +1,149 @@
 package no.synth.where.data
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import no.synth.where.util.Logger
 import kotlin.coroutines.resume
 
-class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) {
+/**
+ * iOS download manager. Owns the shared [DownloadQueueManager] and is itself the
+ * [DownloadEngine] that runs one region (native tiles via [OfflineMapManager] + DEM) to a
+ * terminal state. The old single-download API is gone — everything goes through the queue.
+ */
+class IosMapDownloadManager(private val offlineMapManager: OfflineMapManager) : DownloadEngine {
 
-    private val _downloadState = MutableStateFlow(DownloadState())
-    val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
-    private val scope = CoroutineScope(Dispatchers.Main)
-    private var pollJob: Job? = null
-    private var demJob: Job? = null
+    // Main-confined + SupervisorJob to match Android and honour DownloadQueueManager's scope
+    // contract (a stray throw must not permanently cancel the queue's scope).
+    private val queueManager = DownloadQueueManager(
+        engine = this,
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    )
 
-    fun startDownload(
-        region: Region,
-        layerName: String,
-        minZoom: Int = 5,
-        maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
-        downloadDem: Boolean = true
-    ) {
-        val regionName = "${region.name}-$layerName"
-        val styleJson = DownloadLayers.getDownloadStyleJson(layerName)
-        Logger.d("startDownload: %s", regionName)
+    val queue: StateFlow<List<QueuedDownload>> get() = queueManager.queue
+    fun enqueue(item: QueuedDownload) = queueManager.enqueue(item)
+    fun cancel(id: String) = queueManager.cancel(id)
+    fun clearFinished() = queueManager.clearFinished()
 
-        _downloadState.value = DownloadState(
-            region = region,
-            layerName = layerName,
-            progress = 0,
-            isDownloading = true,
-            demProgress = if (downloadDem) 0 else -1
-        )
+    private var activeRegionId: String? = null
 
-        // Start DEM elevation tile download in parallel
-        if (downloadDem) {
-            demJob = scope.launch {
-                OfflineTileReader.downloadDemTilesForBounds(region.boundingBox) { demPercent ->
-                    _downloadState.value = _downloadState.value.copy(demProgress = demPercent)
+    override suspend fun download(
+        item: QueuedDownload,
+        onProgress: (mapPercent: Int, demPercent: Int) -> Unit,
+    ): Boolean = coroutineScope {
+        activeRegionId = item.id
+        var mapPercent = 0
+        var demPercent = if (item.downloadDem) 0 else -1
+
+        val demJob = if (item.downloadDem) {
+            async {
+                OfflineTileReader.downloadDemTilesForBounds(item.region.boundingBox) { percent ->
+                    demPercent = percent
+                    onProgress(mapPercent, demPercent)
                 }
             }
+        } else {
+            null
         }
 
+        val mapResult = CompletableDeferred<Boolean>()
+        val bounds = item.region.boundingBox
         offlineMapManager.downloadRegion(
-            regionName = regionName,
-            layerName = layerName,
-            styleJson = styleJson,
-            south = region.boundingBox.south,
-            west = region.boundingBox.west,
-            north = region.boundingBox.north,
-            east = region.boundingBox.east,
-            minZoom = minZoom,
-            maxZoom = maxZoom,
+            regionName = item.id,
+            layerName = item.layerId,
+            styleJson = DownloadLayers.getDownloadStyleJson(item.layerId),
+            south = bounds.south,
+            west = bounds.west,
+            north = bounds.north,
+            east = bounds.east,
+            minZoom = item.minZoom,
+            maxZoom = item.maxZoom,
             observer = object : OfflineMapDownloadObserver {
                 override fun onProgress(percent: Int) {
-                    Logger.d("onProgress callback: %s%%", percent.toString())
-                    _downloadState.value = _downloadState.value.copy(progress = percent)
+                    mapPercent = percent
+                    onProgress(mapPercent, demPercent)
                 }
 
                 override fun onComplete(success: Boolean) {
-                    Logger.d("onComplete callback for %s: success=%s", regionName, success.toString())
-                    pollJob?.cancel()
-                    scope.launch {
-                        demJob?.join()
-                        _downloadState.value = DownloadState()
-                    }
+                    mapResult.complete(success) // idempotent; poller may also complete
                 }
 
                 override fun onError(message: String) {
-                    Logger.e("onError callback for %s: %s", regionName, message)
-                    pollJob?.cancel()
-                    if (demJob?.isActive == true) {
-                        // Map tile download failed but DEM is still going — keep DEM progress visible
-                        _downloadState.value = _downloadState.value.copy(isDownloading = false)
-                        scope.launch {
-                            demJob?.join()
-                            _downloadState.value = DownloadState()
-                        }
-                    } else {
-                        _downloadState.value = DownloadState()
-                    }
+                    Logger.e("download error for %s: %s", item.id, message)
+                    mapResult.complete(false)
                 }
-            }
+            },
         )
 
-        // Poll progress as fallback — notifications may not reliably call back to Kotlin
-        pollJob?.cancel()
-        pollJob = scope.launch {
-            delay(2000) // Wait for addPack to complete
-            Logger.d("Starting progress polling for %s", regionName)
-            var lastPolledProgress = -1
+        // Fallback poll loop: notifications may not reliably call back to Kotlin, and it
+        // auto-resumes packs that stall behind server throttling.
+        val poller = launch {
+            delay(2000) // wait for addPack to register
+            var lastPolled = -1
             var stallCount = 0
-            var stallThreshold = 15 // First stall triggers after ~15s, then backs off
-            while (isActive && _downloadState.value.isDownloading) {
+            var stallThreshold = 15
+            while (isActive && !mapResult.isCompleted) {
                 try {
-                    val status = offlineMapManager.getRegionStatus(regionName)
-                    Logger.d("Poll status for %s: %s", regionName, status?.toString() ?: "pending")
+                    val status = offlineMapManager.getRegionStatus(item.id)
                     if (status != null) {
                         val total = if (status.totalTiles > 0) status.totalTiles else 1
                         val percent = (status.downloadedTiles * 100 / total).coerceIn(0, 100)
-                        _downloadState.value = _downloadState.value.copy(progress = percent)
+                        mapPercent = percent
+                        onProgress(mapPercent, demPercent)
                         if (status.isComplete) {
-                            Logger.d("Polling detected completion for %s", regionName)
-                            demJob?.join()
-                            _downloadState.value = DownloadState()
+                            mapResult.complete(true)
                             break
                         }
-                        // Stall detection: auto-resume when no tile progress
-                        if (status.downloadedTiles == lastPolledProgress && status.downloadedTiles > 0) {
+                        if (status.downloadedTiles == lastPolled && status.downloadedTiles > 0) {
                             stallCount++
                             if (stallCount >= stallThreshold) {
-                                Logger.d("Auto-resuming stalled pack for %s (stuck at %s tiles for %ss)", regionName, status.downloadedTiles.toString(), stallCount.toString())
-                                offlineMapManager.resumeDownload(regionName)
+                                Logger.d("Auto-resuming stalled pack %s", item.id)
+                                offlineMapManager.resumeDownload(item.id)
                                 stallCount = 0
-                                // Keep lastPolledProgress — don't reset to -1 or the
-                                // "progress changed" branch will reset stallThreshold
                                 stallThreshold = (stallThreshold * 2).coerceAtMost(120)
-                                delay(5_000) // Cooldown: let server throttle expire
+                                delay(5_000)
                                 continue
                             }
-                        } else if (status.downloadedTiles > lastPolledProgress) {
+                        } else if (status.downloadedTiles > lastPolled) {
                             stallCount = 0
-                            stallThreshold = 15 // Reset backoff on real progress
+                            stallThreshold = 15
                         }
-                        lastPolledProgress = status.downloadedTiles
+                        lastPolled = status.downloadedTiles
                     }
                 } catch (e: Exception) {
-                    Logger.e("Poll error for %s: %s", regionName, e.message ?: "unknown")
+                    Logger.e("Poll error for %s: %s", item.id, e.message ?: "unknown")
                 }
                 delay(1000)
             }
-            Logger.d("Stopped polling for %s", regionName)
+        }
+
+        try {
+            val mapOk = mapResult.await()
+            demJob?.await()
+            mapOk
+        } finally {
+            poller.cancel()
+            activeRegionId = null
         }
     }
 
-    fun stopDownload() {
-        val state = _downloadState.value
-        if (state.isDownloading && state.region != null && state.layerName != null) {
-            val regionName = "${state.region.name}-${state.layerName}"
-            Logger.d("stopDownload: %s", regionName)
-            offlineMapManager.stopDownload(regionName)
-        }
-        demJob?.cancel()
-        pollJob?.cancel()
-        _downloadState.value = DownloadState()
+    override fun cancelActive() {
+        activeRegionId?.let { offlineMapManager.stopDownload(it) }
     }
 
     suspend fun getRegionTileInfo(
         region: Region,
         layerName: String,
         minZoom: Int = 5,
-        maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM
+        maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
     ): RegionTileInfo {
         val regionName = "${region.name}-$layerName"
         val estimatedTileCount = TileUtils.estimateTileCount(region.boundingBox, minZoom, maxZoom)

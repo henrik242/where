@@ -179,6 +179,18 @@
     <string name="download_detail_standard_hint">Minste nedlasting</string>
     <string name="download_detail_high_hint">~16x større</string>
     <string name="download_detail_maximum_hint">~256x større</string>
+    <string name="queue_progress">%1$d av %2$d</string>
+    <string name="all_downloads_complete">Alle nedlastinger fullført</string>
+    <string name="downloads_finished">Ferdig</string>
+    <string name="downloads">Nedlastinger</string>
+    <string name="no_downloads">Ingen nedlastinger ennå</string>
+    <string name="go_to_downloads">Gå til nedlastinger</string>
+    <string name="clear_finished">Fjern fullførte</string>
+    <string name="queued">I kø</string>
+    <string name="downloaded">Lastet ned</string>
+    <string name="continue_download">Fortsett</string>
+    <string name="download_failed">Nedlasting mislyktes</string>
+    <string name="cancelled">Avbrutt</string>
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Importer fil</string>

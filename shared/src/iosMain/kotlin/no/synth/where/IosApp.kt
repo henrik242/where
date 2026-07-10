@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.DownloadLayers
+import no.synth.where.data.DownloadStatus
+import no.synth.where.data.summary
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.OfflineMapManager
 import no.synth.where.data.SavedPoint
@@ -23,6 +25,7 @@ import no.synth.where.data.TrackRepository
 import no.synth.where.data.TrackUrlImporter
 import no.synth.where.data.UserPreferences
 import no.synth.where.ui.AttributionsScreenContent
+import no.synth.where.ui.DownloadQueueScreenContent
 import no.synth.where.ui.DownloadScreenContent
 import no.synth.where.ui.LayerInfo
 import no.synth.where.ui.IosLayerHexMapScreen
@@ -50,6 +53,7 @@ enum class Screen {
     SAVED_POINTS,
     ONLINE_TRACKING,
     DOWNLOAD,
+    DOWNLOAD_QUEUE,
     LAYER_REGIONS,
     ATTRIBUTIONS
 }
@@ -70,7 +74,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val tracks by trackRepository.tracks.collectAsState()
     val isRecording by trackRepository.isRecording.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
-    val downloadState by downloadManager.downloadState.collectAsState()
+    val downloadQueue by downloadManager.queue.collectAsState()
 
     var currentScreen by remember { mutableStateOf(Screen.MAP) }
     var backStack by remember { mutableStateOf(listOf<Screen>()) }
@@ -321,8 +325,9 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     }
                 }
 
-                LaunchedEffect(downloadState.isDownloading) {
-                    if (!downloadState.isDownloading) refreshTrigger++
+                // Refresh cache size + layer stats whenever the queue drains an item.
+                LaunchedEffect(downloadQueue.count { it.status == DownloadStatus.COMPLETED }) {
+                    refreshTrigger++
                 }
 
                 LaunchedEffect(refreshTrigger) {
@@ -332,17 +337,13 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 DownloadScreenContent(
                     layers = layers,
                     cacheSize = cacheSize,
-                    isDownloading = downloadState.isDownloading,
-                    demProgress = downloadState.demProgress,
-                    downloadRegionName = downloadState.region?.name,
-                    downloadLayerName = downloadState.layerName,
-                    downloadProgress = downloadState.progress,
+                    queueSummary = if (downloadQueue.isEmpty()) null else downloadQueue.summary(),
+                    onDownloadsClick = { navigateTo(Screen.DOWNLOAD_QUEUE) },
                     onBackClick = { navigateBack() },
                     onLayerClick = { layerId ->
                         selectedLayerId = layerId
                         navigateTo(Screen.LAYER_REGIONS)
                     },
-                    onStopDownload = { downloadManager.stopDownload() },
                     onDeleteLayer = { layerId ->
                         scope.launch {
                             val downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
@@ -383,6 +384,15 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 )
             }
 
+            Screen.DOWNLOAD_QUEUE -> {
+                DownloadQueueScreenContent(
+                    queue = downloadQueue,
+                    onCancelDownload = { id -> downloadManager.cancel(id) },
+                    onClearFinished = { downloadManager.clearFinished() },
+                    onBackClick = { navigateBack() },
+                )
+            }
+
             Screen.LAYER_REGIONS -> {
                 IosLayerHexMapScreen(
                     layerId = selectedLayerId,
@@ -395,7 +405,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onOfflineChipClick = {
                         highlightOfflineMode = true
                         navigateTo(Screen.SETTINGS)
-                    }
+                    },
+                    onQueueChipClick = { navigateTo(Screen.DOWNLOAD_QUEUE) }
                 )
             }
 

@@ -7,7 +7,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import no.synth.where.data.AndroidDownloadEngine
 import no.synth.where.data.ClientIdManager
+import no.synth.where.data.DownloadQueueManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.OnlineTrackingCoordinator
@@ -35,6 +37,19 @@ class WhereApplication : Application() {
     val savedPointsRepository by lazy { SavedPointsRepository(PlatformFile(filesDir), database.savedPointDao()) }
     val userPreferences by lazy { UserPreferences(userPrefsDataStore) }
     val clientIdManager by lazy { ClientIdManager(clientPrefsDataStore) }
+    val downloadQueueManager by lazy {
+        DownloadQueueManager(
+            engine = AndroidDownloadEngine(this),
+            // Main.immediate so onActive() (startForegroundService) runs synchronously inside the
+            // foreground enqueue click, satisfying the FGS start-from-foreground requirement.
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            // Start the foreground service on the first enqueue (always from the foreground UI).
+            // It stops itself when the queue drains (see MapDownloadService's queue collector), so
+            // we never call startService from the background (which draining while backgrounded
+            // would otherwise do). onIdle is intentionally unused.
+            onActive = { no.synth.where.service.MapDownloadService.start(this) },
+        )
+    }
     val liveTrackingFollower by lazy { LiveTrackingFollower(userPreferences.trackingServerUrl.value) }
     val onlineTrackingCoordinator by lazy {
         OnlineTrackingCoordinator(

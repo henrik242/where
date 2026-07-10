@@ -29,6 +29,8 @@ fun interface MapTwoFingerTapCallback {
 interface MapViewProvider {
     fun createMapView(): UIView
     fun setStyle(json: String)
+    /** Sets the opacity of the "hex-downloading-fill" layer (for the pulsing download highlight). */
+    fun setHexDownloadingOpacity(opacity: Double)
     fun setCamera(latitude: Double, longitude: Double, zoom: Double)
     fun panTo(latitude: Double, longitude: Double)
     fun setShowsUserLocation(show: Boolean)

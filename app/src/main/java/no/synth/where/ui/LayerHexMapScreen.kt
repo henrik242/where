@@ -20,15 +20,23 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.sin
 import no.synth.where.data.DownloadLayers
+import no.synth.where.data.DownloadStatus
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.HexGrid
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.OfflineTileReader
+import no.synth.where.data.QueuedDownload
 import no.synth.where.data.RegionTileInfo
+import no.synth.where.data.downloadingHexIds
+import no.synth.where.data.forHex
+import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLngBounds
-import no.synth.where.service.MapDownloadService
+import no.synth.where.data.summary
 import no.synth.where.ui.map.MapRenderUtils
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -36,6 +44,7 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.PropertyFactory
 
 private val NORWAY_BOUNDS = LatLngBounds(south = 56.0, west = 3.0, north = 72.0, east = 32.0)
 
@@ -44,13 +53,14 @@ fun LayerHexMapScreen(
     layerId: String,
     onBackClick: () -> Unit,
     onOfflineChipClick: () -> Unit = {},
+    onQueueChipClick: () -> Unit = {},
     offlineModeEnabled: Boolean = false
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val downloadManager = remember { MapDownloadManager(context) }
-    val downloadState by MapDownloadService.downloadState.collectAsState()
     val app = context.applicationContext as no.synth.where.WhereApplication
+    val queue by app.downloadQueueManager.queue.collectAsState()
     val downloadElevationData by app.userPreferences.downloadElevationData.collectAsState()
     val downloadMaxZoom by app.userPreferences.downloadMaxZoom.collectAsState()
     val effectiveMaxZoom = DownloadLayers.effectiveMaxZoom(layerId, downloadMaxZoom)
@@ -73,23 +83,37 @@ fun LayerHexMapScreen(
         DownloadLayers.all.find { it.id == layerId }?.displayName ?: layerId
     }
 
-    val downloadingHexId = if (downloadState.isDownloading && downloadState.layerName == layerId)
-        downloadState.region?.name else null
+    // Hexes queued or actively downloading for this layer (highlighted "in progress" on the map).
+    val downloadingIds = queue.downloadingHexIds(layerId)
 
     val allHexes = remember { HexGrid.hexesInBounds(NORWAY_BOUNDS) }
 
     // Fetch downloaded hex IDs and reload the map style in one effect. Keying on
-    // downloadingHexId means this re-runs both when a download starts (showing the
-    // blue "in-progress" hex) and when it completes (downloadingHexId → null), so
-    // the freshly-downloaded hex turns green immediately. refreshTrigger covers
-    // explicit invalidations (e.g. after a delete).
-    LaunchedEffect(mapInstance, downloadingHexId, refreshTrigger) {
+    // downloadingIds means this re-runs when a download starts (showing the blue
+    // "in-progress" hex) and when it completes (leaves the set), so the freshly
+    // downloaded hex turns green immediately. refreshTrigger covers explicit
+    // invalidations (e.g. after a delete).
+    LaunchedEffect(mapInstance, downloadingIds, refreshTrigger) {
         val map = mapInstance ?: return@LaunchedEffect
         val info = downloadManager.getDownloadedRegionsForLayer(layerId)
         downloadedHexIds = info.keys.toSet()
-        val geoJson = buildHexGeoJson(allHexes, downloadedHexIds, downloadingHexId)
+        val geoJson = buildHexGeoJson(allHexes, downloadedHexIds, downloadingIds)
         map.setStyle(Style.Builder().fromJson(buildHexMapStyle(layerId, geoJson))) { style ->
             MapRenderUtils.enableLocationComponent(map, style, context, hasLocationPermission)
+        }
+    }
+
+    // Pulse the "downloading" hex fill so in-progress areas stand out. Runs only while something
+    // is downloading; reads the layer fresh each tick so it survives style reloads.
+    LaunchedEffect(mapInstance, downloadingIds.isEmpty()) {
+        val map = mapInstance ?: return@LaunchedEffect
+        if (downloadingIds.isEmpty()) return@LaunchedEffect
+        var phase = 0.0
+        while (isActive) {
+            val opacity = (0.35 + 0.2 * sin(phase)).toFloat()
+            map.style?.getLayer("hex-downloading-fill")?.setProperties(PropertyFactory.fillOpacity(opacity))
+            phase += 0.35
+            delay(80)
         }
     }
 
@@ -97,14 +121,23 @@ fun LayerHexMapScreen(
     val hexTileInfo = selectedHexInfo
     val isHexDownloaded = hexTileInfo?.isFullyDownloaded == true
     val isHexPartial = (hexTileInfo?.downloadedTiles ?: 0) > 0
+    val selectedHexDownload = currentHex?.let { hex -> queue.forHex(hex.id, layerId) }
+    val queueSummary = queue.summary()
+
+    // Refresh the selected hex's tile info once its download finishes, so the panel flips from
+    // "downloading" to the downloaded size + Delete instead of a stale "Not downloaded".
+    LaunchedEffect(selectedHexDownload?.status) {
+        if (selectedHexDownload?.status == DownloadStatus.COMPLETED && currentHex != null) {
+            selectedHexInfo = downloadManager.getRegionTileInfo(
+                HexGrid.hexToRegion(currentHex), layerId, maxZoom = effectiveMaxZoom
+            )
+        }
+    }
 
     HexMapScreenContent(
         layerDisplayName = layerDisplayName,
-        isDownloading = downloadState.isDownloading,
-        demProgress = downloadState.demProgress,
-        downloadLayerId = downloadState.layerName,
-        currentLayerId = layerId,
-        downloadProgress = downloadState.progress,
+        selectedHexDownload = selectedHexDownload,
+        queueSummary = queueSummary,
         selectedHexInfo = hexTileInfo,
         selectedHexName = selectedHexName,
         isLoadingHexName = isLoadingHexName,
@@ -114,21 +147,21 @@ fun LayerHexMapScreen(
         offlineModeEnabled = offlineModeEnabled,
         showDeleteDialog = showDeleteDialog,
         onBackClick = onBackClick,
-        onStopDownload = { MapDownloadService.stopDownload(context) },
+        onCancelHexDownload = { selectedHexDownload?.let { app.downloadQueueManager.cancel(it.id) } },
         onDownloadHex = {
             currentHex?.let { hex ->
-                MapDownloadService.startDownload(
-                    context = context,
-                    region = HexGrid.hexToRegion(hex),
-                    layerName = layerId,
-                    minZoom = 5,
-                    maxZoom = effectiveMaxZoom,
-                    downloadDem = downloadElevationData
+                val coord = CoordinateFormatter.formatLatLng(HexGrid.hexCenter(hex))
+                app.downloadQueueManager.enqueue(
+                    QueuedDownload(
+                        region = HexGrid.hexToRegion(hex),
+                        layerId = layerId,
+                        layerDisplayName = layerDisplayName,
+                        label = selectedHexName?.let { "$it ($coord)" } ?: coord,
+                        maxZoom = effectiveMaxZoom,
+                        downloadDem = downloadElevationData,
+                    )
                 )
             }
-            selectedHex = null
-            selectedHexInfo = null
-            selectedHexName = null
         },
         onDeleteHexRequest = { showDeleteDialog = true },
         onConfirmDelete = {
@@ -151,6 +184,7 @@ fun LayerHexMapScreen(
         onZoomIn = { mapInstance?.animateCamera(CameraUpdateFactory.zoomIn()) },
         onZoomOut = { mapInstance?.animateCamera(CameraUpdateFactory.zoomOut()) },
         onOfflineChipClick = onOfflineChipClick,
+        onQueueChipClick = onQueueChipClick,
         onDismissDelete = { showDeleteDialog = false },
         onDismissHex = {
             selectedHex = null

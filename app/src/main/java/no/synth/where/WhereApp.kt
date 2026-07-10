@@ -150,8 +150,12 @@ fun WhereApp(
                 onBackClick = { navController.popBackStack() },
                 onLayerClick = { layerId ->
                     navController.navigate(LayerRegionsRoute(layerId))
-                }
+                },
+                onDownloadsClick = { navController.navigate(DownloadQueueRoute) }
             )
+        }
+        composable<DownloadQueueRoute> {
+            DownloadQueueScreen(onBackClick = { navController.popBackStack() })
         }
         composable<LayerRegionsRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<LayerRegionsRoute>()
@@ -159,6 +163,7 @@ fun WhereApp(
                 layerId = route.layerId,
                 onBackClick = { navController.popBackStack() },
                 onOfflineChipClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
+                onQueueChipClick = { navController.navigate(DownloadQueueRoute) },
                 offlineModeEnabled = offlineModeEnabled
             )
         }

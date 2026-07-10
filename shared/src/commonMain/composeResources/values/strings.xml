@@ -183,6 +183,18 @@
     <string name="download_detail_standard_hint">Smallest download</string>
     <string name="download_detail_high_hint">~16x larger</string>
     <string name="download_detail_maximum_hint">~256x larger</string>
+    <string name="queue_progress">%1$d of %2$d</string>
+    <string name="all_downloads_complete">All downloads complete</string>
+    <string name="downloads_finished">Finished</string>
+    <string name="downloads">Downloads</string>
+    <string name="no_downloads">No downloads yet</string>
+    <string name="go_to_downloads">Go to downloads</string>
+    <string name="clear_finished">Clear finished</string>
+    <string name="queued">Queued</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="continue_download">Continue</string>
+    <string name="download_failed">Download failed</string>
+    <string name="cancelled">Cancelled</string>
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Import file</string>

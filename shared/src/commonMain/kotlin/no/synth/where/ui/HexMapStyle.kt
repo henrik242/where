@@ -45,9 +45,18 @@ fun buildHexMapStyle(layerId: String, hexGeoJson: String): String {
       "paint": {
         "fill-color": ["match", ["get", "status"],
           "downloaded", "#4CAF50",
-          "downloading", "#2196F3",
           "rgba(0,0,0,0)"
         ],
+        "fill-opacity": 0.4
+      }
+    },
+    {
+      "id": "hex-downloading-fill",
+      "type": "fill",
+      "source": "hexgrid",
+      "filter": ["==", ["get", "status"], "downloading"],
+      "paint": {
+        "fill-color": "#2196F3",
         "fill-opacity": 0.4
       }
     },
@@ -72,13 +81,13 @@ fun buildHexMapStyle(layerId: String, hexGeoJson: String): String {
 fun buildHexGeoJson(
     hexes: List<HexGrid.Hex>,
     downloadedIds: Set<String>,
-    downloadingId: String?
+    downloadingIds: Set<String>
 ): String {
     val features = hexes.joinToString(",") { hex ->
         val vertices = HexGrid.hexVertices(hex)
         val coordsJson = vertices.joinToString(",") { "[${it.longitude},${it.latitude}]" }
         val status = when {
-            hex.id == downloadingId -> "downloading"
+            hex.id in downloadingIds -> "downloading"
             hex.id in downloadedIds -> "downloaded"
             else -> "none"
         }

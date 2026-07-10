@@ -14,25 +14,26 @@ import androidx.compose.ui.platform.LocalContext
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
+import no.synth.where.data.summary
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.stringResource
 import no.synth.where.data.MapDownloadManager
-import no.synth.where.service.MapDownloadService
 import java.io.File
 
 @Composable
 fun DownloadScreen(
     onBackClick: () -> Unit,
-    onLayerClick: (String) -> Unit
+    onLayerClick: (String) -> Unit,
+    onDownloadsClick: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val downloadManager = remember { MapDownloadManager(context) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var cacheSize by remember { mutableLongStateOf(0L) }
-    val downloadState by MapDownloadService.downloadState.collectAsState()
     val app = context.applicationContext as no.synth.where.WhereApplication
+    val queue by app.downloadQueueManager.queue.collectAsState()
     val downloadElevationData by app.userPreferences.downloadElevationData.collectAsState()
     val downloadMaxZoom by app.userPreferences.downloadMaxZoom.collectAsState()
 
@@ -82,14 +83,10 @@ fun DownloadScreen(
     DownloadScreenContent(
         layers = layers,
         cacheSize = cacheSize,
-        isDownloading = downloadState.isDownloading,
-        demProgress = downloadState.demProgress,
-        downloadRegionName = downloadState.region?.name,
-        downloadLayerName = downloadState.layerName,
-        downloadProgress = downloadState.progress,
+        queueSummary = if (queue.isEmpty()) null else queue.summary(),
+        onDownloadsClick = onDownloadsClick,
         onBackClick = onBackClick,
         onLayerClick = onLayerClick,
-        onStopDownload = { MapDownloadService.stopDownload(context) },
         onDeleteLayer = { layerId ->
             scope.launch {
                 val downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)

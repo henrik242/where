@@ -11,196 +11,117 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import no.synth.where.MainActivity
 import no.synth.where.R
-import no.synth.where.data.DownloadState
-import no.synth.where.data.MapDownloadManager
-import no.synth.where.data.OfflineTileReader
-import no.synth.where.data.Region
-import no.synth.where.data.UserPreferences
-import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.WhereApplication
+import no.synth.where.data.DownloadStatus
+import no.synth.where.data.QueuedDownload
+import no.synth.where.data.summary
 
+/**
+ * Foreground shell that keeps the process alive and shows a notification while the shared
+ * [no.synth.where.data.DownloadQueueManager] drains its queue. All queue logic lives in the
+ * manager (a [WhereApplication] singleton); this service only mirrors it into a notification and
+ * relays the user's "Stop" action.
+ */
 class MapDownloadService : Service() {
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private lateinit var downloadManager: MapDownloadManager
-    private var currentDownloadJob: kotlinx.coroutines.Job? = null
-    private var currentRegionName: String? = null
-    private var lastNotificationUpdate = 0L
-    private var lastNotificationProgress = -1
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var collectorJob: Job? = null
+    private var lastNotifiedProgress = -1
+    private var lastNotifiedTime = 0L
+
+    private val queueManager get() = (application as WhereApplication).downloadQueueManager
 
     override fun onCreate() {
         super.onCreate()
-        downloadManager = MapDownloadManager(this)
         createNotificationChannel()
-        
-        // If service is being recreated but state shows download in progress,
-        // reset the state as the download was interrupted
-        if (_downloadState.value.isDownloading) {
-            _downloadState.value = DownloadState()
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START_DOWNLOAD -> {
-                val regionName = intent.getStringExtra(EXTRA_REGION_NAME)
-                val layerName = intent.getStringExtra(EXTRA_LAYER_NAME)
-                val minZoom = intent.getIntExtra(EXTRA_MIN_ZOOM, 5)
-                val maxZoom = intent.getIntExtra(EXTRA_MAX_ZOOM, UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM)
-                val south = intent.getDoubleExtra(EXTRA_SOUTH, Double.NaN)
-                val west = intent.getDoubleExtra(EXTRA_WEST, Double.NaN)
-                val north = intent.getDoubleExtra(EXTRA_NORTH, Double.NaN)
-                val east = intent.getDoubleExtra(EXTRA_EAST, Double.NaN)
-                val downloadDem = intent.getBooleanExtra(EXTRA_DOWNLOAD_DEM, true)
+        if (intent?.action == ACTION_CANCEL_ACTIVE) {
+            queueManager.queue.value.firstOrNull { it.status == DownloadStatus.DOWNLOADING }
+                ?.let { queueManager.cancel(it.id) }
+            // The collector below stops the service once the queue has drained.
+            return START_NOT_STICKY
+        }
 
-                if (regionName != null && layerName != null) {
-                    val region = if (!south.isNaN() && !west.isNaN() && !north.isNaN() && !east.isNaN()) {
-                        Region(regionName, LatLngBounds(south = south, west = west, north = north, east = east))
+        startForeground(NOTIFICATION_ID, buildNotification(queueManager.queue.value))
+        if (collectorJob == null) {
+            collectorJob = scope.launch {
+                queueManager.queue.collect { queue ->
+                    if (queue.none { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.QUEUED }) {
+                        stopForegroundAndSelf()
                     } else {
-                        null
-                    }
-                    if (region != null) {
-                        startDownload(region, layerName, minZoom, maxZoom, downloadDem)
+                        maybeUpdateNotification(queue)
                     }
                 }
-            }
-            ACTION_STOP_DOWNLOAD -> {
-                stopDownload()
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun startDownload(region: Region, layerName: String, minZoom: Int, maxZoom: Int, downloadDem: Boolean = true) {
-        // Cancel any existing download
-        currentDownloadJob?.cancel()
-        currentRegionName?.let { downloadManager.stopDownload(it) }
-        
-        currentRegionName = "${region.name}-$layerName"
-        lastNotificationUpdate = 0L
-        lastNotificationProgress = -1
-        
-        _downloadState.value = DownloadState(
-            region = region,
-            layerName = layerName,
-            progress = 0,
-            isDownloading = true
-        )
-
-        startForeground(NOTIFICATION_ID, createNotification(region.name, 0))
-
-        currentDownloadJob = serviceScope.launch {
-            // Start DEM elevation tile download in parallel with map tiles
-            val demJob = if (downloadDem) {
-                _downloadState.value = _downloadState.value.copy(demProgress = 0)
-                async {
-                    OfflineTileReader.downloadDemTilesForBounds(region.boundingBox) { demPercent ->
-                        _downloadState.value = _downloadState.value.copy(demProgress = demPercent)
-                    }
-                }
-            } else null
-
-            val mapResult = CompletableDeferred<Boolean>()
-            downloadManager.downloadRegion(
-                region = region,
-                layerName = layerName,
-                minZoom = minZoom,
-                maxZoom = maxZoom,
-                onProgress = { progress ->
-                    _downloadState.value = _downloadState.value.copy(progress = progress)
-                    val now = System.currentTimeMillis()
-                    val timeSinceLastUpdate = now - lastNotificationUpdate
-                    val progressChange = kotlin.math.abs(progress - lastNotificationProgress)
-                    if (timeSinceLastUpdate >= 1000 || progressChange >= 5 || progress == 100) {
-                        updateNotification(region.name, progress)
-                        lastNotificationUpdate = now
-                        lastNotificationProgress = progress
-                    }
-                },
-                onComplete = { success ->
-                    currentRegionName = null
-                    mapResult.complete(success)
-                }
-            )
-            val mapSuccess = mapResult.await()
-
-            if (!mapSuccess && demJob?.isActive == true) {
-                // Map tiles failed but DEM still running — keep DEM progress visible
-                _downloadState.value = _downloadState.value.copy(isDownloading = false)
-            }
-
-            demJob?.await()
-
-            _downloadState.value = DownloadState()
-            stopSelf()
-        }
+    /** Android 14+ dataSync time budget (~6h/day). Abort so we never download outside a FGS. */
+    override fun onTimeout(startId: Int) {
+        queueManager.stopAll()
+        stopForegroundAndSelf()
     }
 
-    private fun stopDownload() {
-        currentDownloadJob?.cancel()
-        currentDownloadJob = null
-        currentRegionName?.let { downloadManager.stopDownload(it) }
-        currentRegionName = null
-        _downloadState.value = DownloadState()
+    private fun stopForegroundAndSelf() {
+        collectorJob?.cancel()
+        collectorJob = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    private fun updateNotification(regionName: String, progress: Int) {
-        val notification = createNotification(regionName, progress)
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(NOTIFICATION_ID, notification)
+    private fun maybeUpdateNotification(queue: List<QueuedDownload>) {
+        val active = queue.firstOrNull { it.status == DownloadStatus.DOWNLOADING }
+        val progress = active?.overallProgress ?: 0
+        val now = System.currentTimeMillis()
+        val changedEnough = progress == 100 ||
+            now - lastNotifiedTime >= 1000 ||
+            kotlin.math.abs(progress - lastNotifiedProgress) >= 5
+        if (!changedEnough) return
+        lastNotifiedProgress = progress
+        lastNotifiedTime = now
+        getSystemService(NotificationManager::class.java)
+            .notify(NOTIFICATION_ID, buildNotification(queue))
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Map Downloads",
-            NotificationManager.IMPORTANCE_LOW
-        ).apply {
+        val channel = NotificationChannel(CHANNEL_ID, "Map Downloads", NotificationManager.IMPORTANCE_LOW).apply {
             description = "Ongoing map download notifications"
         }
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.createNotificationChannel(channel)
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun createNotification(regionName: String, progress: Int): Notification {
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE
-        )
+    private fun buildNotification(queue: List<QueuedDownload>): Notification {
+        val summary = queue.summary()
+        val active = queue.firstOrNull { it.status == DownloadStatus.DOWNLOADING }
+        val progress = active?.overallProgress ?: 0
+        val title = active?.let { "Downloading ${it.label}" } ?: "Offline maps"
+        val text = "${summary.position} of ${summary.total}"
 
-        val stopIntent = Intent(this, MapDownloadService::class.java).apply {
-            action = ACTION_STOP_DOWNLOAD
-        }
-        val stopPendingIntent = PendingIntent.getService(
-            this,
-            1,
-            stopIntent,
-            PendingIntent.FLAG_IMMUTABLE
+        val contentIntent = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
+        )
+        val stopIntent = PendingIntent.getService(
+            this, 1,
+            Intent(this, MapDownloadService::class.java).apply { action = ACTION_CANCEL_ACTIVE },
+            PendingIntent.FLAG_IMMUTABLE,
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Downloading $regionName")
-            .setContentText("$progress% complete")
+            .setContentTitle(title)
+            .setContentText(text)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setProgress(100, progress, false)
-            .setContentIntent(pendingIntent)
-            .addAction(
-                R.drawable.ic_launcher_foreground,
-                "Stop",
-                stopPendingIntent
-            )
+            .setProgress(100, progress, active == null)
+            .setContentIntent(contentIntent)
+            // Cancels the active download and lets the queue continue — "Skip", not "Stop all".
+            .addAction(R.drawable.ic_launcher_foreground, "Skip", stopIntent)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -209,7 +130,7 @@ class MapDownloadService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        serviceScope.cancel()
+        scope.cancel()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -217,49 +138,12 @@ class MapDownloadService : Service() {
     companion object {
         private const val CHANNEL_ID = "MapDownloadChannel"
         private const val NOTIFICATION_ID = 2
-        private const val ACTION_START_DOWNLOAD = "no.synth.where.action.START_DOWNLOAD"
-        private const val ACTION_STOP_DOWNLOAD = "no.synth.where.action.STOP_DOWNLOAD"
-        private const val EXTRA_REGION_NAME = "extra_region_name"
-        private const val EXTRA_LAYER_NAME = "extra_layer_name"
-        private const val EXTRA_MIN_ZOOM = "extra_min_zoom"
-        private const val EXTRA_MAX_ZOOM = "extra_max_zoom"
-        private const val EXTRA_SOUTH = "extra_south"
-        private const val EXTRA_WEST = "extra_west"
-        private const val EXTRA_NORTH = "extra_north"
-        private const val EXTRA_EAST = "extra_east"
-        private const val EXTRA_DOWNLOAD_DEM = "extra_download_dem"
+        private const val ACTION_CANCEL_ACTIVE = "no.synth.where.action.CANCEL_ACTIVE_DOWNLOAD"
 
-        private val _downloadState = MutableStateFlow(DownloadState())
-        val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
-
-        fun startDownload(
-            context: Context,
-            region: Region,
-            layerName: String,
-            minZoom: Int = 5,
-            maxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
-            downloadDem: Boolean = true
-        ) {
-            val intent = Intent(context, MapDownloadService::class.java).apply {
-                action = ACTION_START_DOWNLOAD
-                putExtra(EXTRA_REGION_NAME, region.name)
-                putExtra(EXTRA_LAYER_NAME, layerName)
-                putExtra(EXTRA_MIN_ZOOM, minZoom)
-                putExtra(EXTRA_MAX_ZOOM, maxZoom)
-                putExtra(EXTRA_SOUTH, region.boundingBox.south)
-                putExtra(EXTRA_WEST, region.boundingBox.west)
-                putExtra(EXTRA_NORTH, region.boundingBox.north)
-                putExtra(EXTRA_EAST, region.boundingBox.east)
-                putExtra(EXTRA_DOWNLOAD_DEM, downloadDem)
-            }
-            context.startForegroundService(intent)
-        }
-
-        fun stopDownload(context: Context) {
-            val intent = Intent(context, MapDownloadService::class.java).apply {
-                action = ACTION_STOP_DOWNLOAD
-            }
-            context.startService(intent)
+        /** Keep the process alive + show progress while the queue drains. Started from the
+         *  foreground UI on the first enqueue; the service stops itself when the queue empties. */
+        fun start(context: Context) {
+            context.startForegroundService(Intent(context, MapDownloadService::class.java))
         }
     }
 }
