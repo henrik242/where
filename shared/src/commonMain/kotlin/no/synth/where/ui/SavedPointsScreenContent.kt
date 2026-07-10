@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.SavedPoint
+import no.synth.where.ui.map.PointColors
 import no.synth.where.util.parseHexColor
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -118,7 +119,7 @@ fun SavedPointItem(
                                 if (!c.isNullOrBlank()) {
                                     parseHexColor(c)
                                 } else {
-                                    Color(0xFFFF5722)
+                                    parseHexColor(PointColors.DEFAULT)
                                 }
                             } catch (_: Exception) {
                                 Color(0xFFFF5722)
@@ -220,18 +221,9 @@ fun EditPointDialog(
 ) {
     var name by remember { mutableStateOf(point.name) }
     var description by remember { mutableStateOf(point.description ?: "") }
-    var selectedColor by remember { mutableStateOf(point.color?.ifBlank { "#FF5722" } ?: "#FF5722") }
+    var selectedColor by remember { mutableStateOf(point.color?.ifBlank { PointColors.DEFAULT } ?: PointColors.DEFAULT) }
 
-    val colors = listOf(
-        "#FF5722" to "Red",
-        "#2196F3" to "Blue",
-        "#4CAF50" to "Green",
-        "#FFC107" to "Yellow",
-        "#9C27B0" to "Purple",
-        "#FF9800" to "Orange",
-        "#00BCD4" to "Cyan",
-        "#E91E63" to "Pink"
-    )
+    val colors = PointColors.withSelected(point.color)
 
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -65,6 +65,7 @@ import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.MapLibreMapView
 import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.ui.map.NavigationLayers
+import no.synth.where.ui.map.PointColors
 import no.synth.where.ui.map.MapZoomLevels
 import no.synth.where.ui.map.buildTrackMarkerGeoJson
 import no.synth.where.ui.map.buildTracksGeoJson
@@ -521,7 +522,7 @@ fun MapScreen(
             onStop = { stopNavConfirm.request() },
         ),
         viewingPointName = viewingPoint?.name,
-        viewingPointColor = viewingPoint?.color ?: "#FF5722",
+        viewingPointColor = viewingPoint?.color ?: PointColors.DEFAULT,
         showViewingPoint = viewingPoint != null,
         showSearch = showSearch,
         searchQuery = searchQuery,
@@ -716,18 +717,9 @@ fun MapScreen(
         val point = clickedPoint ?: return
         var editName by remember { mutableStateOf(point.name) }
         var editDescription by remember { mutableStateOf(point.description ?: "") }
-        var editColor by remember { mutableStateOf(point.color ?: "#FF5722") }
+        var editColor by remember { mutableStateOf(point.color ?: PointColors.DEFAULT) }
 
-        val colors = listOf(
-            "#FF5722" to "Red",
-            "#2196F3" to "Blue",
-            "#4CAF50" to "Green",
-            "#FFC107" to "Yellow",
-            "#9C27B0" to "Purple",
-            "#FF9800" to "Orange",
-            "#00BCD4" to "Cyan",
-            "#E91E63" to "Pink"
-        )
+        val colors = PointColors.withSelected(point.color)
 
         MapDialogs.PointInfoDialog(
             pointName = editName,
@@ -914,7 +906,7 @@ private fun MapScreenFullPreview() {
             viewingTracks = listOf(sampleTrack),
             focusedTrackId = sampleTrack.id,
             viewingPointName = null,
-            viewingPointColor = "#FF5722",
+            viewingPointColor = PointColors.DEFAULT,
             showViewingPoint = false,
             showSearch = false,
             searchQuery = "",

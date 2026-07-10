@@ -74,9 +74,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let navArrowsLayerId = "nav-arrows-layer"
     private let navArrowImageName = "nav-arrow"
     // Navigation line styling. Keep in sync with MapRenderUtils.kt updateNavigationOnMap.
-    private let navCompletedColor = "#9E9E9E"
-    private let navRemainingColor = "#1E88E5"
-    private let navOffCourseColor = "#E53935"
+    // Sourced from the shared NavColors so Android and iOS can't drift apart.
+    private let navCompletedColor = NavColors.shared.completed
+    private let navRemainingColor = NavColors.shared.remaining
+    private let navOffCourseColor = NavColors.shared.offCourse
     private let navCompletedWidth = 4
     private let navRemainingWidth = 6
     private let navOffCourseWidth = 3

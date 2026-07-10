@@ -56,7 +56,7 @@ fun buildHexMapStyle(layerId: String, hexGeoJson: String): String {
       "source": "hexgrid",
       "filter": ["==", ["get", "status"], "downloading"],
       "paint": {
-        "fill-color": "#2196F3",
+        "fill-color": "#C4622D",
         "fill-opacity": 0.4
       }
     },
@@ -67,7 +67,7 @@ fun buildHexMapStyle(layerId: String, hexGeoJson: String): String {
       "paint": {
         "line-color": ["match", ["get", "status"],
           "downloaded", "#2E7D32",
-          "downloading", "#0D47A1",
+          "downloading", "#6E3A16",
           "#888888"
         ],
         "line-width": 1.5,

@@ -13,6 +13,6 @@ data class SavedPoint(
     val latLng: LatLng,
     val description: String? = "",
     val timestamp: Long = currentTimeMillis(),
-    val color: String? = "#FF5722" // Default red color
+    val color: String? = "#FF5722" // Default point color (see PointColors.DEFAULT)
 )
 

@@ -127,7 +127,7 @@ fun buildTrackMarkerGeoJson(viewing: List<Track>, focusedId: String?, markerInde
 fun buildSavedPointsGeoJson(points: List<SavedPoint>): String {
     val features = points.joinToString(",") { point ->
         val name = point.name.replace("\"", "\\\"")
-        val color = point.color ?: "#FF5722"
+        val color = point.color ?: PointColors.DEFAULT
         """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"name":"$name","color":"$color"}}"""
     }
     return """{"type":"FeatureCollection","features":[$features]}"""

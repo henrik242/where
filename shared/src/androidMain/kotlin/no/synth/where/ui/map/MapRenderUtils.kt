@@ -37,8 +37,11 @@ object MapRenderUtils {
     private const val LOCATION_ENGINE_FASTEST_INTERVAL_MS = 1000L
     private const val STALE_FIX_TIMEOUT_MS = 30_000L
     private const val ACCURACY_RING_ALPHA = 0.30f
-    // Saturated blue, readable over Kartverket's yellow/green topo tints.
+    // Location puck + accuracy ring stay the conventional blue "you are here" — the strongest map
+    // convention, and the opponent color that pops over Kartverket's yellow/green/brown topo tints.
     private const val ACCURACY_RING_COLOR = "#1E88E5"
+    // Earthy taupe for other people's live tracks (line, dot, and clientId label).
+    private const val FRIEND_TRACK_COLOR = "#8D6E63"
 
     private const val MEASURE_LINE_SOURCE = "measure-line-source"
     private const val MEASURE_CASING_LAYER = "measure-casing-layer"
@@ -147,7 +150,7 @@ object MapRenderUtils {
                     val lineSource = GeoJsonSource(lineSourceId, FeatureCollection.fromFeatures(lineFeatures))
                     style.addSource(lineSource)
                     val lineLayer = LineLayer(lineLayerId, lineSourceId).withProperties(
-                        PropertyFactory.lineColor("#2196F3"),
+                        PropertyFactory.lineColor(FRIEND_TRACK_COLOR),
                         PropertyFactory.lineWidth(4f),
                         PropertyFactory.lineOpacity(0.8f),
                         PropertyFactory.lineDasharray(arrayOf(4f, 2f))
@@ -160,7 +163,7 @@ object MapRenderUtils {
                     style.addSource(pointSource)
                     val pointLayer = CircleLayer(pointLayerId, pointSourceId).withProperties(
                         PropertyFactory.circleRadius(8f),
-                        PropertyFactory.circleColor("#2196F3"),
+                        PropertyFactory.circleColor(FRIEND_TRACK_COLOR),
                         PropertyFactory.circleStrokeWidth(2f),
                         PropertyFactory.circleStrokeColor("#FFFFFF")
                     )
@@ -169,7 +172,7 @@ object MapRenderUtils {
                     val labelLayer = SymbolLayer(labelLayerId, pointSourceId).withProperties(
                         PropertyFactory.textField(Expression.get("clientId")),
                         PropertyFactory.textSize(12f),
-                        PropertyFactory.textColor("#2196F3"),
+                        PropertyFactory.textColor(FRIEND_TRACK_COLOR),
                         PropertyFactory.textHaloColor("#FFFFFF"),
                         PropertyFactory.textHaloWidth(1.5f),
                         PropertyFactory.textOffset(arrayOf(0f, 1.5f)),
@@ -353,7 +356,7 @@ object MapRenderUtils {
                         Point.fromLngLat(point.latLng.longitude, point.latLng.latitude)
                     ).apply {
                         addStringProperty("name", point.name)
-                        addStringProperty("color", point.color ?: "#FF5722")
+                        addStringProperty("color", point.color ?: PointColors.DEFAULT)
                     }
                 }
 
@@ -616,10 +619,7 @@ object MapRenderUtils {
     private val navLayerIds = listOf("nav-arrows", "nav-offcourse", "nav-remaining", "nav-completed")
     private const val NAV_ARROW_IMAGE = "nav-arrow"
 
-    // Navigation line styling. Keep in sync with MapViewFactory.swift applyNavigation.
-    private const val NAV_COMPLETED_COLOR = "#9E9E9E"
-    private const val NAV_REMAINING_COLOR = "#1E88E5"
-    private const val NAV_OFFCOURSE_COLOR = "#E53935"
+    // Navigation line colors live in the shared NavColors (kept in sync with iOS). Widths are here.
     private const val NAV_COMPLETED_WIDTH = 4f
     private const val NAV_REMAINING_WIDTH = 6f
     private const val NAV_OFFCOURSE_WIDTH = 3f
@@ -641,7 +641,7 @@ object MapRenderUtils {
             style.addSource(GeoJsonSource("nav-completed-source", completedGeoJson))
             style.addLayer(
                 LineLayer("nav-completed-layer", "nav-completed-source").withProperties(
-                    PropertyFactory.lineColor(NAV_COMPLETED_COLOR),
+                    PropertyFactory.lineColor(NavColors.completed),
                     PropertyFactory.lineWidth(NAV_COMPLETED_WIDTH),
                     PropertyFactory.lineOpacity(0.7f),
                     PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
@@ -651,7 +651,7 @@ object MapRenderUtils {
             style.addSource(GeoJsonSource("nav-remaining-source", remainingGeoJson))
             style.addLayer(
                 LineLayer("nav-remaining-layer", "nav-remaining-source").withProperties(
-                    PropertyFactory.lineColor(NAV_REMAINING_COLOR),
+                    PropertyFactory.lineColor(NavColors.remaining),
                     PropertyFactory.lineWidth(NAV_REMAINING_WIDTH),
                     PropertyFactory.lineOpacity(0.9f),
                     PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
@@ -676,7 +676,7 @@ object MapRenderUtils {
                 style.addSource(GeoJsonSource("nav-offcourse-source", offCourseGeoJson))
                 style.addLayer(
                     LineLayer("nav-offcourse-layer", "nav-offcourse-source").withProperties(
-                        PropertyFactory.lineColor(NAV_OFFCOURSE_COLOR),
+                        PropertyFactory.lineColor(NavColors.offCourse),
                         PropertyFactory.lineWidth(NAV_OFFCOURSE_WIDTH),
                         PropertyFactory.lineDasharray(arrayOf(2f, 2f))
                     )

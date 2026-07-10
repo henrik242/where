@@ -541,18 +541,9 @@ fun IosMapScreen(
         val point = clickedPoint ?: return
         var editName by remember { mutableStateOf(point.name) }
         var editDescription by remember { mutableStateOf(point.description ?: "") }
-        var editColor by remember { mutableStateOf(point.color ?: "#FF5722") }
+        var editColor by remember { mutableStateOf(point.color ?: PointColors.DEFAULT) }
 
-        val colors = listOf(
-            "#FF5722" to "Red",
-            "#2196F3" to "Blue",
-            "#4CAF50" to "Green",
-            "#FFC107" to "Yellow",
-            "#9C27B0" to "Purple",
-            "#FF9800" to "Orange",
-            "#00BCD4" to "Cyan",
-            "#E91E63" to "Pink"
-        )
+        val colors = PointColors.withSelected(point.color)
 
         MapDialogs.PointInfoDialog(
             pointName = editName,
@@ -649,7 +640,7 @@ fun IosMapScreen(
             onStop = { stopNavConfirm.request() },
         ),
         viewingPointName = viewingPoint?.name,
-        viewingPointColor = viewingPoint?.color ?: "#FF5722",
+        viewingPointColor = viewingPoint?.color ?: PointColors.DEFAULT,
         showViewingPoint = viewingPoint != null,
         showSearch = showSearch,
         searchQuery = searchQuery,
@@ -832,7 +823,7 @@ fun IosMapScreen(
                     // Friend track rendering
                     val friendGeoJson = friendTrackGeoJson
                     if (friendGeoJson != null) {
-                        mapViewProvider.updateFriendTrackLine(friendGeoJson, "#2196F3")
+                        mapViewProvider.updateFriendTrackLine(friendGeoJson, "#8D6E63")
                     } else {
                         mapViewProvider.clearFriendTrackLine()
                     }
