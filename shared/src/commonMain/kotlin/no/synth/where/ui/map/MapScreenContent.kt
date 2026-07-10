@@ -48,7 +48,6 @@ fun MapScreenContent(
     onCrosshairToggle: () -> Unit = {},
     // Overlay state
     offlineModeEnabled: Boolean = false,
-    isCompassVisible: Boolean = false,
     isLocating: Boolean = false,
     onlineTrackingEnabled: Boolean,
     viewerCount: Int = 0,
@@ -82,6 +81,7 @@ fun MapScreenContent(
     onHillshadeToggle: () -> Unit = {},
     onCoordGridToggle: () -> Unit = {},
     onRecordStopClick: () -> Unit,
+    cameraFollowMode: CameraFollowMode = CameraFollowMode.OFF,
     onMyLocationClick: () -> Unit,
     onRulerToggle: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -139,6 +139,7 @@ fun MapScreenContent(
                     onHillshadeToggle = onHillshadeToggle,
                     onCoordGridToggle = onCoordGridToggle,
                     onRecordStopClick = onRecordStopClick,
+                    cameraFollowMode = cameraFollowMode,
                     onMyLocationClick = onMyLocationClick,
                     onRulerToggle = onRulerToggle,
                     onCrosshairToggle = onCrosshairToggle,
@@ -159,7 +160,6 @@ fun MapScreenContent(
 
             MapOverlays(
                 offlineModeEnabled = offlineModeEnabled,
-                isCompassVisible = isCompassVisible,
                 isLocating = isLocating,
                 crosshairActive = crosshairActive,
                 crosshairInfo = crosshairInfo,

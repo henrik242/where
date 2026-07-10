@@ -58,6 +58,7 @@ import no.synth.where.ui.map.NavigationUiState
 import no.synth.where.ui.map.rememberNavigationProgress
 import no.synth.where.WhereApplication
 import no.synth.where.service.LocationTrackingService
+import no.synth.where.ui.map.CameraFollowMode
 import no.synth.where.ui.map.CoordGrid
 import no.synth.where.ui.map.MapDialogs
 import no.synth.where.ui.map.MapLayer
@@ -210,7 +211,7 @@ fun MapScreen(
         hasZoomedToFriend = true
         map.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
     }
-    var isCompassVisible by remember { mutableStateOf(false) }
+    var cameraFollowMode by remember { mutableStateOf(CameraFollowMode.OFF) }
     var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
     val selectedLayer by viewModel.userPreferences.selectedMapLayer.collectAsState()
     var showLayerMenu by remember { mutableStateOf(false) }
@@ -369,12 +370,6 @@ fun MapScreen(
                 savedCameraZoom = map.cameraPosition.zoom
                 centerLatLng = LatLng(target.latitude, target.longitude)
             }
-            val bearing = map.cameraPosition.bearing
-            isCompassVisible = when {
-                bearing > 2.0 && bearing < 358.0 -> true
-                bearing < 0.5 || bearing > 359.5 -> false
-                else -> isCompassVisible
-            }
         }
     }
 
@@ -505,7 +500,6 @@ fun MapScreen(
         onToggleCoordFormat = { viewModel.userPreferences.updateCoordFormat(coordFormat.next()) },
         onCrosshairToggle = { viewModel.userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
-        isCompassVisible = isCompassVisible,
         isLocating = isLocating,
         onlineTrackingEnabled = onlineTrackingEnabled,
         liveShareUntilMillis = liveShareUntilMillis,
@@ -562,22 +556,12 @@ fun MapScreen(
                 scope.launch { snackbarHostState.showSnackbar(recordingMsg) }
             }
         },
+        cameraFollowMode = cameraFollowMode,
         onMyLocationClick = {
-            mapInstance?.let { map ->
-                try {
-                    val locationComponent = map.locationComponent
-                    if (locationComponent.isLocationComponentEnabled) {
-                        locationComponent.lastKnownLocation?.let { location ->
-                            map.animateCamera(
-                                org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                                    LatLng(location.latitude, location.longitude).toMapLibre(), 15.0
-                                )
-                            )
-                        }
-                    }
-                } catch (_: Exception) {
-                    Logger.w("Location component not initialized yet")
-                }
+            // Cycle OFF -> FOLLOW -> FOLLOW_HEADING; the LaunchedEffect on cameraFollowMode applies
+            // it to the location component (centering, and compass rotation for heading mode).
+            if (hasLocationPermission) {
+                cameraFollowMode = cameraFollowMode.next()
             }
         },
         onRulerToggle = {
@@ -675,7 +659,9 @@ fun MapScreen(
                 onTwoFingerMeasure = { twoFingerMeasurement = it },
                 twoFingerMeasurement = twoFingerMeasurement,
                 coordGridGeoJson = coordGridGeoJson,
-                navigationLayers = navigationLayers
+                navigationLayers = navigationLayers,
+                cameraFollowMode = cameraFollowMode,
+                onFollowModeDismissed = { cameraFollowMode = CameraFollowMode.OFF }
             )
         }
     )

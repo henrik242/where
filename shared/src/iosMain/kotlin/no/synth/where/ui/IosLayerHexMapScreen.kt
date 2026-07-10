@@ -22,7 +22,6 @@ import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.RegionTileInfo
 import no.synth.where.data.geo.LatLngBounds
-import no.synth.where.ui.map.MapCameraMoveCallback
 import no.synth.where.ui.map.MapClickCallback
 import no.synth.where.ui.map.MapViewProvider
 
@@ -42,7 +41,6 @@ fun IosLayerHexMapScreen(
     val scope = rememberCoroutineScope()
     val downloadState by downloadManager.downloadState.collectAsState()
 
-    var isCompassVisible by remember { mutableStateOf(false) }
     var downloadedHexIds by remember { mutableStateOf(emptySet<String>()) }
     var selectedHex by remember { mutableStateOf<HexGrid.Hex?>(null) }
     var selectedHexInfo by remember { mutableStateOf<RegionTileInfo?>(null) }
@@ -78,15 +76,6 @@ fun IosLayerHexMapScreen(
     }
 
     DisposableEffect(Unit) {
-        hexMapViewProvider.setOnCameraMoveCallback(object : MapCameraMoveCallback {
-            override fun onCameraMove(latitude: Double, longitude: Double, zoom: Double, bearing: Double) {
-                isCompassVisible = when {
-                    bearing > 2.0 && bearing < 358.0 -> true
-                    bearing < 0.5 || bearing > 359.5 -> false
-                    else -> isCompassVisible
-                }
-            }
-        })
         hexMapViewProvider.setOnMapClickCallback(object : MapClickCallback {
             override fun onMapClick(latitude: Double, longitude: Double) {
                 val hex = HexGrid.hexAtPoint(latitude, longitude)
@@ -114,7 +103,6 @@ fun IosLayerHexMapScreen(
             }
         })
         onDispose {
-            hexMapViewProvider.setOnCameraMoveCallback(null)
             hexMapViewProvider.setOnMapClickCallback(null)
         }
     }
@@ -138,7 +126,6 @@ fun IosLayerHexMapScreen(
         isHexDownloaded = isHexDownloaded,
         isHexPartiallyDownloaded = isHexPartial,
         offlineModeEnabled = offlineModeEnabled,
-        isCompassVisible = isCompassVisible,
         showDeleteDialog = showDeleteDialog,
         onBackClick = onBackClick,
         onStopDownload = { downloadManager.stopDownload() },

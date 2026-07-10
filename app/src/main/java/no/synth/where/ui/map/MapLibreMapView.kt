@@ -75,7 +75,9 @@ fun MapLibreMapView(
     onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
     twoFingerMeasurement: TwoFingerMeasurement? = null,
     coordGridGeoJson: String? = null,
-    navigationLayers: NavigationLayers? = null
+    navigationLayers: NavigationLayers? = null,
+    cameraFollowMode: CameraFollowMode = CameraFollowMode.OFF,
+    onFollowModeDismissed: () -> Unit = {}
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
@@ -98,13 +100,38 @@ fun MapLibreMapView(
     val savedPointsState = rememberUpdatedState(savedPoints)
     val showSavedPointsState = rememberUpdatedState(showSavedPoints)
     val navigationLayersState = rememberUpdatedState(navigationLayers)
+    // Read live so reapplyOverlays restores the follow mode after a style reload (activating the
+    // location component resets its cameraMode to NONE).
+    val cameraFollowModeState = rememberUpdatedState(cameraFollowMode)
+    val onFollowModeDismissedState = rememberUpdatedState(onFollowModeDismissed)
+    // The gesture-dismiss listener is registered exactly once, after the component is first enabled.
+    var trackingListenerAdded by remember { mutableStateOf(false) }
+
+    // Enable the location component (needs a fix), register the one-shot gesture-dismiss listener,
+    // and (re)apply the current follow mode. Safe to call repeatedly; no-ops until a fix exists.
+    // snapZoom is left false here so restoring the mode after a style reload never re-zooms.
+    fun engageLocationComponent(mapInstance: MapLibreMap, style: Style) {
+        MapRenderUtils.enableLocationComponent(mapInstance, style, context, hasLocationPermissionState.value)
+        val locationComponent = mapInstance.locationComponent
+        if (!trackingListenerAdded && locationComponent.isLocationComponentEnabled) {
+            locationComponent.addOnCameraTrackingChangedListener(
+                object : org.maplibre.android.location.OnCameraTrackingChangedListener {
+                    // Fired when a pan/rotate gesture breaks the camera away from the puck.
+                    override fun onCameraTrackingDismissed() = onFollowModeDismissedState.value()
+                    override fun onCameraTrackingChanged(currentMode: Int) {}
+                }
+            )
+            trackingListenerAdded = true
+        }
+        mapInstance.applyFollowMode(cameraFollowModeState.value)
+    }
 
     // setStyle wipes every runtime layer, so each style (re)load must redraw the whole overlay set.
     // Reads live values via the rememberUpdatedState holders so a reload restores the current
     // overlays -- including the navigation route, which otherwise vanishes on a layer switch or
     // reconnect until the next distinct GPS fix (the nav render effect only fires on progress change).
     fun reapplyOverlays(mapInstance: MapLibreMap, style: Style) {
-        MapRenderUtils.enableLocationComponent(mapInstance, style, context, hasLocationPermissionState.value)
+        engageLocationComponent(mapInstance, style)
         MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJsonState.value)
         MapRenderUtils.updateTracksOnMap(style, tracksGeoJsonState.value)
         MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJsonState.value)
@@ -204,6 +231,23 @@ fun MapLibreMapView(
                     hasLocationPermission
                 )
             }
+        }
+    }
+
+    // The user cycled the FAB: apply the new mode and snap the zoom in from a far-out view.
+    LaunchedEffect(cameraFollowMode, map) {
+        map?.applyFollowMode(cameraFollowMode, snapZoom = true)
+    }
+
+    // Cold start with no cached location: the component only enables once the first fix lands, and
+    // no other effect re-runs on that event. Poll until enabled so a follow mode chosen before the
+    // fix -- and the gesture-dismiss listener -- engage on arrival.
+    LaunchedEffect(map, hasLocationPermission) {
+        if (!hasLocationPermission) return@LaunchedEffect
+        val mapInstance = map ?: return@LaunchedEffect
+        while (!mapInstance.locationComponent.isLocationComponentEnabled) {
+            delay(1000)
+            mapInstance.style?.let { engageLocationComponent(mapInstance, it) }
         }
     }
 
@@ -394,6 +438,10 @@ fun MapLibreMapView(
                 getMapAsync { mapInstance ->
                     map = mapInstance
                     onMapReady(mapInstance)
+
+                    // Keep the compass on screen even when facing north, so the heading is always
+                    // readable (and rotation stays discoverable).
+                    mapInstance.uiSettings.setCompassFadeFacingNorth(false)
 
                     mapInstance.cameraPosition = CameraPosition.Builder()
                         .target(LatLng(savedCameraLat, savedCameraLon).toMapLibre())

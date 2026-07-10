@@ -5,7 +5,27 @@ import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng as MlLatLng
+import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.maps.MapLibreMap
+
+/**
+ * Apply a [CameraFollowMode] to the location component. No-op until the component has a fix
+ * (it is re-applied once enabled, and on every style reload). Set [snapZoom] only on the user's
+ * mode change so follow zooms in from a far-out view; leave it false when merely restoring the
+ * mode after a style reload, otherwise a reload would yank a deliberately zoomed-out view back in.
+ */
+fun MapLibreMap.applyFollowMode(mode: CameraFollowMode, snapZoom: Boolean = false) {
+    val lc = locationComponent
+    if (!lc.isLocationComponentEnabled) return
+    lc.cameraMode = when (mode) {
+        CameraFollowMode.OFF -> CameraMode.NONE
+        CameraFollowMode.FOLLOW -> CameraMode.TRACKING
+        CameraFollowMode.FOLLOW_HEADING -> CameraMode.TRACKING_COMPASS
+    }
+    if (snapZoom && mode != CameraFollowMode.OFF && cameraPosition.zoom < MapZoomLevels.FOLLOW_MIN) {
+        lc.zoomWhileTracking(MapZoomLevels.FOLLOW_MIN)
+    }
+}
 
 fun MapLibreMap.animateToBounds(
     bounds: LatLngBounds,

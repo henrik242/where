@@ -25,7 +25,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
@@ -644,7 +643,6 @@ fun CrosshairInfoCard(
 @Composable
 fun BoxScope.MapOverlays(
     offlineModeEnabled: Boolean = false,
-    isCompassVisible: Boolean = false,
     isLocating: Boolean = false,
     crosshairActive: Boolean = false,
     crosshairInfo: CrosshairInfo = CrosshairInfo(),
@@ -740,10 +738,8 @@ fun BoxScope.MapOverlays(
                 .padding(top = 16.dp)
         )
     }
-    val offlineChipEnd by animateDpAsState(
-        targetValue = if (isCompassVisible) 56.dp else 16.dp,
-        label = "offlineChipEnd"
-    )
+    // The always-visible compass sits top-right; reserve space so the offline chip clears it.
+    val offlineChipEnd = 56.dp
 
     AnimatedVisibility(
         visible = !hideCornerControls,

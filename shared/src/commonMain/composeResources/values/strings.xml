@@ -53,6 +53,8 @@
     <string name="stop_recording">Stop Recording</string>
     <string name="start_recording">Start Recording</string>
     <string name="my_location">My Location</string>
+    <string name="my_location_follow">Follow my location</string>
+    <string name="my_location_heading">Follow and rotate to heading</string>
     <string name="ruler">Ruler</string>
     <string name="settings">Settings</string>
 

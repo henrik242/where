@@ -31,6 +31,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var mapClickCallback: MapClickCallback?
     private var cameraMoveCallback: MapCameraMoveCallback?
     private var twoFingerTapCallback: MapTwoFingerTapCallback?
+    private var trackingModeCallback: MapTrackingModeCallback?
     private var styleVersion = 0
 
     private let trackSourceId = "track-source"
@@ -89,6 +90,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         map.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         map.logoView.isHidden = true
         map.delegate = self
+        // Keep the compass on screen even when facing north, so the heading is always readable
+        // (and rotation stays discoverable). Mirrors Android's isCompassFadeWhenFacingNorth = false.
+        map.compassView.compassVisibility = .visible
         // Default camera: center of Norway
         map.setCenter(CLLocationCoordinate2D(latitude: 65.0, longitude: 14.0), zoomLevel: 4, animated: false)
 
@@ -463,6 +467,29 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         self.cameraMoveCallback = callback
     }
 
+    func setOnTrackingModeCallback(callback: MapTrackingModeCallback?) {
+        self.trackingModeCallback = callback
+    }
+
+    // Kotlin's CameraFollowMode is a class (not a Swift enum), so match with ==.
+    func setCameraFollowMode(mode: CameraFollowMode) {
+        guard let mapView = self.mapView else { return }
+        let trackingMode: MLNUserTrackingMode
+        if mode == CameraFollowMode.followHeading {
+            trackingMode = .followWithHeading
+        } else if mode == CameraFollowMode.follow {
+            trackingMode = .follow
+        } else {
+            trackingMode = .none
+        }
+        // Zoom in when engaging follow from a far-out view (parity with Android applyFollowMode;
+        // keep the threshold in sync with MapZoomLevels.FOLLOW_MIN).
+        if trackingMode != .none && mapView.zoomLevel < 15.0 {
+            mapView.setZoomLevel(15.0, animated: true)
+        }
+        mapView.setUserTrackingMode(trackingMode, animated: true, completionHandler: nil)
+    }
+
     func setOnTwoFingerTapCallback(callback: MapTwoFingerTapCallback?) {
         self.twoFingerTapCallback = callback
     }
@@ -486,6 +513,18 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     func mapViewRegionIsChanging(_ mapView: MLNMapView) {
         let center = mapView.centerCoordinate
         cameraMoveCallback?.onCameraMove(latitude: center.latitude, longitude: center.longitude, zoom: mapView.zoomLevel, bearing: mapView.direction)
+    }
+
+    // Fired when the tracking mode changes, including when a pan/rotate gesture drops it to .none.
+    // Report the CameraFollowMode ordinal back so the FAB reflects the real state.
+    func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
+        let followMode: CameraFollowMode
+        switch mode {
+        case .followWithHeading: followMode = .followHeading
+        case .follow, .followWithCourse: followMode = .follow
+        default: followMode = .off
+        }
+        trackingModeCallback?.onTrackingModeChanged(mode: followMode)
     }
 
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {

@@ -1,7 +1,6 @@
 package no.synth.where.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -69,7 +68,6 @@ fun HexMapScreenContent(
     isHexDownloaded: Boolean,
     isHexPartiallyDownloaded: Boolean,
     offlineModeEnabled: Boolean,
-    isCompassVisible: Boolean = false,
     showDeleteDialog: Boolean,
     onBackClick: () -> Unit,
     onStopDownload: () -> Unit,
@@ -98,10 +96,8 @@ fun HexMapScreenContent(
             )
         }
     ) { padding ->
-        val offlineChipEnd by animateDpAsState(
-            targetValue = if (isCompassVisible) 56.dp else 16.dp,
-            label = "offlineChipEnd"
-        )
+        // The always-visible compass sits top-right; reserve space so the offline chip clears it.
+        val offlineChipEnd = 56.dp
 
         Box(
             modifier = Modifier

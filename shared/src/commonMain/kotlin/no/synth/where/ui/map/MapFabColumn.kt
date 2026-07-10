@@ -62,6 +62,7 @@ fun MapFabColumn(
     showHillshade: Boolean = false,
     showCoordGrid: Boolean = false,
     showRecordFab: Boolean = true,
+    cameraFollowMode: CameraFollowMode = CameraFollowMode.OFF,
     onSearchClick: () -> Unit,
     onLayerMenuToggle: (Boolean) -> Unit,
     onLayerSelected: (MapLayer) -> Unit,
@@ -141,12 +142,29 @@ fun MapFabColumn(
 
         Spacer(modifier = Modifier.size(8.dp))
 
+        val following = cameraFollowMode != CameraFollowMode.OFF
+        // Each state differs by shape (hollow target / filled location / heading arrow) as well as
+        // color, and announces its own description so it is distinguishable without color or sight.
+        val locationIcon = when (cameraFollowMode) {
+            CameraFollowMode.OFF -> Res.drawable.ic_location_searching
+            CameraFollowMode.FOLLOW -> Res.drawable.ic_my_location
+            CameraFollowMode.FOLLOW_HEADING -> Res.drawable.ic_navigation
+        }
+        val locationDescription = when (cameraFollowMode) {
+            CameraFollowMode.OFF -> stringResource(Res.string.my_location)
+            CameraFollowMode.FOLLOW -> stringResource(Res.string.my_location_follow)
+            CameraFollowMode.FOLLOW_HEADING -> stringResource(Res.string.my_location_heading)
+        }
         SmallFloatingActionButton(
             onClick = onMyLocationClick,
             modifier = Modifier.size(48.dp),
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (following) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
         ) {
-            Icon(painterResource(Res.drawable.ic_my_location), contentDescription = stringResource(Res.string.my_location))
+            Icon(
+                painterResource(locationIcon),
+                contentDescription = locationDescription,
+                tint = if (following) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Spacer(modifier = Modifier.size(8.dp))

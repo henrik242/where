@@ -59,7 +59,6 @@ fun LayerHexMapScreen(
     }
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
-    var isCompassVisible by remember { mutableStateOf(false) }
     var downloadedHexIds by remember { mutableStateOf(emptySet<String>()) }
     var selectedHex by remember { mutableStateOf<HexGrid.Hex?>(null) }
     var selectedHexInfo by remember { mutableStateOf<RegionTileInfo?>(null) }
@@ -92,17 +91,6 @@ fun LayerHexMapScreen(
         }
     }
 
-    LaunchedEffect(mapInstance) {
-        mapInstance?.addOnCameraMoveListener {
-            val bearing = mapInstance?.cameraPosition?.bearing ?: 0.0
-            isCompassVisible = when {
-                bearing > 2.0 && bearing < 358.0 -> true
-                bearing < 0.5 || bearing > 359.5 -> false
-                else -> isCompassVisible
-            }
-        }
-    }
-
     val currentHex = selectedHex
     val hexTileInfo = selectedHexInfo
     val isHexDownloaded = hexTileInfo?.isFullyDownloaded == true
@@ -122,7 +110,6 @@ fun LayerHexMapScreen(
         isHexDownloaded = isHexDownloaded,
         isHexPartiallyDownloaded = isHexPartial,
         offlineModeEnabled = offlineModeEnabled,
-        isCompassVisible = isCompassVisible,
         showDeleteDialog = showDeleteDialog,
         onBackClick = onBackClick,
         onStopDownload = { MapDownloadService.stopDownload(context) },
@@ -220,6 +207,8 @@ private fun HexMapView(
                 onCreate(null)
                 getMapAsync { map ->
                     onMapReady(map)
+                    // Keep the compass on screen even when facing north (matches the main map).
+                    map.uiSettings.setCompassFadeFacingNorth(false)
                     map.addOnMapClickListener { point ->
                         onMapClick(point.latitude, point.longitude)
                         true

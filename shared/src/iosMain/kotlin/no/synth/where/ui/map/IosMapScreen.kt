@@ -213,7 +213,7 @@ fun IosMapScreen(
     val coordFormat by userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
     var cameraZoom by remember { mutableStateOf(5.0) }
-    var isCompassVisible by remember { mutableStateOf(false) }
+    var cameraFollowMode by remember { mutableStateOf(CameraFollowMode.OFF) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var hasFix by remember { mutableStateOf(false) }
     val isLocating = locationTracker.hasPermission && !hasFix
@@ -298,14 +298,19 @@ fun IosMapScreen(
             override fun onCameraMove(latitude: Double, longitude: Double, zoom: Double, bearing: Double) {
                 centerLatLng = LatLng(latitude, longitude)
                 cameraZoom = zoom
-                isCompassVisible = when {
-                    bearing > 2.0 && bearing < 358.0 -> true
-                    bearing < 0.5 || bearing > 359.5 -> false
-                    else -> isCompassVisible
-                }
             }
         })
         onDispose { mapViewProvider.setOnCameraMoveCallback(null) }
+    }
+
+    // Reflect gesture-driven follow changes (e.g. panning drops back to OFF) in the FAB state.
+    DisposableEffect(Unit) {
+        mapViewProvider.setOnTrackingModeCallback(object : MapTrackingModeCallback {
+            override fun onTrackingModeChanged(mode: CameraFollowMode) {
+                cameraFollowMode = mode
+            }
+        })
+        onDispose { mapViewProvider.setOnTrackingModeCallback(null) }
     }
 
     // Two-finger tap callback for distance measurement
@@ -623,7 +628,6 @@ fun IosMapScreen(
         onToggleCoordFormat = { userPreferences.updateCoordFormat(coordFormat.next()) },
         onCrosshairToggle = { userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
-        isCompassVisible = isCompassVisible,
         isLocating = isLocating,
         onlineTrackingEnabled = onlineTrackingEnabled,
         liveShareUntilMillis = liveShareUntilMillis,
@@ -704,15 +708,13 @@ fun IosMapScreen(
                 scope.launch { snackbarHostState.showSnackbar(recordingMsg) }
             }
         },
+        cameraFollowMode = cameraFollowMode,
         onMyLocationClick = {
-            val location = mapViewProvider.getUserLocation()
-            if (location != null && location.size >= 2) {
-                mapViewProvider.setCamera(
-                    latitude = location[0],
-                    longitude = location[1],
-                    zoom = 15.0
-                )
-            }
+            // Cycle OFF -> FOLLOW -> FOLLOW_HEADING; the provider centers/rotates via the map's
+            // user tracking mode. Panning by hand reports back through the tracking-mode callback.
+            val next = cameraFollowMode.next()
+            cameraFollowMode = next
+            mapViewProvider.setCameraFollowMode(next)
         },
         onRulerToggle = {
             val measurement = twoFingerMeasurement

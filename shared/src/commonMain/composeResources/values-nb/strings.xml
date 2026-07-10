@@ -53,6 +53,8 @@
     <string name="stop_recording">Stopp opptak</string>
     <string name="start_recording">Start opptak</string>
     <string name="my_location">Min posisjon</string>
+    <string name="my_location_follow">Følg posisjonen min</string>
+    <string name="my_location_heading">Følg og roter mot retningen</string>
     <string name="ruler">Linjal</string>
     <string name="settings">Innstillinger</string>
 

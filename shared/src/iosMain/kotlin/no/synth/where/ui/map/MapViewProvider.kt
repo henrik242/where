@@ -14,6 +14,11 @@ interface MapCameraMoveCallback {
     fun onCameraMove(latitude: Double, longitude: Double, zoom: Double, bearing: Double)
 }
 
+/** Reports the camera follow mode changing, including when a gesture drops it back to OFF. */
+interface MapTrackingModeCallback {
+    fun onTrackingModeChanged(mode: CameraFollowMode)
+}
+
 fun interface MapTwoFingerTapCallback {
     fun onTwoFingerTap(
         lat1: Double, lng1: Double,
@@ -64,4 +69,6 @@ interface MapViewProvider {
     fun clearCoordGrid()
     fun setOnCameraMoveCallback(callback: MapCameraMoveCallback?)
     fun setOnTwoFingerTapCallback(callback: MapTwoFingerTapCallback?)
+    fun setCameraFollowMode(mode: CameraFollowMode)
+    fun setOnTrackingModeCallback(callback: MapTrackingModeCallback?)
 }
