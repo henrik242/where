@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -57,6 +58,7 @@ fun LayerHexMapScreen(
     offlineModeEnabled: Boolean = false
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val downloadManager = remember { MapDownloadManager(context) }
     val app = context.applicationContext as no.synth.where.WhereApplication
@@ -103,17 +105,20 @@ fun LayerHexMapScreen(
         }
     }
 
-    // Pulse the "downloading" hex fill so in-progress areas stand out. Runs only while something
-    // is downloading; reads the layer fresh each tick so it survives style reloads.
+    // Pulse the "downloading" hex fill so in-progress areas stand out. Gated to STARTED so the
+    // 80ms tick loop does not keep waking the CPU for the whole download while the app is
+    // backgrounded. Reads the layer fresh each tick so it survives style reloads.
     LaunchedEffect(mapInstance, downloadingIds.isEmpty()) {
         val map = mapInstance ?: return@LaunchedEffect
         if (downloadingIds.isEmpty()) return@LaunchedEffect
-        var phase = 0.0
-        while (isActive) {
-            val opacity = (0.35 + 0.2 * sin(phase)).toFloat()
-            map.style?.getLayer("hex-downloading-fill")?.setProperties(PropertyFactory.fillOpacity(opacity))
-            phase += 0.35
-            delay(80)
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var phase = 0.0
+            while (isActive) {
+                val opacity = (0.35 + 0.2 * sin(phase)).toFloat()
+                map.style?.getLayer("hex-downloading-fill")?.setProperties(PropertyFactory.fillOpacity(opacity))
+                phase += 0.35
+                delay(80)
+            }
         }
     }
 

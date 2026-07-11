@@ -32,6 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -99,6 +102,7 @@ fun MapScreen(
     onClearViewingPoint: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val app = context.applicationContext as WhereApplication
     val viewModel: MapScreenViewModel = viewModel { MapScreenViewModel(app.trackRepository, app.savedPointsRepository, app.userPreferences) }
     val savedPoints by viewModel.savedPoints.collectAsState()
@@ -385,42 +389,49 @@ fun MapScreen(
 
     // Track whether the location component has produced any fix yet, so the
     // map can show a "Locating…" pill on cold start before the puck appears.
+    // Gated to STARTED so the poll pauses while the app is backgrounded.
     LaunchedEffect(hasLocationPermission, mapInstance) {
         if (!hasLocationPermission || mapInstance == null) {
             hasFix = false
             return@LaunchedEffect
         }
-        while (!hasFix) {
-            try {
-                val lc = mapInstance?.locationComponent
-                if (lc != null && lc.isLocationComponentEnabled && lc.lastKnownLocation != null) {
-                    hasFix = true
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (!hasFix) {
+                try {
+                    val lc = mapInstance?.locationComponent
+                    if (lc != null && lc.isLocationComponentEnabled && lc.lastKnownLocation != null) {
+                        hasFix = true
+                    }
+                } catch (e: Exception) {
+                    Logger.d("Could not read user location: %s", e.message ?: "unknown")
                 }
-            } catch (e: Exception) {
-                Logger.d("Could not read user location: %s", e.message ?: "unknown")
+                if (!hasFix) delay(1000)
             }
-            if (!hasFix) delay(1000)
         }
     }
 
-    // Update user location periodically while crosshair is active
+    // Update user location periodically while crosshair is active. Gated to STARTED because
+    // crosshairActive is a persisted preference, so this loop would otherwise keep polling
+    // while the app is backgrounded.
     LaunchedEffect(crosshairActive, mapInstance) {
         if (!crosshairActive) {
             userLocation = null
             return@LaunchedEffect
         }
-        while (true) {
-            try {
-                val lc = mapInstance?.locationComponent
-                if (lc != null && lc.isLocationComponentEnabled) {
-                    lc.lastKnownLocation?.let { loc ->
-                        userLocation = LatLng(loc.latitude, loc.longitude)
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    val lc = mapInstance?.locationComponent
+                    if (lc != null && lc.isLocationComponentEnabled) {
+                        lc.lastKnownLocation?.let { loc ->
+                            userLocation = LatLng(loc.latitude, loc.longitude)
+                        }
                     }
+                } catch (e: Exception) {
+                    Logger.d("Could not read user location: %s", e.message ?: "unknown")
                 }
-            } catch (e: Exception) {
-                Logger.d("Could not read user location: %s", e.message ?: "unknown")
+                delay(3000)
             }
-            delay(3000)
         }
     }
 

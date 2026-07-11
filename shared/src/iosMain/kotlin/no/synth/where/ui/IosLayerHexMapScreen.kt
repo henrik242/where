@@ -13,6 +13,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -50,6 +53,7 @@ fun IosLayerHexMapScreen(
     onQueueChipClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
     val queue by downloadManager.queue.collectAsState()
 
     val effectiveMaxZoom = DownloadLayers.effectiveMaxZoom(layerId, downloadMaxZoom)
@@ -87,14 +91,18 @@ fun IosLayerHexMapScreen(
         hexMapViewProvider.setShowsUserLocation(true)
     }
 
-    // Pulse the "downloading" hex fill while something is in progress.
+    // Pulse the "downloading" hex fill while something is in progress. Gated to STARTED so the
+    // 80ms tick loop does not keep running while the app is backgrounded (the location background
+    // mode keeps the process scheduled during a recording).
     LaunchedEffect(downloadingIds.isEmpty()) {
         if (downloadingIds.isEmpty()) return@LaunchedEffect
-        var phase = 0.0
-        while (isActive) {
-            hexMapViewProvider.setHexDownloadingOpacity(0.35 + 0.2 * sin(phase))
-            phase += 0.35
-            delay(80)
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var phase = 0.0
+            while (isActive) {
+                hexMapViewProvider.setHexDownloadingOpacity(0.35 + 0.2 * sin(phase))
+                phase += 0.35
+                delay(80)
+            }
         }
     }
 

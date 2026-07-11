@@ -64,8 +64,12 @@ class MapDownloadService : Service() {
         return START_NOT_STICKY
     }
 
-    /** Android 14+ dataSync time budget (~6h/day). Abort so we never download outside a FGS. */
-    override fun onTimeout(startId: Int) {
+    /**
+     * Android 15+ dataSync time budget (~6h/day) for apps targeting SDK 35+. Abort so we never
+     * download outside a FGS. Must be the two-arg overload: the platform's dataSync timeout only
+     * calls onTimeout(startId, fgsType); the one-arg onTimeout(startId) is for shortService.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
         queueManager.stopAll()
         stopForegroundAndSelf()
     }

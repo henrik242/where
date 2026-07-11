@@ -51,6 +51,9 @@ android {
     defaultConfig {
         applicationId = "no.synth.where"
         minSdk = 33
+        // Do not remove targetSdk: without it AGP silently falls back to minSdk, which drops
+        // newer platform battery protections (e.g. the Android 15 dataSync 6h cap).
+        targetSdk = 37
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
