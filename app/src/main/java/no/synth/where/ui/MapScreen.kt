@@ -311,10 +311,13 @@ fun MapScreen(
     }
 
     LaunchedEffect(Unit) {
+        // POST_NOTIFICATIONS must be requested at runtime on targetSdk 33+, or the
+        // recording/navigating/sharing foreground-service notifications are silently dropped.
         permissionLauncher.launch(
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.POST_NOTIFICATIONS
             )
         )
     }
