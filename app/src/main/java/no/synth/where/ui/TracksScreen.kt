@@ -44,6 +44,7 @@ fun TracksScreen(
     val isImporting by viewModel.isImporting.collectAsState()
     val newlyImportedTrackId by viewModel.newlyImportedTrackId.collectAsState()
     val saveResultMessage by viewModel.saveResultMessage.collectAsState()
+    val onMapTrackIds by viewModel.onMapTrackIds.collectAsState()
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var trackToRename by remember { mutableStateOf<Track?>(null) }
@@ -193,7 +194,8 @@ fun TracksScreen(
         onShowSelectedOnMap = onShowTracksOnMap,
         onNavigate = onNavigateTrack,
         onCrop = onCropTrack,
-        isRecording = isRecording
+        isRecording = isRecording,
+        onMapTrackIds = onMapTrackIds
     )
 }
 

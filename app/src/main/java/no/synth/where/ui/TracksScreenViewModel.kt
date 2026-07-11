@@ -18,6 +18,7 @@ class TracksScreenViewModel(
 
     val tracks = trackRepository.tracks
     val isRecording = trackRepository.isRecording
+    val onMapTrackIds = trackRepository.onMapTrackIds
 
     private val _isImportingUrl = MutableStateFlow(false)
     val isImportingUrl: StateFlow<Boolean> = _isImportingUrl

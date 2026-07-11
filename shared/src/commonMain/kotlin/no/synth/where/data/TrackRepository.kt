@@ -4,8 +4,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -22,6 +25,13 @@ data class NavigationSession(val track: Track, val reversed: Boolean)
 
 /** Active crop of a viewing track: keep points[startIndex..endIndex] (inclusive). */
 data class TrackCropState(val trackId: String, val startIndex: Int, val endIndex: Int)
+
+/** Ids of the saved tracks currently drawn on the map: the viewing set plus any navigated track. */
+internal fun onMapTrackIdsOf(viewingTracks: List<Track>, navigation: NavigationSession?): Set<String> =
+    buildSet {
+        viewingTracks.forEach { add(it.id) }
+        navigation?.track?.id?.let { add(it) }
+    }
 
 class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -53,6 +63,11 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     // observers fall back to a "locating" state instead of a stale snapshot.
     private val _navigationProgress = MutableStateFlow<NavigationProgress?>(null)
     val navigationProgress: StateFlow<NavigationProgress?> = _navigationProgress.asStateFlow()
+
+    // So the saved-tracks list can flag which rows are already on the map.
+    val onMapTrackIds: StateFlow<Set<String>> =
+        combine(viewingTracks, navigation) { viewing, nav -> onMapTrackIdsOf(viewing, nav) }
+            .stateIn(scope, SharingStarted.Eagerly, emptySet())
 
     // Index into the focused track's points marked by scrubbing its altitude chart, or null when
     // none. Transient: cleared whenever the focused track / view changes.

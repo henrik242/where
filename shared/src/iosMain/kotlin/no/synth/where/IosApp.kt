@@ -87,6 +87,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val tracks by trackRepository.tracks.collectAsState()
     val isRecording by trackRepository.isRecording.collectAsState()
+    val onMapTrackIds by trackRepository.onMapTrackIds.collectAsState()
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val downloadQueue by downloadManager.queue.collectAsState()
 
@@ -269,7 +270,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         trackRepository.startCrop(track.id)
                         navigateToMap()
                     },
-                    isRecording = isRecording
+                    isRecording = isRecording,
+                    onMapTrackIds = onMapTrackIds
                 )
             }
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +63,7 @@ fun TracksScreenContent(
     onNavigate: (Track) -> Unit = {},
     onCrop: (Track) -> Unit = {},
     isRecording: Boolean = false,
+    onMapTrackIds: Set<String> = emptySet(),
 ) {
     // Multi-select mode: long-press a track to enter it, then tap rows to build a set and show them
     // all on the map at once.
@@ -214,6 +216,7 @@ fun TracksScreenContent(
                         track = track,
                         expanded = expandedTrackId == track.id,
                         highlighted = highlightedTrackId == track.id,
+                        isOnMap = track.id in onMapTrackIds,
                         selectionMode = selectionMode,
                         selected = track.id in selectedIds,
                         onLongPress = {
@@ -305,6 +308,7 @@ fun TrackItem(
     track: Track,
     expanded: Boolean = false,
     highlighted: Boolean = false,
+    isOnMap: Boolean = false,
     selectionMode: Boolean = false,
     selected: Boolean = false,
     onLongPress: () -> Unit = {},
@@ -349,10 +353,17 @@ fun TrackItem(
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = track.name,
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = track.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (isOnMap) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        OnMapBadge()
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = formatTrackInfo(track),
@@ -496,6 +507,32 @@ fun TrackItem(
                     Text(stringResource(Res.string.delete))
                 }
             }
+        }
+    }
+}
+
+/** Small pill marking a track that is currently shown on the map. */
+@Composable
+private fun OnMapBadge() {
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = RoundedCornerShape(50)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_map),
+                contentDescription = null,
+                modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = stringResource(Res.string.track_open_on_map),
+                style = MaterialTheme.typography.labelSmall
+            )
         }
     }
 }
