@@ -11,8 +11,16 @@
     <string name="notification_sharing_text_no_time">Posisjonen din deles i sanntid</string>
     <string name="notification_recording_and_sharing_text">Tar opp og deler posisjon — %1$s igjen</string>
     <string name="notification_recording_and_sharing_text_no_time">Tar opp og deler posisjon</string>
+    <string name="notification_navigating_title">Navigerer</string>
+    <string name="notification_navigating_text">%1$s igjen</string>
+    <string name="notification_navigating_text_with_ascent">%1$s igjen · %2$s stigning</string>
+    <string name="notification_navigating_offroute_text">Utenfor sporet · %1$s unna</string>
+    <string name="notification_navigating_arrived_text">Fremme</string>
+    <string name="notification_navigating_locating_text">Søker etter posisjon…</string>
+    <string name="notification_navigating_and_sharing_text">%1$s · deler %2$s til</string>
     <string name="notification_action_stop_sharing">Stopp deling</string>
     <string name="notification_action_stop_recording">Stopp opptak</string>
+    <string name="notification_action_stop_navigation">Stopp navigering</string>
     <string name="duration_hours_only">%1$dt</string>
     <string name="duration_hours_minutes">%1$dt %2$dm</string>
     <string name="duration_minutes">%1$dm</string>

@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.util.CrashReporter
 import no.synth.where.data.SavedPoint
 import no.synth.where.navigation.*
+import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
 
 
@@ -136,6 +137,11 @@ fun WhereApp(
                 },
                 onNavigateTrack = { track ->
                     trackRepository.startNavigation(track, reversed = false)
+                    // The foreground service owns the location stream and the persistent
+                    // notification while navigating; it self-stops when navigation ends.
+                    if (trackRepository.navigation.value != null) {
+                        LocationTrackingService.start(context)
+                    }
                     navController.popBackStack<MapRoute>(false)
                 },
                 onCropTrack = { track ->

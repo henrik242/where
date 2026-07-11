@@ -159,19 +159,7 @@ fun MapScreen(
     var navigationLayers by remember { mutableStateOf<NavigationLayers?>(null) }
     val navigationProgress = rememberNavigationProgress(
         session = navigation,
-        location = {
-            try {
-                val lc = mapInstance?.locationComponent
-                if (lc != null && lc.isLocationComponentEnabled) {
-                    lc.lastKnownLocation?.let { LatLng(it.latitude, it.longitude) }
-                } else {
-                    null
-                }
-            } catch (e: Exception) {
-                Logger.d("Nav location read failed: %s", e.message ?: "unknown")
-                null
-            }
-        },
+        progress = viewModel.navigationProgress,
         onRenderLayers = { layers ->
             navigationLayers = layers
             mapInstance?.style?.let {

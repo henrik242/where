@@ -107,12 +107,19 @@ fun IosMapScreen(
     val cropState by trackRepository.cropState.collectAsState()
     val cropUndo by trackRepository.cropUndo.collectAsState()
     val elevationMarker by trackRepository.elevationMarker.collectAsState()
-    val navigationProgress = rememberNavigationProgress(
+    // iOS has no background producer yet (see the Live Activity follow-up), so a foreground
+    // poller feeds the shared progress flow that the observer below and the banner read.
+    NavigationProgressPoller(
         session = navigation,
         location = {
             val loc = mapViewProvider.getUserLocation()
             if (loc != null && loc.size >= 2) LatLng(loc[0], loc[1]) else null
         },
+        updateProgress = trackRepository::updateNavigationProgress,
+    )
+    val navigationProgress = rememberNavigationProgress(
+        session = navigation,
+        progress = trackRepository.navigationProgress,
         onRenderLayers = { layers ->
             mapViewProvider.updateNavigation(layers.completed, layers.remaining, layers.offCourse)
         },

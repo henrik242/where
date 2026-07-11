@@ -2,17 +2,17 @@ package no.synth.where.ui.map
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import no.synth.where.data.NavigationSession
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.data.navigation.TrackNavigator
 
-/** How often the navigator re-reads the user location while navigating. */
+/** How often the poller re-reads the user location while navigating. */
 private const val NAV_POLL_INTERVAL_MS = 1000L
 
 /** Grouped navigation state + callbacks threaded from the screen down through the overlays. */
@@ -24,38 +24,25 @@ data class NavigationUiState(
 )
 
 /**
- * Drives an active navigation [session]: rebuilds the [TrackNavigator] when the track or direction
- * changes, polls [location] every second to compute progress, and renders the split route layers
- * via [onRenderLayers] / [onClearLayers]. Returns the current progress for the UI banner.
+ * Observes navigation [progress] (the repository's `navigationProgress` flow) for an active
+ * [session] and renders the split route layers via [onRenderLayers] / [onClearLayers]. Returns the
+ * current progress for the UI banner.
  *
- * The poll-and-render loop lives here so Android and iOS share it; each platform supplies only the
- * one-line location read and the layer renderer, which are the only genuinely platform-specific bits.
+ * Pure observer: production happens outside the composition — on Android in the foreground
+ * service (so navigation keeps updating while backgrounded), on iOS in [NavigationProgressPoller]
+ * until it grows a background producer of its own.
  */
 @Composable
 fun rememberNavigationProgress(
     session: NavigationSession?,
-    location: () -> LatLng?,
+    progress: StateFlow<NavigationProgress?>,
     onRenderLayers: (NavigationLayers) -> Unit,
     onClearLayers: () -> Unit,
 ): NavigationProgress? {
-    val navigator = remember(session?.track?.id, session?.reversed) {
-        session?.let { TrackNavigator(it.track, it.reversed) }
-    }
-    // Keyed to the navigator so toggling direction (or switching tracks) resets to the "locating"
-    // state instead of leaving the previous direction's snapshot rendered against the new orientation
-    // until the next location fix arrives.
-    var progress by remember(navigator) { mutableStateOf<NavigationProgress?>(null) }
+    val current by progress.collectAsState()
 
-    LaunchedEffect(navigator) {
-        val nav = navigator ?: return@LaunchedEffect
-        while (true) {
-            location()?.let { progress = nav.progressAt(it) }
-            delay(NAV_POLL_INTERVAL_MS)
-        }
-    }
-
-    LaunchedEffect(progress, session) {
-        val p = progress
+    LaunchedEffect(current, session) {
+        val p = current
         if (p != null && session != null) {
             onRenderLayers(buildNavigationLayers(session.track, session.reversed, p))
         } else {
@@ -63,5 +50,30 @@ fun rememberNavigationProgress(
         }
     }
 
-    return progress
+    return current
+}
+
+/**
+ * Foreground producer for platforms without a service-owned navigator (iOS today): rebuilds the
+ * [TrackNavigator] when the track or direction changes and polls [location] every second, feeding
+ * results into [updateProgress] (the repository's `updateNavigationProgress`). The repository
+ * clears the flow on session changes, so observers reset to the "locating" state without help here.
+ */
+@Composable
+fun NavigationProgressPoller(
+    session: NavigationSession?,
+    location: () -> LatLng?,
+    updateProgress: (NavigationProgress) -> Unit,
+) {
+    val navigator = remember(session?.track?.id, session?.reversed) {
+        session?.let { TrackNavigator(it.track, it.reversed) }
+    }
+
+    LaunchedEffect(navigator) {
+        val nav = navigator ?: return@LaunchedEffect
+        while (true) {
+            location()?.let { updateProgress(nav.progressAt(it)) }
+            delay(NAV_POLL_INTERVAL_MS)
+        }
+    }
 }

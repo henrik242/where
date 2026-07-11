@@ -33,16 +33,23 @@ import kotlinx.coroutines.launch
 import no.synth.where.MainActivity
 import no.synth.where.R
 import no.synth.where.WhereApplication
+import no.synth.where.data.NavigationSession
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.navigation.NavigationNotificationContent
+import no.synth.where.data.navigation.TrackNavigator
+import no.synth.where.data.navigation.toNotificationContent
 import no.synth.where.util.RemainingTime
 import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.remainingTimeOf
 
 /**
  * Foreground service that owns the fused-location stream and the platform
- * notification while either recording or live-share is active. Client
- * lifecycle (creation, transitions between RECORDING/LIVE/NONE) is delegated
- * to [no.synth.where.data.OnlineTrackingCoordinator].
+ * notification while recording, navigating, or live-share is active. While
+ * navigating it also runs the [TrackNavigator] and publishes progress through
+ * [no.synth.where.data.TrackRepository.navigationProgress], so navigation keeps
+ * working when the app is backgrounded. Client lifecycle (creation, transitions
+ * between RECORDING/LIVE/NONE) is delegated to
+ * [no.synth.where.data.OnlineTrackingCoordinator].
  */
 class LocationTrackingService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -57,10 +64,26 @@ class LocationTrackingService : Service() {
 
     private data class NotificationState(
         val recording: Boolean,
+        val navigating: Boolean,
         val shareActive: Boolean,
         val shareUntilMillis: Long,
     ) {
-        val anyActive: Boolean get() = recording || shareActive
+        val anyActive: Boolean get() = recording || navigating || shareActive
+    }
+
+    // Rebuilt when the session's track or direction changes. Only touched from
+    // onLocationResult (main looper), so no synchronization is needed.
+    private var navigator: TrackNavigator? = null
+    private var navigatorSessionKey: Pair<String, Boolean>? = null
+
+    private fun navigatorFor(session: NavigationSession): TrackNavigator {
+        val key = session.track.id to session.reversed
+        val existing = navigator
+        if (existing != null && key == navigatorSessionKey) return existing
+        val built = TrackNavigator(session.track, session.reversed)
+        navigator = built
+        navigatorSessionKey = key
+        return built
     }
 
     private val locationCallback = object : LocationCallback() {
@@ -78,6 +101,9 @@ class LocationTrackingService : Service() {
                     altitude = altitude,
                     accuracy = accuracy
                 )
+                trackRepository.navigation.value?.let { session ->
+                    trackRepository.updateNavigationProgress(navigatorFor(session).progressAt(latLng))
+                }
                 coordinator.sendPoint(latLng, altitude, accuracy)
             }
         }
@@ -88,16 +114,19 @@ class LocationTrackingService : Service() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         createNotificationChannel()
         observeNotificationState()
+        observeNavigationProgress()
     }
 
     private fun observeNotificationState() {
         serviceScope.launch {
             combine(
                 trackRepository.isRecording,
+                trackRepository.navigation,
                 userPreferences.liveShareUntilMillis,
-            ) { recording, until ->
+            ) { recording, navigation, until ->
                 NotificationState(
                     recording = recording,
+                    navigating = navigation != null,
                     shareActive = until > currentTimeMillis(),
                     shareUntilMillis = until,
                 )
@@ -109,6 +138,20 @@ class LocationTrackingService : Service() {
                 }
                 startForeground(NOTIFICATION_ID, createNotification(state))
                 if (state.shareActive) startNotificationTicker() else stopNotificationTicker()
+            }
+        }
+    }
+
+    // Navigation stats change with every fix, so the notification refreshes per progress
+    // emission (at most the fused update rate, ~1 Hz) instead of the 30s share ticker.
+    private fun observeNavigationProgress() {
+        serviceScope.launch {
+            trackRepository.navigationProgress.collect { progress ->
+                if (progress == null) return@collect
+                val state = currentNotificationState()
+                if (!state.navigating) return@collect
+                val nm = getSystemService(NotificationManager::class.java)
+                nm?.notify(NOTIFICATION_ID, createNotification(state))
             }
         }
     }
@@ -135,6 +178,7 @@ class LocationTrackingService : Service() {
         when (intent?.action) {
             ACTION_STOP_SHARING -> userPreferences.stopLiveShare()
             ACTION_STOP_RECORDING -> trackRepository.stopRecording()
+            ACTION_STOP_NAVIGATION -> trackRepository.stopNavigation()
         }
         startForeground(NOTIFICATION_ID, createNotification(currentNotificationState()))
         startLocationUpdates()
@@ -145,6 +189,7 @@ class LocationTrackingService : Service() {
         val until = userPreferences.liveShareUntilMillis.value
         return NotificationState(
             recording = trackRepository.isRecording.value,
+            navigating = trackRepository.navigation.value != null,
             shareActive = until > currentTimeMillis(),
             shareUntilMillis = until,
         )
@@ -215,6 +260,15 @@ class LocationTrackingService : Service() {
                 title = getString(R.string.notification_recording_title)
                 text = getString(R.string.notification_recording_text)
             }
+            state.navigating -> {
+                title = getString(R.string.notification_navigating_title)
+                val navText = navigationText()
+                val remaining = if (state.shareActive)
+                    formatRemainingShort(state.shareUntilMillis - currentTimeMillis()) else null
+                text = if (remaining != null)
+                    getString(R.string.notification_navigating_and_sharing_text, navText, remaining)
+                else navText
+            }
             else -> {
                 title = getString(R.string.notification_sharing_title)
                 val remaining = formatRemainingShort(state.shareUntilMillis - currentTimeMillis())
@@ -247,8 +301,33 @@ class LocationTrackingService : Service() {
                 pendingIntentForAction(ACTION_STOP_RECORDING, requestCode = 2)
             )
         }
+        if (state.navigating) {
+            builder.addAction(
+                0,
+                getString(R.string.notification_action_stop_navigation),
+                pendingIntentForAction(ACTION_STOP_NAVIGATION, requestCode = 3)
+            )
+        }
         return builder.build()
     }
+
+    private fun navigationText(): String =
+        when (val c = trackRepository.navigationProgress.value.toNotificationContent()) {
+            NavigationNotificationContent.Locating ->
+                getString(R.string.notification_navigating_locating_text)
+            NavigationNotificationContent.Arrived ->
+                getString(R.string.notification_navigating_arrived_text)
+            is NavigationNotificationContent.OffRoute ->
+                getString(R.string.notification_navigating_offroute_text, c.distanceToRoute)
+            is NavigationNotificationContent.EnRoute ->
+                if (c.remainingAscent != null)
+                    getString(
+                        R.string.notification_navigating_text_with_ascent,
+                        c.remainingDistance,
+                        c.remainingAscent
+                    )
+                else getString(R.string.notification_navigating_text, c.remainingDistance)
+        }
 
     private fun pendingIntentForAction(action: String, requestCode: Int): PendingIntent {
         val intent = Intent(this, LocationTrackingService::class.java)
@@ -285,6 +364,7 @@ class LocationTrackingService : Service() {
         private const val NOTIFICATION_TICK_INTERVAL = 30_000L
         private const val ACTION_STOP_SHARING = "no.synth.where.action.STOP_SHARING"
         private const val ACTION_STOP_RECORDING = "no.synth.where.action.STOP_RECORDING"
+        private const val ACTION_STOP_NAVIGATION = "no.synth.where.action.STOP_NAVIGATION"
 
         fun start(context: Context) {
             val intent = Intent(context, LocationTrackingService::class.java)

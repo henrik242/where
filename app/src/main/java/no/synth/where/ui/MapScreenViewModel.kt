@@ -367,8 +367,9 @@ class MapScreenViewModel(
     val elevationMarker = trackRepository.elevationMarker
     fun setElevationMarker(index: Int?) = trackRepository.setElevationMarker(index)
 
-    // Navigation
+    // Navigation. Progress is produced by LocationTrackingService; the UI only observes.
     val navigation = trackRepository.navigation
+    val navigationProgress = trackRepository.navigationProgress
     fun toggleNavigationReverse() = trackRepository.toggleNavigationReverse()
     fun stopNavigation() = trackRepository.stopNavigation()
 

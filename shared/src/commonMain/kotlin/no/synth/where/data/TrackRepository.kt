@@ -14,6 +14,7 @@ import no.synth.where.data.db.TrackEntity
 import no.synth.where.data.db.TrackPointEntity
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
 
@@ -45,6 +46,13 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     private val _navigation = MutableStateFlow<NavigationSession?>(null)
     val navigation: StateFlow<NavigationSession?> = _navigation.asStateFlow()
+
+    // Latest progress along the navigated track. Produced outside the UI (the Android foreground
+    // service, or the iOS foreground poller) so navigation keeps running in the background; the UI
+    // only observes. Reset to null whenever the session starts, ends, or changes direction so
+    // observers fall back to a "locating" state instead of a stale snapshot.
+    private val _navigationProgress = MutableStateFlow<NavigationProgress?>(null)
+    val navigationProgress: StateFlow<NavigationProgress?> = _navigationProgress.asStateFlow()
 
     // Index into the focused track's points marked by scrubbing its altitude chart, or null when
     // none. Transient: cleared whenever the focused track / view changes.
@@ -232,7 +240,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     /** Add a track to the viewing set (if not already present) and focus it. */
     fun addViewingTrack(track: Track) {
-        _navigation.value = null   // entering track-view ends any active navigation (mutually exclusive)
+        stopNavigation()   // entering track-view ends any active navigation (mutually exclusive)
         if (_viewingTracks.value.none { it.id == track.id }) {
             _viewingTracks.value = _viewingTracks.value + track
         }
@@ -242,7 +250,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     /** Replace the whole viewing set (bulk multi-select), clearing any focus. */
     fun setViewingTracks(tracks: List<Track>) {
-        _navigation.value = null   // entering track-view ends any active navigation (mutually exclusive)
+        stopNavigation()   // entering track-view ends any active navigation (mutually exclusive)
         _viewingTracks.value = tracks
         _focusedTrackId.value = null
         _elevationMarker.value = null
@@ -342,16 +350,24 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         _focusedTrackId.value = null
         _cropState.value = null
         _elevationMarker.value = null
+        _navigationProgress.value = null
         _navigation.value = NavigationSession(track, reversed)
     }
 
     fun toggleNavigationReverse() {
         val current = _navigation.value ?: return
+        _navigationProgress.value = null   // computed against the old direction
         _navigation.value = current.copy(reversed = !current.reversed)
     }
 
     fun stopNavigation() {
         _navigation.value = null
+        _navigationProgress.value = null
+    }
+
+    fun updateNavigationProgress(progress: NavigationProgress) {
+        if (_navigation.value == null) return   // a late fix must not resurrect an ended session
+        _navigationProgress.value = progress
     }
 
     suspend fun importTrack(gpxContent: String): Track? = importParsed { Track.fromGPX(gpxContent) }
