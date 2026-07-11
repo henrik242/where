@@ -11,6 +11,11 @@ class IosCrashReporterBridge: CrashReporterBridge {
     func log(message: String) {
         Crashlytics.crashlytics().log(message)
     }
+
+    func recordException(message: String) {
+        let error = NSError(domain: "no.synth.where", code: 0, userInfo: [NSLocalizedDescriptionKey: message])
+        Crashlytics.crashlytics().record(error: error)
+    }
 }
 
 @main

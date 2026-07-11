@@ -44,6 +44,10 @@ import no.synth.where.util.CrashReporter
 import org.jetbrains.compose.resources.stringResource
 import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.util.IosPlatformActions
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSFileSystemFreeSize
+import platform.Foundation.NSHomeDirectory
+import platform.Foundation.NSNumber
 import platform.Foundation.NSUserDefaults
 
 enum class Screen {
@@ -57,6 +61,16 @@ enum class Screen {
     LAYER_REGIONS,
     ATTRIBUTIONS
 }
+
+/** Free space on the volume holding the app's data, or -1 if it can't be determined. */
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+private fun iosFreeStorageBytes(): Long =
+    try {
+        val attrs = NSFileManager.defaultManager.attributesOfFileSystemForPath(NSHomeDirectory(), null)
+        (attrs?.get(NSFileSystemFreeSize) as? NSNumber)?.longLongValue ?: -1L
+    } catch (_: Exception) {
+        -1L
+    }
 
 @Composable
 fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManager, hexMapViewProvider: MapViewProvider) {
@@ -294,6 +308,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
             Screen.DOWNLOAD -> {
                 var refreshTrigger by remember { mutableIntStateOf(0) }
                 var cacheSize by remember { mutableLongStateOf(0L) }
+                val freeStorageBytes = remember(refreshTrigger) { iosFreeStorageBytes() }
 
                 val kartverketDesc = stringResource(Res.string.layer_kartverket_desc)
                 val toporasterDesc = stringResource(Res.string.layer_toporaster_desc)
@@ -337,6 +352,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 DownloadScreenContent(
                     layers = layers,
                     cacheSize = cacheSize,
+                    freeStorageBytes = freeStorageBytes,
                     queueSummary = if (downloadQueue.isEmpty()) null else downloadQueue.summary(),
                     onDownloadsClick = { navigateTo(Screen.DOWNLOAD_QUEUE) },
                     onBackClick = { navigateBack() },

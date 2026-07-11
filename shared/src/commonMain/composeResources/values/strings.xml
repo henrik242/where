@@ -184,6 +184,8 @@
     <string name="download_detail_high_hint">~16x larger</string>
     <string name="download_detail_maximum_hint">~256x larger</string>
     <string name="queue_progress">%1$d of %2$d</string>
+    <string name="low_storage_title">Low storage</string>
+    <string name="low_storage_message">Map downloads and automatic caching may fail. Free up space or delete some downloads.</string>
     <string name="all_downloads_complete">All downloads complete</string>
     <string name="downloads_finished">Finished</string>
     <string name="downloads">Downloads</string>

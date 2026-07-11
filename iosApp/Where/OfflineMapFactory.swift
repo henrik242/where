@@ -3,6 +3,7 @@ import MapLibre
 import Shared
 
 class OfflineMapFactory: NSObject, OfflineMapManager {
+    private static var cacheFailureReported = false
     private var activeObservers: [String: OfflineMapDownloadObserver] = [:]
     private var activePacks: [String: MLNOfflinePack] = [:]
     private var invalidatedPacks = Set<ObjectIdentifier>()
@@ -13,9 +14,24 @@ class OfflineMapFactory: NSObject, OfflineMapManager {
 
     override init() {
         super.init()
-        // Match Android: raise the ambient cache from MapLibre's ~50 MB default so tiles the user
-        // browsed stay available offline instead of being evicted after a little browsing.
-        MLNOfflineStorage.shared.setMaximumAmbientCacheSize(UInt(512 * 1024 * 1024)) { _ in }
+        // Raise the ambient cache from MapLibre's ~50 MB default (shared with Android) so tiles the
+        // user browsed stay available offline instead of being evicted after a little browsing.
+        MLNOfflineStorage.shared.setMaximumAmbientCacheSize(UInt(MapCacheConfig.shared.ambientCacheSizeBytes)) { _ in }
+        // Flag MapLibre's "unable to make space" message (offline/ambient caching failing, e.g.
+        // storage full) to the logs + crash reporting, once, so a recurrence is detectable.
+        // MapLibre logs that line at Info, so we must listen at .info (default is .none); to avoid
+        // the console noise that brings, only echo warning+ while still scanning every message.
+        MLNLoggingConfiguration.shared.loggingLevel = .info
+        MLNLoggingConfiguration.shared.handler = { (level: MLNLoggingLevel, _: String, _: UInt, message: String) in
+            if level.rawValue <= MLNLoggingLevel.warning.rawValue {
+                NSLog("[MapLibre] \(message)")
+            }
+            if !OfflineMapFactory.cacheFailureReported,
+               MapCacheConfig.shared.isCacheFailureLog(message: message) {
+                OfflineMapFactory.cacheFailureReported = true
+                CrashReporter.shared.recordException(message: "MapLibre cache write failed: \(message)")
+            }
+        }
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(offlinePackProgressChanged(_:)),

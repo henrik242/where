@@ -10,4 +10,8 @@ actual object CrashReporter {
     actual fun log(message: String) {
         FirebaseCrashlytics.getInstance().log(message)
     }
+
+    actual fun recordException(message: String) {
+        FirebaseCrashlytics.getInstance().recordException(Exception(message))
+    }
 }

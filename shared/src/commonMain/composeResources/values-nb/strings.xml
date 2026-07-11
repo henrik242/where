@@ -180,6 +180,8 @@
     <string name="download_detail_high_hint">~16x større</string>
     <string name="download_detail_maximum_hint">~256x større</string>
     <string name="queue_progress">%1$d av %2$d</string>
+    <string name="low_storage_title">Lite lagringsplass</string>
+    <string name="low_storage_message">Nedlasting av kart og automatisk bufring kan feile. Frigjør plass eller slett noen nedlastinger.</string>
     <string name="all_downloads_complete">Alle nedlastinger fullført</string>
     <string name="downloads_finished">Ferdig</string>
     <string name="downloads">Nedlastinger</string>

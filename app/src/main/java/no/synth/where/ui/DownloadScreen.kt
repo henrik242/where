@@ -80,9 +80,19 @@ fun DownloadScreen(
         }
     }
 
+    val freeStorageBytes = remember(refreshTrigger) {
+        try {
+            val dir = context.getExternalFilesDir(null) ?: context.filesDir
+            android.os.StatFs(dir.absolutePath).availableBytes
+        } catch (_: Exception) {
+            -1L
+        }
+    }
+
     DownloadScreenContent(
         layers = layers,
         cacheSize = cacheSize,
+        freeStorageBytes = freeStorageBytes,
         queueSummary = if (queue.isEmpty()) null else queue.summary(),
         onDownloadsClick = onDownloadsClick,
         onBackClick = onBackClick,

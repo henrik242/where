@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.LayerStats
+import no.synth.where.data.MapCacheConfig
 import no.synth.where.data.QueueSummary
 import no.synth.where.data.UserPreferences
 import no.synth.where.util.formatBytes
@@ -62,6 +63,7 @@ private data class DetailLevelOption(val zoom: Int, val label: String, val sizeH
 fun DownloadScreenContent(
     layers: List<LayerInfo>,
     cacheSize: Long,
+    freeStorageBytes: Long = -1,
     queueSummary: QueueSummary?,
     onDownloadsClick: () -> Unit,
     onBackClick: () -> Unit,
@@ -135,6 +137,28 @@ fun DownloadScreenContent(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (MapCacheConfig.isStorageLow(freeStorageBytes)) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text(
+                                stringResource(Res.string.low_storage_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                stringResource(Res.string.low_storage_message),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+            }
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
