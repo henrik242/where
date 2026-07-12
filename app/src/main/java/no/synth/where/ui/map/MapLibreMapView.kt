@@ -112,9 +112,8 @@ fun MapLibreMapView(
     // snapZoom is left false here so restoring the mode after a style reload never re-zooms.
     fun engageLocationComponent(mapInstance: MapLibreMap, style: Style) {
         MapRenderUtils.enableLocationComponent(mapInstance, style, context, hasLocationPermissionState.value)
-        val locationComponent = mapInstance.locationComponent
-        if (!trackingListenerAdded && locationComponent.isLocationComponentEnabled) {
-            locationComponent.addOnCameraTrackingChangedListener(
+        if (!trackingListenerAdded && mapInstance.isLocationComponentEnabledSafe) {
+            mapInstance.locationComponent.addOnCameraTrackingChangedListener(
                 object : org.maplibre.android.location.OnCameraTrackingChangedListener {
                     // Fired when a pan/rotate gesture breaks the camera away from the puck.
                     override fun onCameraTrackingDismissed() = onFollowModeDismissedState.value()
@@ -245,7 +244,7 @@ fun MapLibreMapView(
     LaunchedEffect(map, hasLocationPermission) {
         if (!hasLocationPermission) return@LaunchedEffect
         val mapInstance = map ?: return@LaunchedEffect
-        while (!mapInstance.locationComponent.isLocationComponentEnabled) {
+        while (!mapInstance.isLocationComponentEnabledSafe) {
             delay(1000)
             mapInstance.style?.let { engageLocationComponent(mapInstance, it) }
         }

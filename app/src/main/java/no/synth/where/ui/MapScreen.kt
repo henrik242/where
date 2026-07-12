@@ -74,6 +74,7 @@ import no.synth.where.ui.map.buildTrackMarkerGeoJson
 import no.synth.where.ui.map.buildTracksGeoJson
 import no.synth.where.ui.map.renderableTracks
 import no.synth.where.ui.map.animateToBounds
+import no.synth.where.ui.map.isLocationComponentEnabledSafe
 import no.synth.where.ui.map.MapScreenContent
 import no.synth.where.ui.map.StopNavigationConfirmDialog
 import no.synth.where.ui.map.rememberStopNavigationConfirmState
@@ -390,7 +391,7 @@ fun MapScreen(
             while (!hasFix) {
                 try {
                     val lc = mapInstance?.locationComponent
-                    if (lc != null && lc.isLocationComponentEnabled && lc.lastKnownLocation != null) {
+                    if (mapInstance?.isLocationComponentEnabledSafe == true && lc?.lastKnownLocation != null) {
                         hasFix = true
                     }
                 } catch (e: Exception) {
@@ -412,9 +413,8 @@ fun MapScreen(
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 try {
-                    val lc = mapInstance?.locationComponent
-                    if (lc != null && lc.isLocationComponentEnabled) {
-                        lc.lastKnownLocation?.let { loc ->
+                    if (mapInstance?.isLocationComponentEnabledSafe == true) {
+                        mapInstance?.locationComponent?.lastKnownLocation?.let { loc ->
                             userLocation = LatLng(loc.latitude, loc.longitude)
                         }
                     }
