@@ -129,6 +129,7 @@ kotlin {
             api(libs.ktor.client.okhttp)
             api(libs.timber)
             api(libs.maplibre.android.sdk)
+            implementation(libs.play.services.location)
             api(project.dependencies.platform(libs.firebase.bom))
             api(libs.firebase.crashlytics)
         }

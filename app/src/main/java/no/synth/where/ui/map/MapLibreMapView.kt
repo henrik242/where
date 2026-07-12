@@ -1,6 +1,10 @@
 package no.synth.where.ui.map
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -18,6 +22,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -123,6 +128,15 @@ fun MapLibreMapView(
             trackingListenerAdded = true
         }
         mapInstance.applyFollowMode(cameraFollowModeState.value)
+    }
+
+    // Single owner of the keep-alive policy: run only while resumed with permission, and never
+    // alongside the recording service, whose fused subscription already keeps the chip warm
+    // (the extra GPS_PROVIDER subscription would burn ~5%/hr for no benefit).
+    fun syncGpsKeepAlive() {
+        val eligible = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
+            hasLocationPermissionState.value && !isRecordingState.value
+        if (eligible) gpsKeepAlive.start() else gpsKeepAlive.stop()
     }
 
     // setStyle wipes every runtime layer, so each style (re)load must redraw the whole overlay set.
@@ -482,12 +496,7 @@ fun MapLibreMapView(
                     Lifecycle.Event.ON_START -> it.onStart()
                     Lifecycle.Event.ON_RESUME -> {
                         it.onResume()
-                        // Skip while the foreground recording service has fused
-                        // running at HIGH_ACCURACY — chip is already warm and
-                        // the keep-alive only burns ~5%/hr for no benefit.
-                        if (hasLocationPermissionState.value && !isRecordingState.value) {
-                            gpsKeepAlive.start()
-                        }
+                        syncGpsKeepAlive()
                     }
                     Lifecycle.Event.ON_PAUSE -> {
                         gpsKeepAlive.stop()
@@ -503,17 +512,43 @@ fun MapLibreMapView(
         onDispose {
             gpsKeepAlive.stop()
             lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView?.onDestroy()
+            mapView?.let {
+                // LocationComponent only unsubscribes its engine in onStop(). If composition
+                // leaves while the lifecycle is still up, onDestroy() alone would leave the
+                // location subscription running with no map attached.
+                val state = lifecycleOwner.lifecycle.currentState
+                if (state.isAtLeast(Lifecycle.State.RESUMED)) it.onPause()
+                if (state.isAtLeast(Lifecycle.State.STARTED)) it.onStop()
+                it.onDestroy()
+            }
         }
+    }
+
+    // Nothing else reacts when the user flips location on mid-session: the puck only enables
+    // once a fix exists, the non-Play-Services fallback engine binds provider state at
+    // subscribe time, and the keep-alive no-ops while GPS is disabled. Re-engage all of it
+    // whenever a provider is toggled.
+    DisposableEffect(map, context) {
+        val mapInstance = map ?: return@DisposableEffect onDispose {}
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(receiverContext: Context?, intent: Intent?) {
+                if (intent?.action != LocationManager.PROVIDERS_CHANGED_ACTION) return
+                Logger.d("Location providers changed, re-engaging location component")
+                mapInstance.getStyle { style -> engageLocationComponent(mapInstance, style) }
+                syncGpsKeepAlive()
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        onDispose { context.unregisterReceiver(receiver) }
     }
 
     // Re-evaluate keep-alive when permission or recording state changes mid-resume.
     LaunchedEffect(hasLocationPermission, isRecording) {
-        val resumed = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-        if (resumed && hasLocationPermission && !isRecording) {
-            gpsKeepAlive.start()
-        } else {
-            gpsKeepAlive.stop()
-        }
+        syncGpsKeepAlive()
     }
 }

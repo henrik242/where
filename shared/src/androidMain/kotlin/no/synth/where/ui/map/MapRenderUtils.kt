@@ -9,6 +9,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import no.synth.where.location.FusedMapLocationEngine
 import org.maplibre.android.location.LocationComponent
 import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.engine.LocationEngineRequest
@@ -596,7 +597,8 @@ object MapRenderUtils {
                 .build()
             locationComponent.activateLocationComponent(
                 org.maplibre.android.location.LocationComponentActivationOptions.builder(context, style)
-                    .useDefaultLocationEngine(true)
+                    .useDefaultLocationEngine(false)
+                    .locationEngine(FusedMapLocationEngine.getOrCreate(context))
                     .locationEngineRequest(request)
                     .locationComponentOptions(options)
                     .build()
