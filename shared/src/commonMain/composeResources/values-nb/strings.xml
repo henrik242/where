@@ -164,6 +164,11 @@
     <string name="coord_format_dms">DMS</string>
     <string name="coord_format_utm">UTM</string>
     <string name="coord_format_mgrs">MGRS</string>
+    <string name="attributions">Kilder og lisenser</string>
+    <string name="go_to_attributions">Gå til kilder og lisenser</string>
+    <string name="data_sources">Datakilder</string>
+    <string name="open_source_libraries">Biblioteker med åpen kildekode</string>
+    <string name="release_notes">Versjonslogg</string>
     <string name="sponsor">Støtt prosjektet</string>
     <string name="sponsor_description">Kjøp meg en kaffe</string>
     <string name="crash_reporting">Krasjrapportering</string>

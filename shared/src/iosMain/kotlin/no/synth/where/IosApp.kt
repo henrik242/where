@@ -157,6 +157,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onSavedPointsClick = { navigateTo(Screen.SAVED_POINTS) },
                     onOnlineTrackingClick = { navigateTo(Screen.ONLINE_TRACKING) },
                     onAttributionsClick = { navigateTo(Screen.ATTRIBUTIONS) },
+                    onReleaseNotesClick = { IosPlatformActions.openUrl("https://github.com/henrik242/where/blob/main/RELEASES.md") },
                     onCrashReportingChange = {
                         userPreferences.updateCrashReportingEnabled(it)
                         CrashReporter.setEnabled(it)

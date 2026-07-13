@@ -1,6 +1,6 @@
 # Where?
 
-Free, lightweight offline hiking maps for Norway. A spiritual successor to the discontinued [Hvor?](https://www.kartverket.no/til-lands/kart/hvor-appen) app from Kartverket, with topographic maps from Kartverket, OpenStreetMap, and more. Available for Android and iOS, and always free.
+Free, lightweight offline hiking maps for Norway. A spiritual successor to the discontinued [Hvor?](https://www.kartverket.no/til-lands/kart/hvor-appen) app from Kartverket, with topographic maps from Kartverket, OpenStreetMap, and more. Available for Android and iOS, and always free. See [RELEASES.md](RELEASES.md) for what's new in each release.
 
 <a href="https://apps.apple.com/app/where/id6760362061"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" width="151"></a>
 <a href="https://play.google.com/store/apps/details?id=no.synth.where"><img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" width="170"></a>

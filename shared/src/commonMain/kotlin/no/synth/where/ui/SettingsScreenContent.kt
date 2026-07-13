@@ -69,6 +69,7 @@ fun SettingsScreenContent(
     currentCoordFormat: CoordFormat,
     onCoordFormatSelected: (CoordFormat) -> Unit,
     onAttributionsClick: () -> Unit,
+    onReleaseNotesClick: () -> Unit,
     onSponsorClick: () -> Unit,
     highlightOfflineMode: Boolean = false
 ) {
@@ -384,6 +385,26 @@ fun SettingsScreenContent(
                     Icon(
                         painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_attributions)
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onReleaseNotesClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.release_notes),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Icon(
+                        painterResource(Res.drawable.ic_open_in_new),
+                        contentDescription = null
                     )
                 }
 

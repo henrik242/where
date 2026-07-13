@@ -94,6 +94,9 @@ fun WhereApp(
                 onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
                 onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
                 onAttributionsClick = { navController.navigate(AttributionsRoute) },
+                onReleaseNotesClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/henrik242/where/blob/main/RELEASES.md".toUri()))
+                },
                 onCrashReportingChange = { enabled ->
                     userPreferences.updateCrashReportingEnabled(enabled)
                     CrashReporter.setEnabled(enabled)
