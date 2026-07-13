@@ -84,6 +84,26 @@ describe('static routes', () => {
     expect(html).toContain('og:title');
   });
 
+  test('trailing slashes serve the same pages', async () => {
+    for (const [path, marker] of [
+      ['/about/', 'Open source'],
+      ['/guide/', 'Feature Guide'],
+      ['/privacy/', 'Privacy Policy'],
+    ]) {
+      const res = await fetch(`${SERVER_URL}${path}`);
+      expect(res.status).toBe(200);
+      expect(await res.text()).toContain(marker);
+    }
+  });
+
+  test('og:url reflects the requested page', async () => {
+    for (const path of ['/', '/about', '/guide']) {
+      const res = await fetch(`${SERVER_URL}${path}`);
+      const html = await res.text();
+      expect(html).toContain(`property="og:url" content="https://where.synth.no${path}"`);
+    }
+  });
+
   test('/nonexistent returns 404', async () => {
     const res = await fetch(`${SERVER_URL}/nonexistent-page`);
     expect(res.status).toBe(404);

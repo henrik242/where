@@ -94,7 +94,7 @@ export function checkStaleTracks() {
   });
 
   if (stoppedCount > 0) {
-    console.log(`✅ Stopped ${stoppedCount} stale track(s)`);
+    console.log(`Stopped ${stoppedCount} stale track(s)`);
   }
 }
 
@@ -108,7 +108,7 @@ export function cleanupOldTracks() {
     }, userId);
   }
   if (deleted.length > 0) {
-    console.log(`🗑️  Cleaned up ${deleted.length} old track(s)`);
+    console.log(`Cleaned up ${deleted.length} old track(s)`);
   }
 }
 
@@ -117,7 +117,7 @@ export function startStaleTrackChecker() {
   setInterval(cleanupOldTracks, 60 * 60 * 1000);
 
   setTimeout(() => {
-    console.log('🔍 Running initial stale track check...');
+    console.log('Running initial stale track check...');
     checkStaleTracks();
     cleanupOldTracks();
   }, CONFIG.INITIAL_CHECK_DELAY);

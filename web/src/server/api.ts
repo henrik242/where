@@ -243,7 +243,7 @@ export function createApiHandler(deps: ApiDeps) {
         const signature = req.headers.get('X-Signature');
 
         if (!(await deps.verifySignature(bodyText, signature))) {
-          console.warn('❌ Invalid or missing HMAC signature');
+          console.warn('Invalid or missing HMAC signature');
           return jsonResponse({ error: 'Invalid or missing signature' }, 401);
         }
 

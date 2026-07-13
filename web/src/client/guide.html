@@ -9,37 +9,9 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     <!-- OG_META -->
 
+    <link rel="stylesheet" href="site.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: #333;
-            background: #fff;
-            line-height: 1.6;
-        }
-        .hero {
-            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
-            color: white;
-            padding: 64px 24px 48px;
-            text-align: center;
-        }
-        .hero-icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 18px;
-            margin-bottom: 20px;
-        }
-        .hero h1 {
-            font-size: 38px;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-        .hero p {
-            font-size: 18px;
-            opacity: 0.9;
-            max-width: 520px;
-            margin: 0 auto;
-        }
+        body { line-height: 1.6; }
         /* Table of contents */
         .toc { padding: 40px 24px 8px; }
         .toc-grid {
@@ -52,16 +24,16 @@
         }
         .toc-grid a {
             display: inline-block;
-            padding: 8px 16px;
+            padding: 11px 16px;
             border-radius: 999px;
-            background: #eef3fd;
-            color: #1a73e8;
+            background: var(--chip);
+            color: var(--chip-text);
             text-decoration: none;
             font-size: 14px;
             font-weight: 600;
             transition: background 0.15s;
         }
-        .toc-grid a:hover { background: #dde8fb; }
+        .toc-grid a:hover { background: var(--chip-hover); }
         /* Sections */
         section {
             max-width: 760px;
@@ -72,20 +44,22 @@
         section h2 {
             font-size: 26px;
             font-weight: 700;
-            color: #0d47a1;
+            color: var(--accent-deep);
             display: flex;
             align-items: center;
             gap: 12px;
             margin-bottom: 6px;
         }
-        section h2 .emoji { font-size: 28px; line-height: 1; }
+        .icon { fill: currentColor; }
+        section h2 .icon { width: 26px; height: 26px; flex: none; }
+        .steps .k .icon { width: 18px; height: 18px; vertical-align: -3px; margin-right: 4px; }
         section > .lead {
-            color: #555;
+            color: var(--text-muted);
             font-size: 16px;
             margin-bottom: 18px;
         }
         .card {
-            background: #f8f9fa;
+            background: var(--surface);
             border-radius: 12px;
             padding: 18px 22px;
             margin-bottom: 14px;
@@ -94,11 +68,11 @@
             font-size: 16px;
             font-weight: 600;
             margin-bottom: 10px;
-            color: #1a2b3c;
+            color: var(--heading);
         }
-        .card p { color: #555; font-size: 15px; }
+        .card p { color: var(--text-muted); font-size: 15px; }
         .card ul { margin: 4px 0 0 20px; }
-        .card li { color: #555; font-size: 15px; margin-bottom: 4px; }
+        .card li { color: var(--text-muted); font-size: 15px; margin-bottom: 4px; }
         /* Terse "control -> action" list */
         .steps { list-style: none; margin: 0; }
         .steps li {
@@ -106,56 +80,31 @@
             gap: 10px;
             padding: 7px 0;
             font-size: 15px;
-            color: #444;
-            border-top: 1px solid #ececf0;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
         }
         .steps li:first-child { border-top: none; }
-        .steps .k { flex: 0 0 34%; font-weight: 600; color: #1a2b3c; }
-        .steps .v { flex: 1; color: #555; }
+        .steps .k { flex: 0 0 34%; font-weight: 600; color: var(--heading); }
+        .steps .v { flex: 1; color: var(--text-muted); }
         code {
-            background: #e8eaed;
+            background: var(--surface-alt);
             border-radius: 4px;
             padding: 0 5px;
             font-size: 90%;
             font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
         }
         .tip {
-            border-left: 4px solid #1a73e8;
-            background: #eef3fd;
+            border-left: 4px solid var(--accent);
+            background: var(--chip);
             border-radius: 0 8px 8px 0;
             padding: 12px 18px;
             margin: 4px 0 14px;
             font-size: 15px;
-            color: #33475b;
+            color: var(--tip-text);
         }
-        .tip strong { color: #0d47a1; }
-        /* Footer */
-        .cta {
-            background: #f8f9fa;
-            padding: 48px 24px;
-            text-align: center;
-            margin-top: 40px;
-        }
-        .cta h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
-        .cta p { font-size: 16px; color: #666; margin-bottom: 24px; }
-        .links { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
-        .links a {
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 15px;
-            transition: opacity 0.2s;
-        }
-        .links a:hover { opacity: 0.85; }
-        .link-primary { background: #1a73e8; color: white; }
-        .link-secondary { background: #e8eaed; color: #333; }
-        footer { text-align: center; padding: 32px 24px; font-size: 14px; color: #999; }
-        footer a { color: #666; }
+        .tip strong { color: var(--accent-deep); }
+        .cta { margin-top: 40px; }
         @media (max-width: 480px) {
-            .hero { padding: 48px 16px 36px; }
-            .hero h1 { font-size: 30px; }
-            .hero p { font-size: 16px; }
             section { padding: 32px 16px 4px; }
             section h2 { font-size: 22px; }
             .steps li { flex-direction: column; gap: 2px; }
@@ -164,13 +113,29 @@
     </style>
 </head>
 <body>
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+        <symbol id="i-search" viewBox="0 0 24 24"><path d="M15.5 14h-0.79l-0.28-0.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-0.59 4.23-1.57l0.27 0.28v0.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></symbol>
+        <symbol id="i-layers" viewBox="0 0 24 24"><path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/></symbol>
+        <symbol id="i-record" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></symbol>
+        <symbol id="i-my-location" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-0.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c0.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-0.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></symbol>
+        <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 0.9-2 2v8c0 1.1 0.9 2 2 2h18c1.1 0 2-0.9 2-2V8c0-1.1-0.9-2-2-2zm0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2v8z"/></symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24"><path d="M19.14 12.94c0.04-0.3 0.06-0.61 0.06-0.94 0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14 0.23-0.41 0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39 0.96c-0.5-0.38-1.03-0.7-1.62-0.94l-0.36-2.54c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24 0-0.43 0.17-0.47 0.41l-0.36 2.54c-0.59 0.24-1.13 0.57-1.62 0.94l-2.39-0.96c-0.22-0.08-0.47 0-0.59 0.22L2.74 8.87c-0.12 0.21-0.08 0.47 0.12 0.61l2.03 1.58c-0.05 0.3-0.07 0.62-0.07 0.94s0.02 0.64 0.07 0.94l-2.03 1.58c-0.18 0.14-0.23 0.41-0.12 0.61l1.92 3.32c0.12 0.22 0.37 0.29 0.59 0.22l2.39-0.96c0.5 0.38 1.03 0.7 1.62 0.94l0.36 2.54c0.05 0.24 0.24 0.41 0.48 0.41h3.84c0.24 0 0.44-0.17 0.47-0.41l0.36-2.54c0.59-0.24 1.13-0.56 1.62-0.94l2.39 0.96c0.22 0.08 0.47 0 0.59-0.22l1.92-3.32c0.12-0.22 0.07-0.47-0.12-0.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
+        <symbol id="i-map" viewBox="0 0 24 24"><path d="M20.5 3l-0.16 0.03L15 5.1 9 3 3.36 4.9c-0.21 0.07-0.36 0.25-0.36 0.48V20.5c0 0.28 0.22 0.5 0.5 0.5l0.16-0.03L9 18.9l6 2.1 5.64-1.9c0.21-0.07 0.36-0.25 0.36-0.48V3.5c0-0.28-0.22-0.5-0.5-0.5zM15 19l-6-2.11V5l6 2.11V19z"/></symbol>
+        <symbol id="i-navigation" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l0.71 0.71L12 18l6.79 3 0.71-0.71z"/></symbol>
+        <symbol id="i-crosshair" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></symbol>
+        <symbol id="i-save" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 0.9-2 2v14c0 1.1 0.89 2 2 2h14c1.1 0 2-0.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 8.5c0 5.25 7 13 7 13s7-7.75 7-13C19 5.13 15.87 2 12 2zm0 9.5c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><path d="M18 16.08c-0.76 0-1.44 0.3-1.96 0.77L8.91 12.7c0.05-0.23 0.09-0.46 0.09-0.7s-0.04-0.47-0.09-0.7l7.05-4.11c0.54 0.5 1.25 0.81 2.04 0.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 0.24 0.04 0.47 0.09 0.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c0.79 0 1.5-0.31 2.04-0.81l7.12 4.16c-0.05 0.21-0.08 0.43-0.08 0.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></symbol>
+        <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-1.48 0-2.85 0.43-4.01 1.17l1.46 1.46C10.21 6.23 11.08 6 12 6c3.04 0 5.5 2.46 5.5 5.5v0.5H19c1.66 0 3 1.34 3 3 0 1.13-0.64 2.11-1.56 2.62l1.45 1.45C23.16 18.16 24 16.68 24 15c0-2.64-2.05-4.78-4.65-4.96zM3 5.27l2.75 2.74C2.56 8.15 0 10.77 0 14c0 3.31 2.69 6 6 6h11.73l2 2 1.27-1.27L4.27 4 3 5.27zM7.73 10l8 8H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h1.73z"/></symbol>
+    </svg>
     <div class="hero">
         <img src="icon-192.png" alt="Where? app icon" class="hero-icon">
         <h1>Feature Guide</h1>
         <p>What each button and gesture does. Pick a topic or scroll through.</p>
     </div>
 
-    <nav class="toc">
+    <nav class="toc" aria-label="Guide contents">
         <div class="toc-grid">
             <a href="#buttons">Map buttons</a>
             <a href="#move">Finding your way</a>
@@ -180,7 +145,7 @@
             <a href="#record">Recording</a>
             <a href="#tracks">Saved tracks</a>
             <a href="#import">Importing</a>
-            <a href="#places">Saved places</a>
+            <a href="#places">Saved points</a>
             <a href="#sharing">Live sharing</a>
             <a href="#offline">Offline maps</a>
             <a href="#settings">Settings</a>
@@ -188,25 +153,25 @@
     </nav>
 
     <section id="buttons">
-        <h2><span class="emoji">&#x1f4f1;</span> Map buttons</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-map"/></svg> Map buttons</h2>
         <p class="lead">The buttons run down the right edge of the map, top to bottom. Zoom sits top-left.</p>
         <div class="card">
-            <ul class="steps">
-                <li><span class="k">&#x1f50d; Search</span><span class="v">Opens a search box at the top to find places by name.</span></li>
-                <li><span class="k">&#x25a4; Layers</span><span class="v">Opens the menu to pick a base map and toggle overlays.</span></li>
-                <li><span class="k">&#x1f534; Record</span><span class="v">Starts recording a track. Turns into a stop button while recording.</span></li>
-                <li><span class="k">&#x1f4cd; My location</span><span class="v">Centers the map on your current position.</span></li>
-                <li><span class="k">&#x1f4cf; Ruler</span><span class="v">Turns the tap-to-measure ruler on and off. Highlights when on.</span></li>
-                <li><span class="k">&#x2699;&#xfe0f; Settings</span><span class="v">Opens Settings.</span></li>
+            <ul class="steps" role="list">
+                <li><span class="k"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg> Search</span><span class="v">Opens a search box at the top to find places by name.</span></li>
+                <li><span class="k"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg> Layers</span><span class="v">Opens the menu to pick a base map and toggle overlays.</span></li>
+                <li><span class="k"><svg class="icon" aria-hidden="true"><use href="#i-record"/></svg> Record</span><span class="v">Starts recording a track. Turns into a stop button while recording.</span></li>
+                <li><span class="k"><svg class="icon" aria-hidden="true"><use href="#i-my-location"/></svg> My location</span><span class="v">Centers the map on your current position.</span></li>
+                <li><span class="k"><svg class="icon" aria-hidden="true"><use href="#i-ruler"/></svg> Ruler</span><span class="v">Turns the tap-to-measure ruler on and off. Highlights when on.</span></li>
+                <li><span class="k"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg> Settings</span><span class="v">Opens Settings.</span></li>
                 <li><span class="k">&plus; / &minus; Zoom</span><span class="v">Top-left. Zoom in and out one step at a time.</span></li>
             </ul>
         </div>
     </section>
 
     <section id="move">
-        <h2><span class="emoji">&#x1f9ed;</span> Finding your way</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-navigation"/></svg> Finding your way</h2>
         <div class="card">
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Move the map</span><span class="v">Drag to pan, pinch to zoom, twist with two fingers to rotate.</span></li>
                 <li><span class="k">Go to me</span><span class="v">Tap <strong>My location</strong> to jump to where you are.</span></li>
                 <li><span class="k">Search</span><span class="v">Tap <strong>Search</strong>, type a place, and tap a result to fly there.</span></li>
@@ -216,7 +181,7 @@
     </section>
 
     <section id="layers">
-        <h2><span class="emoji">&#x1f5fa;</span> Layers</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg> Layers</h2>
         <p class="lead">Tap the <strong>Layers</strong> button. Pick one base map (marked with a check); toggle any number of overlays.</p>
         <div class="card">
             <h3>Base maps &mdash; pick one</h3>
@@ -227,11 +192,12 @@
                 <li><strong>MapAnt</strong> &ndash; orienteering maps from laser scans</li>
                 <li><strong>OpenStreetMap</strong> &ndash; worldwide community map</li>
                 <li><strong>OpenTopoMap</strong> &ndash; global topo map with hiking trails</li>
+                <li><strong>Satellite (Sentinel-2)</strong> &ndash; cloud-free satellite imagery</li>
             </ul>
         </div>
         <div class="card">
             <h3>Overlays &mdash; toggle any</h3>
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Waymarked Trails</span><span class="v">Marked hiking routes.</span></li>
                 <li><span class="k">Avalanche Zones</span><span class="v">Steep-terrain runout areas from NVE.</span></li>
                 <li><span class="k">Hillshade</span><span class="v">Shaded relief for a sense of terrain.</span></li>
@@ -243,43 +209,43 @@
     </section>
 
     <section id="crosshair">
-        <h2><span class="emoji">&#x1f3af;</span> Crosshair &amp; coordinates</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-crosshair"/></svg> Crosshair &amp; coordinates</h2>
         <p class="lead">Turn on <strong>Crosshair</strong> in the layers menu to read off any point.</p>
         <div class="card">
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Reticle</span><span class="v">A crosshair marks the exact center of the map.</span></li>
                 <li><span class="k">Readout card</span><span class="v">Bottom-left: coordinates, elevation, slope, and distance from you.</span></li>
                 <li><span class="k">Switch format</span><span class="v">Tap the coordinates to cycle Lat/Lng &rarr; DMS &rarr; UTM &rarr; MGRS.</span></li>
-                <li><span class="k">Set a default</span><span class="v">Settings &rarr; Coordinate format sets which one is used everywhere.</span></li>
+                <li><span class="k">Set a default</span><span class="v">Settings &rarr; Coordinate Format sets which one is used everywhere.</span></li>
             </ul>
         </div>
     </section>
 
     <section id="measure">
-        <h2><span class="emoji">&#x1f4cf;</span> Measuring distance</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-ruler"/></svg> Measuring distance</h2>
         <div class="card">
             <h3>Two-finger measure &mdash; the quick way</h3>
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Measure</span><span class="v">Tap the map with two fingers at once. A dashed line and the straight-line distance between them appear.</span></li>
                 <li><span class="k">Clear</span><span class="v">It fades away on its own after a few seconds.</span></li>
             </ul>
         </div>
         <div class="card">
             <h3>Ruler &mdash; for multi-point routes</h3>
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Turn on</span><span class="v">Tap the <strong>Ruler</strong> button. A card appears reading &ldquo;Tap to measure&rdquo;.</span></li>
                 <li><span class="k">Add points</span><span class="v">Tap along the map. The card shows running total distance and point count.</span></li>
                 <li><span class="k">Undo / clear</span><span class="v">Use the buttons on the card to remove the last point or clear all.</span></li>
-                <li><span class="k">Keep it</span><span class="v">With 2+ points, tap <strong>Save as track</strong> to store the line as a track.</span></li>
+                <li><span class="k">Keep it</span><span class="v">With 2+ points, tap <strong>Save as Track</strong> to store the line as a track.</span></li>
                 <li><span class="k">Turn off</span><span class="v">Tap the Ruler button again.</span></li>
             </ul>
         </div>
     </section>
 
     <section id="record">
-        <h2><span class="emoji">&#x1f534;</span> Recording a track</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-record"/></svg> Recording a track</h2>
         <div class="card">
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Start</span><span class="v">Tap <strong>Record</strong>. On first use, allow background location so it keeps logging with the screen off.</span></li>
                 <li><span class="k">While recording</span><span class="v">A red card shows live distance; a notification keeps it running in the background.</span></li>
                 <li><span class="k">Stop</span><span class="v">Tap the button again (now a stop square).</span></li>
@@ -289,11 +255,11 @@
     </section>
 
     <section id="tracks">
-        <h2><span class="emoji">&#x1f4c2;</span> Saved tracks</h2>
-        <p class="lead">Open <strong>Settings &rarr; Saved tracks</strong> for everything you have recorded or imported.</p>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-save"/></svg> Saved tracks</h2>
+        <p class="lead">Open <strong>Settings &rarr; Saved Tracks</strong> for everything you have recorded or imported.</p>
         <div class="card">
-            <ul class="steps">
-                <li><span class="k">Show on map</span><span class="v">Opens the track, fitted to the screen, with a banner naming it.</span></li>
+            <ul class="steps" role="list">
+                <li><span class="k">Show on Map</span><span class="v">Opens the track, fitted to the screen, with a banner naming it.</span></li>
                 <li><span class="k">Rename</span><span class="v">Edit the track name.</span></li>
                 <li><span class="k">Export</span><span class="v">Save as a standard <strong>GPX</strong> file.</span></li>
                 <li><span class="k">Share</span><span class="v">Send it through the system share sheet.</span></li>
@@ -303,75 +269,75 @@
     </section>
 
     <section id="import">
-        <h2><span class="emoji">&#x1f4e5;</span> Importing tracks</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg> Importing tracks</h2>
         <div class="card">
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">From a file</span><span class="v">Open a <strong>GPX</strong> or <strong>FIT</strong> file from your device or another app.</span></li>
-                <li><span class="k">From a link</span><span class="v">Give it a web address ending in <code>.gpx</code> or <code>.fit</code> and it downloads and imports it.</span></li>
+                <li><span class="k">From a link</span><span class="v">In <strong>Settings &rarr; Saved Tracks</strong>, paste a link from Ut.no, Garmin Connect, Komoot, or Strava &mdash; or any URL ending in <code>.gpx</code> or <code>.fit</code>.</span></li>
                 <li><span class="k">Confirm</span><span class="v">You preview the track before it is added.</span></li>
             </ul>
         </div>
     </section>
 
     <section id="places">
-        <h2><span class="emoji">&#x1f4cd;</span> Saved places</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg> Saved points</h2>
         <div class="card">
-            <ul class="steps">
-                <li><span class="k">Save a place</span><span class="v">Press and hold a spot on the map, name it, and tap <strong>Save</strong>.</span></li>
+            <ul class="steps" role="list">
+                <li><span class="k">Save a point</span><span class="v">Press and hold a spot on the map, name it, and tap <strong>Save</strong>.</span></li>
                 <li><span class="k">Edit</span><span class="v">Tap a marker to change its name, description, or color.</span></li>
                 <li><span class="k">Delete</span><span class="v">Use <strong>Delete</strong> in that same dialog.</span></li>
-                <li><span class="k">Manage all</span><span class="v">Settings &rarr; Saved points lists them; tap any to jump to it.</span></li>
+                <li><span class="k">Manage all</span><span class="v">Settings &rarr; Saved Points lists them; tap any to jump to it.</span></li>
                 <li><span class="k">Show / hide</span><span class="v">Toggle <strong>Saved Points</strong> in the layers menu.</span></li>
             </ul>
         </div>
     </section>
 
     <section id="sharing">
-        <h2><span class="emoji">&#x1f4e1;</span> Live location sharing</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-share"/></svg> Live location sharing</h2>
         <p class="lead">Let people follow you in real time in any web browser &mdash; no account needed. Open <strong>Settings &rarr; Online Tracking</strong>.</p>
         <div class="card">
             <h3>Share your location</h3>
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Turn on</span><span class="v">Enable online tracking. You get a short client ID.</span></li>
                 <li><span class="k">Start sharing</span><span class="v">Switch on sharing and pick a duration (15 min up to 8 hours).</span></li>
-                <li><span class="k">Send the link</span><span class="v">Use <strong>Share link</strong>, or <strong>View on web</strong> to open it yourself.</span></li>
+                <li><span class="k">Send the link</span><span class="v">Use <strong>Share Tracking Link</strong>, or <strong>View on Web</strong> to open it yourself.</span></li>
                 <li><span class="k">Who's watching</span><span class="v">A chip on the map shows the viewer count and time left.</span></li>
                 <li><span class="k">New ID</span><span class="v">Regenerate the client ID to retire the old link.</span></li>
             </ul>
         </div>
         <div class="card">
             <h3>Follow someone</h3>
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Follow</span><span class="v">Enter their 6-character client ID and tap <strong>Follow</strong>.</span></li>
                 <li><span class="k">On the map</span><span class="v">A banner shows their status; their track draws live. Tap it to re-center.</span></li>
-                <li><span class="k">Stop</span><span class="v">Tap the X on the banner, or <strong>Stop following</strong>.</span></li>
+                <li><span class="k">Stop</span><span class="v">Tap the X on the banner, or <strong>Stop Following</strong>.</span></li>
             </ul>
         </div>
         <div class="tip"><strong>On the web:</strong> open <a href="/">where.synth.no</a> to watch live tracks in any browser, filter by client ID, and view recent tracks from the last day.</div>
     </section>
 
     <section id="offline">
-        <h2><span class="emoji">&#x1f4f6;</span> Offline maps</h2>
-        <p class="lead">Download map areas so they work with no signal. Open <strong>Settings &rarr; Offline maps</strong> and pick a layer.</p>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-cloud-off"/></svg> Offline maps</h2>
+        <p class="lead">Download map areas so they work with no signal. Open <strong>Settings &rarr; Offline Maps</strong> and pick a layer.</p>
         <div class="card">
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Download</span><span class="v">Tap the hexagons over the area you want, then tap <strong>Download</strong>. A progress bar appears at the top.</span></li>
                 <li><span class="k">Hex colors</span><span class="v">Gray = not downloaded, green = done, and partial areas can be continued.</span></li>
                 <li><span class="k">Elevation data</span><span class="v">Optionally include altitude and slope so the crosshair readout works offline.</span></li>
                 <li><span class="k">Manage</span><span class="v">See size per layer, delete a layer, or clear the tile cache.</span></li>
-                <li><span class="k">Offline mode</span><span class="v">The <strong>Offline mode</strong> switch stops all network use, relying only on downloads.</span></li>
+                <li><span class="k">Offline Mode</span><span class="v">The <strong>Offline Mode</strong> switch stops all network use, relying only on downloads.</span></li>
             </ul>
         </div>
     </section>
 
     <section id="settings">
-        <h2><span class="emoji">&#x2699;&#xfe0f;</span> Settings</h2>
+        <h2><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg> Settings</h2>
         <div class="card">
-            <ul class="steps">
+            <ul class="steps" role="list">
                 <li><span class="k">Theme</span><span class="v">Light, dark, or follow the system.</span></li>
                 <li><span class="k">Language</span><span class="v">English, Norwegian, or your device default.</span></li>
-                <li><span class="k">Coordinate format</span><span class="v">Your default of Lat/Lng, DMS, UTM, or MGRS.</span></li>
-                <li><span class="k">Offline mode</span><span class="v">Use only downloaded maps and data.</span></li>
+                <li><span class="k">Coordinate Format</span><span class="v">Your default of Lat/Lng, DMS, UTM, or MGRS.</span></li>
+                <li><span class="k">Offline Mode</span><span class="v">Use only downloaded maps and data.</span></li>
                 <li><span class="k">Crash reporting</span><span class="v">Optionally send anonymous reports to help fix bugs.</span></li>
                 <li><span class="k">Attributions</span><span class="v">The map sources and open-source libraries behind Where?</span></li>
             </ul>

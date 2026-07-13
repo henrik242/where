@@ -39,9 +39,44 @@ import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
 import no.synth.where.resources.Res
-import no.synth.where.resources.*
+import no.synth.where.resources.attributions
+import no.synth.where.resources.back
+import no.synth.where.resources.coord_format_dms
+import no.synth.where.resources.coord_format_latlng
+import no.synth.where.resources.coord_format_mgrs
+import no.synth.where.resources.coord_format_utm
+import no.synth.where.resources.coordinate_format
+import no.synth.where.resources.crash_reporting
+import no.synth.where.resources.crash_reporting_description
+import no.synth.where.resources.go_to_attributions
+import no.synth.where.resources.go_to_download_manager
+import no.synth.where.resources.go_to_online_tracking
+import no.synth.where.resources.go_to_release_notes
+import no.synth.where.resources.go_to_saved_points
+import no.synth.where.resources.go_to_saved_tracks
+import no.synth.where.resources.go_to_user_guide
+import no.synth.where.resources.ic_arrow_back
+import no.synth.where.resources.ic_chevron_right
+import no.synth.where.resources.ic_favorite
+import no.synth.where.resources.ic_open_in_new
+import no.synth.where.resources.language
+import no.synth.where.resources.offline_maps
+import no.synth.where.resources.offline_mode
+import no.synth.where.resources.offline_mode_description
+import no.synth.where.resources.online_tracking
+import no.synth.where.resources.release_notes
+import no.synth.where.resources.saved_points
+import no.synth.where.resources.saved_tracks
+import no.synth.where.resources.saved_tracks_description
+import no.synth.where.resources.settings
+import no.synth.where.resources.sponsor
+import no.synth.where.resources.sponsor_description
+import no.synth.where.resources.theme
+import no.synth.where.resources.user_guide
+import no.synth.where.resources.user_guide_description
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.milliseconds
 
 data class LanguageOption(val tag: String?, val displayName: String)
 
@@ -84,11 +119,11 @@ fun SettingsScreenContent(
     LaunchedEffect(highlightOfflineMode) {
         if (highlightOfflineMode) {
             flashOfflineMode = true
-            delay(600)
+            delay(600.milliseconds)
             flashOfflineMode = false
-            delay(400)
+            delay(400.milliseconds)
             flashOfflineMode = true
-            delay(600)
+            delay(600.milliseconds)
             flashOfflineMode = false
         }
     }
@@ -401,6 +436,26 @@ fun SettingsScreenContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { onReleaseNotesClick() }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(Res.string.release_notes),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Icon(
+                        painterResource(Res.drawable.ic_open_in_new),
+                        contentDescription = stringResource(Res.string.go_to_release_notes)
+                    )
+                }
+
+                HorizontalDivider()
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .clickable { onAttributionsClick() }
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -413,26 +468,6 @@ fun SettingsScreenContent(
                     Icon(
                         painterResource(Res.drawable.ic_chevron_right),
                         contentDescription = stringResource(Res.string.go_to_attributions)
-                    )
-                }
-
-                HorizontalDivider()
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onReleaseNotesClick() }
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(Res.string.release_notes),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Icon(
-                        painterResource(Res.drawable.ic_open_in_new),
-                        contentDescription = null
                     )
                 }
 

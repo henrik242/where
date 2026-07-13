@@ -9,5 +9,5 @@ export const CONFIG = {
 } as const;
 
 if (!CONFIG.TRACKING_HINT) {
-  console.warn('⚠️  WARNING: TRACKING_HINT not set! All tracking requests will be rejected.');
+  console.warn('WARNING: TRACKING_HINT not set! All tracking requests will be rejected.');
 }

@@ -9,42 +9,14 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     <!-- OG_META -->
 
+    <link rel="stylesheet" href="site.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: #333;
-            background: #fff;
-        }
-        .hero {
-            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
-            color: white;
-            padding: 80px 24px 60px;
-            text-align: center;
-        }
-        .hero-icon {
-            width: 96px;
-            height: 96px;
-            border-radius: 22px;
-            margin-bottom: 24px;
-        }
-        .hero h1 {
-            font-size: 42px;
-            font-weight: 700;
-            margin-bottom: 12px;
-        }
-        .hero p {
-            font-size: 20px;
-            opacity: 0.9;
-            max-width: 520px;
-            margin: 0 auto 32px;
-            line-height: 1.5;
-        }
         .badges {
             display: flex;
             justify-content: center;
             gap: 16px;
             flex-wrap: wrap;
+            margin-top: 32px;
         }
         .badges a img {
             height: 52px;
@@ -59,7 +31,7 @@
             font-weight: 700;
             text-align: center;
             margin-bottom: 40px;
-            color: #1a73e8;
+            color: var(--accent);
         }
         .feature-grid {
             display: grid;
@@ -70,8 +42,12 @@
             text-align: center;
         }
         .feature-icon {
-            font-size: 36px;
             margin-bottom: 12px;
+        }
+        .feature-icon svg {
+            width: 36px;
+            height: 36px;
+            fill: var(--accent);
         }
         .feature h3 {
             font-size: 18px;
@@ -80,63 +56,8 @@
         }
         .feature p {
             font-size: 15px;
-            color: #666;
+            color: var(--text-subtle);
             line-height: 1.5;
-        }
-        .cta {
-            background: #f8f9fa;
-            padding: 48px 24px;
-            text-align: center;
-        }
-        .cta h2 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .cta p {
-            font-size: 16px;
-            color: #666;
-            margin-bottom: 24px;
-        }
-        .links {
-            display: flex;
-            justify-content: center;
-            gap: 24px;
-            flex-wrap: wrap;
-        }
-        .links a {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 15px;
-            transition: opacity 0.2s;
-        }
-        .links a:hover { opacity: 0.85; }
-        .link-sponsor {
-            background: #db61a2;
-            color: white;
-        }
-        .link-github {
-            background: #24292e;
-            color: white;
-        }
-        .link-privacy {
-            background: #e8eaed;
-            color: #333;
-        }
-        .link-releases {
-            background: #e8eaed;
-            color: #333;
-        }
-        footer {
-            text-align: center;
-            padding: 32px 24px;
-            font-size: 14px;
-            color: #999;
         }
         .data-sources {
             max-width: 800px;
@@ -153,7 +74,7 @@
             font-weight: 600;
             text-align: center;
             margin-bottom: 8px;
-            color: #999;
+            color: var(--text-faint);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -163,25 +84,29 @@
         .data-sources li {
             padding: 3px 0;
             font-size: 13px;
-            color: #999;
+            color: var(--text-faint);
             line-height: 1.4;
         }
         .data-sources a {
-            color: #999;
+            color: var(--text-faint);
             text-decoration: none;
         }
-        .data-sources a:hover { text-decoration: underline; color: #666; }
-        footer a { color: #666; }
+        .data-sources a:hover { text-decoration: underline; color: var(--text-subtle); }
         @media (max-width: 480px) {
-            .hero { padding: 48px 16px 40px; }
-            .hero h1 { font-size: 32px; }
-            .hero p { font-size: 17px; }
             .features { padding: 40px 16px; }
             .data-sources { flex-direction: column; }
         }
     </style>
 </head>
 <body>
+    <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+        <symbol id="i-map" viewBox="0 0 24 24"><path d="M20.5 3l-0.16 0.03L15 5.1 9 3 3.36 4.9c-0.21 0.07-0.36 0.25-0.36 0.48V20.5c0 0.28 0.22 0.5 0.5 0.5l0.16-0.03L9 18.9l6 2.1 5.64-1.9c0.21-0.07 0.36-0.25 0.36-0.48V3.5c0-0.28-0.22-0.5-0.5-0.5zM15 19l-6-2.11V5l6 2.11V19z"/></symbol>
+        <symbol id="i-my-location" viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-0.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c0.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-0.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></symbol>
+        <symbol id="i-share" viewBox="0 0 24 24"><path d="M18 16.08c-0.76 0-1.44 0.3-1.96 0.77L8.91 12.7c0.05-0.23 0.09-0.46 0.09-0.7s-0.04-0.47-0.09-0.7l7.05-4.11c0.54 0.5 1.25 0.81 2.04 0.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 0.24 0.04 0.47 0.09 0.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c0.79 0 1.5-0.31 2.04-0.81l7.12 4.16c-0.05 0.21-0.08 0.43-0.08 0.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></symbol>
+        <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 0.9-2 2v8c0 1.1 0.9 2 2 2h18c1.1 0 2-0.9 2-2V8c0-1.1-0.9-2-2-2zm0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2v8z"/></symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 8.5c0 5.25 7 13 7 13s7-7.75 7-13C19 5.13 15.87 2 12 2zm0 9.5c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 0.9-2 2v10c0 1.1 0.9 2 2 2h12c1.1 0 2-0.9 2-2V10c0-1.1-0.9-2-2-2zm-6 9c-1.1 0-2-0.9-2-2s0.9-2 2-2 2 0.9 2 2-0.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></symbol>
+    </svg>
     <div class="hero">
         <img src="icon-192.png" alt="Where? app icon" class="hero-icon">
         <h1>Where?</h1>
@@ -203,32 +128,32 @@
         <h2>Built for the outdoors</h2>
         <div class="feature-grid">
             <div class="feature">
-                <div class="feature-icon">&#x1f5fa;</div>
+                <div class="feature-icon"><svg aria-hidden="true"><use href="#i-map"/></svg></div>
                 <h3>Offline maps</h3>
                 <p>Download topographic maps for use without cell service. Norwegian topo maps from Kartverket included.</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">&#x1f4cd;</div>
+                <div class="feature-icon"><svg aria-hidden="true"><use href="#i-my-location"/></svg></div>
                 <h3>GPS tracking</h3>
                 <p>Record your hikes, bike rides, and ski trips with background GPS tracking. Export as GPX.</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">&#x1f4e1;</div>
+                <div class="feature-icon"><svg aria-hidden="true"><use href="#i-share"/></svg></div>
                 <h3>Live sharing</h3>
                 <p>Share your real-time location with friends and family using a simple client ID.</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">&#x1f4cf;</div>
+                <div class="feature-icon"><svg aria-hidden="true"><use href="#i-ruler"/></svg></div>
                 <h3>Measure distances</h3>
                 <p>Use the ruler tool to plan routes and measure distances directly on the map.</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">&#x1f4cc;</div>
+                <div class="feature-icon"><svg aria-hidden="true"><use href="#i-pin"/></svg></div>
                 <h3>Save places</h3>
                 <p>Mark and organize waypoints, campsites, and points of interest with custom colors.</p>
             </div>
             <div class="feature">
-                <div class="feature-icon">&#x1f512;</div>
+                <div class="feature-icon"><svg aria-hidden="true"><use href="#i-lock"/></svg></div>
                 <h3>Privacy first</h3>
                 <p>No accounts, no ads, no tracking. Your location data is anonymous and ephemeral.</p>
             </div>
@@ -239,10 +164,10 @@
         <h2>Open source</h2>
         <p>Where? is free and open source and always will be. Contributions and feedback are welcome.</p>
         <div class="links">
-            <a href="/guide" class="link-privacy">Feature Guide</a>
+            <a href="/guide" class="link-secondary">Feature Guide</a>
             <a href="https://github.com/henrik242/where" class="link-github">GitHub</a>
-            <a href="https://github.com/henrik242/where/blob/main/RELEASES.md" class="link-releases">Release Notes</a>
-            <a href="/privacy" class="link-privacy">Privacy Policy</a>
+            <a href="https://github.com/henrik242/where/blob/main/RELEASES.md" class="link-secondary">Release Notes</a>
+            <a href="/privacy" class="link-secondary">Privacy Policy</a>
         </div>
     </div>
 

@@ -1,0 +1,121 @@
+/* Shared styles for the static pages (about, guide, privacy). */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    color-scheme: light dark;
+    --bg: #fff;
+    --text: #333;
+    --text-muted: #555;
+    --text-subtle: #666;
+    --text-faint: #999;
+    --heading: #1a2b3c;
+    --accent: #1a73e8;
+    --accent-deep: #0d47a1;
+    --surface: #f8f9fa;
+    --surface-alt: #e8eaed;
+    --chip: #eef3fd;
+    --chip-hover: #dde8fb;
+    --chip-text: #0d47a1;
+    --border: #ececf0;
+    --tip-text: #33475b;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #131519;
+        --text: #e3e5e8;
+        --text-muted: #b4bac2;
+        --text-subtle: #a3aab3;
+        --text-faint: #868d96;
+        --heading: #dde4ec;
+        --accent: #7cacf8;
+        --accent-deep: #a8c7fa;
+        --surface: #1c1f24;
+        --surface-alt: #2a2e35;
+        --chip: #1e2a3f;
+        --chip-hover: #283a58;
+        --chip-text: #a8c7fa;
+        --border: #2c3138;
+        --tip-text: #c2cbd6;
+    }
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+}
+
+.hero {
+    background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+    color: white;
+    padding: 80px 24px 60px;
+    text-align: center;
+}
+.hero-icon {
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    margin-bottom: 24px;
+}
+.hero h1 {
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+.hero p {
+    font-size: 20px;
+    opacity: 0.9;
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+.cta {
+    background: var(--surface);
+    padding: 48px 24px;
+    text-align: center;
+}
+.cta h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+.cta p {
+    font-size: 16px;
+    color: var(--text-subtle);
+    margin-bottom: 24px;
+}
+
+.links { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    transition: opacity 0.2s;
+}
+.links a:hover { opacity: 0.85; }
+.link-primary { background: #1a73e8; color: white; }
+.link-secondary { background: var(--surface-alt); color: var(--text); }
+.link-github { background: #24292e; color: white; }
+.link-sponsor { background: #db61a2; color: white; }
+
+footer {
+    text-align: center;
+    padding: 32px 24px;
+    font-size: 14px;
+    color: var(--text-faint);
+}
+footer a { color: var(--text-subtle); }
+
+@media (max-width: 480px) {
+    .hero { padding: 48px 16px 40px; }
+    .hero h1 { font-size: 32px; }
+    .hero p { font-size: 17px; }
+}

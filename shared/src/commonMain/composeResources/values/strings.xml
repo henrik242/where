@@ -169,6 +169,7 @@
     <string name="data_sources">Data Sources</string>
     <string name="open_source_libraries">Open Source Libraries</string>
     <string name="release_notes">Release Notes</string>
+    <string name="go_to_release_notes">Open the release notes</string>
     <string name="user_guide">Feature Guide</string>
     <string name="user_guide_description">How everything works, opens in your browser</string>
     <string name="go_to_user_guide">Open the feature guide</string>

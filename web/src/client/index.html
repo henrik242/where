@@ -27,13 +27,13 @@
         </button>
         <div class="menu-dropdown">
             <a href="/about">About Where?</a>
-            <a href="/guide">Feature guide</a>
+            <a href="/guide">Feature Guide</a>
             <a href="https://github.com/henrik242/where">GitHub</a>
             <div class="menu-version" id="version-display"></div>
         </div>
     </div>
     <button id="show-panel-btn" class="show-panel-btn" onclick="showPanel()">
-        📍 Live Tracks
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align: -2px"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg> Live Tracks
     </button>
     <div class="info-panel" id="info-panel">
         <div class="panel-header">
@@ -41,7 +41,7 @@
             <button class="close-btn" onclick="hidePanel()" title="Close">×</button>
         </div>
         <div class="admin-section" id="admin-section">
-            <div style="font-weight: 600; margin-bottom: 4px;">👑 Admin Active</div>
+            <div style="font-weight: 600; margin-bottom: 4px;">Admin Active</div>
             <div style="font-size: 11px; opacity: 0.9; margin-bottom: 8px;">Viewing all tracks</div>
             <div id="session-stats" style="font-size: 11px; opacity: 0.9; margin-bottom: 8px;"></div>
             <button class="admin-button" onclick="disableAdmin()">Disable Admin</button>

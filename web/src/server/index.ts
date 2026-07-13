@@ -23,17 +23,19 @@ interface FetchHandlerDeps {
 }
 
 function makeFetchHandler({ handleAPI, ogMeta }: FetchHandlerDeps) {
-  async function serveHtml(path: string): Promise<Response | null> {
+  async function serveHtml(path: string, canonicalPath: string): Promise<Response | null> {
     const file = Bun.file(`${CLIENT_DIR}${path}`);
     if (!(await file.exists())) return null;
     const html = await file.text();
-    return new Response(html.replace('<!-- OG_META -->', ogMeta), {
+    return new Response(html.replace('<!-- OG_META -->', ogMeta.replace('__OG_PATH__', canonicalPath)), {
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
   }
 
   return async function fetch(req: Request, server: Server): Promise<Response | undefined> {
     const url = new URL(req.url);
+    // /about/ and /about serve the same page
+    const pathname = url.pathname === '/' ? '/' : url.pathname.replace(/\/+$/, '') || '/';
 
     if (url.pathname === '/ws') {
       return server.upgrade(req)
@@ -45,34 +47,34 @@ function makeFetchHandler({ handleAPI, ogMeta }: FetchHandlerDeps) {
       return handleAPI(req);
     }
 
-    if (url.pathname === '/ios') {
+    if (pathname === '/ios') {
       return Response.redirect('https://apps.apple.com/app/where/id6760362061', 302);
     }
-    if (url.pathname === '/android') {
+    if (pathname === '/android') {
       return Response.redirect('https://play.google.com/store/apps/details?id=no.synth.where', 302);
     }
 
     // Legacy ?clients= → /:clientIds path
-    if (url.pathname === '/') {
+    if (pathname === '/') {
       const clientsParam = url.searchParams.get('clients');
       if (clientsParam && CLIENT_IDS_RE.test(clientsParam)) {
         return Response.redirect(`${url.origin}/${clientsParam}`, 302);
       }
     }
 
-    const filePath = HTML_ALIASES.get(url.pathname) ?? url.pathname;
+    const filePath = HTML_ALIASES.get(pathname) ?? pathname;
     const file = Bun.file(`${CLIENT_DIR}${filePath}`);
     if (await file.exists()) {
       if (filePath.endsWith('.html')) {
-        const html = await serveHtml(filePath);
+        const html = await serveHtml(filePath, pathname);
         if (html) return html;
       }
       return new Response(file);
     }
 
     // SPA fallback for path-based client IDs (e.g. /abc123 or /abc123,def456)
-    if (CLIENT_IDS_RE.test(url.pathname.slice(1))) {
-      const html = await serveHtml('/index.html');
+    if (CLIENT_IDS_RE.test(pathname.slice(1))) {
+      const html = await serveHtml('/index.html', pathname);
       if (html) return html;
     }
 
@@ -103,12 +105,12 @@ async function main() {
 
   startStaleTrackChecker();
 
-  console.log(`🚀 Where Web running at http://localhost:${server.port}`);
-  console.log(`📡 WebSocket available at ws://localhost:${server.port}/ws`);
-  console.log(`🌐 Web interface at http://localhost:${server.port}`);
-  console.log(`🔑 Admin: ${CONFIG.ADMIN_KEY ? 'ENABLED' : 'DISABLED'}`);
-  console.log(`🔒 HMAC verification: ${CONFIG.TRACKING_HINT ? 'ENABLED' : 'DISABLED'}`);
-  console.log(`⏱️  Auto-stop inactive tracks after 10 minutes`);
+  console.log(`Where Web running at http://localhost:${server.port}`);
+  console.log(`WebSocket available at ws://localhost:${server.port}/ws`);
+  console.log(`Web interface at http://localhost:${server.port}`);
+  console.log(`Admin: ${CONFIG.ADMIN_KEY ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`HMAC verification: ${CONFIG.TRACKING_HINT ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`Auto-stop inactive tracks after 10 minutes`);
 }
 
 main().catch(err => {
