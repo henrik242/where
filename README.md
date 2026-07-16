@@ -10,7 +10,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 
 ### Maps
 
-- Offline base maps: Kartverket (topo, toporaster, nautical charts), MapAnt (LiDAR-based orienteering maps), OpenTopoMap, and OpenStreetMap
+- Offline base maps: Kartverket (topo, toporaster, nautical charts), MapAnt (LiDAR-based orienteering maps), OpenTopoMap, OpenStreetMap, and Sentinel-2 satellite imagery
 - Overlays: waymarked hiking trails, avalanche terrain from NVE (slope steepness and runout zones), hillshade, a coordinate grid, and a crosshair with live elevation and slope readout
 
 ### Location and sharing
@@ -22,6 +22,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 ### Tracks
 
 - Save, revisit, import (GPX and FIT), and export (GPX) tracks, compatible with other hiking and navigation apps
+- Organize saved tracks into folders, with move, rename, and remove actions and undo
 - Navigate along a saved track with remaining distance, elevation, an off-course arrow pointing back to the route, and a reverse-direction toggle
 - Show several tracks at once, each in its own color, and tap one to focus it
 - Elevation chart you can scrub to mark the matching point on the map

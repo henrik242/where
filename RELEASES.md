@@ -4,6 +4,13 @@ Version numbers are the git commit count at build time; gaps between tag numbers
 builds that were never released. Each tag below marks a store release; dates are the
 tag dates.
 
+## v487 (2026-07-16)
+
+- Organize saved tracks into folders, shown as collapsible sections with unfiled tracks
+  at the top
+- Move tracks into folders one at a time or several at once, rename and remove folders,
+  with an undo option
+
 ## v481 (2026-07-12)
 
 - Map location puck uses fused location and recovers when location providers are toggled
