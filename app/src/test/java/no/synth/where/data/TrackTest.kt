@@ -65,6 +65,46 @@ class TrackTest {
     }
 
     @Test
+    fun toGPX_containsFolderAsType_whenSet() {
+        val track = Track(
+            name = "Test",
+            points = listOf(
+                TrackPoint(latLng = LatLng(59.9, 10.7), timestamp = 1000L)
+            ),
+            startTime = 1000L,
+            folder = "Skiing & Touring"
+        )
+        val gpx = track.toGPX()
+        assertTrue(gpx.contains("<type>Skiing &amp; Touring</type>"))
+    }
+
+    @Test
+    fun toGPX_omitsType_whenNoFolder() {
+        val track = Track(
+            name = "Test",
+            points = listOf(
+                TrackPoint(latLng = LatLng(59.9, 10.7), timestamp = 1000L)
+            ),
+            startTime = 1000L
+        )
+        val gpx = track.toGPX()
+        assertFalse(gpx.contains("<type>"))
+    }
+
+    @Test
+    fun fromGPX_ignoresType() {
+        // <trk><type> is deliberately not imported (toGPX writes the folder there, but third-party
+        // exports use it for activity kind); imported tracks start with no folder.
+        val gpx = """<?xml version="1.0"?>
+            <gpx version="1.1"><trk><name>Test</name><type>Skiing</type><trkseg>
+            <trkpt lat="59.9" lon="10.7"><time>2025-01-01T12:00:00Z</time></trkpt>
+            </trkseg></trk></gpx>"""
+
+        val track = requireNotNull(Track.fromGPX(gpx))
+        assertNull(track.folder)
+    }
+
+    @Test
     fun toGPX_isValidXml() {
         val track = Track(
             name = "Test",

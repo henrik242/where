@@ -194,6 +194,10 @@ fun TracksScreen(
         onShowSelectedOnMap = onShowTracksOnMap,
         onNavigate = onNavigateTrack,
         onCrop = onCropTrack,
+        onMoveToFolder = { moved, folder -> viewModel.moveToFolder(moved, folder) },
+        onRenameFolder = { oldName, newName -> viewModel.renameFolder(oldName, newName) },
+        onRemoveFolder = { viewModel.removeFolder(it) },
+        onRestoreFolders = { viewModel.restoreFolders(it) },
         isRecording = isRecording,
         onMapTrackIds = onMapTrackIds
     )

@@ -18,6 +18,7 @@ import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
+import no.synth.where.data.db.MIGRATION_1_2
 import no.synth.where.data.db.WhereDatabase
 import no.synth.where.util.CrashReporter
 import org.maplibre.android.MapLibre
@@ -32,7 +33,9 @@ private val Application.clientPrefsDataStore by preferencesDataStore(name = "cli
 
 class WhereApplication : Application() {
     private val database by lazy {
-        Room.databaseBuilder(this, WhereDatabase::class.java, "where_database").build()
+        Room.databaseBuilder(this, WhereDatabase::class.java, "where_database")
+            .addMigrations(MIGRATION_1_2)
+            .build()
     }
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

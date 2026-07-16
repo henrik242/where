@@ -21,14 +21,16 @@ class EntityMappingTest {
             points = emptyList(),
             startTime = 1000L,
             endTime = 2000L,
-            isRecording = false
+            isRecording = false,
+            folder = "Running"
         )
         val entity = TrackEntity(
             id = track.id,
             name = track.name,
             startTime = track.startTime,
             endTime = track.endTime,
-            isRecording = track.isRecording
+            isRecording = track.isRecording,
+            folder = track.folder
         )
 
         assertEquals("t-1", entity.id)
@@ -36,6 +38,18 @@ class EntityMappingTest {
         assertEquals(1000L, entity.startTime)
         assertEquals(2000L, entity.endTime)
         assertFalse(entity.isRecording)
+        assertEquals("Running", entity.folder)
+    }
+
+    @Test
+    fun trackEntity_folderDefaultsToNull() {
+        val entity = TrackEntity(
+            id = "t-1",
+            name = "Morning Run",
+            startTime = 1000L
+        )
+
+        assertNull(entity.folder)
     }
 
     @Test
@@ -88,7 +102,8 @@ class EntityMappingTest {
             name = "Evening Walk",
             startTime = 3000L,
             endTime = 4000L,
-            isRecording = false
+            isRecording = false,
+            folder = "Walks"
         )
         val pointEntities = listOf(
             TrackPointEntity(trackId = "t-2", latitude = 59.9, longitude = 10.7, timestamp = 3000L, altitude = 10.0, accuracy = 5.0f, orderIndex = 0),
@@ -109,7 +124,8 @@ class EntityMappingTest {
             },
             startTime = entity.startTime,
             endTime = entity.endTime,
-            isRecording = entity.isRecording
+            isRecording = entity.isRecording,
+            folder = entity.folder
         )
 
         assertEquals("t-2", track.id)
@@ -120,6 +136,7 @@ class EntityMappingTest {
         assertEquals(3000L, track.startTime)
         assertEquals(4000L, track.endTime)
         assertFalse(track.isRecording)
+        assertEquals("Walks", track.folder)
     }
 
     @Test

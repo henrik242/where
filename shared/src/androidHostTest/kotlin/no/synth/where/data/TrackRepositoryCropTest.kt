@@ -1,8 +1,6 @@
 package no.synth.where.data
 
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import no.synth.where.data.db.TrackDao
@@ -15,54 +13,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
-/**
- * In-memory [TrackDao] modelling the tracks + points tables, so the crop overwrite path (which uses
- * the interface's default delete-then-insert `replaceTrackWithPoints`) can be verified without an
- * instrumented Room database. Synchronized because the repository collects [getAllTracks] on a
- * background dispatcher while the test writes.
- */
-private class FakeTrackDao : TrackDao {
-    private val lock = Any()
-    private val tracks = LinkedHashMap<String, TrackEntity>()
-    private val rows = ArrayList<TrackPointEntity>()
-    private var nextId = 1L
-    private val allTracks = MutableStateFlow<List<TrackEntity>>(emptyList())
-
-    fun pointCount(trackId: String): Int = synchronized(lock) { rows.count { it.trackId == trackId } }
-
-    override fun getAllTracks(): Flow<List<TrackEntity>> = allTracks
-
-    override suspend fun getPointsForTrack(trackId: String): List<TrackPointEntity> =
-        synchronized(lock) { rows.filter { it.trackId == trackId }.sortedBy { it.orderIndex } }
-
-    override suspend fun insertTrack(track: TrackEntity) = synchronized(lock) {
-        tracks[track.id] = track
-        allTracks.value = tracks.values.toList()
-    }
-
-    override suspend fun insertTrackPoints(points: List<TrackPointEntity>) = synchronized(lock) {
-        points.forEach { rows.add(it.copy(id = nextId++)) }
-    }
-
-    override suspend fun deleteTrack(trackId: String) = synchronized(lock) {
-        tracks.remove(trackId)
-        rows.removeAll { it.trackId == trackId }
-        allTracks.value = tracks.values.toList()
-    }
-
-    override suspend fun deletePointsForTrack(trackId: String) = synchronized(lock) {
-        rows.removeAll { it.trackId == trackId }
-        Unit
-    }
-
-    override suspend fun renameTrack(trackId: String, name: String) = synchronized(lock) {
-        tracks[trackId]?.let { tracks[trackId] = it.copy(name = name) }
-        Unit
-    }
-
-    override suspend fun getAllTracksOnce(): List<TrackEntity> = synchronized(lock) { tracks.values.toList() }
-}
-
 class TrackRepositoryCropTest {
 
     private fun tmpDir(): PlatformFile {
@@ -71,7 +21,7 @@ class TrackRepositoryCropTest {
         return PlatformFile(dir)
     }
 
-    private fun repo(dao: TrackDao = FakeTrackDao()) = TrackRepository(tmpDir(), dao)
+    private fun repo(dao: TrackDao = InMemoryTrackDao()) = TrackRepository(tmpDir(), dao)
 
     private fun sampleTrack(id: String = "t1", n: Int = 5) = Track(
         id = id,
@@ -81,7 +31,7 @@ class TrackRepositoryCropTest {
         endTime = (n - 1).toLong(),
     )
 
-    private fun seed(dao: FakeTrackDao, track: Track) = runBlocking {
+    private fun seed(dao: InMemoryTrackDao, track: Track) = runBlocking {
         dao.insertTrack(TrackEntity(track.id, track.name, track.startTime, track.endTime, false))
         dao.insertTrackPoints(
             track.points.mapIndexed { i, p ->
@@ -90,7 +40,7 @@ class TrackRepositoryCropTest {
         )
     }
 
-    private fun awaitPointCount(dao: FakeTrackDao, trackId: String, expected: Int) = runBlocking {
+    private fun awaitPointCount(dao: InMemoryTrackDao, trackId: String, expected: Int) = runBlocking {
         withTimeout(2000) { while (dao.pointCount(trackId) != expected) delay(20) }
     }
 
@@ -132,7 +82,7 @@ class TrackRepositoryCropTest {
 
     @Test
     fun applyCropReplacesTrackInPlaceWithoutStrandingPoints() {
-        val dao = FakeTrackDao()
+        val dao = InMemoryTrackDao()
         val repo = repo(dao)
         val t = sampleTrack(n = 5)
         seed(dao, t)
@@ -151,7 +101,7 @@ class TrackRepositoryCropTest {
 
     @Test
     fun noOpCropSkipsRewriteAndUndo() {
-        val dao = FakeTrackDao()
+        val dao = InMemoryTrackDao()
         val repo = repo(dao)
         val t = sampleTrack(n = 5)
         seed(dao, t)
@@ -165,7 +115,7 @@ class TrackRepositoryCropTest {
 
     @Test
     fun undoCropRestoresOriginalPoints() {
-        val dao = FakeTrackDao()
+        val dao = InMemoryTrackDao()
         val repo = repo(dao)
         val t = sampleTrack(n = 5)
         seed(dao, t)

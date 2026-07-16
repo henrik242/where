@@ -27,10 +27,14 @@ data class Track @OptIn(ExperimentalUuidApi::class) constructor(
     val points: List<TrackPoint>,
     val startTime: Long,
     val endTime: Long? = null,
-    val isRecording: Boolean = false
+    val isRecording: Boolean = false,
+    // null = unfiled; the exact (case-sensitive) name is the folder's identity; one folder per track.
+    val folder: String? = null
 ) {
     fun toGPX(): String {
         val escapedName = name.escapeXml()
+        // folder is written into <trk><type>; deliberately not read back on import (see fromGPX).
+        val typeXml = folder?.let { "\n    <type>${it.escapeXml()}</type>" } ?: ""
         val trackPointsXml = points.joinToString("\n") { point ->
             val timestamp = Instant.fromEpochMilliseconds(point.timestamp).toString()
             val elevation = point.altitude?.let { "\n        <ele>$it</ele>" } ?: ""
@@ -49,7 +53,7 @@ data class Track @OptIn(ExperimentalUuidApi::class) constructor(
     <time>${Instant.fromEpochMilliseconds(startTime)}</time>
   </metadata>
   <trk>
-    <name>$escapedName</name>
+    <name>$escapedName</name>$typeXml
     <trkseg>
 $trackPointsXml
     </trkseg>
@@ -214,6 +218,9 @@ $trackPointsXml
                 val startTime = trackPoints.minOf { it.timestamp }
                 val endTime = trackPoints.maxOf { it.timestamp }
 
+                // The <trk><type> element (which toGPX writes the folder into) is intentionally not
+                // read back: third-party exports use <type> for the activity kind (Strava writes
+                // numeric codes), so importing it would spawn junk folders. Imports start unfiled.
                 return Track(
                     name = trackName,
                     points = trackPoints,

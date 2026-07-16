@@ -45,6 +45,15 @@ interface TrackDao {
     @Query("UPDATE tracks SET name = :name WHERE id = :trackId")
     suspend fun renameTrack(trackId: String, name: String)
 
+    @Query("UPDATE tracks SET folder = :folder WHERE id IN (:trackIds)")
+    suspend fun updateFolderForTracks(trackIds: List<String>, folder: String?)
+
+    @Query("UPDATE tracks SET folder = :newName WHERE folder = :oldName")
+    suspend fun renameFolder(oldName: String, newName: String)
+
+    @Query("UPDATE tracks SET folder = NULL WHERE folder = :folderName")
+    suspend fun clearFolder(folderName: String)
+
     @Query("SELECT * FROM tracks ORDER BY startTime DESC")
     suspend fun getAllTracksOnce(): List<TrackEntity>
 }

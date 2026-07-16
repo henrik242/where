@@ -9,5 +9,7 @@ data class TrackEntity(
     val name: String,
     val startTime: Long,
     val endTime: Long? = null,
-    val isRecording: Boolean = false
+    val isRecording: Boolean = false,
+    // null = unfiled; the exact (case-sensitive) name is the folder's identity; one folder per track.
+    val folder: String? = null
 )

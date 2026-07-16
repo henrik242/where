@@ -26,6 +26,9 @@ data class NavigationSession(val track: Track, val reversed: Boolean)
 /** Active crop of a viewing track: keep points[startIndex..endIndex] (inclusive). */
 data class TrackCropState(val trackId: String, val startIndex: Int, val endIndex: Int)
 
+/** Trims a folder name; a blank name means "no folder" (null). Shared by the repo and the picker. */
+fun normalizeFolderName(folder: String?): String? = folder?.trim()?.takeIf { it.isNotEmpty() }
+
 /** Ids of the saved tracks currently drawn on the map: the viewing set plus any navigated track. */
 internal fun onMapTrackIdsOf(viewingTracks: List<Track>, navigation: NavigationSession?): Set<String> =
     buildSet {
@@ -145,7 +148,8 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
                     points = points,
                     startTime = entity.startTime,
                     endTime = entity.endTime,
-                    isRecording = entity.isRecording
+                    isRecording = entity.isRecording,
+                    folder = entity.folder
                 )
             }
             _tracks.value = tracks
@@ -162,7 +166,8 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
             name = track.name,
             startTime = track.startTime,
             endTime = track.endTime,
-            isRecording = false
+            isRecording = false,
+            folder = track.folder
         )
         val pointEntities = track.points.mapIndexed { index, point ->
             TrackPointEntity(
@@ -250,6 +255,42 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
             scope.launch {
                 trackDao.renameTrack(track.id, newName)
             }
+        }
+    }
+
+    /** Move tracks into [folder]; null (or blank) removes them from any folder. */
+    fun setTracksFolder(trackIds: List<String>, folder: String?) {
+        if (trackIds.isEmpty()) return
+        scope.launch { trackDao.updateFolderForTracks(trackIds, normalizeFolderName(folder)) }
+    }
+
+    /**
+     * Move every track in [oldName] to [newName]; blank new names are ignored. [oldName] must be an
+     * exact stored folder value (not normalized). If [newName] matches an existing folder the two
+     * merge, since folders are identified by their exact name.
+     */
+    fun renameFolder(oldName: String, newName: String) {
+        val normalized = normalizeFolderName(newName) ?: return
+        scope.launch { trackDao.renameFolder(oldName, normalized) }
+    }
+
+    /** Dissolve the folder: its tracks are kept but moved out of any folder. [name] must be exact. */
+    fun removeFolder(name: String) {
+        scope.launch { trackDao.clearFolder(name) }
+    }
+
+    /**
+     * Undo a folder change by putting each track back in the folder it had before. [previousFolders]
+     * maps track id to its prior folder (null = no folder); already-normalized, so it is applied as-is
+     * in one bulk update per distinct destination. Unlike crop undo (held in the repo), folder undo is
+     * captured in the UI and replayed here, since it must cover a bulk move statelessly.
+     */
+    fun restoreFolders(previousFolders: Map<String, String?>) {
+        if (previousFolders.isEmpty()) return
+        scope.launch {
+            previousFolders.entries
+                .groupBy({ it.value }, { it.key })
+                .forEach { (folder, ids) -> trackDao.updateFolderForTracks(ids, folder) }
         }
     }
 

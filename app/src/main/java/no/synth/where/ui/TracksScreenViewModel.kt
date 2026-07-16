@@ -58,6 +58,22 @@ class TracksScreenViewModel(
         trackRepository.renameTrack(track, newName)
     }
 
+    fun moveToFolder(tracks: List<Track>, folder: String?) {
+        trackRepository.setTracksFolder(tracks.map { it.id }, folder)
+    }
+
+    fun renameFolder(oldName: String, newName: String) {
+        trackRepository.renameFolder(oldName, newName)
+    }
+
+    fun removeFolder(name: String) {
+        trackRepository.removeFolder(name)
+    }
+
+    fun restoreFolders(previousFolders: Map<String, String?>) {
+        trackRepository.restoreFolders(previousFolders)
+    }
+
     /**
      * Reads the file bytes off the main thread and imports them, flipping [isImporting] for the
      * whole operation so the UI can show progress immediately. [readBytes] returns null if the

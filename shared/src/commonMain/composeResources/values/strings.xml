@@ -221,6 +221,26 @@
     <string name="delete_track_confirm">Are you sure you want to delete \'%1$s\'?</string>
     <string name="import_failed">Import Failed</string>
     <string name="rename_track">Rename Track</string>
+    <string name="no_folder">No folder</string>
+    <string name="move_to_folder">Move to folder</string>
+    <string name="moved_to_folder">Moved to “%1$s”</string>
+    <string name="moved_out_of_folder">Removed from folder</string>
+    <string name="folder_removed">Removed folder “%1$s”</string>
+    <string name="folder_name">Folder name</string>
+    <string name="new_folder">New folder…</string>
+    <string name="create">Create</string>
+    <string name="rename_folder">Rename folder</string>
+    <string name="merge_folders_title">Merge folders?</string>
+    <string name="merge_folders_confirm">A folder named “%1$s” already exists. Move these tracks into it?</string>
+    <string name="merge">Merge</string>
+    <string name="remove_folder">Remove folder</string>
+    <string name="remove_folder_title">Remove folder?</string>
+    <string name="remove_folder_confirm">Remove the folder “%1$s”? Its tracks are kept.</string>
+    <plurals name="n_tracks">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
+    <string name="folder_actions">Folder actions</string>
     <string name="share_track_chooser">Share Track</string>
     <string name="saved_to_path">Saved to %1$s</string>
     <string name="failed_to_save_track">Failed to save track: %1$s</string>

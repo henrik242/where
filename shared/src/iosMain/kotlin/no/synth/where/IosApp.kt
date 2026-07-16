@@ -272,6 +272,14 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         trackRepository.startCrop(track.id)
                         navigateToMap()
                     },
+                    onMoveToFolder = { moved, folder ->
+                        trackRepository.setTracksFolder(moved.map { it.id }, folder)
+                    },
+                    onRenameFolder = { oldName, newName ->
+                        trackRepository.renameFolder(oldName, newName)
+                    },
+                    onRemoveFolder = { trackRepository.removeFolder(it) },
+                    onRestoreFolders = { trackRepository.restoreFolders(it) },
                     isRecording = isRecording,
                     onMapTrackIds = onMapTrackIds
                 )
