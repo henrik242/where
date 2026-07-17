@@ -241,6 +241,8 @@
         <item quantity="other">%1$d spor</item>
     </plurals>
     <string name="folder_actions">Mappehandlinger</string>
+    <string name="select_all">Velg alle</string>
+    <string name="select_none">Velg ingen</string>
     <string name="share_track_chooser">Del spor</string>
     <string name="saved_to_path">Lagret til %1$s</string>
     <string name="failed_to_save_track">Kunne ikke lagre spor: %1$s</string>

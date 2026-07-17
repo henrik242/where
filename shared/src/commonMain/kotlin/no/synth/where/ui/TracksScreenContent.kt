@@ -314,6 +314,18 @@ fun TracksScreenContent(
                                         collapsedFolders + row.folder
                                     }
                                 },
+                                onSelectAll = {
+                                    selectionMode = true
+                                    collapsedFolders = collapsedFolders - row.folder   // reveal the picks
+                                    tracks.filter { it.folder == row.folder }.forEach {
+                                        if (it.id !in selectedIds) selectedIds.add(it.id)
+                                    }
+                                },
+                                onSelectNone = {
+                                    val folderIds = tracks.filter { it.folder == row.folder }.mapTo(mutableSetOf()) { it.id }
+                                    selectedIds.removeAll(folderIds)
+                                    if (selectedIds.isEmpty()) selectionMode = false
+                                },
                                 onRename = {
                                     folderNameDraft = row.folder
                                     folderToRename = row.folder
@@ -549,6 +561,8 @@ private fun FolderHeader(
     count: Int,
     expanded: Boolean,
     onToggle: () -> Unit,
+    onSelectAll: () -> Unit,
+    onSelectNone: () -> Unit,
     onRename: () -> Unit,
     onRemove: () -> Unit
 ) {
@@ -598,6 +612,21 @@ private fun FolderHeader(
                 )
             }
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.select_all)) },
+                    onClick = {
+                        menuOpen = false
+                        onSelectAll()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.select_none)) },
+                    onClick = {
+                        menuOpen = false
+                        onSelectNone()
+                    }
+                )
+                HorizontalDivider()
                 DropdownMenuItem(
                     text = { Text(stringResource(Res.string.rename_folder)) },
                     onClick = {
