@@ -246,7 +246,13 @@
     <string name="failed_to_save_track">Failed to save track: %1$s</string>
     <string name="open_track_chooser">Open Track With</string>
     <string name="track_imported">Imported \"%1$s\"</string>
-    <string name="importing_track">Importing track…</string>
+    <string name="import_into_folder">Import into folder</string>
+    <string name="import_no_tracks_found">No tracks found in the selected files.</string>
+    <plurals name="tracks_imported">
+        <item quantity="one">Imported %1$d track</item>
+        <item quantity="other">Imported %1$d tracks</item>
+    </plurals>
+    <string name="tracks_imported_partial">Imported %1$d of %2$d tracks</string>
     <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d points</string>
     <string name="duration_hours_minutes">%1$dh %2$dm</string>
     <string name="duration_minutes">%1$dm</string>

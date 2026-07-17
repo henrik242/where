@@ -27,12 +27,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.gestures.animateScrollBy
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import no.synth.where.data.BulkImportResult
+import no.synth.where.data.PendingBulkImport
 import no.synth.where.data.Track
 import no.synth.where.data.normalizeFolderName
 import no.synth.where.util.formatDateTime
 import no.synth.where.util.formatKm
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
@@ -53,6 +56,11 @@ fun TracksScreenContent(
     onNewlyImportedTrackConsumed: () -> Unit,
     onBackClick: () -> Unit,
     onImport: () -> Unit,
+    pendingBulkImport: PendingBulkImport? = null,
+    onBulkImportFolderSelected: (String?) -> Unit = {},
+    onBulkImportDismissed: () -> Unit = {},
+    bulkImportResult: BulkImportResult? = null,
+    onBulkImportResultShown: () -> Unit = {},
     onUrlImport: (String) -> Unit,
     onExport: (Track) -> Unit,
     onSave: ((Track) -> Unit)? = null,
@@ -126,6 +134,19 @@ fun TracksScreenContent(
         val message = saveResultMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
         onSaveResultMessageShown()
+    }
+
+    // Summarize a finished bulk import: "Imported N tracks", or "Imported N of M tracks" if some
+    // files failed to parse. (An all-failed import surfaces the error dialog on the platform side.)
+    LaunchedEffect(bulkImportResult) {
+        val result = bulkImportResult ?: return@LaunchedEffect
+        val message = if (result.failedCount == 0) {
+            getPluralString(Res.plurals.tracks_imported, result.importedCount, result.importedCount)
+        } else {
+            getString(Res.string.tracks_imported_partial, result.importedCount, result.totalCount)
+        }
+        snackbarHostState.showSnackbar(message)
+        onBulkImportResultShown()
     }
 
     Scaffold(
@@ -247,7 +268,7 @@ fun TracksScreenContent(
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(16.dp))
                         Text(
-                            text = stringResource(Res.string.importing_track),
+                            text = stringResource(Res.string.importing),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -421,6 +442,21 @@ fun TracksScreenContent(
         )
     }
 
+    pendingBulkImport?.let { pending ->
+        FolderPickerDialog(
+            folders = folderNames(tracks),
+            current = null,
+            // A zip prefills its name in the new-folder field, so no row is preselected; loose
+            // multi-select has no suggestion, so "No folder" is the default.
+            hasCommonFolder = pending.suggestedFolder == null,
+            title = stringResource(Res.string.import_into_folder),
+            initialNewFolderName = pending.suggestedFolder,
+            confirmLabel = stringResource(Res.string.import_label),
+            onSelect = { folder -> onBulkImportFolderSelected(normalizeFolderName(folder)) },
+            onDismiss = onBulkImportDismissed
+        )
+    }
+
     folderToRename?.let { oldName ->
         AlertDialog(
             onDismissRequest = { folderToRename = null },
@@ -583,32 +619,54 @@ private fun FolderHeader(
 
 /**
  * Picks a destination folder for [onSelect]: an existing one, none (null), or a newly named one.
- * Tapping a row selects immediately; only the new-folder input needs its Create confirm.
+ *
+ * Two modes. Move (the default, [confirmLabel] null): tapping a row acts immediately; only the
+ * new-folder input needs its Create confirm. Import ([confirmLabel] set, e.g. "Import"): tapping a
+ * row just highlights it and an explicit confirm button commits the choice — so finishing an import
+ * is a deliberate button press, not "tap the already-selected row".
  */
 @Composable
 private fun FolderPickerDialog(
     folders: List<String>,
     current: String?,
     hasCommonFolder: Boolean,
+    title: String = stringResource(Res.string.move_to_folder),
+    initialNewFolderName: String? = null,
+    confirmLabel: String? = null,
     onSelect: (String?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var newFolderName by remember { mutableStateOf<String?>(null) }
+    var newFolderName by remember { mutableStateOf(initialNewFolderName) }
+    // Import mode only: the row highlighted while the user decides. Typing a new name overrides it.
+    var selectedFolder by remember { mutableStateOf(if (hasCommonFolder) current else null) }
+
+    fun onRowClick(folder: String?) {
+        if (confirmLabel != null) {
+            selectedFolder = folder
+            newFolderName = null
+        } else {
+            onSelect(folder)
+        }
+    }
+    fun rowSelected(folder: String?): Boolean =
+        if (confirmLabel != null) newFolderName == null && selectedFolder == folder
+        else hasCommonFolder && folder == current
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.move_to_folder)) },
+        title = { Text(title) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 FolderPickerRow(
                     label = stringResource(Res.string.no_folder),
-                    selected = hasCommonFolder && current == null,
-                    onClick = { onSelect(null) }
+                    selected = rowSelected(null),
+                    onClick = { onRowClick(null) }
                 )
                 folders.forEach { folder ->
                     FolderPickerRow(
                         label = folder,
-                        selected = folder == current,
-                        onClick = { onSelect(folder) }
+                        selected = rowSelected(folder),
+                        onClick = { onRowClick(folder) }
                     )
                 }
                 val name = newFolderName
@@ -646,13 +704,17 @@ private fun FolderPickerDialog(
         },
         confirmButton = {
             val name = newFolderName
-            if (name != null) {
-                TextButton(
-                    onClick = { onSelect(name) },
-                    enabled = name.isNotBlank()
-                ) {
-                    Text(stringResource(Res.string.create))
-                }
+            when {
+                confirmLabel != null ->
+                    // Import: commit the typed name, else the highlighted row (which may be "No folder").
+                    TextButton(
+                        onClick = { onSelect(if (name != null) name else selectedFolder) },
+                        enabled = name == null || name.isNotBlank()
+                    ) { Text(confirmLabel) }
+                name != null ->
+                    TextButton(onClick = { onSelect(name) }, enabled = name.isNotBlank()) {
+                        Text(stringResource(Res.string.create))
+                    }
             }
         },
         dismissButton = {

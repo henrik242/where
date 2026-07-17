@@ -11,6 +11,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+import no.synth.where.data.BulkImportOutcome
+import no.synth.where.data.BulkImportResult
+import no.synth.where.data.PendingBulkImport
+import no.synth.where.data.isBulkImport
+import no.synth.where.data.outcome
+import no.synth.where.data.suggestedImportFolder
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.DownloadLayers
@@ -176,7 +182,10 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 var isImportingUrl by remember { mutableStateOf(false) }
                 var isImporting by remember { mutableStateOf(false) }
                 var newlyImportedTrackId by remember { mutableStateOf<String?>(null) }
+                var pendingBulkImport by remember { mutableStateOf<PendingBulkImport?>(null) }
+                var bulkImportResult by remember { mutableStateOf<BulkImportResult?>(null) }
                 val gpxCorruptedMsg = stringResource(Res.string.import_gpx_corrupted)
+                val noTracksMsg = stringResource(Res.string.import_no_tracks_found)
                 val importUrlErrorMsg = stringResource(Res.string.import_url_error)
                 fun sanitizeFileName(name: String): String =
                     name.replace(" ", "_").replace(":", "-")
@@ -194,27 +203,67 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onNewlyImportedTrackConsumed = { newlyImportedTrackId = null },
                     onBackClick = { navigateBack() },
                     onImport = {
-                        IosPlatformActions.pickFile(listOf("public.xml", "org.topografix.gpx", "public.data")) { bytes ->
-                            if (bytes == null) return@pickFile
-                            scope.launch {
-                                isImporting = true
-                                try {
-                                    val imported = trackRepository.importTrackFromBytes(bytes)
-                                    if (imported == null) {
-                                        importErrorMessage = gpxCorruptedMsg
-                                        showImportError = true
-                                    } else {
-                                        newlyImportedTrackId = imported.id
+                        IosPlatformActions.pickFiles(
+                            listOf("public.xml", "org.topografix.gpx", "public.data", "public.zip-archive")
+                        ) { files ->
+                            when {
+                                files.isEmpty() -> Unit
+                                isBulkImport(files) -> {
+                                    pendingBulkImport = PendingBulkImport(files.map { it.bytes }, suggestedImportFolder(files))
+                                }
+                                else -> {
+                                    val onlyBytes = files.first().bytes
+                                    scope.launch {
+                                        isImporting = true
+                                        try {
+                                            val imported = trackRepository.importTrackFromBytes(onlyBytes)
+                                            if (imported == null) {
+                                                importErrorMessage = gpxCorruptedMsg
+                                                showImportError = true
+                                            } else {
+                                                newlyImportedTrackId = imported.id
+                                            }
+                                        } catch (e: Exception) {
+                                            importErrorMessage = e.message ?: gpxCorruptedMsg
+                                            showImportError = true
+                                        } finally {
+                                            isImporting = false
+                                        }
                                     }
-                                } catch (e: Exception) {
-                                    importErrorMessage = e.message ?: gpxCorruptedMsg
-                                    showImportError = true
-                                } finally {
-                                    isImporting = false
                                 }
                             }
                         }
                     },
+                    pendingBulkImport = pendingBulkImport,
+                    onBulkImportFolderSelected = { folder ->
+                        val items = pendingBulkImport?.items.orEmpty()
+                        pendingBulkImport = null
+                        scope.launch {
+                            isImporting = true
+                            try {
+                                val result = trackRepository.importTracks(items, folder)
+                                when (result.outcome()) {
+                                    BulkImportOutcome.IMPORTED -> bulkImportResult = result
+                                    BulkImportOutcome.NONE_FOUND -> {
+                                        importErrorMessage = noTracksMsg
+                                        showImportError = true
+                                    }
+                                    BulkImportOutcome.ALL_FAILED -> {
+                                        importErrorMessage = gpxCorruptedMsg
+                                        showImportError = true
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                importErrorMessage = e.message ?: gpxCorruptedMsg
+                                showImportError = true
+                            } finally {
+                                isImporting = false
+                            }
+                        }
+                    },
+                    onBulkImportDismissed = { pendingBulkImport = null },
+                    bulkImportResult = bulkImportResult,
+                    onBulkImportResultShown = { bulkImportResult = null },
                     onUrlImport = { input ->
                         scope.launch {
                             isImportingUrl = true

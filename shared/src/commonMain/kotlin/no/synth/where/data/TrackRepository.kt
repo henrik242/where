@@ -23,6 +23,12 @@ import no.synth.where.util.currentTimeMillis
 
 data class NavigationSession(val track: Track, val reversed: Boolean)
 
+/** Outcome of a bulk import: the tracks that landed, and how many files failed to parse. */
+data class BulkImportResult(val imported: List<Track>, val failedCount: Int) {
+    val importedCount: Int get() = imported.size
+    val totalCount: Int get() = importedCount + failedCount
+}
+
 /** Active crop of a viewing track: keep points[startIndex..endIndex] (inclusive). */
 data class TrackCropState(val trackId: String, val startIndex: Int, val endIndex: Int)
 
@@ -429,6 +435,39 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     suspend fun importTrack(gpxContent: String): Track? = importParsed { Track.fromGPX(gpxContent) }
 
     suspend fun importTrackFromBytes(data: ByteArray): Track? = importParsed { Track.fromBytes(data) }
+
+    /**
+     * Import many [files] into [folder] (null = unfiled). Each file is a .gpx/.fit, or a .zip whose
+     * .gpx/.fit entries are each imported. Names are made unique across existing tracks and within
+     * the batch. Shares [importParsed]'s threading/persistence contract.
+     */
+    suspend fun importTracks(files: List<ByteArray>, folder: String? = null): BulkImportResult =
+        withContext(Dispatchers.Default) {
+            val destination = normalizeFolderName(folder)
+            val payloads = files.flatMap { bytes ->
+                if (ArchiveExtractor.isZip(bytes)) {
+                    ArchiveExtractor.extract(bytes) { isTrackFileName(it) }.map { it.bytes }
+                } else {
+                    listOf(bytes)
+                }
+            }
+            val existingNames = _tracks.value.mapTo(mutableListOf()) { it.name }
+            val imported = mutableListOf<Track>()
+            var failed = 0
+            for (payload in payloads) {
+                val parsed = Track.fromBytes(payload)
+                if (parsed == null) {
+                    failed++
+                    continue
+                }
+                val uniqueName = NamingUtils.makeUnique(parsed.name, existingNames)
+                existingNames.add(uniqueName)
+                val track = parsed.copy(name = uniqueName, folder = destination)
+                persistTrack(track)
+                imported.add(track)
+            }
+            BulkImportResult(imported, failed)
+        }
 
     // Parsing large tracks (e.g. FIT files with thousands of points) runs off the main
     // thread so the UI stays responsive; [parse] is invoked on the background dispatcher.

@@ -17,8 +17,16 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import no.synth.where.data.BulkImportOutcome
+import no.synth.where.data.BulkImportResult
+import no.synth.where.data.PendingBulkImport
+import no.synth.where.data.PickedFile
 import no.synth.where.data.Track
+import no.synth.where.data.isBulkImport
+import no.synth.where.data.outcome
+import no.synth.where.data.suggestedImportFolder
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.Logger
@@ -55,9 +63,16 @@ fun TracksScreen(
     var urlToConfirm by remember { mutableStateOf<String?>(null) }
     var fileUriToConfirm by remember { mutableStateOf<String?>(null) }
 
+    // Bulk import (multi-select or a zip): the picked files awaiting a destination folder, plus the
+    // finished-batch outcome for the summary snackbar.
+    var pendingBulkImport by remember { mutableStateOf<PendingBulkImport?>(null) }
+    var bulkImportResult by remember { mutableStateOf<BulkImportResult?>(null) }
+    val scope = rememberCoroutineScope()
+
     // Pre-resolve strings for use in non-composable lambdas
     val importUrlErrorStr = stringResource(Res.string.import_url_error)
     val importGpxCorruptedStr = stringResource(Res.string.import_gpx_corrupted)
+    val importNoTracksStr = stringResource(Res.string.import_no_tracks_found)
     val shareTrackChooserStr = stringResource(Res.string.share_track_chooser)
     val openTrackChooserStr = stringResource(Res.string.open_track_chooser)
     val savedToPathFmt = stringResource(Res.string.saved_to_path)
@@ -128,16 +143,35 @@ fun TracksScreen(
         )
     }
 
+    // One picker for everything: a single track file keeps the one-shot path; several files, or a
+    // zip, go through the folder prompt + batch import.
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let { picked ->
-            viewModel.importTrackFromBytes(
-                readBytes = { context.contentResolver.openInputStream(picked)?.use { it.readBytes() } }
-            ) { importedTrack ->
-                if (importedTrack == null) {
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        scope.launch {
+            val files = withContext(Dispatchers.IO) {
+                uris.mapNotNull { uri ->
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    bytes?.let { PickedFile(displayNameForUri(context, uri), it) }
+                }
+            }
+            when {
+                files.isEmpty() -> {
                     importErrorMessage = importGpxCorruptedStr
                     showImportError = true
+                }
+                isBulkImport(files) -> {
+                    pendingBulkImport = PendingBulkImport(files.map { it.bytes }, suggestedImportFolder(files))
+                }
+                else -> {
+                    val onlyBytes = files.first().bytes
+                    viewModel.importTrackFromBytes(readBytes = { onlyBytes }) { importedTrack ->
+                        if (importedTrack == null) {
+                            importErrorMessage = importGpxCorruptedStr
+                            showImportError = true
+                        }
+                    }
                 }
             }
         }
@@ -156,6 +190,27 @@ fun TracksScreen(
         onNewlyImportedTrackConsumed = { viewModel.clearNewlyImportedTrackId() },
         onBackClick = onBackClick,
         onImport = { filePickerLauncher.launch("*/*") },
+        pendingBulkImport = pendingBulkImport,
+        onBulkImportFolderSelected = { folder ->
+            val items = pendingBulkImport?.items.orEmpty()
+            pendingBulkImport = null
+            viewModel.importTracks(items, folder) { result ->
+                when (result.outcome()) {
+                    BulkImportOutcome.IMPORTED -> bulkImportResult = result
+                    BulkImportOutcome.NONE_FOUND -> {
+                        importErrorMessage = importNoTracksStr
+                        showImportError = true
+                    }
+                    BulkImportOutcome.ALL_FAILED -> {
+                        importErrorMessage = importGpxCorruptedStr
+                        showImportError = true
+                    }
+                }
+            }
+        },
+        onBulkImportDismissed = { pendingBulkImport = null },
+        bulkImportResult = bulkImportResult,
+        onBulkImportResultShown = { bulkImportResult = null },
         onUrlImport = { url ->
             viewModel.importFromUrl(url) { track ->
                 if (track == null) {

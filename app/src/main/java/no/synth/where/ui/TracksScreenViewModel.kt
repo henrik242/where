@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import no.synth.where.data.BulkImportResult
 import no.synth.where.data.TrackUrlImporter
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
@@ -93,6 +94,21 @@ class TracksScreenViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "Failed to import track from bytes")
                 onResult(null)
+            } finally {
+                _isImporting.value = false
+            }
+        }
+    }
+
+    /** Import many files (loose .gpx/.fit or a .zip) into [folder]; [onResult] gets the batch outcome. */
+    fun importTracks(items: List<ByteArray>, folder: String?, onResult: (BulkImportResult) -> Unit) {
+        viewModelScope.launch {
+            _isImporting.value = true
+            try {
+                onResult(trackRepository.importTracks(items, folder))
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to import tracks")
+                onResult(BulkImportResult(emptyList(), items.size))
             } finally {
                 _isImporting.value = false
             }

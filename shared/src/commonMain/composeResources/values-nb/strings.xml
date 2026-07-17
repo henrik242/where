@@ -246,7 +246,13 @@
     <string name="failed_to_save_track">Kunne ikke lagre spor: %1$s</string>
     <string name="open_track_chooser">Åpne spor med</string>
     <string name="track_imported">Importerte «%1$s»</string>
-    <string name="importing_track">Importerer spor…</string>
+    <string name="import_into_folder">Importer til mappe</string>
+    <string name="import_no_tracks_found">Fant ingen spor i de valgte filene.</string>
+    <plurals name="tracks_imported">
+        <item quantity="one">Importerte %1$d spor</item>
+        <item quantity="other">Importerte %1$d spor</item>
+    </plurals>
+    <string name="tracks_imported_partial">Importerte %1$d av %2$d spor</string>
     <string name="track_info_format">%1$s \u2022 %2$s km \u2022 %3$s \u2022 %4$d punkter</string>
     <string name="duration_hours_minutes">%1$dt %2$dm</string>
     <string name="duration_minutes">%1$dm</string>

@@ -4,6 +4,7 @@ import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
+import no.synth.where.data.PickedFile
 import platform.Foundation.NSData
 import platform.Foundation.NSString
 import platform.Foundation.NSURL
@@ -53,9 +54,9 @@ object IosPlatformActions {
         rootVC.presentViewController(activityVC, animated = true, completion = null)
     }
 
-    fun pickFile(types: List<String>, onResult: (ByteArray?) -> Unit) {
+    fun pickFiles(types: List<String>, onResult: (List<PickedFile>) -> Unit) {
         val rootVC = topViewController() ?: run {
-            onResult(null)
+            onResult(emptyList())
             return
         }
 
@@ -71,7 +72,7 @@ object IosPlatformActions {
         val delegate = DocumentPickerDelegate(onResult)
         val picker = UIDocumentPickerViewController(forOpeningContentTypes = utTypes)
         picker.delegate = delegate
-        picker.allowsMultipleSelection = false
+        picker.allowsMultipleSelection = true
 
         // Store delegate ref to prevent GC
         delegateRef = delegate
@@ -83,7 +84,7 @@ object IosPlatformActions {
 
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     private class DocumentPickerDelegate(
-        private val onResult: (ByteArray?) -> Unit
+        private val onResult: (List<PickedFile>) -> Unit
     ) : NSObject(), platform.UIKit.UIDocumentPickerDelegateProtocol {
 
         override fun documentPicker(
@@ -91,38 +92,32 @@ object IosPlatformActions {
             didPickDocumentsAtURLs: List<*>
         ) {
             delegateRef = null
-            val url = didPickDocumentsAtURLs.firstOrNull() as? NSURL ?: run {
-                onResult(null)
-                return
-            }
-
-            val accessing = url.startAccessingSecurityScopedResource()
-            try {
-                val nsData = NSData.create(contentsOfURL = url) ?: run {
-                    onResult(null)
-                    return
-                }
-                val length = nsData.length.toInt()
-                val ptr = nsData.bytes
-                if (length == 0 || ptr == null) {
-                    onResult(null)
-                    return
-                }
-                val bytes = ByteArray(length)
-                bytes.usePinned { pinned ->
-                    memcpy(pinned.addressOf(0), ptr, nsData.length)
-                }
-                onResult(bytes)
-            } finally {
-                if (accessing) {
-                    url.stopAccessingSecurityScopedResource()
+            val files = didPickDocumentsAtURLs.filterIsInstance<NSURL>().mapNotNull { url ->
+                val accessing = url.startAccessingSecurityScopedResource()
+                try {
+                    readBytes(url)?.let { PickedFile(url.lastPathComponent ?: "track", it) }
+                } finally {
+                    if (accessing) url.stopAccessingSecurityScopedResource()
                 }
             }
+            onResult(files)
         }
 
         override fun documentPickerWasCancelled(controller: UIDocumentPickerViewController) {
             delegateRef = null
-            onResult(null)
+            onResult(emptyList())
+        }
+
+        private fun readBytes(url: NSURL): ByteArray? {
+            val nsData = NSData.create(contentsOfURL = url) ?: return null
+            val length = nsData.length.toInt()
+            val ptr = nsData.bytes
+            if (length == 0 || ptr == null) return null
+            val bytes = ByteArray(length)
+            bytes.usePinned { pinned ->
+                memcpy(pinned.addressOf(0), ptr, nsData.length)
+            }
+            return bytes
         }
     }
 
