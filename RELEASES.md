@@ -4,7 +4,12 @@ Version numbers are the git commit count at build time; gaps between tag numbers
 builds that were never released. Each tag below marks a store release; dates are the
 tag dates.
 
-## v487 (2026-07-16)
+## Unreleased
+
+- Import several tracks at once, or a whole zip, filing them straight into a folder
+- Select all or none of a folder's tracks from its menu
+
+## v488 (2026-07-16)
 
 - Organize saved tracks into folders, shown as collapsible sections with unfiled tracks
   at the top
