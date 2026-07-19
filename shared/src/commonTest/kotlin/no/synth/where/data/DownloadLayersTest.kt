@@ -25,6 +25,12 @@ class DownloadLayersTest {
     }
 
     @Test
+    fun openTopoMapLayerIsCappedAtZoom17() {
+        val opentopo = assertNotNull(DownloadLayers.all.find { it.id == "opentopomap" }, "OpenTopoMap layer should exist")
+        assertEquals(17, opentopo.maxZoom, "OpenTopoMap serves tiles only through z17; z18+ returns 404")
+    }
+
+    @Test
     fun allIdsAreUnique() {
         val ids = DownloadLayers.all.map { it.id }
         assertEquals(ids.size, ids.toSet().size, "Layer IDs should be unique")

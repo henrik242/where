@@ -21,7 +21,9 @@ object MapStyle {
             MapLayer.KARTVERKET -> TileSource("kartverket", "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
             MapLayer.TOPORASTER -> TileSource("toporaster", "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
             MapLayer.SJOKARTRASTER -> TileSource("sjokartraster", "https://cache.kartverket.no/v1/wmts/1.0.0/sjokartraster/default/webmercator/{z}/{y}/{x}.png", "© <a href='https://www.kartverket.no'>Kartverket</a>")
-            MapLayer.OPENTOPOMAP -> TileSource("opentopomap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", "© <a href='https://opentopomap.org'>OpenTopoMap</a> (CC-BY-SA)")
+            // OpenTopoMap serves tiles only through z17 (z18+ returns 404), so cap here and let
+            // MapLibre overzoom locally instead of fetching missing tiles.
+            MapLayer.OPENTOPOMAP -> TileSource("opentopomap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", "© <a href='https://opentopomap.org'>OpenTopoMap</a> (CC-BY-SA)", maxZoom = 17)
             // MapAnt serves tiles only through z16 (z17+ returns 404), so cap here and let
             // MapLibre overzoom locally instead of fetching missing tiles.
             MapLayer.MAPANT -> TileSource("mapant", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png", "© <a href='https://mapant.no'>MapAnt.no</a>", maxZoom = 16)

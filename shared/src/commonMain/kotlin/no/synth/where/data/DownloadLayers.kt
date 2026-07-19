@@ -17,7 +17,7 @@ object DownloadLayers {
         DownloadLayer("mapant", "MapAnt", "https://mapant.no/tiles/osm/{z}/{x}/{y}.png", maxZoom = 16),
         DownloadLayer("satellite", "Satellite (Sentinel-2)", "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2025_3857/default/g/{z}/{y}/{x}.jpg", maxZoom = 14),
         DownloadLayer("osm", "OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
-        DownloadLayer("opentopomap", "OpenTopoMap", "https://tile.opentopomap.org/{z}/{x}/{y}.png"),
+        DownloadLayer("opentopomap", "OpenTopoMap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", maxZoom = 17),
         DownloadLayer("waymarkedtrails", "Waymarked Trails", "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", isOverlay = true),
         DownloadLayer("avalanchezones", "Avalanche Zones (NVE)", "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}", minZoom = 6, maxZoom = 19, isOverlay = true),
         DownloadLayer("terrain", "Terrain (Hillshade)", "https://s3.amazonaws.com/elevation-tiles-prod/normal/{z}/{x}/{y}.png", maxZoom = 15, isOverlay = true),

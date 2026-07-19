@@ -22,6 +22,13 @@ class MapStyleTest {
     }
 
     @Test
+    fun openTopoMapStyleIsCappedAtZoom17() {
+        val style = MapStyle.getStyle(selectedLayer = MapLayer.OPENTOPOMAP)
+        assertTrue(style.contains("opentopomap.org"), "Should use the OpenTopoMap tiles")
+        assertTrue(style.contains("\"maxzoom\": 17"), "OpenTopoMap source should be capped at zoom 17 (z18+ returns 404)")
+    }
+
+    @Test
     fun nonSatelliteBaseSourceHasNoMaxzoom() {
         val style = MapStyle.getStyle(selectedLayer = MapLayer.KARTVERKET)
         assertFalse(style.contains("maxzoom"), "Default base layers should not set maxzoom")
