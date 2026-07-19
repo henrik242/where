@@ -774,6 +774,12 @@ fun IosMapScreen(
         },
         onCloseTrack = { focusedTrackId?.let { trackRepository.removeViewingTrack(it) } },
         onCollapseTrack = { trackRepository.setFocusedTrack(null) },
+        onStartNavigation = {
+            focusedTrackId?.let { id ->
+                trackRepository.viewingTracks.value.firstOrNull { it.id == id }
+                    ?.let { trackRepository.startNavigation(it) }
+            }
+        },
         onCloseViewingPoint = { onClearViewingPoint() },
         onSearchQueryChange = { searchQuery = it },
         onSearchResultClick = { result ->

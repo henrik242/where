@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -214,10 +217,13 @@ fun ViewingTrackBanner(
     modifier: Modifier = Modifier,
     trackName: String,
     trackColorHex: String? = null,
+    canNavigate: Boolean = true,
+    onStartNavigation: () -> Unit = {},
     onCloseTrack: () -> Unit,
     onCollapse: () -> Unit
 ) {
     var confirmClose by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     if (confirmClose) {
         MapDialogs.ConfirmCloseTrackDialog(
             onConfirm = {
@@ -258,14 +264,47 @@ fun ViewingTrackBanner(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = onCollapse, modifier = Modifier.size(36.dp)) {
-                Icon(painterResource(Res.drawable.ic_expand_more), contentDescription = stringResource(Res.string.collapse))
-            }
-            IconButton(onClick = { confirmClose = true }, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    painterResource(Res.drawable.ic_close),
-                    contentDescription = stringResource(Res.string.close_track)
-                )
+            Box {
+                IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        painterResource(Res.drawable.ic_more_vert),
+                        contentDescription = stringResource(Res.string.track_actions)
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.start_navigation)) },
+                        leadingIcon = {
+                            Icon(painterResource(Res.drawable.ic_navigation), contentDescription = null)
+                        },
+                        enabled = canNavigate,
+                        onClick = {
+                            menuOpen = false
+                            onStartNavigation()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.close_details)) },
+                        leadingIcon = {
+                            Icon(painterResource(Res.drawable.ic_expand_more), contentDescription = null)
+                        },
+                        onClick = {
+                            menuOpen = false
+                            onCollapse()
+                        }
+                    )
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.close_track)) },
+                        leadingIcon = {
+                            Icon(painterResource(Res.drawable.ic_close), contentDescription = null)
+                        },
+                        onClick = {
+                            menuOpen = false
+                            confirmClose = true
+                        }
+                    )
+                }
             }
         }
     }
@@ -678,6 +717,7 @@ fun BoxScope.MapOverlays(
     onOnlineTrackingClick: () -> Unit = {},
     onCloseTrack: () -> Unit,
     onCollapseTrack: () -> Unit = {},
+    onStartNavigation: () -> Unit = {},
     onCloseViewingPoint: () -> Unit,
     onOfflineIndicatorClick: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit,
@@ -868,6 +908,8 @@ fun BoxScope.MapOverlays(
                     .padding(horizontal = 16.dp),
                 trackName = focusedTrack.name,
                 trackColorHex = focusedTrackColor,
+                canNavigate = focusedTrack.points.size >= 2 && !isRecording,
+                onStartNavigation = onStartNavigation,
                 onCloseTrack = onCloseTrack,
                 onCollapse = onCollapseTrack
             )

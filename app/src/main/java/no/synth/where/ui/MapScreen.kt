@@ -598,6 +598,16 @@ fun MapScreen(
         onOnlineTrackingClick = onOnlineTrackingSettingsClick,
         onCloseTrack = { focusedTrackId?.let { viewModel.removeViewingTrack(it) } },
         onCollapseTrack = { viewModel.unfocusTrack() },
+        onStartNavigation = {
+            focusedTrackId?.let { id ->
+                viewModel.startNavigation(id)
+                // The foreground service owns the location stream and notification while
+                // navigating; it self-stops when navigation ends.
+                if (viewModel.navigation.value != null) {
+                    LocationTrackingService.start(context)
+                }
+            }
+        },
         onCloseViewingPoint = onClearViewingPoint,
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
         onSearchResultClick = { result ->
@@ -870,6 +880,7 @@ private fun ViewingTrackBannerPreview() {
                 .fillMaxWidth()
                 .padding(16.dp),
             trackName = "Bymarka → Lian",
+            onStartNavigation = {},
             onCloseTrack = {},
             onCollapse = {}
         )

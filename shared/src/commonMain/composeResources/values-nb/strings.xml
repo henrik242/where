@@ -76,6 +76,9 @@
     <string name="close_track">Lukk spor</string>
     <string name="close_track_confirm_title">Lukke sporet?</string>
     <string name="close_track_confirm_message">Dette fjerner det fra kartet.</string>
+    <string name="close_details">Lukk detaljer</string>
+    <string name="track_actions">Sporhandlinger</string>
+    <string name="start_navigation">Start navigasjon</string>
     <string name="close_point_view">Lukk punktvisning</string>
     <string name="crop_track">Beskjær</string>
     <string name="crop_title">Beskjær %1$s</string>
