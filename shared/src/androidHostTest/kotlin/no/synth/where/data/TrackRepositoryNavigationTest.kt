@@ -44,6 +44,17 @@ class TrackRepositoryNavigationTest {
         isRecording = false,
     )
 
+    /** A track with altitudes, so [hasElevationData] is true and the navigation chart can open. */
+    private fun elevatedTrack(id: String = "t1") = Track(
+        id = id,
+        name = "t",
+        points = (0 until 3).map {
+            TrackPoint(LatLng(60.0 + it * 0.01, 10.0), timestamp = it.toLong(), altitude = 100.0 + it * 10)
+        },
+        startTime = 0L,
+        isRecording = false,
+    )
+
     private fun progress() = NavigationProgress(
         onCourse = true,
         offCourseMeters = 0.0,
@@ -156,5 +167,104 @@ class TrackRepositoryNavigationTest {
         repo.updateNavigationProgress(progress())
         repo.startNavigation(track("t2"))
         assertNull(repo.navigationProgress.value)
+    }
+
+    @Test
+    fun toggleNavigationChartFlipsVisibilityAndClearsMarker() {
+        val repo = repo()
+        repo.startNavigation(elevatedTrack())
+        repo.setElevationMarker(1)
+        repo.toggleNavigationChart()
+        assertEquals(true, repo.navigationChartVisible.value)
+        assertNull(repo.elevationMarker.value)
+        repo.toggleNavigationChart()
+        assertEquals(false, repo.navigationChartVisible.value)
+    }
+
+    @Test
+    fun toggleNavigationChartIsNoOpWhenIdle() {
+        val repo = repo()
+        repo.toggleNavigationChart()
+        assertEquals(false, repo.navigationChartVisible.value)
+    }
+
+    @Test
+    fun toggleNavigationChartIsNoOpWithoutElevationData() {
+        val repo = repo()
+        repo.startNavigation(track())   // track() carries no altitudes
+        repo.toggleNavigationChart()
+        assertEquals(false, repo.navigationChartVisible.value)
+    }
+
+    @Test
+    fun hideNavigationChartClosesChartAndIsNoOpWhenAlreadyHidden() {
+        val repo = repo()
+        repo.startNavigation(elevatedTrack())
+        repo.toggleNavigationChart()
+        repo.setElevationMarker(1)
+        repo.hideNavigationChart()
+        assertEquals(false, repo.navigationChartVisible.value)
+        assertNull(repo.elevationMarker.value)
+        repo.hideNavigationChart()   // already hidden: no-op
+        assertEquals(false, repo.navigationChartVisible.value)
+    }
+
+    @Test
+    fun startAndStopNavigationHideTheChart() {
+        val repo = repo()
+        repo.startNavigation(elevatedTrack())
+        repo.toggleNavigationChart()
+        assertEquals(true, repo.navigationChartVisible.value)
+        repo.stopNavigation()
+        assertEquals(false, repo.navigationChartVisible.value)
+        repo.startNavigation(elevatedTrack("t2"))
+        assertEquals(false, repo.navigationChartVisible.value)   // a fresh session starts hidden
+    }
+
+    @Test
+    fun toggleReverseKeepsChartOpenButClearsMarker() {
+        val repo = repo()
+        repo.startNavigation(elevatedTrack())
+        repo.toggleNavigationChart()
+        repo.setElevationMarker(1)
+        repo.toggleNavigationReverse()
+        assertEquals(true, repo.navigationChartVisible.value)   // chart stays across a reverse
+        assertNull(repo.elevationMarker.value)                  // marker index is stale, so cleared
+    }
+
+    @Test
+    fun onTrackTappedTogglesChartForRouteAndFocusesOtherTracks() {
+        val repo = repo()
+        repo.setViewingTracks(listOf(track("other")))
+        repo.startNavigation(elevatedTrack("nav"))
+        repo.onTrackTapped("nav")                 // the route -> toggle its chart
+        assertEquals(true, repo.navigationChartVisible.value)
+        repo.onTrackTapped("other")               // another track -> focus, suppressed while navigating
+        assertNull(repo.focusedTrackId.value)
+    }
+
+    @Test
+    fun onMapTapOutsideTracksHidesChartWhileNavigatingElseClearsFocus() {
+        repo().apply {
+            startNavigation(elevatedTrack())
+            toggleNavigationChart()
+            onMapTapOutsideTracks()
+            assertEquals(false, navigationChartVisible.value)
+        }
+        repo().apply {
+            addViewingTrack(track("a"))           // focuses "a" (not navigating)
+            assertEquals("a", focusedTrackId.value)
+            onMapTapOutsideTracks()
+            assertNull(focusedTrackId.value)
+        }
+    }
+
+    @Test
+    fun startNavigationByIdStartsAViewedTrackAndReportsSuccess() {
+        val repo = repo()
+        repo.setViewingTracks(listOf(track("a")))
+        assertEquals(true, repo.startNavigationById("a"))
+        assertEquals("a", repo.navigation.value?.track?.id)
+        assertEquals(false, repo.startNavigationById("missing"))
     }
 }

@@ -73,15 +73,19 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let navOffCourseLayerId = "nav-offcourse-layer"
     private let navArrowsLayerId = "nav-arrows-layer"
     private let navArrowImageName = "nav-arrow"
-    // Navigation line styling. Keep in sync with MapRenderUtils.kt updateNavigationOnMap.
-    // Sourced from the shared NavColors so Android and iOS can't drift apart.
-    // The traversed leg reuses navRemainingColor (drawn dotted), so it has no colour of its own.
+    // Navigation line styling, sourced from the shared NavColors/NavStyle so Android and iOS can't
+    // drift apart (widths, opacities, and dash gaps included). The traversed leg reuses
+    // navRemainingColor (drawn dotted), so it has no colour of its own.
     private let navRemainingColor = NavColors.shared.remaining
     private let navOffCourseColor = NavColors.shared.offCourse
-    private let navCompletedWidth = 4
-    private let navRemainingWidth = 6
-    private let navOffCourseWidth = 3
-    private let navArrowSpacing = 48
+    private let navCompletedWidth = NavStyle.shared.completedWidth
+    private let navRemainingWidth = NavStyle.shared.remainingWidth
+    private let navOffCourseWidth = NavStyle.shared.offCourseWidth
+    private let navArrowSpacing = NavStyle.shared.arrowSpacing
+    private let navRemainingOpacity = NavStyle.shared.remainingOpacity
+    private let navTraversedOpacity = NavStyle.shared.traversedOpacity
+    private let navTraversedDashGap = NavStyle.shared.traversedDashGap
+    private let navOffCourseDash = NavStyle.shared.offCourseDash
 
     func createMapView() -> UIView {
         if let existing = self.mapView {
@@ -671,7 +675,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         let layer = MLNCircleStyleLayer(identifier: elevationMarkerLayerId, source: source)
         layer.circleRadius = NSExpression(forConstantValue: 7)
         layer.circleColor = NSExpression(forConstantValue: UIColor.white)
-        layer.circleStrokeColor = NSExpression(forKeyPath: "color")   // focused track's palette color
+        layer.circleStrokeColor = NSExpression(forKeyPath: "color")   // focused track palette color, or the route color while navigating
         layer.circleStrokeWidth = NSExpression(forConstantValue: 3)
         style.addLayer(layer)
     }
@@ -811,10 +815,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             let layer = MLNLineStyleLayer(identifier: navCompletedLayerId, source: source)
             layer.lineColor = NSExpression(forConstantValue: UIColor(hex: navRemainingColor))
             layer.lineWidth = NSExpression(forConstantValue: navCompletedWidth)
-            layer.lineOpacity = NSExpression(forConstantValue: 0.7)
+            layer.lineOpacity = NSExpression(forConstantValue: navTraversedOpacity)
             layer.lineCap = NSExpression(forConstantValue: "round")
             layer.lineJoin = NSExpression(forConstantValue: "round")
-            layer.lineDashPattern = NSExpression(forConstantValue: [0, 2])
+            layer.lineDashPattern = NSExpression(forConstantValue: [0, navTraversedDashGap])
             style.addLayer(layer)
         }
 
@@ -827,7 +831,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             let layer = MLNLineStyleLayer(identifier: navRemainingLayerId, source: source)
             layer.lineColor = NSExpression(forConstantValue: UIColor(hex: navRemainingColor))
             layer.lineWidth = NSExpression(forConstantValue: navRemainingWidth)
-            layer.lineOpacity = NSExpression(forConstantValue: 0.9)
+            layer.lineOpacity = NSExpression(forConstantValue: navRemainingOpacity)
             layer.lineCap = NSExpression(forConstantValue: "round")
             layer.lineJoin = NSExpression(forConstantValue: "round")
             style.addLayer(layer)
@@ -856,7 +860,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             let layer = MLNLineStyleLayer(identifier: navOffCourseLayerId, source: source)
             layer.lineColor = NSExpression(forConstantValue: UIColor(hex: navOffCourseColor))
             layer.lineWidth = NSExpression(forConstantValue: navOffCourseWidth)
-            layer.lineDashPattern = NSExpression(forConstantValue: [2, 2])
+            layer.lineDashPattern = NSExpression(forConstantValue: [navOffCourseDash, navOffCourseDash])
             style.addLayer(layer)
         }
     }

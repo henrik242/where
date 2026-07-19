@@ -418,37 +418,45 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private fun isCroppingFocused(): Boolean =
         _cropState.value != null && _cropState.value?.trackId == _focusedTrackId.value
 
-    fun startNavigation(track: Track, reversed: Boolean = false) {
-        if (_isRecording.value) return   // recording and navigation are mutually exclusive
+    /** Returns false (and does nothing) if recording, which is mutually exclusive with navigation. */
+    fun startNavigation(track: Track, reversed: Boolean = false): Boolean {
+        if (_isRecording.value) return false
         // Other viewed tracks stay on the map alongside the grey/blue split line; only drop the
         // navigated track from the set so it isn't drawn twice. Focus-only state (banner, altitude
         // chart, crop) is cleared since the navigation card owns the top band while active.
         _viewingTracks.value = _viewingTracks.value.filterNot { it.id == track.id }
         _focusedTrackId.value = null
         _cropState.value = null
-        _elevationMarker.value = null
-        _navigationChartVisible.value = false
+        clearChartState()
         _navigationProgress.value = null
         _navigation.value = NavigationSession(track, reversed)
+        return true
     }
+
+    /** Navigate a viewing-set track by [id]. Returns false if it isn't in the set (or recording). */
+    fun startNavigationById(id: String, reversed: Boolean = false): Boolean =
+        _viewingTracks.value.firstOrNull { it.id == id }?.let { startNavigation(it, reversed) } ?: false
 
     fun toggleNavigationReverse() {
         val current = _navigation.value ?: return
         _navigationProgress.value = null   // computed against the old direction
-        _elevationMarker.value = null      // point indices flip when reversed
+        _elevationMarker.value = null      // point indices flip when reversed; keep the chart open
         _navigation.value = current.copy(reversed = !current.reversed)
     }
 
     fun stopNavigation() {
         _navigation.value = null
         _navigationProgress.value = null
-        _navigationChartVisible.value = false
-        _elevationMarker.value = null
+        clearChartState()
     }
 
-    /** Toggle the navigated track's altitude chart (from tapping the route). No-op when idle. */
+    /**
+     * Toggle the navigated track's altitude chart (from tapping the route). No-op when idle or when
+     * the route has no elevation data, since the chart would render nothing.
+     */
     fun toggleNavigationChart() {
-        if (_navigation.value == null) return
+        val track = _navigation.value?.track ?: return
+        if (!track.hasElevationData()) return
         _navigationChartVisible.value = !_navigationChartVisible.value
         _elevationMarker.value = null
     }
@@ -456,8 +464,23 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     /** Hide the navigation chart (a tap off the route), mirroring unfocus for viewing tracks. */
     fun hideNavigationChart() {
         if (!_navigationChartVisible.value) return
-        _navigationChartVisible.value = false
+        clearChartState()
+    }
+
+    /** Route a track tap: the navigated route toggles its chart; any other track focuses (see below). */
+    fun onTrackTapped(id: String) {
+        if (id == _navigation.value?.track?.id) toggleNavigationChart() else toggleFocusedTrack(id)
+    }
+
+    /** Route a tap that missed every track: dismiss the nav chart while navigating, else clear focus. */
+    fun onMapTapOutsideTracks() {
+        if (_navigation.value != null) hideNavigationChart() else setFocusedTrack(null)
+    }
+
+    /** Reset the transient altitude-chart state: the scrub marker and the nav-chart visibility. */
+    private fun clearChartState() {
         _elevationMarker.value = null
+        _navigationChartVisible.value = false
     }
 
     fun updateNavigationProgress(progress: NavigationProgress) {

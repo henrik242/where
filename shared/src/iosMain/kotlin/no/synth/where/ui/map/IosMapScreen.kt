@@ -105,6 +105,12 @@ fun IosMapScreen(
     val focusedTrackId by trackRepository.focusedTrackId.collectAsState()
     val navigation by trackRepository.navigation.collectAsState()
     val navigationChartVisible by trackRepository.navigationChartVisible.collectAsState()
+    // The navigated route in travel order (reversed when navigating in reverse) — feeds the altitude
+    // chart, its scrub marker, and the route tap-target. Keeps the session track's id, so tap
+    // routing still matches; only the point order flips so the chart reads left-to-right as "ahead".
+    val navChartTrack = remember(navigation?.track?.id, navigation?.reversed) {
+        navigation?.let { if (it.reversed) it.track.copy(points = it.track.points.reversed()) else it.track }
+    }
     val cropState by trackRepository.cropState.collectAsState()
     val cropUndo by trackRepository.cropUndo.collectAsState()
     val elevationMarker by trackRepository.elevationMarker.collectAsState()
@@ -210,8 +216,10 @@ fun IosMapScreen(
     // All visible track lines (viewing set + recording) as one data-driven FeatureCollection.
     // The navigated track is excluded from the viewing set (it shows as the grey/blue split line),
     // so any tracks here are the "other" tracks kept visible alongside it while navigating.
-    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, cropState) {
-        buildTracksGeoJson(renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState))
+    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, cropState, navigation != null) {
+        buildTracksGeoJson(
+            renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState, navigating = navigation != null)
+        )
     }
 
     val showCoordGrid by userPreferences.showCoordGrid.collectAsState()
@@ -403,8 +411,8 @@ fun IosMapScreen(
         mapViewProvider.updateTracks(tracksGeoJson)
     }
 
-    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks, navigation) {
-        buildElevationMarkerGeoJson(viewingTracks, focusedTrackId, navigation?.track, elevationMarker)
+    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks, navChartTrack) {
+        buildElevationMarkerGeoJson(viewingTracks, focusedTrackId, navChartTrack, elevationMarker)
     }
     LaunchedEffect(elevationMarkerGeoJson) {
         mapViewProvider.updateElevationMarker(elevationMarkerGeoJson)
@@ -468,17 +476,10 @@ fun IosMapScreen(
                 } else {
                     val tolerance = TrackUtils.metersPerPixel(latitude, cameraZoom) *
                         TrackUtils.TAP_RADIUS_PX
-                    // While navigating the route is tappable too (to open its chart), alongside any
-                    // other tracks still viewed; findTappedTrack picks the nearest.
-                    val candidates = navigation?.track?.let { viewingTracks + it } ?: viewingTracks
+                    val candidates = TrackUtils.tappableTracks(viewingTracks, navChartTrack)
                     val tapped = TrackUtils.findTappedTrack(tapLocation, candidates, tolerance)
-                    if (tapped != null) {
-                        if (tapped.id == navigation?.track?.id) trackRepository.toggleNavigationChart()
-                        else trackRepository.toggleFocusedTrack(tapped.id)   // no-op while navigating
-                    } else if (candidates.isNotEmpty()) {
-                        if (navigation != null) trackRepository.hideNavigationChart()
-                        else trackRepository.setFocusedTrack(null)
-                    }
+                    if (tapped != null) trackRepository.onTrackTapped(tapped.id)
+                    else if (candidates.isNotEmpty()) trackRepository.onMapTapOutsideTracks()
                 }
             }
         })
@@ -647,9 +648,8 @@ fun IosMapScreen(
         elevationMarker = elevationMarker,
         onElevationScrub = { trackRepository.setElevationMarker(it) },
         navigation = NavigationUiState(
-            isNavigating = navigation != null,
             progress = navigationProgress,
-            track = navigation?.track,
+            track = navChartTrack,
             chartVisible = navigationChartVisible,
             onToggleReverse = { trackRepository.toggleNavigationReverse() },
             onStop = { stopNavConfirm.request() },
@@ -783,10 +783,7 @@ fun IosMapScreen(
         onCloseTrack = { focusedTrackId?.let { trackRepository.removeViewingTrack(it) } },
         onCollapseTrack = { trackRepository.setFocusedTrack(null) },
         onStartNavigation = {
-            focusedTrackId?.let { id ->
-                trackRepository.viewingTracks.value.firstOrNull { it.id == id }
-                    ?.let { trackRepository.startNavigation(it) }
-            }
+            focusedTrackId?.let { id -> trackRepository.startNavigationById(id) }
         },
         onCloseViewingPoint = { onClearViewingPoint() },
         onSearchQueryChange = { searchQuery = it },
@@ -838,7 +835,8 @@ fun IosMapScreen(
                     mapViewProvider.setShowsUserLocation(true)
 
                     // All track lines (viewing set + recording) from the shared data-driven
-                    // FeatureCollection; empty while navigating so only the split line shows.
+                    // FeatureCollection; the navigated route is excluded (drawn as the split line),
+                    // while other viewed tracks stay visible (dimmed) alongside it.
                     mapViewProvider.updateTracks(tracksGeoJson)
 
                     // Friend track rendering

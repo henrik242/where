@@ -345,8 +345,10 @@ class MapScreenViewModel(
         }
     }
 
-    // Viewing tracks
-    fun onTrackTapped(id: String) = trackRepository.toggleFocusedTrack(id)
+    // Viewing tracks. Tap routing (route toggles its chart, else focus / clear) lives in the
+    // repository so Android and iOS share one rule.
+    fun onTrackTapped(id: String) = trackRepository.onTrackTapped(id)
+    fun onMapTapOutsideTracks() = trackRepository.onMapTapOutsideTracks()
     fun unfocusTrack() = trackRepository.setFocusedTrack(null)
     fun removeViewingTrack(id: String) = trackRepository.removeViewingTrack(id)
 
@@ -363,7 +365,7 @@ class MapScreenViewModel(
     fun undoCrop() = trackRepository.undoCrop()
     fun clearCropUndo() = trackRepository.clearCropUndo()
 
-    // Elevation-chart scrubbing marker (index into the focused track's points)
+    // Elevation-chart scrubbing marker (point index into the focused track, or the route while navigating)
     val elevationMarker = trackRepository.elevationMarker
     fun setElevationMarker(index: Int?) = trackRepository.setElevationMarker(index)
 
@@ -371,12 +373,11 @@ class MapScreenViewModel(
     val navigation = trackRepository.navigation
     val navigationProgress = trackRepository.navigationProgress
     val navigationChartVisible = trackRepository.navigationChartVisible
-    fun startNavigation(id: String) =
-        viewingTracks.value.firstOrNull { it.id == id }?.let { trackRepository.startNavigation(it) }
+    /** Returns whether navigation actually started, so the caller can gate the foreground service. */
+    fun startNavigation(id: String): Boolean = trackRepository.startNavigationById(id)
     fun toggleNavigationReverse() = trackRepository.toggleNavigationReverse()
     fun stopNavigation() = trackRepository.stopNavigation()
-    fun toggleNavigationChart() = trackRepository.toggleNavigationChart()
-    fun hideNavigationChart() = trackRepository.hideNavigationChart()
+    fun hideNavigationChart() = trackRepository.hideNavigationChart()   // Back closes the chart
 
     // Online tracking
     fun updateOnlineTracking(enabled: Boolean) {

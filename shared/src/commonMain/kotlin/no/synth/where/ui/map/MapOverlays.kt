@@ -754,8 +754,9 @@ fun BoxScope.MapOverlays(
     // don't overlap it. Height is 0 for tracks without elevation, so no phantom gap.
     val density = LocalDensity.current
     // The navigated track's chart is shown, tap-toggled, only while navigating with elevation data.
+    // (navigation.track is non-null iff navigating, so no separate isNavigating check is needed.)
     val navChartTrack = navigation.track
-        ?.takeIf { navigation.isNavigating && navigation.chartVisible && it.hasElevationData() }
+        ?.takeIf { navigation.chartVisible && it.hasElevationData() }
     // The crop chart is always shown while cropping (even without elevation), so the bottom-left
     // cards lift above it too.
     val chartVisible = activeCrop != null || focusedTrack?.hasElevationData() == true ||
@@ -983,37 +984,27 @@ fun BoxScope.MapOverlays(
         CrosshairOverlay()
     }
 
-    if (focusedTrack != null) {
-        if (activeCrop != null) {
-            TrackCropChart(
-                track = focusedTrack,
-                startIndex = activeCrop.startIndex,
-                endIndex = activeCrop.endIndex,
-                onCropChange = onCropChange,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
-            )
-        } else {
-            TrackAltitudeChart(
-                track = focusedTrack,
-                onScrub = onElevationScrub,
-                markerIndex = elevationMarker,
-                markerColorHex = focusedTrackColor,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
-            )
-        }
-    } else if (navChartTrack != null) {
+    // Focus is disabled while navigating, so focusedTrack and navChartTrack are mutually exclusive:
+    // one altitude chart, colored per its source. Cropping replaces it with the crop chart.
+    val altitudeTrack = focusedTrack ?: navChartTrack
+    val bottomChartModifier = Modifier
+        .align(Alignment.BottomCenter)
+        .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
+    if (focusedTrack != null && activeCrop != null) {
+        TrackCropChart(
+            track = focusedTrack,
+            startIndex = activeCrop.startIndex,
+            endIndex = activeCrop.endIndex,
+            onCropChange = onCropChange,
+            modifier = bottomChartModifier
+        )
+    } else if (altitudeTrack != null) {
         TrackAltitudeChart(
-            track = navChartTrack,
+            track = altitudeTrack,
             onScrub = onElevationScrub,
             markerIndex = elevationMarker,
-            markerColorHex = NavColors.remaining,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
+            markerColorHex = if (focusedTrack != null) focusedTrackColor else NavColors.remaining,
+            modifier = bottomChartModifier
         )
     }
 }

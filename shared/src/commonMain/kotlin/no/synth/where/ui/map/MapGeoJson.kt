@@ -38,12 +38,15 @@ fun renderableTracks(
     focusedId: String?,
     recording: Track?,
     crop: TrackCropState? = null,
+    navigating: Boolean = false,
 ): List<RenderableTrack> {
     val out = ArrayList<RenderableTrack>(viewing.size + 1)
     viewing.forEachIndexed { index, track ->
         if (track.points.size < 2) return@forEachIndexed
         val isFocused = track.id == focusedId
-        val dimmed = focusedId != null && !isFocused
+        // While navigating the route owns the map; other viewed tracks are non-interactive context,
+        // so dim them all. Otherwise dim only the non-focused tracks when one is focused.
+        val dimmed = navigating || (focusedId != null && !isFocused)
         val color = TrackColors.forIndex(index)
         if (crop != null && crop.trackId == track.id) {
             out.addAll(croppedRenderables(track, color, crop))

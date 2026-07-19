@@ -621,11 +621,16 @@ object MapRenderUtils {
     private val navLayerIds = listOf("nav-arrows", "nav-offcourse", "nav-remaining", "nav-completed")
     private const val NAV_ARROW_IMAGE = "nav-arrow"
 
-    // Navigation line colors live in the shared NavColors (kept in sync with iOS). Widths are here.
-    private const val NAV_COMPLETED_WIDTH = 4f
-    private const val NAV_REMAINING_WIDTH = 6f
-    private const val NAV_OFFCOURSE_WIDTH = 3f
-    private const val NAV_ARROW_SPACING = 48f
+    // Navigation line widths/opacities/dash gaps come from the shared NavStyle (colors from
+    // NavColors), so Android and iOS can't drift. Converted to Float for the MapLibre Android API.
+    private val navCompletedWidth = NavStyle.completedWidth.toFloat()
+    private val navRemainingWidth = NavStyle.remainingWidth.toFloat()
+    private val navOffCourseWidth = NavStyle.offCourseWidth.toFloat()
+    private val navArrowSpacing = NavStyle.arrowSpacing.toFloat()
+    private val navRemainingOpacity = NavStyle.remainingOpacity.toFloat()
+    private val navTraversedOpacity = NavStyle.traversedOpacity.toFloat()
+    private val navTraversedDash = arrayOf(0f, NavStyle.traversedDashGap.toFloat())
+    private val navOffCourseDash = arrayOf(NavStyle.offCourseDash.toFloat(), NavStyle.offCourseDash.toFloat())
 
     fun updateNavigationOnMap(
         style: Style,
@@ -646,19 +651,19 @@ object MapRenderUtils {
                 // zero-length dash render the on-segments as dots; the gap is in line-width units.
                 LineLayer("nav-completed-layer", "nav-completed-source").withProperties(
                     PropertyFactory.lineColor(NavColors.remaining),
-                    PropertyFactory.lineWidth(NAV_COMPLETED_WIDTH),
-                    PropertyFactory.lineOpacity(0.7f),
+                    PropertyFactory.lineWidth(navCompletedWidth),
+                    PropertyFactory.lineOpacity(navTraversedOpacity),
                     PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                     PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-                    PropertyFactory.lineDasharray(arrayOf(0f, 2f))
+                    PropertyFactory.lineDasharray(navTraversedDash)
                 )
             )
             style.addSource(GeoJsonSource("nav-remaining-source", remainingGeoJson))
             style.addLayer(
                 LineLayer("nav-remaining-layer", "nav-remaining-source").withProperties(
                     PropertyFactory.lineColor(NavColors.remaining),
-                    PropertyFactory.lineWidth(NAV_REMAINING_WIDTH),
-                    PropertyFactory.lineOpacity(0.9f),
+                    PropertyFactory.lineWidth(navRemainingWidth),
+                    PropertyFactory.lineOpacity(navRemainingOpacity),
                     PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                     PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
                 )
@@ -671,7 +676,7 @@ object MapRenderUtils {
                 SymbolLayer("nav-arrows-layer", "nav-remaining-source").withProperties(
                     PropertyFactory.iconImage(NAV_ARROW_IMAGE),
                     PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
-                    PropertyFactory.symbolSpacing(NAV_ARROW_SPACING),
+                    PropertyFactory.symbolSpacing(navArrowSpacing),
                     PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
                     PropertyFactory.iconAllowOverlap(true),
                     PropertyFactory.iconIgnorePlacement(true)
@@ -682,8 +687,8 @@ object MapRenderUtils {
                 style.addLayer(
                     LineLayer("nav-offcourse-layer", "nav-offcourse-source").withProperties(
                         PropertyFactory.lineColor(NavColors.offCourse),
-                        PropertyFactory.lineWidth(NAV_OFFCOURSE_WIDTH),
-                        PropertyFactory.lineDasharray(arrayOf(2f, 2f))
+                        PropertyFactory.lineWidth(navOffCourseWidth),
+                        PropertyFactory.lineDasharray(navOffCourseDash)
                     )
                 )
             }

@@ -52,6 +52,18 @@ class MultiTrackRenderTest {
     }
 
     @Test
+    fun navigatingDimsAllViewedTracks() {
+        // Other tracks stay visible during navigation but are non-interactive context, so all dim.
+        val out = renderableTracks(
+            listOf(track("a", 60.0), track("b", 61.0)),
+            focusedId = null,
+            recording = null,
+            navigating = true,
+        )
+        assertTrue(out.all { it.opacity == 0.3 })
+    }
+
+    @Test
     fun recordingTrackIsRedAndAppendedLast() {
         val out = renderableTracks(
             viewing = listOf(track("a", 60.0)),

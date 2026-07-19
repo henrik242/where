@@ -40,4 +40,11 @@ object TrackUtils {
         track.points.asSequence()
             .zipWithNext { a, b -> projectOntoSegment(tap, a.latLng, b.latLng).distanceMeters }
             .minOrNull() ?: Double.MAX_VALUE
+
+    /**
+     * Tracks the user can tap on the map: the viewing set plus the navigated route (tappable to open
+     * its altitude chart). Order-independent — [findTappedTrack] picks the nearest.
+     */
+    fun tappableTracks(viewing: List<Track>, navigationTrack: Track?): List<Track> =
+        if (navigationTrack != null) viewing + navigationTrack else viewing
 }

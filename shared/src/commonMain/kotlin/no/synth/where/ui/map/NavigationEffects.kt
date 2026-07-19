@@ -18,16 +18,18 @@ private const val NAV_POLL_INTERVAL_MS = 1000L
 
 /**
  * Grouped navigation state + callbacks threaded from the screen down through the overlays. [track]
- * and [chartVisible] drive the tap-to-open altitude chart for the navigated route.
+ * (the route in travel order) and [chartVisible] drive the tap-to-open altitude chart; a non-null
+ * [track] means a session is active, so [isNavigating] derives from it.
  */
 data class NavigationUiState(
-    val isNavigating: Boolean = false,
     val progress: NavigationProgress? = null,
     val track: Track? = null,
     val chartVisible: Boolean = false,
     val onToggleReverse: () -> Unit = {},
     val onStop: () -> Unit = {},
-)
+) {
+    val isNavigating: Boolean get() = track != null
+}
 
 /**
  * Observes navigation [progress] (the repository's `navigationProgress` flow) for an active

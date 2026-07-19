@@ -378,10 +378,9 @@ fun MapLibreMapView(
                         val tolerance = TrackUtils.metersPerPixel(
                             commonPoint.latitude, mapInstance.cameraPosition.zoom
                         ) * TrackUtils.TAP_RADIUS_PX
-                        // While navigating the route is tappable too (to open its chart), alongside
-                        // any other tracks still viewed; findTappedTrack picks the nearest.
-                        val candidates = navigationTrackState.value
-                            ?.let { viewingTracksState.value + it } ?: viewingTracksState.value
+                        val candidates = TrackUtils.tappableTracks(
+                            viewingTracksState.value, navigationTrackState.value
+                        )
                         val tapped = TrackUtils.findTappedTrack(commonPoint, candidates, tolerance)
                         if (tapped != null) {
                             onTrackClick(tapped.id)

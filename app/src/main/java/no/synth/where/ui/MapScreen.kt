@@ -156,6 +156,12 @@ fun MapScreen(
 
     val navigation by viewModel.navigation.collectAsState()
     val navigationChartVisible by viewModel.navigationChartVisible.collectAsState()
+    // The navigated route in travel order (reversed when navigating in reverse) — feeds the altitude
+    // chart, its scrub marker, and the route tap-target. Keeps the session track's id, so tap
+    // routing still matches; only the point order flips so the chart reads left-to-right as "ahead".
+    val navChartTrack = remember(navigation?.track?.id, navigation?.reversed) {
+        navigation?.let { if (it.reversed) it.track.copy(points = it.track.points.reversed()) else it.track }
+    }
     // The latest navigation route layers, held so MapLibreMapView can redraw them after a style
     // reload (layer switch / reconnect); null when not navigating.
     var navigationLayers by remember { mutableStateOf<NavigationLayers?>(null) }
@@ -329,8 +335,10 @@ fun MapScreen(
     // All visible track lines (viewing set + recording) as one data-driven FeatureCollection.
     // The navigated track is excluded from the viewing set (it shows as the grey/blue split line),
     // so any tracks here are the "other" tracks kept visible alongside it while navigating.
-    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, cropState) {
-        buildTracksGeoJson(renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState))
+    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, cropState, navigation != null) {
+        buildTracksGeoJson(
+            renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState, navigating = navigation != null)
+        )
     }
 
     LaunchedEffect(tracksGeoJson, mapInstance) {
@@ -340,8 +348,8 @@ fun MapScreen(
     }
 
     val elevationMarker by viewModel.elevationMarker.collectAsState()
-    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks, navigation) {
-        buildElevationMarkerGeoJson(viewingTracks, focusedTrackId, navigation?.track, elevationMarker)
+    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks, navChartTrack) {
+        buildElevationMarkerGeoJson(viewingTracks, focusedTrackId, navChartTrack, elevationMarker)
     }
     LaunchedEffect(elevationMarkerGeoJson, mapInstance) {
         mapInstance?.style?.let { style ->
@@ -521,9 +529,8 @@ fun MapScreen(
         elevationMarker = elevationMarker,
         onElevationScrub = { viewModel.setElevationMarker(it) },
         navigation = NavigationUiState(
-            isNavigating = navigation != null,
             progress = navigationProgress,
-            track = navigation?.track,
+            track = navChartTrack,
             chartVisible = navigationChartVisible,
             onToggleReverse = { viewModel.toggleNavigationReverse() },
             onStop = { stopNavConfirm.request() },
@@ -604,13 +611,10 @@ fun MapScreen(
         onCloseTrack = { focusedTrackId?.let { viewModel.removeViewingTrack(it) } },
         onCollapseTrack = { viewModel.unfocusTrack() },
         onStartNavigation = {
+            // The foreground service owns the location stream and notification while navigating; it
+            // self-stops when navigation ends. Only start it if navigation actually began.
             focusedTrackId?.let { id ->
-                viewModel.startNavigation(id)
-                // The foreground service owns the location stream and notification while
-                // navigating; it self-stops when navigation ends.
-                if (viewModel.navigation.value != null) {
-                    LocationTrackingService.start(context)
-                }
+                if (viewModel.startNavigation(id)) LocationTrackingService.start(context)
             }
         },
         onCloseViewingPoint = onClearViewingPoint,
@@ -660,7 +664,7 @@ fun MapScreen(
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,
                 viewingTracks = viewingTracks,
-                navigationTrack = navigation?.track,
+                navigationTrack = navChartTrack,
                 tracksGeoJson = tracksGeoJson,
                 elevationMarkerGeoJson = elevationMarkerGeoJson,
                 friendTrackGeoJson = friendTrackGeoJson,
@@ -673,16 +677,8 @@ fun MapScreen(
                 onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },
                 onPointClick = { point -> viewModel.openPointInfoDialog(point) },
-                onTrackClick = { id ->
-                    // Tapping the navigated route toggles its altitude chart; tapping another still-
-                    // viewed track falls through to focus (a no-op while navigating).
-                    if (id == navigation?.track?.id) viewModel.toggleNavigationChart()
-                    else viewModel.onTrackTapped(id)
-                },
-                onMapClickOutsideTrack = {
-                    if (navigation != null) viewModel.hideNavigationChart()
-                    else viewModel.unfocusTrack()
-                },
+                onTrackClick = { id -> viewModel.onTrackTapped(id) },
+                onMapClickOutsideTrack = { viewModel.onMapTapOutsideTracks() },
                 onTwoFingerMeasure = { twoFingerMeasurement = it },
                 twoFingerMeasurement = twoFingerMeasurement,
                 coordGridGeoJson = coordGridGeoJson,
