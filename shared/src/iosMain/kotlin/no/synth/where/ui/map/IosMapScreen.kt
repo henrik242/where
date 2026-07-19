@@ -104,6 +104,7 @@ fun IosMapScreen(
     val viewingTracks by trackRepository.viewingTracks.collectAsState()
     val focusedTrackId by trackRepository.focusedTrackId.collectAsState()
     val navigation by trackRepository.navigation.collectAsState()
+    val navigationChartVisible by trackRepository.navigationChartVisible.collectAsState()
     val cropState by trackRepository.cropState.collectAsState()
     val cropUndo by trackRepository.cropUndo.collectAsState()
     val elevationMarker by trackRepository.elevationMarker.collectAsState()
@@ -402,8 +403,8 @@ fun IosMapScreen(
         mapViewProvider.updateTracks(tracksGeoJson)
     }
 
-    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks) {
-        buildTrackMarkerGeoJson(viewingTracks, focusedTrackId, elevationMarker)
+    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks, navigation) {
+        buildElevationMarkerGeoJson(viewingTracks, focusedTrackId, navigation?.track, elevationMarker)
     }
     LaunchedEffect(elevationMarkerGeoJson) {
         mapViewProvider.updateElevationMarker(elevationMarkerGeoJson)
@@ -467,11 +468,16 @@ fun IosMapScreen(
                 } else {
                     val tolerance = TrackUtils.metersPerPixel(latitude, cameraZoom) *
                         TrackUtils.TAP_RADIUS_PX
-                    val tapped = TrackUtils.findTappedTrack(tapLocation, viewingTracks, tolerance)
+                    // While navigating the route is tappable too (to open its chart), alongside any
+                    // other tracks still viewed; findTappedTrack picks the nearest.
+                    val candidates = navigation?.track?.let { viewingTracks + it } ?: viewingTracks
+                    val tapped = TrackUtils.findTappedTrack(tapLocation, candidates, tolerance)
                     if (tapped != null) {
-                        trackRepository.toggleFocusedTrack(tapped.id)
-                    } else if (viewingTracks.isNotEmpty()) {
-                        trackRepository.setFocusedTrack(null)
+                        if (tapped.id == navigation?.track?.id) trackRepository.toggleNavigationChart()
+                        else trackRepository.toggleFocusedTrack(tapped.id)   // no-op while navigating
+                    } else if (candidates.isNotEmpty()) {
+                        if (navigation != null) trackRepository.hideNavigationChart()
+                        else trackRepository.setFocusedTrack(null)
                     }
                 }
             }
@@ -643,6 +649,8 @@ fun IosMapScreen(
         navigation = NavigationUiState(
             isNavigating = navigation != null,
             progress = navigationProgress,
+            track = navigation?.track,
+            chartVisible = navigationChartVisible,
             onToggleReverse = { trackRepository.toggleNavigationReverse() },
             onStop = { stopNavConfirm.request() },
         ),

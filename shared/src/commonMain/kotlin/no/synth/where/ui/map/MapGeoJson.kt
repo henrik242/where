@@ -120,9 +120,30 @@ fun buildTrackMarkerGeoJson(viewing: List<Track>, focusedId: String?, markerInde
     if (trackIndex < 0) return empty
     val point = viewing[trackIndex].points.getOrNull(markerIndex) ?: return empty
     val color = TrackColors.forIndex(trackIndex)
-    return """{"type":"FeatureCollection","features":[""" +
-        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"color":"$color"}}]}"""
+    return markerPointGeoJson(point, color)
 }
+
+/**
+ * Scrub-marker point for the altitude chart. During navigation ([navigationTrack] non-null) the point
+ * is resolved from the navigated route and drawn in the route color; otherwise it defers to the
+ * focused viewing track via [buildTrackMarkerGeoJson]. Empty (draws nothing) when nothing is marked.
+ */
+fun buildElevationMarkerGeoJson(
+    viewing: List<Track>,
+    focusedId: String?,
+    navigationTrack: Track?,
+    markerIndex: Int?,
+): String {
+    val empty = """{"type":"FeatureCollection","features":[]}"""
+    if (navigationTrack == null) return buildTrackMarkerGeoJson(viewing, focusedId, markerIndex)
+    if (markerIndex == null) return empty
+    val point = navigationTrack.points.getOrNull(markerIndex) ?: return empty
+    return markerPointGeoJson(point, NavColors.remaining)
+}
+
+private fun markerPointGeoJson(point: TrackPoint, color: String): String =
+    """{"type":"FeatureCollection","features":[""" +
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"color":"$color"}}]}"""
 
 fun buildSavedPointsGeoJson(points: List<SavedPoint>): String {
     val features = points.joinToString(",") { point ->

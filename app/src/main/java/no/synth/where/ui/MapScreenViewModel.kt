@@ -370,10 +370,13 @@ class MapScreenViewModel(
     // Navigation. Progress is produced by LocationTrackingService; the UI only observes.
     val navigation = trackRepository.navigation
     val navigationProgress = trackRepository.navigationProgress
+    val navigationChartVisible = trackRepository.navigationChartVisible
     fun startNavigation(id: String) =
         viewingTracks.value.firstOrNull { it.id == id }?.let { trackRepository.startNavigation(it) }
     fun toggleNavigationReverse() = trackRepository.toggleNavigationReverse()
     fun stopNavigation() = trackRepository.stopNavigation()
+    fun toggleNavigationChart() = trackRepository.toggleNavigationChart()
+    fun hideNavigationChart() = trackRepository.hideNavigationChart()
 
     // Online tracking
     fun updateOnlineTracking(enabled: Boolean) {

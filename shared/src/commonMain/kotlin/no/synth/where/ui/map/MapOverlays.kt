@@ -753,9 +753,13 @@ fun BoxScope.MapOverlays(
     // cards (recording/ruler/crosshair) are lifted above its measured height so they
     // don't overlap it. Height is 0 for tracks without elevation, so no phantom gap.
     val density = LocalDensity.current
+    // The navigated track's chart is shown, tap-toggled, only while navigating with elevation data.
+    val navChartTrack = navigation.track
+        ?.takeIf { navigation.isNavigating && navigation.chartVisible && it.hasElevationData() }
     // The crop chart is always shown while cropping (even without elevation), so the bottom-left
     // cards lift above it too.
-    val chartVisible = activeCrop != null || focusedTrack?.hasElevationData() == true
+    val chartVisible = activeCrop != null || focusedTrack?.hasElevationData() == true ||
+        navChartTrack != null
     var chartHeight by remember { mutableStateOf(0.dp) }
     val bottomCardsOffset = if (chartVisible) chartHeight else 0.dp
     // Report the effective bottom-chart height (0 when no chart shows) so the screen can lift the
@@ -1001,6 +1005,16 @@ fun BoxScope.MapOverlays(
                     .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
             )
         }
+    } else if (navChartTrack != null) {
+        TrackAltitudeChart(
+            track = navChartTrack,
+            onScrub = onElevationScrub,
+            markerIndex = elevationMarker,
+            markerColorHex = NavColors.remaining,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .onSizeChanged { chartHeight = with(density) { it.height.toDp() } }
+        )
     }
 }
 

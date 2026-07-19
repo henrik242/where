@@ -63,6 +63,7 @@ fun MapLibreMapView(
     savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
     currentTrack: Track? = null,
     viewingTracks: List<Track> = emptyList(),
+    navigationTrack: Track? = null,
     tracksGeoJson: String = "",
     elevationMarkerGeoJson: String = "",
     savedCameraLat: Double = 65.0,
@@ -98,6 +99,7 @@ fun MapLibreMapView(
     val tracksGeoJsonState = rememberUpdatedState(tracksGeoJson)
     val elevationMarkerGeoJsonState = rememberUpdatedState(elevationMarkerGeoJson)
     val viewingTracksState = rememberUpdatedState(viewingTracks)
+    val navigationTrackState = rememberUpdatedState(navigationTrack)
     val rulerStateState = rememberUpdatedState(rulerState)
     val twoFingerMeasurementState = rememberUpdatedState(twoFingerMeasurement)
     val friendTrackGeoJsonState = rememberUpdatedState(friendTrackGeoJson)
@@ -376,12 +378,16 @@ fun MapLibreMapView(
                         val tolerance = TrackUtils.metersPerPixel(
                             commonPoint.latitude, mapInstance.cameraPosition.zoom
                         ) * TrackUtils.TAP_RADIUS_PX
-                        val tapped = TrackUtils.findTappedTrack(commonPoint, viewingTracksState.value, tolerance)
+                        // While navigating the route is tappable too (to open its chart), alongside
+                        // any other tracks still viewed; findTappedTrack picks the nearest.
+                        val candidates = navigationTrackState.value
+                            ?.let { viewingTracksState.value + it } ?: viewingTracksState.value
+                        val tapped = TrackUtils.findTappedTrack(commonPoint, candidates, tolerance)
                         if (tapped != null) {
                             onTrackClick(tapped.id)
                             true
                         } else {
-                            if (viewingTracksState.value.isNotEmpty()) onMapClickOutsideTrack()
+                            if (candidates.isNotEmpty()) onMapClickOutsideTrack()
                             false
                         }
                     }

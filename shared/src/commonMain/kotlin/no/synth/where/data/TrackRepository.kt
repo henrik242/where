@@ -79,9 +79,15 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
             .stateIn(scope, SharingStarted.Eagerly, emptySet())
 
     // Index into the focused track's points marked by scrubbing its altitude chart, or null when
-    // none. Transient: cleared whenever the focused track / view changes.
+    // none. Transient: cleared whenever the focused track / view changes. During navigation the
+    // index refers to the navigated track's points instead.
     private val _elevationMarker = MutableStateFlow<Int?>(null)
     val elevationMarker: StateFlow<Int?> = _elevationMarker.asStateFlow()
+
+    // Whether the navigated track's altitude chart is shown, toggled by tapping the route (mirrors
+    // tap-to-focus for viewing tracks). Only meaningful while navigating.
+    private val _navigationChartVisible = MutableStateFlow(false)
+    val navigationChartVisible: StateFlow<Boolean> = _navigationChartVisible.asStateFlow()
 
     // Active crop of the focused viewing track, or null when not cropping.
     private val _cropState = MutableStateFlow<TrackCropState?>(null)
@@ -421,6 +427,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         _focusedTrackId.value = null
         _cropState.value = null
         _elevationMarker.value = null
+        _navigationChartVisible.value = false
         _navigationProgress.value = null
         _navigation.value = NavigationSession(track, reversed)
     }
@@ -428,12 +435,29 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     fun toggleNavigationReverse() {
         val current = _navigation.value ?: return
         _navigationProgress.value = null   // computed against the old direction
+        _elevationMarker.value = null      // point indices flip when reversed
         _navigation.value = current.copy(reversed = !current.reversed)
     }
 
     fun stopNavigation() {
         _navigation.value = null
         _navigationProgress.value = null
+        _navigationChartVisible.value = false
+        _elevationMarker.value = null
+    }
+
+    /** Toggle the navigated track's altitude chart (from tapping the route). No-op when idle. */
+    fun toggleNavigationChart() {
+        if (_navigation.value == null) return
+        _navigationChartVisible.value = !_navigationChartVisible.value
+        _elevationMarker.value = null
+    }
+
+    /** Hide the navigation chart (a tap off the route), mirroring unfocus for viewing tracks. */
+    fun hideNavigationChart() {
+        if (!_navigationChartVisible.value) return
+        _navigationChartVisible.value = false
+        _elevationMarker.value = null
     }
 
     fun updateNavigationProgress(progress: NavigationProgress) {

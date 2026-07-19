@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import no.synth.where.data.NavigationSession
+import no.synth.where.data.Track
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.data.navigation.TrackNavigator
@@ -15,10 +16,15 @@ import no.synth.where.data.navigation.TrackNavigator
 /** How often the poller re-reads the user location while navigating. */
 private const val NAV_POLL_INTERVAL_MS = 1000L
 
-/** Grouped navigation state + callbacks threaded from the screen down through the overlays. */
+/**
+ * Grouped navigation state + callbacks threaded from the screen down through the overlays. [track]
+ * and [chartVisible] drive the tap-to-open altitude chart for the navigated route.
+ */
 data class NavigationUiState(
     val isNavigating: Boolean = false,
     val progress: NavigationProgress? = null,
+    val track: Track? = null,
+    val chartVisible: Boolean = false,
     val onToggleReverse: () -> Unit = {},
     val onStop: () -> Unit = {},
 )

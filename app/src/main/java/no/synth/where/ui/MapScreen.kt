@@ -70,7 +70,7 @@ import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.ui.map.NavigationLayers
 import no.synth.where.ui.map.PointColors
 import no.synth.where.ui.map.MapZoomLevels
-import no.synth.where.ui.map.buildTrackMarkerGeoJson
+import no.synth.where.ui.map.buildElevationMarkerGeoJson
 import no.synth.where.ui.map.buildTracksGeoJson
 import no.synth.where.ui.map.renderableTracks
 import no.synth.where.ui.map.animateToBounds
@@ -155,6 +155,7 @@ fun MapScreen(
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
 
     val navigation by viewModel.navigation.collectAsState()
+    val navigationChartVisible by viewModel.navigationChartVisible.collectAsState()
     // The latest navigation route layers, held so MapLibreMapView can redraw them after a style
     // reload (layer switch / reconnect); null when not navigating.
     var navigationLayers by remember { mutableStateOf<NavigationLayers?>(null) }
@@ -186,6 +187,8 @@ fun MapScreen(
             // While cropping, Back means "cancel crop" — otherwise unfocusing would hide the crop
             // UI while leaving the crop session dangling.
             cropState != null -> viewModel.cancelCrop()
+            // Back closes the tapped-open altitude chart before ending the session.
+            navigation != null && navigationChartVisible -> viewModel.hideNavigationChart()
             navigation != null -> stopNavConfirm.request()
             focusedTrackId != null -> viewModel.unfocusTrack()
             else -> viewModel.clearViewingTracks()
@@ -337,8 +340,8 @@ fun MapScreen(
     }
 
     val elevationMarker by viewModel.elevationMarker.collectAsState()
-    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks) {
-        buildTrackMarkerGeoJson(viewingTracks, focusedTrackId, elevationMarker)
+    val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks, navigation) {
+        buildElevationMarkerGeoJson(viewingTracks, focusedTrackId, navigation?.track, elevationMarker)
     }
     LaunchedEffect(elevationMarkerGeoJson, mapInstance) {
         mapInstance?.style?.let { style ->
@@ -520,6 +523,8 @@ fun MapScreen(
         navigation = NavigationUiState(
             isNavigating = navigation != null,
             progress = navigationProgress,
+            track = navigation?.track,
+            chartVisible = navigationChartVisible,
             onToggleReverse = { viewModel.toggleNavigationReverse() },
             onStop = { stopNavConfirm.request() },
         ),
@@ -655,6 +660,7 @@ fun MapScreen(
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,
                 viewingTracks = viewingTracks,
+                navigationTrack = navigation?.track,
                 tracksGeoJson = tracksGeoJson,
                 elevationMarkerGeoJson = elevationMarkerGeoJson,
                 friendTrackGeoJson = friendTrackGeoJson,
@@ -667,8 +673,16 @@ fun MapScreen(
                 onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
                 onLongPress = { latLng -> viewModel.openSavePointDialog(latLng) },
                 onPointClick = { point -> viewModel.openPointInfoDialog(point) },
-                onTrackClick = { id -> viewModel.onTrackTapped(id) },
-                onMapClickOutsideTrack = { viewModel.unfocusTrack() },
+                onTrackClick = { id ->
+                    // Tapping the navigated route toggles its altitude chart; tapping another still-
+                    // viewed track falls through to focus (a no-op while navigating).
+                    if (id == navigation?.track?.id) viewModel.toggleNavigationChart()
+                    else viewModel.onTrackTapped(id)
+                },
+                onMapClickOutsideTrack = {
+                    if (navigation != null) viewModel.hideNavigationChart()
+                    else viewModel.unfocusTrack()
+                },
                 onTwoFingerMeasure = { twoFingerMeasurement = it },
                 twoFingerMeasurement = twoFingerMeasurement,
                 coordGridGeoJson = coordGridGeoJson,

@@ -6,6 +6,7 @@ tag dates.
 
 ## Unreleased
 
+- Tap the route while navigating to see its altitude chart, like a regular track
 - Import several tracks at once, or a whole zip, filing them straight into a folder
 - Select all or none of a folder's tracks from its menu
 

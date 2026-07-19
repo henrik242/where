@@ -188,4 +188,31 @@ class MultiTrackRenderTest {
         assertTrue(json.contains("""[10.001,60.0]"""))   // GeoJSON is [lng,lat] of index 1
         assertTrue(json.contains(""""color":"${TrackColors.forIndex(0)}""""))
     }
+
+    @Test
+    fun elevationMarkerFallsBackToFocusedViewingTrack() {
+        // No navigation track: identical to the focused-viewing-track marker.
+        val t = track("a", 60.0, count = 3)
+        assertEquals(
+            buildTrackMarkerGeoJson(listOf(t), "a", 1),
+            buildElevationMarkerGeoJson(listOf(t), "a", navigationTrack = null, markerIndex = 1),
+        )
+    }
+
+    @Test
+    fun elevationMarkerUsesNavigationTrackInRouteColor() {
+        // During navigation the viewing set is empty; the marked point comes from the route.
+        val nav = track("route", 61.0, count = 3) // (61.0, 10.000/10.001/10.002)
+        val json = buildElevationMarkerGeoJson(emptyList(), null, navigationTrack = nav, markerIndex = 2)
+        assertTrue(json.contains("""[10.002,61.0]"""))
+        assertTrue(json.contains(""""color":"${NavColors.remaining}""""))
+    }
+
+    @Test
+    fun elevationMarkerEmptyWhenNavigatingWithNoMarker() {
+        val empty = """{"type":"FeatureCollection","features":[]}"""
+        val nav = track("route", 61.0, count = 3)
+        assertEquals(empty, buildElevationMarkerGeoJson(emptyList(), null, nav, markerIndex = null))
+        assertEquals(empty, buildElevationMarkerGeoJson(emptyList(), null, nav, markerIndex = 99))
+    }
 }
