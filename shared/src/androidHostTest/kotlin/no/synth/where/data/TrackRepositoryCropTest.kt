@@ -189,21 +189,23 @@ class TrackRepositoryCropTest {
     }
 
     @Test
-    fun enteringTrackViewEndsNavigation() {
-        // Showing a track (or a multi-select set) on the map takes over the view, so it must end an
-        // active navigation session rather than leave a half-rendered navigate+view state.
+    fun showingTracksWhileNavigatingKeepsNavigation() {
+        // Showing other tracks on the map no longer ends navigation; they coexist with the split
+        // line. The navigated track itself is kept out of the viewing set (drawn as the split line).
         repo().apply {
             val t = sampleTrack()
             startNavigation(t)
             assertNotNull(navigation.value)
-            addViewingTrack(t)
-            assertNull(navigation.value)
+            addViewingTrack(sampleTrack("t2"))
+            assertNotNull(navigation.value)
+            assertEquals(listOf("t2"), viewingTracks.value.map { it.id })
         }
         repo().apply {
             val t = sampleTrack()
             startNavigation(t)
-            setViewingTracks(listOf(t))
-            assertNull(navigation.value)
+            setViewingTracks(listOf(t, sampleTrack("t2")))
+            assertNotNull(navigation.value)
+            assertEquals(listOf("t2"), viewingTracks.value.map { it.id })
         }
     }
 

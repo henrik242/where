@@ -302,18 +302,22 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     /** Add a track to the viewing set (if not already present) and focus it. */
     fun addViewingTrack(track: Track) {
-        stopNavigation()   // entering track-view ends any active navigation (mutually exclusive)
+        // The navigated track is already drawn as the split line; don't add it as a plain line too.
+        if (_navigation.value?.track?.id == track.id) return
         if (_viewingTracks.value.none { it.id == track.id }) {
             _viewingTracks.value = _viewingTracks.value + track
         }
-        _focusedTrackId.value = track.id
+        // Focusing shows the banner + altitude chart, which the navigation card owns while active,
+        // so add the track without focusing it when navigating.
+        if (_navigation.value == null) _focusedTrackId.value = track.id
         _elevationMarker.value = null
     }
 
     /** Replace the whole viewing set (bulk multi-select), clearing any focus. */
     fun setViewingTracks(tracks: List<Track>) {
-        stopNavigation()   // entering track-view ends any active navigation (mutually exclusive)
-        _viewingTracks.value = tracks
+        // Keep the navigated track out of the viewing set so it isn't drawn twice; it stays on the
+        // map as the split line while any other selected tracks show alongside it.
+        _viewingTracks.value = tracks.filterNot { it.id == _navigation.value?.track?.id }
         _focusedTrackId.value = null
         _elevationMarker.value = null
     }
@@ -388,6 +392,9 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     }
 
     fun setFocusedTrack(id: String?) {
+        // Focus (banner + altitude chart) is a track-view affordance; the navigation card owns the
+        // top band while active, so tapping an "other" track on the map must not focus it.
+        if (_navigation.value != null) return
         // A stray map tap must not unfocus (and so hide) the track being cropped; Cancel/Back are
         // the explicit exits. Clearing focus mid-crop would leave the crop session dangling.
         if (id == null && isCroppingFocused()) return
@@ -396,6 +403,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     }
 
     fun toggleFocusedTrack(id: String) {
+        if (_navigation.value != null) return   // see setFocusedTrack: no focus while navigating
         if (_focusedTrackId.value == id && isCroppingFocused()) return
         _focusedTrackId.value = if (_focusedTrackId.value == id) null else id
         _elevationMarker.value = null
@@ -406,9 +414,10 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     fun startNavigation(track: Track, reversed: Boolean = false) {
         if (_isRecording.value) return   // recording and navigation are mutually exclusive
-        // Navigation takes over the view; hide any passively-viewed tracks so only the
-        // grey/blue split line shows.
-        _viewingTracks.value = emptyList()
+        // Other viewed tracks stay on the map alongside the grey/blue split line; only drop the
+        // navigated track from the set so it isn't drawn twice. Focus-only state (banner, altitude
+        // chart, crop) is cleared since the navigation card owns the top band while active.
+        _viewingTracks.value = _viewingTracks.value.filterNot { it.id == track.id }
         _focusedTrackId.value = null
         _cropState.value = null
         _elevationMarker.value = null

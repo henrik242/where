@@ -324,11 +324,10 @@ fun MapScreen(
     }
 
     // All visible track lines (viewing set + recording) as one data-driven FeatureCollection.
-    // While navigating, the grey/blue split line replaces the plain lines, so draw nothing here.
-    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, navigation != null, cropState) {
-        val renderTracks = if (navigation != null) emptyList()
-        else renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState)
-        buildTracksGeoJson(renderTracks)
+    // The navigated track is excluded from the viewing set (it shows as the grey/blue split line),
+    // so any tracks here are the "other" tracks kept visible alongside it while navigating.
+    val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, cropState) {
+        buildTracksGeoJson(renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState))
     }
 
     LaunchedEffect(tracksGeoJson, mapInstance) {
@@ -353,6 +352,7 @@ fun MapScreen(
     // otherwise fit the union of the whole set (bulk multi-select).
     LaunchedEffect(viewingTracks, mapInstance) {
         val map = mapInstance ?: return@LaunchedEffect
+        if (navigation != null) return@LaunchedEffect   // the camera follows the user while navigating
         val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
         delay(100)
         map.animateToBounds(bounds)

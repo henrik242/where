@@ -100,23 +100,53 @@ class TrackRepositoryNavigationTest {
     }
 
     @Test
-    fun enteringTrackViewEndsNavigationAndClearsProgress() {
+    fun addingViewingTrackWhileNavigatingKeepsNavigationAndShowsBoth() {
         val repo = repo()
-        repo.startNavigation(track())
+        repo.startNavigation(track("nav"))
         repo.updateNavigationProgress(progress())
-        repo.addViewingTrack(track("t2"))
-        assertNull(repo.navigation.value)
-        assertNull(repo.navigationProgress.value)
+        repo.addViewingTrack(track("other"))
+        assertNotNull(repo.navigation.value)
+        assertNotNull(repo.navigationProgress.value)
+        assertEquals(listOf("other"), repo.viewingTracks.value.map { it.id })
+        assertNull(repo.focusedTrackId.value)   // no focus while navigating
     }
 
     @Test
-    fun replacingViewingSetEndsNavigationAndClearsProgress() {
+    fun addingTheNavigatedTrackToViewingIsIgnored() {
         val repo = repo()
-        repo.startNavigation(track())
+        repo.startNavigation(track("nav"))
+        repo.addViewingTrack(track("nav"))
+        assertEquals(emptyList(), repo.viewingTracks.value.map { it.id })
+    }
+
+    @Test
+    fun settingViewingTracksWhileNavigatingKeepsNavigationAndDropsNavigatedTrack() {
+        val repo = repo()
+        repo.startNavigation(track("nav"))
         repo.updateNavigationProgress(progress())
-        repo.setViewingTracks(listOf(track("t2")))
-        assertNull(repo.navigation.value)
-        assertNull(repo.navigationProgress.value)
+        repo.setViewingTracks(listOf(track("nav"), track("other")))
+        assertNotNull(repo.navigation.value)
+        assertNotNull(repo.navigationProgress.value)
+        assertEquals(listOf("other"), repo.viewingTracks.value.map { it.id })
+    }
+
+    @Test
+    fun tappingAnotherTrackWhileNavigatingDoesNotFocusIt() {
+        val repo = repo()
+        repo.startNavigation(track("nav"))
+        repo.addViewingTrack(track("other"))
+        repo.toggleFocusedTrack("other")
+        assertNull(repo.focusedTrackId.value)
+    }
+
+    @Test
+    fun startNavigationKeepsOtherViewingTracksButDropsTheNavigatedOne() {
+        val repo = repo()
+        repo.setViewingTracks(listOf(track("nav"), track("other")))
+        repo.startNavigation(track("nav"))
+        assertNotNull(repo.navigation.value)
+        assertEquals(listOf("other"), repo.viewingTracks.value.map { it.id })
+        assertNull(repo.focusedTrackId.value)
     }
 
     @Test

@@ -26,8 +26,8 @@ class OnMapTrackIdsTest {
 
     @Test
     fun viewingAndNavigationAreCombinedAndDeduplicated() {
-        // The same track in both sets is unreachable at runtime (navigation clears the viewing set),
-        // but the function must still dedup it to a single id.
+        // Other tracks stay in the viewing set while navigating; the repository keeps the navigated
+        // track out of it, but the function must still dedup should the same id appear in both.
         val shared = track("a")
         val ids = onMapTrackIdsOf(listOf(shared, track("b")), NavigationSession(shared, reversed = true))
         assertEquals(setOf("a", "b"), ids)
