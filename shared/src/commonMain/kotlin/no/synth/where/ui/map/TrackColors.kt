@@ -20,7 +20,7 @@ object TrackColors {
     /** Recording (in-progress) track color, kept separate from the viewing palette. */
     const val RECORDING = "#FF0000"
 
-    /** Grey for the trimmed-off ends shown while cropping (matches the navigation completed-line). */
+    /** Grey for the trimmed-off ends shown while cropping. */
     const val TRIMMED = "#9E9E9E"
 
     fun forIndex(index: Int): String {

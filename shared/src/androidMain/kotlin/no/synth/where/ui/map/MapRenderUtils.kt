@@ -642,12 +642,15 @@ object MapRenderUtils {
 
             style.addSource(GeoJsonSource("nav-completed-source", completedGeoJson))
             style.addLayer(
+                // Traversed leg: dotted in the same colour as the line ahead. Round caps + a
+                // zero-length dash render the on-segments as dots; the gap is in line-width units.
                 LineLayer("nav-completed-layer", "nav-completed-source").withProperties(
-                    PropertyFactory.lineColor(NavColors.completed),
+                    PropertyFactory.lineColor(NavColors.remaining),
                     PropertyFactory.lineWidth(NAV_COMPLETED_WIDTH),
                     PropertyFactory.lineOpacity(0.7f),
                     PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                    PropertyFactory.lineDasharray(arrayOf(0f, 2f))
                 )
             )
             style.addSource(GeoJsonSource("nav-remaining-source", remainingGeoJson))

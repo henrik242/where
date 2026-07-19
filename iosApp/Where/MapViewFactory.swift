@@ -75,7 +75,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let navArrowImageName = "nav-arrow"
     // Navigation line styling. Keep in sync with MapRenderUtils.kt updateNavigationOnMap.
     // Sourced from the shared NavColors so Android and iOS can't drift apart.
-    private let navCompletedColor = NavColors.shared.completed
+    // The traversed leg reuses navRemainingColor (drawn dotted), so it has no colour of its own.
     private let navRemainingColor = NavColors.shared.remaining
     private let navOffCourseColor = NavColors.shared.offCourse
     private let navCompletedWidth = 4
@@ -800,18 +800,21 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private func applyNavigation(style: MLNStyle, completedGeoJson: String, remainingGeoJson: String, offCourseGeoJson: String?) {
         removeNavigation(style: style)
 
-        // Completed leg (grey) - added first so the remaining line sits above it.
+        // Traversed leg: dotted in the same colour as the line ahead. Added first so the solid
+        // remaining line sits above it. Round caps + a zero-length dash render the on-segments as
+        // dots; the gap is in line-width units.
         if let data = completedGeoJson.data(using: .utf8),
            let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) {
             let source = MLNShapeSource(identifier: navCompletedSourceId, shape: shape, options: nil)
             style.addSource(source)
 
             let layer = MLNLineStyleLayer(identifier: navCompletedLayerId, source: source)
-            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: navCompletedColor))
+            layer.lineColor = NSExpression(forConstantValue: UIColor(hex: navRemainingColor))
             layer.lineWidth = NSExpression(forConstantValue: navCompletedWidth)
             layer.lineOpacity = NSExpression(forConstantValue: 0.7)
             layer.lineCap = NSExpression(forConstantValue: "round")
             layer.lineJoin = NSExpression(forConstantValue: "round")
+            layer.lineDashPattern = NSExpression(forConstantValue: [0, 2])
             style.addLayer(layer)
         }
 
