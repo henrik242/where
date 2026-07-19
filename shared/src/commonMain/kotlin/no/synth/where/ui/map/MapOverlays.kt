@@ -37,7 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -378,11 +377,9 @@ fun NavigationCard(
                         Spacer(Modifier.weight(1f))
                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                             IconButton(onClick = onToggleReverse, modifier = Modifier.size(32.dp)) {
-                                // The ic_u_turn glyph points upward; a quarter-turn makes it read
-                                // as a reverse-direction control rather than a back arrow.
                                 Icon(painterResource(Res.drawable.ic_u_turn),
                                     contentDescription = stringResource(Res.string.nav_reverse),
-                                    modifier = Modifier.size(20.dp).rotate(-90f))
+                                    modifier = Modifier.size(20.dp))
                             }
                             IconButton(onClick = onStop, modifier = Modifier.size(32.dp)) {
                                 Icon(painterResource(Res.drawable.ic_close),

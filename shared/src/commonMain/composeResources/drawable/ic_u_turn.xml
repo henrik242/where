@@ -3,7 +3,17 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Vertical U-turn arrow: up the right shaft, over the top, back down the
+         left with an arrowhead pointing down. Reads as "reverse direction"
+         on its own, so no rotation is needed at the call site. -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M17 20 L17 8 A4 4 0 0 0 9 8 L9 15" />
     <path
         android:fillColor="#FF000000"
-        android:pathData="M6.99 9H16.5c1.93 0 3.5 1.57 3.5 3.5S18.43 16 16.5 16H12v-2h4.5c0.83 0 1.5-0.67 1.5-1.5S17.33 11 16.5 11H6.99v3L3 10l3.99-4v3z" />
+        android:pathData="M9 21 L5.5 14.5 L12.5 14.5 Z" />
 </vector>
