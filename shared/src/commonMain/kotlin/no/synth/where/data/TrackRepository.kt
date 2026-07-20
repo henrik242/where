@@ -18,6 +18,7 @@ import no.synth.where.data.db.TrackPointEntity
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.navigation.NavigationProgress
+import no.synth.where.data.navigation.TrackNavigator
 import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
 
@@ -68,8 +69,9 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     // Latest progress along the navigated track. Produced outside the UI (the Android foreground
     // service, or the iOS foreground poller) so navigation keeps running in the background; the UI
-    // only observes. Reset to null whenever the session starts, ends, or changes direction so
-    // observers fall back to a "locating" state instead of a stale snapshot.
+    // only observes. Reset to null when the session starts or ends so observers fall back to a
+    // "locating" state instead of a stale snapshot; on a direction change it is recomputed in place
+    // (see [toggleNavigationReverse]) rather than nulled, so the card doesn't flash "locating".
     private val _navigationProgress = MutableStateFlow<NavigationProgress?>(null)
     val navigationProgress: StateFlow<NavigationProgress?> = _navigationProgress.asStateFlow()
 
@@ -439,9 +441,17 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     fun toggleNavigationReverse() {
         val current = _navigation.value ?: return
-        _navigationProgress.value = null   // computed against the old direction
+        val reversed = !current.reversed
+        val lastLocation = _navigationProgress.value?.location
         _elevationMarker.value = null      // point indices flip when reversed; keep the chart open
-        _navigation.value = current.copy(reversed = !current.reversed)
+        _navigation.value = current.copy(reversed = reversed)
+        // Recompute progress against the last known fix right away. The producers (Android service,
+        // iOS poller) only emit on a fresh fix, and the fused provider goes quiet while the user is
+        // stationary - exactly the u-turn case - so simply nulling here would strand the card on
+        // "locating" until the user moved. Fall back to null only when we never had a fix to reverse.
+        _navigationProgress.value = lastLocation?.let {
+            TrackNavigator(current.track, reversed).progressAt(it)
+        }
     }
 
     fun stopNavigation() {

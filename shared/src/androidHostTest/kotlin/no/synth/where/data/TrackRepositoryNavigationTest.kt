@@ -101,10 +101,21 @@ class TrackRepositoryNavigationTest {
     }
 
     @Test
-    fun toggleReverseClearsProgressButKeepsSession() {
+    fun toggleReverseRecomputesProgressFromLastFixAndKeepsSession() {
         val repo = repo()
         repo.startNavigation(track())
         repo.updateNavigationProgress(progress())
+        repo.toggleNavigationReverse()
+        assertEquals(true, repo.navigation.value?.reversed)
+        // Recomputed against the last known location for the new direction, not nulled: a stationary
+        // user gets no fresh fix, so nulling would strand the card on "locating" (the u-turn bug).
+        assertNotNull(repo.navigationProgress.value)
+    }
+
+    @Test
+    fun toggleReverseWithoutAnyFixLeavesProgressNull() {
+        val repo = repo()
+        repo.startNavigation(track())   // no fix yet, so nothing to reverse from
         repo.toggleNavigationReverse()
         assertEquals(true, repo.navigation.value?.reversed)
         assertNull(repo.navigationProgress.value)
