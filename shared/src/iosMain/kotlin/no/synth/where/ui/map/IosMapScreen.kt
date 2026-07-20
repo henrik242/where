@@ -519,10 +519,10 @@ fun IosMapScreen(
         state = stopNavConfirm,
         isNavigating = navigation != null,
         onConfirm = {
+            // The shared render effect clears the nav layers when the session ends. Don't clear the
+            // track line: stopNavigation() puts the navigated track back in the viewing set (focused),
+            // so the reactive updateTracks() render redraws it in detail mode.
             trackRepository.stopNavigation()
-            // The shared render effect clears the nav layers when the session ends; we only need to
-            // drop the plain track line here.
-            mapViewProvider.clearTrackLine()
         }
     )
 

@@ -101,6 +101,27 @@ class TrackRepositoryNavigationTest {
     }
 
     @Test
+    fun stopNavigationShowsNavigatedTrackInDetailMode() {
+        val repo = repo()
+        repo.startNavigation(track("nav"))
+        assertEquals(emptyList(), repo.viewingTracks.value.map { it.id })   // dropped while navigating
+        repo.stopNavigation()
+        assertEquals(listOf("nav"), repo.viewingTracks.value.map { it.id }) // back on the map
+        assertEquals("nav", repo.focusedTrackId.value)                      // and focused (detail mode)
+    }
+
+    @Test
+    fun stopNavigationKeepsOtherViewingTracksAndFocusesTheNavigatedOne() {
+        val repo = repo()
+        repo.setViewingTracks(listOf(track("nav"), track("other")))
+        repo.startNavigation(track("nav"))
+        assertEquals(listOf("other"), repo.viewingTracks.value.map { it.id })
+        repo.stopNavigation()
+        assertEquals(listOf("other", "nav"), repo.viewingTracks.value.map { it.id })
+        assertEquals("nav", repo.focusedTrackId.value)
+    }
+
+    @Test
     fun toggleReverseRecomputesProgressFromLastFixAndKeepsSession() {
         val repo = repo()
         repo.startNavigation(track())

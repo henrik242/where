@@ -454,10 +454,21 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         }
     }
 
+    /**
+     * End navigation and show the just-navigated track in detail mode: put it back on the map (it
+     * was dropped from the viewing set by [startNavigation]) and focus it (banner + altitude chart).
+     */
     fun stopNavigation() {
+        val track = _navigation.value?.track
         _navigation.value = null
         _navigationProgress.value = null
         clearChartState()
+        if (track != null) {
+            if (_viewingTracks.value.none { it.id == track.id }) {
+                _viewingTracks.value = _viewingTracks.value + track
+            }
+            _focusedTrackId.value = track.id
+        }
     }
 
     /**
