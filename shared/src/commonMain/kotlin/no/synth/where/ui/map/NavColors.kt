@@ -16,7 +16,7 @@ object NavColors {
  * from these gaps because MapLibre's Android and iOS dash APIs take different types.
  */
 object NavStyle {
-    val completedWidth = 4.0
+    val completedWidth = 6.0   // matches remainingWidth so the dotted traversed leg is easy to see
     val remainingWidth = 6.0
     val offCourseWidth = 3.0
     val remainingOpacity = 0.9
