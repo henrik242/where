@@ -519,7 +519,7 @@ fun MapScreen(
         liveShareUntilMillis = liveShareUntilMillis,
         isLiveSharing = isLiveSharing,
         viewerCount = viewerCount,
-        recordingDistance = currentTrack?.getDistanceMeters(),
+        recordingTrack = currentTrack,
         viewingTracks = viewingTracks,
         focusedTrackId = focusedTrackId,
         cropState = cropState,
@@ -820,7 +820,7 @@ private val sampleTrack = Track(
         TrackPoint(LatLng(63.435, 10.40), timestamp = 1L, altitude = 180.0),
         TrackPoint(LatLng(63.44, 10.41), timestamp = 2L, altitude = 150.0),
     ),
-    startTime = 0L,
+    startTime = System.currentTimeMillis() - 42 * 60 * 1000,
 )
 
 private val sampleSearchResults = listOf(
@@ -876,7 +876,7 @@ private fun RecordingCardPreview() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            distance = 2450.0,
+            track = sampleTrack,
         )
     }
 }
@@ -925,7 +925,7 @@ private fun MapScreenFullPreview() {
             showSavedPoints = true,
             showAvalancheZones = false,
             onlineTrackingEnabled = false,
-            recordingDistance = 2450.0,
+            recordingTrack = sampleTrack,
             viewingTracks = listOf(sampleTrack),
             focusedTrackId = sampleTrack.id,
             viewingPointName = null,

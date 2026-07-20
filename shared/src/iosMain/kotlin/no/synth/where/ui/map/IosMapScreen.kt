@@ -638,7 +638,7 @@ fun IosMapScreen(
         liveShareUntilMillis = liveShareUntilMillis,
         isLiveSharing = isLiveSharing,
         viewerCount = viewerCount,
-        recordingDistance = currentTrack?.getDistanceMeters(),
+        recordingTrack = currentTrack,
         viewingTracks = viewingTracks,
         focusedTrackId = focusedTrackId,
         cropState = cropState,

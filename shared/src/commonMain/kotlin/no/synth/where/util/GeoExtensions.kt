@@ -26,3 +26,6 @@ fun Double.formatKm(decimals: Int = 2): String = (this / 1000.0).roundToDecimals
  * way [formatDistance] does, since a "1.50 km" climb readout would be nonsense.
  */
 fun Double.formatElevation(): String = "${this.roundToDecimals(0)} m"
+
+/** Ground speed in km/h with one decimal, from a value in meters per second. Unit hardcoded like [formatDistance]. */
+fun Double.formatSpeed(): String = "${(this * 3.6).roundToDecimals(1)} km/h"

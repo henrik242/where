@@ -26,6 +26,19 @@ fun remainingTimeOf(millis: Long): RemainingTime {
     }
 }
 
+/**
+ * Elapsed wall-clock time as a stopwatch string: "M:SS" below an hour, "H:MM:SS" at or above.
+ * Digits and colons only, so it needs no localized resource.
+ */
+fun formatElapsed(millis: Long): String {
+    val totalSeconds = (millis / 1000L).coerceAtLeast(0L)
+    val h = totalSeconds / 3600L
+    val m = (totalSeconds % 3600L) / 60L
+    val s = totalSeconds % 60L
+    val ss = s.toString().padStart(2, '0')
+    return if (h > 0) "$h:${m.toString().padStart(2, '0')}:$ss" else "$m:$ss"
+}
+
 fun formatBytes(bytes: Long): String = when {
     bytes < 1024 -> "$bytes B"
     bytes < 1024 * 1024 -> "${bytes / 1024} KB"

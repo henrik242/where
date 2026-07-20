@@ -15,7 +15,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 
 ### Location and sharing
 
-- GPS recording that keeps running with the screen locked
+- GPS recording that keeps running with the screen locked, with live time, distance, ascent, and average speed on the map
 - Real-time location sharing so friends and family can follow your trip live
 - Follow a friend's live track on your own map
 

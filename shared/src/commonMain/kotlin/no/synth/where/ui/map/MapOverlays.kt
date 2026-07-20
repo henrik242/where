@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
+import no.synth.where.data.elevationProfileOrNull
 import no.synth.where.data.hasElevationData
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
@@ -64,10 +65,14 @@ import no.synth.where.data.geo.compassPoint8
 import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.formatDistance
+import no.synth.where.util.formatElapsed
 import no.synth.where.util.formatElevation
+import no.synth.where.util.formatSpeed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -184,31 +189,94 @@ fun RulerCard(
 @Composable
 fun RecordingCard(
     modifier: Modifier = Modifier,
-    distance: Double,
+    track: Track,
 ) {
+    // Distance and ascent only depend on the recorded points, so recompute them when the point
+    // list changes, not on every one-second clock tick below.
+    val distance = remember(track.points) { track.getDistanceMeters() }
+    val gain = remember(track.points) { track.elevationProfileOrNull()?.gain ?: 0.0 }
+
+    var now by remember { mutableStateOf(currentTimeMillis()) }
+    LaunchedEffect(track.id) {
+        while (true) {
+            now = currentTimeMillis()
+            delay(1000)
+        }
+    }
+    val elapsedMillis = (now - track.startTime).coerceAtLeast(0L)
+    val elapsedSeconds = elapsedMillis / 1000.0
+    val avgSpeed = if (elapsedSeconds > 0) distance / elapsedSeconds else 0.0
+
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
         )
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                painterResource(Res.drawable.ic_fiber_manual_record),
-                contentDescription = null,
-                tint = Color.Red,
-                modifier = Modifier.size(14.dp)
-            )
-            Text(
-                text = stringResource(Res.string.recording_distance, distance.formatDistance()),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
+        Column(modifier = Modifier.width(168.dp).padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_fiber_manual_record),
+                    contentDescription = null,
+                    tint = Color.Red,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = stringResource(Res.string.recording),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RecordingStat(
+                    label = stringResource(Res.string.stat_time),
+                    value = formatElapsed(elapsedMillis),
+                    modifier = Modifier.weight(1f)
+                )
+                RecordingStat(
+                    label = stringResource(Res.string.stat_distance),
+                    value = distance.formatDistance(),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                RecordingStat(
+                    label = stringResource(Res.string.stat_ascent),
+                    value = gain.formatElevation(),
+                    modifier = Modifier.weight(1f)
+                )
+                RecordingStat(
+                    label = stringResource(Res.string.stat_speed),
+                    value = avgSpeed.formatSpeed(),
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun RecordingStat(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onErrorContainer
+        )
     }
 }
 
@@ -688,7 +756,7 @@ fun BoxScope.MapOverlays(
     onToggleCoordFormat: () -> Unit = {},
     rulerState: RulerState,
     isRecording: Boolean,
-    recordingDistance: Double?,
+    recordingTrack: Track?,
     onlineTrackingEnabled: Boolean,
     viewerCount: Int = 0,
     viewingTracks: List<Track> = emptyList(),
@@ -873,8 +941,8 @@ fun BoxScope.MapOverlays(
                     onSaveAsTrack = onRulerSaveAsTrack
                 )
             }
-            if (isRecording && recordingDistance != null) {
-                RecordingCard(distance = recordingDistance)
+            if (isRecording && recordingTrack != null) {
+                RecordingCard(track = recordingTrack)
             }
         }
     }
