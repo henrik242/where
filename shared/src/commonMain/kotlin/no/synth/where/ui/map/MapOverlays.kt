@@ -35,6 +35,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -196,10 +197,9 @@ fun RecordingCard(
     val distance = remember(track.points) { track.getDistanceMeters() }
     val gain = remember(track.points) { track.elevationProfileOrNull()?.gain ?: 0.0 }
 
-    var now by remember { mutableStateOf(currentTimeMillis()) }
-    LaunchedEffect(track.id) {
+    val now by produceState(currentTimeMillis(), track.id) {
         while (true) {
-            now = currentTimeMillis()
+            value = currentTimeMillis()
             delay(1000)
         }
     }
@@ -213,6 +213,8 @@ fun RecordingCard(
             containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f)
         )
     ) {
+        // Fixed width so the card doesn't reflow every second as the elapsed-time string grows
+        // (0:59 -> 12:34 -> 1:02:05) and the stat values change length.
         Column(modifier = Modifier.width(168.dp).padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

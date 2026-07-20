@@ -130,7 +130,13 @@ class TrackRepositoryNavigationTest {
         assertEquals(true, repo.navigation.value?.reversed)
         // Recomputed against the last known location for the new direction, not nulled: a stationary
         // user gets no fresh fix, so nulling would strand the card on "locating" (the u-turn bug).
-        assertNotNull(repo.navigationProgress.value)
+        // The last fix (60.0, 10.0) is the forward start, i.e. the end once reversed, so a correct
+        // recompute lands at the finish - proving it ran against the reversed track, not republished
+        // the stale forward snapshot (which had remainingMeters = 100.0, atEnd = false).
+        val recomputed = repo.navigationProgress.value
+        assertNotNull(recomputed)
+        assertEquals(true, recomputed.atEnd)
+        assertEquals(0.0, recomputed.remainingMeters, 1.0)
     }
 
     @Test
