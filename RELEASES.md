@@ -6,9 +6,23 @@ tag dates.
 
 ## Unreleased
 
+- Map compass slides below the top banners (navigation, track details, saved point,
+  friend tracking) instead of hiding behind them
+
+## v504 (2026-07-20)
+
 - Recording card shows live time, distance, ascent, and average speed
 - Tap the route while navigating to see its altitude chart, like a regular track
 - Stopping navigation keeps the track on the map in detail view instead of removing it
+- Other viewed tracks stay visible (dimmed) while navigating
+- Track detail actions moved into an overflow menu, including start navigation
+- Traversed part of the navigated route is drawn as a dotted line in the route colour
+- U-turns while navigating recompute progress instead of resetting it, with a clearer
+  U-turn arrow
+- OpenTopoMap capped at zoom 17
+
+## v492 (2026-07-17)
+
 - Import several tracks at once, or a whole zip, filing them straight into a folder
 - Select all or none of a folder's tracks from its menu
 
