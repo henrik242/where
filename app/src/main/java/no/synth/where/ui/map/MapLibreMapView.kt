@@ -21,6 +21,9 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -83,12 +86,17 @@ fun MapLibreMapView(
     coordGridGeoJson: String? = null,
     navigationLayers: NavigationLayers? = null,
     cameraFollowMode: CameraFollowMode = CameraFollowMode.OFF,
-    onFollowModeDismissed: () -> Unit = {}
+    onFollowModeDismissed: () -> Unit = {},
+    compassTopOffset: Dp = 0.dp
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     val context = LocalContext.current
+    val density = LocalDensity.current
+    // MapLibre's default compass top margin, captured before the first override so the compass
+    // returns to its stock spot when no top overlay is shown.
+    var defaultCompassMarginTop by remember { mutableStateOf<Int?>(null) }
     var isOnline by remember { mutableStateOf(true) }
     var wasInitialized by remember { mutableStateOf(false) }
     val gpsKeepAlive = remember(context) { GpsKeepAlive(context) }
@@ -407,6 +415,20 @@ fun MapLibreMapView(
             mapInstance.addOnMapLongClickListener(newLongClickListener)
             longClickListener = newLongClickListener
         }
+    }
+
+    // Drop the compass below the full-width top-center overlays so it stays visible; restore the
+    // stock margin when they go away.
+    LaunchedEffect(map, compassTopOffset) {
+        val ui = map?.uiSettings ?: return@LaunchedEffect
+        val defaultTop = defaultCompassMarginTop
+            ?: ui.compassMarginTop.also { defaultCompassMarginTop = it }
+        val topPx = if (compassTopOffset > 0.dp) {
+            with(density) { compassTopOffset.roundToPx() }
+        } else {
+            defaultTop
+        }
+        ui.setCompassMargins(ui.compassMarginLeft, topPx, ui.compassMarginRight, ui.compassMarginBottom)
     }
 
     AndroidView(

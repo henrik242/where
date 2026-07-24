@@ -647,6 +647,7 @@ fun IosMapScreen(
         onApplyCrop = { trackRepository.applyCrop() },
         elevationMarker = elevationMarker,
         onElevationScrub = { trackRepository.setElevationMarker(it) },
+        onCompassTopOffsetChanged = { mapViewProvider.setCompassTopOffset(it.value.toDouble()) },
         navigation = NavigationUiState(
             progress = navigationProgress,
             track = navChartTrack,

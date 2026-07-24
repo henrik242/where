@@ -73,4 +73,10 @@ interface MapViewProvider {
     fun setOnTwoFingerTapCallback(callback: MapTwoFingerTapCallback?)
     fun setCameraFollowMode(mode: CameraFollowMode)
     fun setOnTrackingModeCallback(callback: MapTrackingModeCallback?)
+
+    /**
+     * Top margin for the compass ornament, in dp from the map's top edge (Compose dp map 1:1 to
+     * UIKit points), so it drops below the top-center overlay stack. 0 restores the default spot.
+     */
+    fun setCompassTopOffset(offsetDp: Double)
 }

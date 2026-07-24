@@ -26,6 +26,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingNavCompletedGeoJson: String?
     private var pendingNavRemainingGeoJson: String?
     private var pendingNavOffCourseGeoJson: String?
+    private var pendingCompassTopOffset: Double?
+    // MapLibre's default compass margins, captured before the first override so the compass
+    // returns to its stock spot when no top modal is shown.
+    private var defaultCompassMargins: CGPoint?
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
@@ -125,6 +129,11 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
 
         self.mapView = map
+
+        if let offset = pendingCompassTopOffset {
+            pendingCompassTopOffset = nil
+            setCompassTopOffset(offsetDp: offset)
+        }
 
         // If setStyle was called before the map was created, apply it now.
         if let json = currentStyleJson {
@@ -504,6 +513,18 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
     func setOnTwoFingerTapCallback(callback: MapTwoFingerTapCallback?) {
         self.twoFingerTapCallback = callback
+    }
+
+    func setCompassTopOffset(offsetDp: Double) {
+        guard let mapView = self.mapView else {
+            pendingCompassTopOffset = offsetDp
+            return
+        }
+        // Margins anchor to the map view's safe-area top; the map sits below the status bar in
+        // the Compose layout, so its safe-area inset is 0 and shared-code dp map 1:1 to points.
+        let base = defaultCompassMargins ?? mapView.compassViewMargins
+        defaultCompassMargins = base
+        mapView.compassViewMargins = CGPoint(x: base.x, y: offsetDp > 0 ? CGFloat(offsetDp) : base.y)
     }
 
     func getUserLocation() -> [KotlinDouble]? {

@@ -28,6 +28,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
@@ -770,6 +771,7 @@ fun BoxScope.MapOverlays(
     elevationMarker: Int? = null,
     onElevationScrub: (Int?) -> Unit = {},
     onBottomChartHeightChanged: (Dp) -> Unit = {},
+    onCompassTopOffsetChanged: (Dp) -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -837,11 +839,28 @@ fun BoxScope.MapOverlays(
     // snackbar above it, keeping the crop-undo snackbar from covering the chart it refers to.
     LaunchedEffect(bottomCardsOffset) { onBottomChartHeightChanged(bottomCardsOffset) }
 
-    // While navigating, the full-width NavigationCard occupies the top band, so the top-right chips
-    // and any secondary top-center banner are pushed below it. navCardHeight is measured without the
-    // card's 16dp top inset, so add it back plus an 8dp gap to land just under the card.
+    // The full-width top-center overlays (NavigationCard / track banner, then the point and
+    // friend banners) stack per topCenterStack, which also drops the map's native compass below
+    // the lowest of them. Heights are measured without each card's top inset.
     var navCardHeight by remember { mutableStateOf(0.dp) }
-    val belowNavCard = navCardHeight + 16.dp + 8.dp
+    var topBannerHeight by remember { mutableStateOf(0.dp) }
+    var pointBannerHeight by remember { mutableStateOf(0.dp) }
+    var friendBannerHeight by remember { mutableStateOf(0.dp) }
+    val showPointBanner = showViewingPoint && viewingPointName != null
+    val showFriendBanner = followedClientId != null && !showSearch
+    val stack = topCenterStack(
+        isNavigating = navigation.isNavigating,
+        hasFocusedTrack = focusedTrack != null,
+        showsPointBanner = showPointBanner,
+        showsFriendBanner = showFriendBanner,
+        navCardHeight = navCardHeight,
+        trackBannerHeight = topBannerHeight,
+        pointBannerHeight = pointBannerHeight,
+        friendBannerHeight = friendBannerHeight,
+    )
+    // Animated so the compass slides instead of teleporting when overlays appear, resize, or swap.
+    val compassTopOffset by animateDpAsState(stack.compassTopOffset)
+    LaunchedEffect(compassTopOffset) { onCompassTopOffsetChanged(compassTopOffset) }
 
     if (isLocating && !hasTopOverlay) {
         LocatingPill(
@@ -875,7 +894,7 @@ fun BoxScope.MapOverlays(
         Column(
             modifier = Modifier
                 .padding(
-                    top = if (navigation.isNavigating) belowNavCard else 16.dp,
+                    top = if (navigation.isNavigating) stack.belowPrimaryModal else 16.dp,
                     end = offlineChipEnd
                 ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -957,7 +976,7 @@ fun BoxScope.MapOverlays(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(top = 16.dp)
+                .padding(top = TOP_OVERLAY_INSET)
                 .padding(start = 72.dp, end = 16.dp)
                 .onSizeChanged { navCardHeight = with(density) { it.height.toDp() } },
             progress = navigation.progress,
@@ -965,22 +984,21 @@ fun BoxScope.MapOverlays(
             onStop = navigation.onStop,
         )
     } else if (focusedTrack != null) {
+        val topBannerModifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(top = TOP_OVERLAY_INSET)
+            .padding(horizontal = 16.dp)
+            .onSizeChanged { topBannerHeight = with(density) { it.height.toDp() } }
         if (activeCrop != null) {
             TrackCropHeader(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
-                    .padding(horizontal = 16.dp),
+                modifier = topBannerModifier,
                 trackName = focusedTrack.name,
                 onCancel = onCancelCrop,
                 onSave = onApplyCrop
             )
         } else {
             ViewingTrackBanner(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
-                    .padding(horizontal = 16.dp),
+                modifier = topBannerModifier,
                 trackName = focusedTrack.name,
                 trackColorHex = focusedTrackColor,
                 canNavigate = focusedTrack.points.size >= 2 && !isRecording,
@@ -991,34 +1009,26 @@ fun BoxScope.MapOverlays(
         }
     }
 
-    if (showViewingPoint && viewingPointName != null) {
+    if (showPointBanner && viewingPointName != null) {
         ViewingPointBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                // Sits under the NavigationCard while navigating so the two don't overlap.
-                .padding(top = if (navigation.isNavigating) belowNavCard else 16.dp)
-                .padding(horizontal = 16.dp),
+                .padding(top = stack.pointBannerTop)
+                .padding(horizontal = 16.dp)
+                .onSizeChanged { pointBannerHeight = with(density) { it.height.toDp() } },
             pointName = viewingPointName,
             pointColor = viewingPointColor,
             onClose = onCloseViewingPoint
         )
     }
 
-    if (followedClientId != null && !showSearch) {
-        val hasOtherBanner = focusedTrack != null || (showViewingPoint && viewingPointName != null)
-        // Stack below the NavigationCard while navigating, and a further step down when a point
-        // banner also shows (its ~64dp height), so the friend banner never lands on either.
-        val friendBannerTop = when {
-            navigation.isNavigating && hasOtherBanner -> belowNavCard + 64.dp
-            navigation.isNavigating -> belowNavCard
-            hasOtherBanner -> 80.dp
-            else -> 16.dp
-        }
+    if (showFriendBanner && followedClientId != null) {
         FollowingFriendBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = friendBannerTop)
-                .padding(horizontal = 16.dp),
+                .padding(top = stack.friendBannerTop)
+                .padding(horizontal = 16.dp)
+                .onSizeChanged { friendBannerHeight = with(density) { it.height.toDp() } },
             clientId = followedClientId,
             isConnecting = isFollowConnecting,
             isActive = isFollowedTrackActive,

@@ -216,6 +216,7 @@ fun MapScreen(
     }
     var cameraFollowMode by remember { mutableStateOf(CameraFollowMode.OFF) }
     var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
+    var compassTopOffset by remember { mutableStateOf(0.dp) }
     val selectedLayer by viewModel.userPreferences.selectedMapLayer.collectAsState()
     var showLayerMenu by remember { mutableStateOf(false) }
     val showWaymarkedTrails by viewModel.userPreferences.showWaymarkedTrails.collectAsState()
@@ -528,6 +529,7 @@ fun MapScreen(
         onApplyCrop = { viewModel.applyCrop() },
         elevationMarker = elevationMarker,
         onElevationScrub = { viewModel.setElevationMarker(it) },
+        onCompassTopOffsetChanged = { compassTopOffset = it },
         navigation = NavigationUiState(
             progress = navigationProgress,
             track = navChartTrack,
@@ -684,7 +686,8 @@ fun MapScreen(
                 coordGridGeoJson = coordGridGeoJson,
                 navigationLayers = navigationLayers,
                 cameraFollowMode = cameraFollowMode,
-                onFollowModeDismissed = { cameraFollowMode = CameraFollowMode.OFF }
+                onFollowModeDismissed = { cameraFollowMode = CameraFollowMode.OFF },
+                compassTopOffset = compassTopOffset
             )
         }
     )

@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
@@ -62,6 +63,7 @@ fun MapScreenContent(
     onApplyCrop: () -> Unit = {},
     elevationMarker: Int? = null,
     onElevationScrub: (Int?) -> Unit = {},
+    onCompassTopOffsetChanged: (Dp) -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -184,6 +186,7 @@ fun MapScreenContent(
                 elevationMarker = elevationMarker,
                 onElevationScrub = onElevationScrub,
                 onBottomChartHeightChanged = { bottomChartHeight = it },
+                onCompassTopOffsetChanged = onCompassTopOffsetChanged,
                 navigation = navigation,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,
