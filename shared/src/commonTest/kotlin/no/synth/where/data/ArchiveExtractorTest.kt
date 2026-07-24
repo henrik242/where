@@ -3,18 +3,9 @@ package no.synth.where.data
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ArchiveExtractorTest {
-
-    @Test
-    fun isZipRecognizesTheLocalHeaderMagic() {
-        assertTrue(ArchiveExtractor.isZip(TestFixtures.tripZip))
-        assertFalse(ArchiveExtractor.isZip(TestFixtures.trackGpx.encodeToByteArray()))
-        assertFalse(ArchiveExtractor.isZip(byteArrayOf()))
-        assertFalse(ArchiveExtractor.isZip(byteArrayOf('P'.code.toByte(), 'K'.code.toByte())))
-    }
 
     @Test
     fun extractInflatesMatchingEntriesAndDropsTheRest() {
@@ -51,7 +42,6 @@ class ArchiveExtractorTest {
     fun extractReturnsEmptyForTruncatedZip() {
         // Right magic bytes, but the central directory is gone: extract must bail cleanly, not crash.
         val truncated = TestFixtures.tripZip.copyOfRange(0, 60)
-        assertTrue(ArchiveExtractor.isZip(truncated))
         assertTrue(ArchiveExtractor.extract(truncated) { true }.isEmpty())
     }
 
@@ -71,7 +61,7 @@ class ArchiveExtractorTest {
     }
 
     @Test
-    fun inflateReconstructsALargeMultiBlockStreamExactly() {
+    fun largeMultiBlockDeflateStreamIsReconstructedExactly() {
         // 124 KB of highly repetitive text: exercises long back-references and multiple deflate
         // blocks, and asserts the decompressed bytes match the original exactly.
         val entry = ArchiveExtractor.extract(TestFixtures.bigZip) { it == "big.gpx" }.single()

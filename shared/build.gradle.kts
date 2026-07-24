@@ -119,6 +119,7 @@ kotlin {
             api(libs.room.runtime)
             api(libs.androidx.datastore.preferences)
             implementation(libs.compose.material3)
+            implementation(libs.kmp.zip)
             api(libs.compose.components.resources)
         }
         commonTest.dependencies {

@@ -1,5 +1,7 @@
 package no.synth.where.data
 
+import no.synth.kmpzip.zip.isZip
+
 /** A file chosen in the import picker: its display name and raw bytes. Platform pickers produce these. */
 data class PickedFile(val name: String, val bytes: ByteArray) {
     override fun equals(other: Any?): Boolean =
@@ -37,7 +39,7 @@ fun isTrackFileName(name: String): Boolean =
  * single zip archive. A single plain track file keeps the simpler one-shot import path.
  */
 fun isBulkImport(files: List<PickedFile>): Boolean =
-    files.size > 1 || (files.size == 1 && ArchiveExtractor.isZip(files[0].bytes))
+    files.size > 1 || (files.size == 1 && isZip(files[0].bytes))
 
 /**
  * Folder name to prefill in the import prompt: the archive's base name when the pick is a single
@@ -46,7 +48,7 @@ fun isBulkImport(files: List<PickedFile>): Boolean =
  */
 fun suggestedImportFolder(files: List<PickedFile>): String? {
     val only = files.singleOrNull() ?: return null
-    if (!ArchiveExtractor.isZip(only.bytes)) return null
+    if (!isZip(only.bytes)) return null
     val base = only.name.substringAfterLast('/').substringAfterLast('\\')
     val withoutExtension = if (base.endsWith(".zip", ignoreCase = true)) base.dropLast(4) else base
     return withoutExtension.trim().ifEmpty { null }

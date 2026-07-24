@@ -18,6 +18,7 @@ import no.synth.where.data.db.TrackPointEntity
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.navigation.NavigationProgress
+import no.synth.kmpzip.zip.isZip
 import no.synth.where.data.navigation.TrackNavigator
 import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
@@ -522,7 +523,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         withContext(Dispatchers.Default) {
             val destination = normalizeFolderName(folder)
             val payloads = files.flatMap { bytes ->
-                if (ArchiveExtractor.isZip(bytes)) {
+                if (isZip(bytes)) {
                     ArchiveExtractor.extract(bytes) { isTrackFileName(it) }.map { it.bytes }
                 } else {
                     listOf(bytes)
