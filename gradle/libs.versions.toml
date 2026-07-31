@@ -10,9 +10,8 @@ core = "1.7.0"
 coreKtx = "1.19.0"
 crashlyticsPlugin = "3.0.7"
 datastorePreferences = "1.2.1"
-dependencyUpdates = "0.54.0"
 espressoCore = "3.7.0"
-firebaseBom = "34.16.0"
+firebaseBom = "34.17.0"
 googleServicesPlugin = "4.5.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
@@ -88,4 +87,3 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-dependency-updates = { id = "com.github.ben-manes.versions", version.ref = "dependencyUpdates" }
