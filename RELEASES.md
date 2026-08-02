@@ -6,6 +6,11 @@ tag dates.
 
 ## Unreleased
 
+- Tapping the compass points the map north; tapping again locks it there and blocks
+  rotation, and one more tap releases the lock
+
+## v507 (2026-07-24)
+
 - Map compass slides below the top banners (navigation, track details, saved point,
   friend tracking) instead of hiding behind them
 

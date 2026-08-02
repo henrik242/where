@@ -26,10 +26,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingNavCompletedGeoJson: String?
     private var pendingNavRemainingGeoJson: String?
     private var pendingNavOffCourseGeoJson: String?
-    private var pendingCompassTopOffset: Double?
-    // MapLibre's default compass margins, captured before the first override so the compass
-    // returns to its stock spot when no top modal is shown.
-    private var defaultCompassMargins: CGPoint?
+    private var pendingRotationEnabled: Bool?
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
@@ -99,9 +96,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         map.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         map.logoView.isHidden = true
         map.delegate = self
-        // Keep the compass on screen even when facing north, so the heading is always readable
-        // (and rotation stays discoverable). Mirrors Android's isCompassFadeWhenFacingNorth = false.
-        map.compassView.compassVisibility = .visible
+        // The compass rose is drawn by the shared MapOverlays, so the native ornament would just be
+        // a duplicate. Mirrors Android's uiSettings.isCompassEnabled = false.
+        map.compassView.compassVisibility = .hidden
         // Default camera: center of Norway
         map.setCenter(CLLocationCoordinate2D(latitude: 65.0, longitude: 14.0), zoomLevel: 4, animated: false)
 
@@ -130,9 +127,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
         self.mapView = map
 
-        if let offset = pendingCompassTopOffset {
-            pendingCompassTopOffset = nil
-            setCompassTopOffset(offsetDp: offset)
+        if let enabled = pendingRotationEnabled {
+            pendingRotationEnabled = nil
+            setRotationEnabled(enabled: enabled)
         }
 
         // If setStyle was called before the map was created, apply it now.
@@ -503,9 +500,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         } else {
             trackingMode = .none
         }
-        // Zoom in when engaging follow from a far-out view (parity with Android applyFollowMode;
+        // Zoom in when engaging follow from a far-out view, but not when a camera that is already
+        // following merely changes how it tracks the bearing (parity with Android applyFollowMode;
         // keep the threshold in sync with MapZoomLevels.FOLLOW_MIN).
-        if trackingMode != .none && mapView.zoomLevel < 15.0 {
+        if trackingMode != .none && mapView.userTrackingMode == .none && mapView.zoomLevel < 15.0 {
             mapView.setZoomLevel(15.0, animated: true)
         }
         mapView.setUserTrackingMode(trackingMode, animated: true, completionHandler: nil)
@@ -515,16 +513,20 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         self.twoFingerTapCallback = callback
     }
 
-    func setCompassTopOffset(offsetDp: Double) {
+    func resetNorth() {
+        guard let mapView = self.mapView else { return }
+        mapView.setDirection(0, animated: true)
+    }
+
+    func setRotationEnabled(enabled: Bool) {
         guard let mapView = self.mapView else {
-            pendingCompassTopOffset = offsetDp
+            pendingRotationEnabled = enabled
             return
         }
-        // Margins anchor to the map view's safe-area top; the map sits below the status bar in
-        // the Compose layout, so its safe-area inset is 0 and shared-code dp map 1:1 to points.
-        let base = defaultCompassMargins ?? mapView.compassViewMargins
-        defaultCompassMargins = base
-        mapView.compassViewMargins = CGPoint(x: base.x, y: offsetDp > 0 ? CGFloat(offsetDp) : base.y)
+        mapView.isRotateEnabled = enabled
+        if !enabled && mapView.direction != 0 {
+            mapView.setDirection(0, animated: true)
+        }
     }
 
     func getUserLocation() -> [KotlinDouble]? {

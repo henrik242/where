@@ -216,7 +216,8 @@ fun MapScreen(
     }
     var cameraFollowMode by remember { mutableStateOf(CameraFollowMode.OFF) }
     var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
-    var compassTopOffset by remember { mutableStateOf(0.dp) }
+    var mapBearing by remember { mutableDoubleStateOf(0.0) }
+    val northLocked by viewModel.userPreferences.northLocked.collectAsState()
     val selectedLayer by viewModel.userPreferences.selectedMapLayer.collectAsState()
     var showLayerMenu by remember { mutableStateOf(false) }
     val showWaymarkedTrails by viewModel.userPreferences.showWaymarkedTrails.collectAsState()
@@ -373,6 +374,7 @@ fun MapScreen(
     LaunchedEffect(mapInstance) {
         val map = mapInstance
         map?.addOnCameraMoveListener {
+            mapBearing = map.cameraPosition.bearing
             map.cameraPosition.target?.let { target ->
                 savedCameraLat = target.latitude
                 savedCameraLon = target.longitude
@@ -529,7 +531,17 @@ fun MapScreen(
         onApplyCrop = { viewModel.applyCrop() },
         elevationMarker = elevationMarker,
         onElevationScrub = { viewModel.setElevationMarker(it) },
-        onCompassTopOffsetChanged = { compassTopOffset = it },
+        mapBearing = mapBearing,
+        northLocked = northLocked,
+        // Only reachable with the camera free (see compassTapAction), so there is no follow mode
+        // for the animation to cancel.
+        onResetNorth = {
+            mapInstance?.animateCamera(org.maplibre.android.camera.CameraUpdateFactory.bearingTo(0.0))
+        },
+        onToggleNorthLock = {
+            if (!northLocked) cameraFollowMode = cameraFollowMode.withoutHeading()
+            viewModel.userPreferences.updateNorthLocked(!northLocked)
+        },
         navigation = NavigationUiState(
             progress = navigationProgress,
             track = navChartTrack,
@@ -578,7 +590,7 @@ fun MapScreen(
             // Cycle OFF -> FOLLOW -> FOLLOW_HEADING; the LaunchedEffect on cameraFollowMode applies
             // it to the location component (centering, and compass rotation for heading mode).
             if (hasLocationPermission) {
-                cameraFollowMode = cameraFollowMode.next()
+                cameraFollowMode = cameraFollowMode.next(northLocked)
             }
         },
         onRulerToggle = {
@@ -687,7 +699,7 @@ fun MapScreen(
                 navigationLayers = navigationLayers,
                 cameraFollowMode = cameraFollowMode,
                 onFollowModeDismissed = { cameraFollowMode = CameraFollowMode.OFF },
-                compassTopOffset = compassTopOffset
+                northLocked = northLocked
             )
         }
     )

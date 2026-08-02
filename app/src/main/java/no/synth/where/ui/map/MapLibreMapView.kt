@@ -21,9 +21,6 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -41,6 +38,7 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.toCommon
 import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -87,16 +85,12 @@ fun MapLibreMapView(
     navigationLayers: NavigationLayers? = null,
     cameraFollowMode: CameraFollowMode = CameraFollowMode.OFF,
     onFollowModeDismissed: () -> Unit = {},
-    compassTopOffset: Dp = 0.dp
+    northLocked: Boolean = false
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     val context = LocalContext.current
-    val density = LocalDensity.current
-    // MapLibre's default compass top margin, captured before the first override so the compass
-    // returns to its stock spot when no top overlay is shown.
-    var defaultCompassMarginTop by remember { mutableStateOf<Int?>(null) }
     var isOnline by remember { mutableStateOf(true) }
     var wasInitialized by remember { mutableStateOf(false) }
     val gpsKeepAlive = remember(context) { GpsKeepAlive(context) }
@@ -118,6 +112,7 @@ fun MapLibreMapView(
     // Read live so reapplyOverlays restores the follow mode after a style reload (activating the
     // location component resets its cameraMode to NONE).
     val cameraFollowModeState = rememberUpdatedState(cameraFollowMode)
+    val northLockedState = rememberUpdatedState(northLocked)
     val onFollowModeDismissedState = rememberUpdatedState(onFollowModeDismissed)
     // The gesture-dismiss listener is registered exactly once, after the component is first enabled.
     var trackingListenerAdded by remember { mutableStateOf(false) }
@@ -137,7 +132,7 @@ fun MapLibreMapView(
             )
             trackingListenerAdded = true
         }
-        mapInstance.applyFollowMode(cameraFollowModeState.value)
+        mapInstance.applyFollowMode(cameraFollowModeState.value, northLocked = northLockedState.value)
     }
 
     // Single owner of the keep-alive policy: run only while resumed with permission, and never
@@ -259,7 +254,7 @@ fun MapLibreMapView(
 
     // The user cycled the FAB: apply the new mode and snap the zoom in from a far-out view.
     LaunchedEffect(cameraFollowMode, map) {
-        map?.applyFollowMode(cameraFollowMode, snapZoom = true)
+        map?.applyFollowMode(cameraFollowMode, snapZoom = true, northLocked = northLocked)
     }
 
     // Cold start with no cached location: the component only enables once the first fix lands, and
@@ -417,18 +412,16 @@ fun MapLibreMapView(
         }
     }
 
-    // Drop the compass below the full-width top-center overlays so it stays visible; restore the
-    // stock margin when they go away.
-    LaunchedEffect(map, compassTopOffset) {
-        val ui = map?.uiSettings ?: return@LaunchedEffect
-        val defaultTop = defaultCompassMarginTop
-            ?: ui.compassMarginTop.also { defaultCompassMarginTop = it }
-        val topPx = if (compassTopOffset > 0.dp) {
-            with(density) { compassTopOffset.roundToPx() }
-        } else {
-            defaultTop
+    // North lock: block the rotate gesture and straighten a map already turned off north. While
+    // following, the location component owns the bearing, so re-apply the mode instead.
+    LaunchedEffect(map, northLocked) {
+        val mapInstance = map ?: return@LaunchedEffect
+        mapInstance.uiSettings.isRotateGesturesEnabled = !northLocked
+        if (cameraFollowMode != CameraFollowMode.OFF) {
+            mapInstance.applyFollowMode(cameraFollowMode, northLocked = northLocked)
+        } else if (northLocked && mapInstance.cameraPosition.bearing != 0.0) {
+            mapInstance.animateCamera(CameraUpdateFactory.bearingTo(0.0))
         }
-        ui.setCompassMargins(ui.compassMarginLeft, topPx, ui.compassMarginRight, ui.compassMarginBottom)
     }
 
     AndroidView(
@@ -479,9 +472,9 @@ fun MapLibreMapView(
                     map = mapInstance
                     onMapReady(mapInstance)
 
-                    // Keep the compass on screen even when facing north, so the heading is always
-                    // readable (and rotation stays discoverable).
-                    mapInstance.uiSettings.setCompassFadeFacingNorth(false)
+                    // The compass rose is drawn by MapOverlays (shared with iOS), so the native
+                    // ornament would just be a duplicate.
+                    mapInstance.uiSettings.isCompassEnabled = false
 
                     mapInstance.cameraPosition = CameraPosition.Builder()
                         .target(LatLng(savedCameraLat, savedCameraLon).toMapLibre())

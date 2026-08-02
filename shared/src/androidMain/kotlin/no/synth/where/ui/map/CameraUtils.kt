@@ -28,16 +28,28 @@ val MapLibreMap.isLocationComponentEnabledSafe: Boolean
  * (it is re-applied once enabled, and on every style reload). Set [snapZoom] only on the user's
  * mode change so follow zooms in from a far-out view; leave it false when merely restoring the
  * mode after a style reload, otherwise a reload would yank a deliberately zoomed-out view back in.
+ * [northLocked] follows north-up through the component instead of an external bearing animation,
+ * which would drop tracking: LocationComponent resets to [CameraMode.NONE] whenever a developer
+ * camera animation starts.
  */
-fun MapLibreMap.applyFollowMode(mode: CameraFollowMode, snapZoom: Boolean = false) {
+fun MapLibreMap.applyFollowMode(
+    mode: CameraFollowMode,
+    snapZoom: Boolean = false,
+    northLocked: Boolean = false,
+) {
     if (!isLocationComponentEnabledSafe) return
     val lc = locationComponent
+    // Only engaging follow zooms in; a camera that is already following merely changes how it
+    // tracks the bearing (heading toggle, north lock) and must keep the zoom the user chose.
+    val wasFollowing = lc.cameraMode != CameraMode.NONE
     lc.cameraMode = when (mode) {
         CameraFollowMode.OFF -> CameraMode.NONE
-        CameraFollowMode.FOLLOW -> CameraMode.TRACKING
+        CameraFollowMode.FOLLOW -> if (northLocked) CameraMode.TRACKING_GPS_NORTH else CameraMode.TRACKING
         CameraFollowMode.FOLLOW_HEADING -> CameraMode.TRACKING_COMPASS
     }
-    if (snapZoom && mode != CameraFollowMode.OFF && cameraPosition.zoom < MapZoomLevels.FOLLOW_MIN) {
+    if (snapZoom && !wasFollowing && mode != CameraFollowMode.OFF &&
+        cameraPosition.zoom < MapZoomLevels.FOLLOW_MIN
+    ) {
         lc.zoomWhileTracking(MapZoomLevels.FOLLOW_MIN)
     }
 }

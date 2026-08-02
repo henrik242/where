@@ -91,6 +91,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _crosshairActive = MutableStateFlow(false)
     val crosshairActive: StateFlow<Boolean> = _crosshairActive.asStateFlow()
 
+    private val _northLocked = MutableStateFlow(false)
+    val northLocked: StateFlow<Boolean> = _northLocked.asStateFlow()
+
     private val _selectedMapLayer = MutableStateFlow(MapLayer.KARTVERKET)
     val selectedMapLayer: StateFlow<MapLayer> = _selectedMapLayer.asStateFlow()
 
@@ -112,6 +115,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _showHillshade.value = prefs[SHOW_HILLSHADE] ?: false
                 _showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
+                _northLocked.value = prefs[NORTH_LOCKED] ?: false
                 _selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _hasSeenTrackingInfo.value = prefs[HAS_SEEN_TRACKING_INFO] ?: false
@@ -163,6 +167,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     fun updateCrosshairActive(value: Boolean) {
         _crosshairActive.value = value
         scope.launch { dataStore.edit { it[CROSSHAIR_ACTIVE] = value } }
+    }
+
+    fun updateNorthLocked(value: Boolean) {
+        _northLocked.value = value
+        scope.launch { dataStore.edit { it[NORTH_LOCKED] = value } }
     }
 
     fun updateSelectedMapLayer(value: MapLayer) {
@@ -345,6 +354,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val SHOW_HILLSHADE = booleanPreferencesKey("show_hillshade")
         private val SHOW_COORD_GRID = booleanPreferencesKey("show_coord_grid")
         private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")
+        private val NORTH_LOCKED = booleanPreferencesKey("north_locked")
         private val SELECTED_MAP_LAYER = stringPreferencesKey("selected_map_layer")
         private val HAS_SEEN_TRACKING_INFO = booleanPreferencesKey("has_seen_tracking_info")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")

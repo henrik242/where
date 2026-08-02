@@ -74,9 +74,9 @@ interface MapViewProvider {
     fun setCameraFollowMode(mode: CameraFollowMode)
     fun setOnTrackingModeCallback(callback: MapTrackingModeCallback?)
 
-    /**
-     * Top margin for the compass ornament, in dp from the map's top edge (Compose dp map 1:1 to
-     * UIKit points), so it drops below the top-center overlay stack. 0 restores the default spot.
-     */
-    fun setCompassTopOffset(offsetDp: Double)
+    /** Animates the camera back to north-up. */
+    fun resetNorth()
+
+    /** Blocks the rotate gesture while the map is locked to north. */
+    fun setRotationEnabled(enabled: Boolean)
 }

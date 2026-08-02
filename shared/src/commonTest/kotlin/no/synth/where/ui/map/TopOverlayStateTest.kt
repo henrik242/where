@@ -90,7 +90,7 @@ class TopOverlayStateTest {
     @Test
     fun emptyStack_keepsCompassAtDefault() {
         val s = stack()
-        assertEquals(0.dp, s.compassTopOffset, "no top overlay shown")
+        assertEquals(16.dp, s.compassTopOffset, "no top overlay shown")
         assertEquals(16.dp, s.belowPrimaryModal)
         assertEquals(16.dp, s.pointBannerTop)
         assertEquals(16.dp, s.friendBannerTop)
@@ -121,7 +121,7 @@ class TopOverlayStateTest {
     @Test
     fun unmeasuredModal_keepsCompassAtDefault() {
         val s = stack(isNavigating = true)
-        assertEquals(0.dp, s.compassTopOffset, "unmeasured modal must not offset the compass")
+        assertEquals(16.dp, s.compassTopOffset, "unmeasured modal must not offset the compass")
     }
 
     @Test

@@ -295,6 +295,11 @@
     <string name="layer_avalanchezones_desc">Avalanche zones from NVE</string>
     <string name="layer_terrain_desc">Terrain hillshade overlay</string>
 
+    <!-- Compass -->
+    <string name="compass_reset_north">Point map north</string>
+    <string name="compass_locked_north">Map locked to north</string>
+    <string name="lock_map_to_north">Lock map to north</string>
+
     <!-- Crosshair -->
     <string name="hillshade">Hillshade</string>
     <string name="crosshair">Crosshair</string>

@@ -309,6 +309,11 @@
     <string name="unnamed_point">Navnløst punkt</string>
     <string name="locating">Søker etter posisjon…</string>
 
+    <!-- Compass -->
+    <string name="compass_reset_north">Vend kartet mot nord</string>
+    <string name="compass_locked_north">Kartet er låst mot nord</string>
+    <string name="lock_map_to_north">Lås kartet mot nord</string>
+
     <!-- Crosshair -->
     <string name="hillshade">Terrengskygge</string>
     <string name="crosshair">Kryssmarkør</string>

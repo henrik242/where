@@ -228,7 +228,9 @@ fun IosMapScreen(
     val coordFormat by userPreferences.coordFormat.collectAsState()
     var centerLatLng by remember { mutableStateOf<LatLng?>(null) }
     var cameraZoom by remember { mutableStateOf(5.0) }
+    var cameraBearing by remember { mutableStateOf(0.0) }
     var cameraFollowMode by remember { mutableStateOf(CameraFollowMode.OFF) }
+    val northLocked by userPreferences.northLocked.collectAsState()
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var hasFix by remember { mutableStateOf(false) }
     val isLocating = locationTracker.hasPermission && !hasFix
@@ -272,6 +274,11 @@ fun IosMapScreen(
         mapViewProvider.setConnected(!offlineModeEnabled)
     }
 
+    // North lock: block the rotate gesture and straighten a map already turned off north.
+    LaunchedEffect(northLocked) {
+        mapViewProvider.setRotationEnabled(!northLocked)
+    }
+
     val shouldTrackLocation by coordinator.shouldTrackLocation.collectAsState()
     val isLiveSharing by coordinator.isLiveSharing.collectAsState()
 
@@ -313,6 +320,7 @@ fun IosMapScreen(
             override fun onCameraMove(latitude: Double, longitude: Double, zoom: Double, bearing: Double) {
                 centerLatLng = LatLng(latitude, longitude)
                 cameraZoom = zoom
+                cameraBearing = bearing
             }
         })
         onDispose { mapViewProvider.setOnCameraMoveCallback(null) }
@@ -647,7 +655,21 @@ fun IosMapScreen(
         onApplyCrop = { trackRepository.applyCrop() },
         elevationMarker = elevationMarker,
         onElevationScrub = { trackRepository.setElevationMarker(it) },
-        onCompassTopOffsetChanged = { mapViewProvider.setCompassTopOffset(it.value.toDouble()) },
+        mapBearing = cameraBearing,
+        northLocked = northLocked,
+        // Only reachable with the camera free (see compassTapAction), so there is no follow mode
+        // for the animation to cancel.
+        onResetNorth = { mapViewProvider.resetNorth() },
+        onToggleNorthLock = {
+            if (!northLocked) {
+                val next = cameraFollowMode.withoutHeading()
+                if (next != cameraFollowMode) {
+                    cameraFollowMode = next
+                    mapViewProvider.setCameraFollowMode(next)
+                }
+            }
+            userPreferences.updateNorthLocked(!northLocked)
+        },
         navigation = NavigationUiState(
             progress = navigationProgress,
             track = navChartTrack,
@@ -719,7 +741,7 @@ fun IosMapScreen(
         onMyLocationClick = {
             // Cycle OFF -> FOLLOW -> FOLLOW_HEADING; the provider centers/rotates via the map's
             // user tracking mode. Panning by hand reports back through the tracking-mode callback.
-            val next = cameraFollowMode.next()
+            val next = cameraFollowMode.next(northLocked)
             cameraFollowMode = next
             mapViewProvider.setCameraFollowMode(next)
         },

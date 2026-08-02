@@ -15,9 +15,16 @@ enum class CameraFollowMode {
     FOLLOW,
     FOLLOW_HEADING;
 
-    fun next(): CameraFollowMode = when (this) {
+    /**
+     * Next mode in the my-location FAB cycle. [FOLLOW_HEADING] is skipped while the map is locked
+     * to north, since it would rotate the camera the lock is there to prevent.
+     */
+    fun next(northLocked: Boolean = false): CameraFollowMode = when (this) {
         OFF -> FOLLOW
-        FOLLOW -> FOLLOW_HEADING
+        FOLLOW -> if (northLocked) OFF else FOLLOW_HEADING
         FOLLOW_HEADING -> OFF
     }
+
+    /** The mode to fall back to when north-lock is switched on mid-follow. */
+    fun withoutHeading(): CameraFollowMode = if (this == FOLLOW_HEADING) FOLLOW else this
 }

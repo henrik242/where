@@ -771,7 +771,11 @@ fun BoxScope.MapOverlays(
     elevationMarker: Int? = null,
     onElevationScrub: (Int?) -> Unit = {},
     onBottomChartHeightChanged: (Dp) -> Unit = {},
-    onCompassTopOffsetChanged: (Dp) -> Unit = {},
+    mapBearing: Double = 0.0,
+    northLocked: Boolean = false,
+    cameraFollowing: Boolean = false,
+    onResetNorth: () -> Unit = {},
+    onToggleNorthLock: () -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -840,8 +844,8 @@ fun BoxScope.MapOverlays(
     LaunchedEffect(bottomCardsOffset) { onBottomChartHeightChanged(bottomCardsOffset) }
 
     // The full-width top-center overlays (NavigationCard / track banner, then the point and
-    // friend banners) stack per topCenterStack, which also drops the map's native compass below
-    // the lowest of them. Heights are measured without each card's top inset.
+    // friend banners) stack per topCenterStack, which also drops the compass rose below the
+    // lowest of them. Heights are measured without each card's top inset.
     var navCardHeight by remember { mutableStateOf(0.dp) }
     var topBannerHeight by remember { mutableStateOf(0.dp) }
     var pointBannerHeight by remember { mutableStateOf(0.dp) }
@@ -860,7 +864,6 @@ fun BoxScope.MapOverlays(
     )
     // Animated so the compass slides instead of teleporting when overlays appear, resize, or swap.
     val compassTopOffset by animateDpAsState(stack.compassTopOffset)
-    LaunchedEffect(compassTopOffset) { onCompassTopOffsetChanged(compassTopOffset) }
 
     if (isLocating && !hasTopOverlay) {
         LocatingPill(
@@ -871,6 +874,17 @@ fun BoxScope.MapOverlays(
     }
     // The always-visible compass sits top-right; reserve space so the offline chip clears it.
     val offlineChipEnd = 56.dp
+
+    MapCompass(
+        bearing = mapBearing,
+        northLocked = northLocked,
+        following = cameraFollowing,
+        onResetNorth = onResetNorth,
+        onToggleNorthLock = onToggleNorthLock,
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .padding(top = compassTopOffset, end = 8.dp)
+    )
 
     AnimatedVisibility(
         visible = !hideCornerControls,

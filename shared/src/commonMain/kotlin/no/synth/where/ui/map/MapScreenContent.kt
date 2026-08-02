@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
@@ -63,7 +62,11 @@ fun MapScreenContent(
     onApplyCrop: () -> Unit = {},
     elevationMarker: Int? = null,
     onElevationScrub: (Int?) -> Unit = {},
-    onCompassTopOffsetChanged: (Dp) -> Unit = {},
+    // Compass rose: camera heading in degrees clockwise from north, and the north-lock toggle.
+    mapBearing: Double = 0.0,
+    northLocked: Boolean = false,
+    onResetNorth: () -> Unit = {},
+    onToggleNorthLock: () -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -186,7 +189,11 @@ fun MapScreenContent(
                 elevationMarker = elevationMarker,
                 onElevationScrub = onElevationScrub,
                 onBottomChartHeightChanged = { bottomChartHeight = it },
-                onCompassTopOffsetChanged = onCompassTopOffsetChanged,
+                mapBearing = mapBearing,
+                northLocked = northLocked,
+                cameraFollowing = cameraFollowMode != CameraFollowMode.OFF,
+                onResetNorth = onResetNorth,
+                onToggleNorthLock = onToggleNorthLock,
                 navigation = navigation,
                 viewingPointName = viewingPointName,
                 viewingPointColor = viewingPointColor,
