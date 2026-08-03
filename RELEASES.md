@@ -4,7 +4,7 @@ Version numbers are the git commit count at build time; gaps between tag numbers
 builds that were never released. Each tag below marks a store release; dates are the
 tag dates.
 
-## Unreleased
+## v511 (2026-08-02)
 
 - Tapping the compass points the map north; tapping again locks it there and blocks
   rotation, and one more tap releases the lock
