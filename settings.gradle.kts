@@ -12,7 +12,7 @@ pluginManagement {
     }
 }
 plugins {
-    id("io.github.ben-manes.versions.settings") version "0.58.0"
+    id("io.github.ben-manes.versions.settings") version "0.59.0"
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
