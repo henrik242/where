@@ -11,7 +11,7 @@ on:
         required: true
         default: "Bug fixes and improvements."
       whats_new_no:
-        description: "What's New (Norwegian)"
+        description: "Hva er nytt (norsk)"
         required: true
         default: "Feilrettinger og forbedringer."
       submit_for_review:
