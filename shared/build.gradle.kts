@@ -78,6 +78,15 @@ val generateBuildInfo by tasks.registering(GenerateBuildInfoTask::class) {
     outputs.upToDateWhen { false }
 }
 
+// Gradle 9.7 turns "task consumes KSP-generated output without declaring a dependency" into a build
+// failure. The Android lint model/analysis tasks read KSP-generated sources; wire them after KSP so
+// `./gradlew build` (which runs lint) passes. Over-declaring across ksp tasks is safe (ordering only).
+tasks.matching {
+    it.name.startsWith("lintAnalyze") || (it.name.startsWith("generate") && it.name.endsWith("LintModel"))
+}.configureEach {
+    dependsOn(tasks.matching { it.name.startsWith("ksp") })
+}
+
 kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
