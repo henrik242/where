@@ -854,7 +854,7 @@ fun TrackItem(
                 onClick = { if (selectionMode) onSelectToggle() else onExpandToggle() },
                 onLongClick = onLongPress
             )
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
@@ -873,12 +873,13 @@ fun TrackItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (!selectionMode) {
                         // Tap the swatch to recolor the track. An uncolored track still shows a stable
-                        // auto color (by id) so the dot is always visible. 16dp dot in a >=48dp target.
+                        // auto color (by id) so the dot is always visible. 16dp dot in a 32dp target
+                        // (smaller than the 48dp min so it doesn't inflate the row height).
                         val swatchColor = track.color?.let { runCatching { parseHexColor(it) }.getOrNull() }
                             ?: parseHexColor(TrackColors.forId(track.id))
                         Box(
                             modifier = Modifier
-                                .minimumInteractiveComponentSize()
+                                .size(32.dp)
                                 .clip(CircleShape)
                                 .clickable(onClickLabel = stringResource(Res.string.color)) { onColor() },
                             contentAlignment = Alignment.Center
