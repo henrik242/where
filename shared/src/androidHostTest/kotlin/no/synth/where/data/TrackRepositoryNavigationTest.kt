@@ -26,6 +26,7 @@ private class NoopTrackDao : TrackDao {
     override suspend fun renameFolder(oldName: String, newName: String) {}
     override suspend fun clearFolder(folderName: String) {}
     override suspend fun getAllTracksOnce(): List<TrackEntity> = emptyList()
+    override suspend fun findTrackIdBySourceId(sourceId: String): String? = null
 }
 
 class TrackRepositoryNavigationTest {

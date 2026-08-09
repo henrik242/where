@@ -9,17 +9,37 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import no.synth.where.data.BulkImportResult
+import no.synth.where.data.RouteImportResult
+import no.synth.where.data.RouteListResult
+import no.synth.where.data.StravaRoute
+import no.synth.where.data.StravaRouteImporter
+import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.TrackUrlImporter
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
+import no.synth.where.data.UserPreferences
 
 class TracksScreenViewModel(
-    private val trackRepository: TrackRepository
+    private val trackRepository: TrackRepository,
+    private val stravaTokenManager: StravaTokenManager,
+    private val stravaRouteImporter: StravaRouteImporter,
+    userPreferences: UserPreferences,
 ) : ViewModel() {
 
     val tracks = trackRepository.tracks
     val isRecording = trackRepository.isRecording
     val onMapTrackIds = trackRepository.onMapTrackIds
+    val stravaConnected = userPreferences.stravaConnected
+    val stravaClientId = userPreferences.stravaClientId
+
+    private val _stravaRoutes = MutableStateFlow<List<StravaRoute>?>(null)
+    val stravaRoutes: StateFlow<List<StravaRoute>?> = _stravaRoutes
+
+    private val _stravaLoading = MutableStateFlow(false)
+    val stravaLoading: StateFlow<Boolean> = _stravaLoading
+
+    private val _stravaImporting = MutableStateFlow(false)
+    val stravaImporting: StateFlow<Boolean> = _stravaImporting
 
     private val _isImportingUrl = MutableStateFlow(false)
     val isImportingUrl: StateFlow<Boolean> = _isImportingUrl
@@ -112,6 +132,68 @@ class TracksScreenViewModel(
             } finally {
                 _isImporting.value = false
             }
+        }
+    }
+
+    fun saveStravaCredentials(clientId: String, clientSecret: String) {
+        stravaTokenManager.saveCredentials(clientId, clientSecret)
+    }
+
+    fun forgetStravaCredentials() {
+        viewModelScope.launch { stravaTokenManager.forgetCredentials() }
+    }
+
+    /** Build the authorize URL and hand it to [onUrl] to open in a browser, or call [onError]. */
+    fun connectStrava(onUrl: (String) -> Unit, onError: () -> Unit) {
+        val url = stravaTokenManager.buildAuthorizeUrl()
+        if (url != null) onUrl(url) else onError()
+    }
+
+    /** Emits true when an OAuth round-trip connects, false when it fails/denies. */
+    val stravaAuthOutcome = stravaTokenManager.authOutcome
+
+    /** True while the code->token exchange is running. */
+    val stravaConnecting = stravaTokenManager.exchanging
+
+    fun loadStravaRoutes(onNonSuccess: (RouteListResult) -> Unit) {
+        viewModelScope.launch {
+            _stravaLoading.value = true
+            try {
+                when (val result = stravaRouteImporter.listRoutes()) {
+                    is RouteListResult.Success -> _stravaRoutes.value = result.routes
+                    RouteListResult.NotAuthorized -> {
+                        stravaTokenManager.clearSession()  // token dead → flip UI back to Connect
+                        onNonSuccess(result)
+                    }
+                    else -> onNonSuccess(result)
+                }
+            } finally {
+                _stravaLoading.value = false
+            }
+        }
+    }
+
+    fun dismissStravaRoutes() {
+        _stravaRoutes.value = null
+    }
+
+    fun importStravaRoutes(routes: List<StravaRoute>, onDone: (RouteImportResult) -> Unit) {
+        viewModelScope.launch {
+            _stravaImporting.value = true
+            try {
+                val result = stravaRouteImporter.importRoutes(routes)
+                _stravaRoutes.value = null
+                onDone(result)
+            } finally {
+                _stravaImporting.value = false
+            }
+        }
+    }
+
+    fun disconnectStrava() {
+        viewModelScope.launch {
+            stravaTokenManager.disconnect()
+            _stravaRoutes.value = null
         }
     }
 

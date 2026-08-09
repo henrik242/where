@@ -24,8 +24,11 @@ import no.synth.where.data.DownloadStatus
 import no.synth.where.data.summary
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.OfflineMapManager
+import no.synth.where.data.RouteListResult
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
+import no.synth.where.data.StravaRoute
+import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.TrackUrlImporter
@@ -38,6 +41,7 @@ import no.synth.where.ui.IosLayerHexMapScreen
 import no.synth.where.ui.OnlineTrackingScreenContent
 import no.synth.where.ui.SavedPointsScreenContent
 import no.synth.where.ui.SettingsScreen
+import no.synth.where.ui.StravaImportHandlers
 import no.synth.where.ui.TracksScreenContent
 import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.MapViewProvider
@@ -47,9 +51,11 @@ import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.di.AppDependencies
 import no.synth.where.util.CrashReporter
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.util.IosPlatformActions
+import no.synth.where.util.IosWebAuth
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSystemFreeSize
 import platform.Foundation.NSHomeDirectory
@@ -187,8 +193,94 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 val gpxCorruptedMsg = stringResource(Res.string.import_gpx_corrupted)
                 val noTracksMsg = stringResource(Res.string.import_no_tracks_found)
                 val importUrlErrorMsg = stringResource(Res.string.import_url_error)
+                val stravaConnectedMsg = stringResource(Res.string.strava_connected)
+                val stravaConnectFailedMsg = stringResource(Res.string.strava_connect_failed, StravaTokenManager.CALLBACK_DOMAIN)
+                val stravaLoadFailedMsg = stringResource(Res.string.strava_load_failed)
+                val stravaSessionExpiredMsg = stringResource(Res.string.strava_session_expired)
+                val stravaRateLimitedMsg = stringResource(Res.string.strava_rate_limited)
                 fun sanitizeFileName(name: String): String =
                     name.replace(" ", "_").replace(":", "-")
+
+                val stravaTokenManager = remember { AppDependencies.stravaTokenManager }
+                val stravaRouteImporter = remember { AppDependencies.stravaRouteImporter }
+                val stravaConnected by userPreferences.stravaConnected.collectAsState()
+                val stravaClientId by userPreferences.stravaClientId.collectAsState()
+                val stravaConnecting by stravaTokenManager.exchanging.collectAsState()
+                var stravaRoutes by remember { mutableStateOf<List<StravaRoute>?>(null) }
+                var stravaLoading by remember { mutableStateOf(false) }
+                var stravaImporting by remember { mutableStateOf(false) }
+                var stravaMessage by remember { mutableStateOf<String?>(null) }
+
+                LaunchedEffect(Unit) {
+                    stravaTokenManager.authOutcome.collect { ok ->
+                        stravaMessage = if (ok) stravaConnectedMsg else stravaConnectFailedMsg
+                    }
+                }
+
+                val stravaHandlers = StravaImportHandlers(
+                    credentialsSet = !stravaClientId.isNullOrBlank(),
+                    clientId = stravaClientId,
+                    connected = stravaConnected,
+                    connecting = stravaConnecting,
+                    loadingRoutes = stravaLoading,
+                    importing = stravaImporting,
+                    routes = stravaRoutes,
+                    onSaveCredentials = { id, secret -> stravaTokenManager.saveCredentials(id, secret) },
+                    onRemoveCredentials = { scope.launch { stravaTokenManager.forgetCredentials() } },
+                    onOpenApiSettings = { IosPlatformActions.openUrl("https://www.strava.com/settings/api") },
+                    onConnect = {
+                        val url = stravaTokenManager.buildAuthorizeUrl()
+                        if (url != null) {
+                            IosWebAuth.start(url, "where") { callbackUrl ->
+                                // null = user cancelled: stay silent. Otherwise complete the exchange
+                                // (the callback may carry ?error=..., which handleCallbackUrl rejects).
+                                if (callbackUrl != null) {
+                                    scope.launch { stravaTokenManager.handleCallbackUrl(callbackUrl) }
+                                }
+                            }
+                        } else {
+                            stravaMessage = stravaConnectFailedMsg
+                        }
+                    },
+                    onLoadRoutes = {
+                        scope.launch {
+                            stravaLoading = true
+                            try {
+                                when (val result = stravaRouteImporter.listRoutes()) {
+                                    is RouteListResult.Success -> stravaRoutes = result.routes
+                                    RouteListResult.NotAuthorized -> {
+                                        stravaTokenManager.clearSession()
+                                        stravaMessage = stravaSessionExpiredMsg
+                                    }
+                                    RouteListResult.RateLimited -> stravaMessage = stravaRateLimitedMsg
+                                    else -> stravaMessage = stravaLoadFailedMsg
+                                }
+                            } finally {
+                                stravaLoading = false
+                            }
+                        }
+                    },
+                    onDismissRoutes = { stravaRoutes = null },
+                    onImport = { routes ->
+                        scope.launch {
+                            stravaImporting = true
+                            try {
+                                val result = stravaRouteImporter.importRoutes(routes)
+                                stravaRoutes = null
+                                stravaMessage = if (result.rateLimited) stravaRateLimitedMsg
+                                    else getString(Res.string.strava_imported_count, result.imported, result.total)
+                            } finally {
+                                stravaImporting = false
+                            }
+                        }
+                    },
+                    onDisconnect = {
+                        scope.launch {
+                            stravaTokenManager.disconnect()
+                            stravaRoutes = null
+                        }
+                    },
+                )
 
                 TracksScreenContent(
                     tracks = tracks,
@@ -330,7 +422,10 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onRemoveFolder = { trackRepository.removeFolder(it) },
                     onRestoreFolders = { trackRepository.restoreFolders(it) },
                     isRecording = isRecording,
-                    onMapTrackIds = onMapTrackIds
+                    onMapTrackIds = onMapTrackIds,
+                    strava = stravaHandlers,
+                    stravaMessage = stravaMessage,
+                    onStravaMessageShown = { stravaMessage = null }
                 )
             }
 

@@ -212,12 +212,36 @@
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Importer fil</string>
-    <string name="import_strava">Strava</string>
     <string name="import_url">Importer URL</string>
     <string name="import_url_hint">Ut.no, Garmin Connect-, Komoot- eller GPX/FIT-URL</string>
     <string name="importing">Importerer\u2026</string>
     <string name="import_label">Importer</string>
     <string name="import_url_error">Kunne ikke importere fra URL. Aktiviteten eller ruten kan være privat, eller URLen gjenkjennes ikke.</string>
+    <string name="strava_setup">Sett opp Strava</string>
+    <string name="strava_edit_setup">Endre oppsett</string>
+    <string name="strava_setup_title">Sett opp Strava</string>
+    <string name="strava_setup_instructions">Strava tillater bare én utøver per API-app, så du kobler til din egen app.\n\n1. Åpne Strava sin API-innstillingsside og logg inn.\n2. Opprett en app: fyll inn valgfritt navn og nettside, og last opp et lite bilde som ikon (Strava krever det).\n3. I feltet Authorization Callback Domain skriver du nøyaktig %1$s — uten https:// og uten sti.\n4. Etter lagring kopierer du Client ID og Client Secret (trykk Vis ved siden av secret) inn i feltene nedenfor.</string>
+    <string name="strava_open_api_settings">Åpne Strava API-innstillinger</string>
+    <string name="strava_client_id_label">Client ID</string>
+    <string name="strava_client_secret_label">Client Secret</string>
+    <string name="strava_show">Vis</string>
+    <string name="strava_hide">Skjul</string>
+    <string name="strava_remove_credentials">Fjern innlogging</string>
+    <string name="strava_save">Lagre</string>
+    <string name="strava_connect">Koble til Strava</string>
+    <string name="strava_import">Importer fra Strava</string>
+    <string name="strava_routes_title">Strava-ruter</string>
+    <string name="strava_starred_only">Bare stjernemerkede</string>
+    <string name="strava_no_routes">Fant ingen ruter</string>
+    <string name="strava_no_starred">Ingen stjernemerkede ruter. Fjern haken for å se alle.</string>
+    <string name="strava_starred">Stjernemerket</string>
+    <string name="strava_disconnect">Koble fra</string>
+    <string name="strava_connected">Koblet til Strava</string>
+    <string name="strava_connect_failed">Kunne ikke koble til. Sjekk Client ID og Secret, og at callback-domenet er %1$s.</string>
+    <string name="strava_load_failed">Kunne ikke hente Strava-rutene dine. Prøv igjen.</string>
+    <string name="strava_session_expired">Strava-økten er utløpt. Koble til på nytt.</string>
+    <string name="strava_rate_limited">Strava-grensen er nådd. Prøv igjen senere.</string>
+    <string name="strava_imported_count">Importerte %1$d av %2$d ruter</string>
     <string name="import_from_title">Importer spor?</string>
     <string name="import_from_message">Importer spor fra %1$s?</string>
     <string name="import_file_message">Importer spor fra filen %1$s?</string>

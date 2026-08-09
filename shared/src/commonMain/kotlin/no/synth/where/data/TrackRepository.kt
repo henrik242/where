@@ -164,7 +164,8 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
                     startTime = entity.startTime,
                     endTime = entity.endTime,
                     isRecording = entity.isRecording,
-                    folder = entity.folder
+                    folder = entity.folder,
+                    sourceId = entity.sourceId
                 )
             }
             _tracks.value = tracks
@@ -182,7 +183,8 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
             startTime = track.startTime,
             endTime = track.endTime,
             isRecording = false,
-            folder = track.folder
+            folder = track.folder,
+            sourceId = track.sourceId
         )
         val pointEntities = track.points.mapIndexed { index, point ->
             TrackPointEntity(
@@ -513,6 +515,26 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     suspend fun importTrack(gpxContent: String): Track? = importParsed { Track.fromGPX(gpxContent) }
 
     suspend fun importTrackFromBytes(data: ByteArray): Track? = importParsed { Track.fromBytes(data) }
+
+    /**
+     * Import a Strava route's GPX into [folder], tagged with [sourceId] so a later re-import
+     * replaces the existing track in place instead of creating a duplicate.
+     */
+    suspend fun importStravaRoute(gpx: String, sourceId: String, folder: String?): Track? =
+        withContext(Dispatchers.Default) {
+            val parsed = Track.fromGPX(gpx) ?: return@withContext null
+            val existingId = trackDao.findTrackIdBySourceId(sourceId)
+            val name = if (existingId != null) parsed.name
+                else NamingUtils.makeUnique(parsed.name, _tracks.value.map { it.name })
+            val track = parsed.copy(
+                id = existingId ?: parsed.id,
+                name = name,
+                folder = normalizeFolderName(folder),
+                sourceId = sourceId
+            )
+            if (existingId != null) overwriteTrack(track) else persistTrack(track)
+            track
+        }
 
     /**
      * Import many [files] into [folder] (null = unfiled). Each file is a .gpx/.fit, or a .zip whose

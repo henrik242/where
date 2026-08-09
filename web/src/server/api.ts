@@ -4,6 +4,10 @@ import { detectPlatform } from './platform';
 import type { TrackStore } from './store';
 import { enrichTrack, getViewerCount } from './tracking';
 
+// The app's custom scheme; the Strava OAuth redirect is bounced here so the app
+// can catch it. The backend holds no Strava secret and stores no tokens (BYO credentials).
+const STRAVA_APP_REDIRECT = 'where://strava/connected';
+
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +26,15 @@ export interface ApiDeps {
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: CORS_HEADERS });
+}
+
+/**
+ * Stateless bounce for the Strava OAuth redirect: forward the query string (code/state/error)
+ * to the app's custom scheme so it opens on both platforms. Holds no secret, stores nothing.
+ */
+function stravaRedirect(url: URL): Response {
+  const query = url.search; // includes leading "?", or "" if none
+  return new Response(null, { status: 302, headers: { Location: `${STRAVA_APP_REDIRECT}${query}` } });
 }
 
 function isAuthorized(
@@ -251,6 +264,12 @@ export function createApiHandler(deps: ApiDeps) {
       }
 
       let m: RegExpMatchArray | null;
+
+      // Strava OAuth redirect bounce (stateless; see stravaRedirect). BYO credentials mean the
+      // token exchange happens on-device, so the server only forwards the code to the app.
+      if (path === '/api/strava/redirect' && req.method === 'GET') {
+        return stravaRedirect(url);
+      }
 
       // Must precede the generic /api/tracks/:trackId route.
       if ((m = path.match(/^\/api\/tracks\/viewers\/([^\/]+)$/)) && req.method === 'GET') {

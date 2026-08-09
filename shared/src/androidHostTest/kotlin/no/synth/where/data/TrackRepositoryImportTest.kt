@@ -5,6 +5,7 @@ import no.synth.where.data.db.TrackDao
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TrackRepositoryImportTest {
@@ -17,13 +18,15 @@ class TrackRepositoryImportTest {
 
     private fun repo(dao: TrackDao) = TrackRepository(tmpDir(), dao)
 
-    private fun gpx(name: String): ByteArray = """
+    private fun gpx(name: String): ByteArray = gpxText(name).encodeToByteArray()
+
+    private fun gpxText(name: String): String = """
         <?xml version="1.0"?>
         <gpx version="1.1"><trk><name>$name</name><trkseg>
         <trkpt lat="60.0" lon="10.0"><time>2020-01-01T10:00:00Z</time></trkpt>
         <trkpt lat="60.1" lon="10.1"><time>2020-01-01T10:05:00Z</time></trkpt>
         </trkseg></trk></gpx>
-    """.trimIndent().encodeToByteArray()
+    """.trimIndent()
 
     @Test
     fun importTracksFilesEveryTrackUnderTheChosenFolder() {
@@ -87,6 +90,50 @@ class TrackRepositoryImportTest {
         assertEquals(1, result.importedCount)
         assertTrue(result.imported.single().points.isNotEmpty())
         assertEquals("Rides", runBlocking { dao.getAllTracksOnce() }.single().folder)
+    }
+
+    @Test
+    fun importStravaRouteFilesUnderFolderWithSourceId() {
+        val dao = InMemoryTrackDao()
+        runBlocking { repo(dao).importStravaRoute(gpxText("Loop"), "strava:route:42", "Strava routes") }
+
+        val stored = runBlocking { dao.getAllTracksOnce() }.single()
+        assertEquals("Loop", stored.name)
+        assertEquals("Strava routes", stored.folder)
+        assertEquals("strava:route:42", stored.sourceId)
+    }
+
+    @Test
+    fun importStravaRouteReplacesInsteadOfDuplicatingOnReimport() {
+        val dao = InMemoryTrackDao()
+        val r = repo(dao)
+        val first = runBlocking { r.importStravaRoute(gpxText("Loop"), "strava:route:42", "Strava routes") }
+        val second = runBlocking { r.importStravaRoute(gpxText("Loop renamed"), "strava:route:42", "Strava routes") }
+
+        val stored = runBlocking { dao.getAllTracksOnce() }
+        assertEquals(1, stored.size)                       // replaced, not duplicated
+        assertEquals(first?.id, second?.id)                // same row id reused
+        assertEquals("Loop renamed", stored.single().name) // content overwritten
+    }
+
+    @Test
+    fun importStravaRouteReturnsNullOnUnparseableGpx() {
+        val dao = InMemoryTrackDao()
+        val result = runBlocking { repo(dao).importStravaRoute("not gpx", "strava:route:99", "Strava routes") }
+        assertNull(result)
+        assertTrue(runBlocking { dao.getAllTracksOnce() }.isEmpty())
+    }
+
+    @Test
+    fun importStravaRouteOfDifferentRoutesKeepsBoth() {
+        val dao = InMemoryTrackDao()
+        val r = repo(dao)
+        runBlocking { r.importStravaRoute(gpxText("A"), "strava:route:1", "Strava routes") }
+        runBlocking { r.importStravaRoute(gpxText("B"), "strava:route:2", "Strava routes") }
+
+        val stored = runBlocking { dao.getAllTracksOnce() }
+        assertEquals(2, stored.size)
+        assertEquals(setOf("strava:route:1", "strava:route:2"), stored.mapNotNull { it.sourceId }.toSet())
     }
 
     @Test

@@ -66,6 +66,8 @@ fun TracksScreenContent(
     onSave: ((Track) -> Unit)? = null,
     saveResultMessage: String? = null,
     onSaveResultMessageShown: () -> Unit = {},
+    stravaMessage: String? = null,
+    onStravaMessageShown: () -> Unit = {},
     onOpen: ((Track) -> Unit)? = null,
     onDeleteRequest: (Track) -> Unit,
     onConfirmDelete: () -> Unit,
@@ -85,6 +87,7 @@ fun TracksScreenContent(
     onRestoreFolders: (Map<String, String?>) -> Unit = {},
     isRecording: Boolean = false,
     onMapTrackIds: Set<String> = emptySet(),
+    strava: StravaImportHandlers? = null,
 ) {
     // Multi-select mode: long-press a track to enter it, then tap rows to build a set and show them
     // all on the map at once.
@@ -134,6 +137,12 @@ fun TracksScreenContent(
         val message = saveResultMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(message)
         onSaveResultMessageShown()
+    }
+
+    LaunchedEffect(stravaMessage) {
+        val message = stravaMessage ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        onStravaMessageShown()
     }
 
     // Summarize a finished bulk import: "Imported N tracks", or "Imported N of M tracks" if some
@@ -254,7 +263,8 @@ fun TracksScreenContent(
                 ImportSection(
                     isImportingUrl = isImportingUrl,
                     onImportFile = onImport,
-                    onUrlImport = onUrlImport
+                    onUrlImport = onUrlImport,
+                    strava = strava
                 )
             }
             if (isImporting) {
@@ -370,6 +380,15 @@ fun TracksScreenContent(
                 }
             }
         }
+    }
+
+    strava?.routes?.let { routes ->
+        StravaRoutePickerDialog(
+            routes = routes,
+            importing = strava.importing,
+            onImport = strava.onImport,
+            onDismiss = strava.onDismissRoutes
+        )
     }
 
     trackToDelete?.let { track ->
@@ -1045,10 +1064,25 @@ fun formatTrackInfo(track: Track): String {
 private fun ImportSection(
     isImportingUrl: Boolean,
     onImportFile: () -> Unit,
-    onUrlImport: (String) -> Unit
+    onUrlImport: (String) -> Unit,
+    strava: StravaImportHandlers? = null
 ) {
     var importUrl by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
+    var showStravaSetup by remember { mutableStateOf(false) }
+
+    if (strava != null && showStravaSetup) {
+        StravaSetupDialog(
+            initialClientId = strava.clientId,
+            onSave = { id, secret ->
+                strava.onSaveCredentials(id, secret)
+                showStravaSetup = false
+            },
+            onRemoveCredentials = strava.onRemoveCredentials,
+            onOpenApiSettings = strava.onOpenApiSettings,
+            onDismiss = { showStravaSetup = false }
+        )
+    }
 
     Card(
         modifier = Modifier
@@ -1121,6 +1155,51 @@ private fun ImportSection(
                         Text(stringResource(Res.string.importing))
                     } else {
                         Text(stringResource(Res.string.import_label))
+                    }
+                }
+            }
+
+            if (strava != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val busy = strava.loadingRoutes || strava.connecting
+                    OutlinedButton(
+                        onClick = {
+                            when {
+                                !strava.credentialsSet -> showStravaSetup = true
+                                strava.connected -> strava.onLoadRoutes()
+                                else -> strava.onConnect()
+                            }
+                        },
+                        enabled = !busy,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (busy) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            stringResource(
+                                when {
+                                    !strava.credentialsSet -> Res.string.strava_setup
+                                    strava.connected -> Res.string.strava_import
+                                    else -> Res.string.strava_connect
+                                }
+                            ),
+                            maxLines = 1
+                        )
+                    }
+                    when {
+                        strava.connected -> TextButton(onClick = strava.onDisconnect, enabled = !busy) {
+                            Text(stringResource(Res.string.strava_disconnect))
+                        }
+                        strava.credentialsSet -> TextButton(onClick = { showStravaSetup = true }, enabled = !busy) {
+                            Text(stringResource(Res.string.strava_edit_setup))
+                        }
                     }
                 }
             }

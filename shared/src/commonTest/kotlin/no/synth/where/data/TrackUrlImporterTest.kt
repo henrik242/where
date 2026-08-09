@@ -6,18 +6,10 @@ import kotlin.test.assertEquals
 class TrackUrlImporterTest {
 
     @Test
-    fun detectService_stravaComUrl() {
-        assertEquals(TrackUrlImporter.Service.STRAVA, TrackUrlImporter.detectService("https://www.strava.com/activities/1234567890"))
-    }
-
-    @Test
-    fun detectService_stravaAppLink() {
-        assertEquals(TrackUrlImporter.Service.STRAVA, TrackUrlImporter.detectService("https://strava.app.link/abc123XYZ"))
-    }
-
-    @Test
-    fun detectService_stravaAppLinkWithQueryParams() {
-        assertEquals(TrackUrlImporter.Service.STRAVA, TrackUrlImporter.detectService("https://strava.app.link/xyz?deep_link_value=something"))
+    fun detectService_stravaUrlsNoLongerHandled() {
+        // Strava URL scraping was removed in favour of the authenticated route import.
+        assertEquals(TrackUrlImporter.Service.UNKNOWN, TrackUrlImporter.detectService("https://www.strava.com/activities/1234567890"))
+        assertEquals(TrackUrlImporter.Service.UNKNOWN, TrackUrlImporter.detectService("https://strava.app.link/abc123XYZ"))
     }
 
     @Test
@@ -32,7 +24,8 @@ class TrackUrlImporterTest {
 
     @Test
     fun detectService_bareNumericId() {
-        assertEquals(TrackUrlImporter.Service.STRAVA, TrackUrlImporter.detectService("1234567890"))
+        // Bare numeric ids used to map to Strava; now unrecognized.
+        assertEquals(TrackUrlImporter.Service.UNKNOWN, TrackUrlImporter.detectService("1234567890"))
     }
 
     @Test

@@ -73,6 +73,13 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent) {
         if (intent.action == Intent.ACTION_VIEW) {
             val uri = intent.data ?: return
+            // Strava OAuth redirect (where://strava/connected?code&state): exchange the code
+            // on-device (on the app scope, so it survives Activity recreation). The Tracks screen
+            // reports the outcome via StravaTokenManager.authOutcome.
+            if (uri.scheme == "where" && uri.host == "strava") {
+                (application as WhereApplication).handleStravaRedirect(uri.toString())
+                return
+            }
             if ((uri.scheme == "https" || uri.scheme == "http") && uri.host == "where.synth.no") {
                 val path = uri.path?.removePrefix("/") ?: ""
                 if (path.matches(Regex("^[a-z0-9]{6}$"))) {

@@ -16,9 +16,14 @@ import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.OnlineTrackingCoordinator
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
+import no.synth.where.data.StravaApiClient
+import no.synth.where.data.createDefaultHttpClient
+import no.synth.where.data.StravaRouteImporter
+import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.data.db.MIGRATION_1_2
+import no.synth.where.data.db.MIGRATION_2_3
 import no.synth.where.data.db.WhereDatabase
 import no.synth.where.util.CrashReporter
 import org.maplibre.android.MapLibre
@@ -34,7 +39,7 @@ private val Application.clientPrefsDataStore by preferencesDataStore(name = "cli
 class WhereApplication : Application() {
     private val database by lazy {
         Room.databaseBuilder(this, WhereDatabase::class.java, "where_database")
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -43,6 +48,16 @@ class WhereApplication : Application() {
     val savedPointsRepository by lazy { SavedPointsRepository(PlatformFile(filesDir), database.savedPointDao()) }
     val userPreferences by lazy { UserPreferences(userPrefsDataStore) }
     val clientIdManager by lazy { ClientIdManager(clientPrefsDataStore) }
+    private val stravaHttpClient by lazy { createDefaultHttpClient() }
+    val stravaTokenManager by lazy { StravaTokenManager(userPreferences, stravaHttpClient) }
+    val stravaRouteImporter by lazy {
+        StravaRouteImporter(StravaApiClient(stravaHttpClient), stravaTokenManager, trackRepository)
+    }
+
+    /** Complete the Strava OAuth redirect on the app scope so it survives Activity recreation. */
+    fun handleStravaRedirect(url: String) {
+        appScope.launch { stravaTokenManager.handleCallbackUrl(url) }
+    }
     val downloadQueueManager by lazy {
         DownloadQueueManager(
             engine = AndroidDownloadEngine(this),

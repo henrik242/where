@@ -1,10 +1,12 @@
 package no.synth.where.ui
 
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
@@ -23,6 +25,8 @@ import no.synth.where.data.BulkImportOutcome
 import no.synth.where.data.BulkImportResult
 import no.synth.where.data.PendingBulkImport
 import no.synth.where.data.PickedFile
+import no.synth.where.data.RouteListResult
+import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.Track
 import no.synth.where.data.isBulkImport
 import no.synth.where.data.outcome
@@ -45,7 +49,14 @@ fun TracksScreen(
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as no.synth.where.WhereApplication
-    val viewModel: TracksScreenViewModel = viewModel { TracksScreenViewModel(app.trackRepository) }
+    val viewModel: TracksScreenViewModel = viewModel {
+        TracksScreenViewModel(
+            app.trackRepository,
+            app.stravaTokenManager,
+            app.stravaRouteImporter,
+            app.userPreferences,
+        )
+    }
     val tracks by viewModel.tracks.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
     val isImportingUrl by viewModel.isImportingUrl.collectAsState()
@@ -53,6 +64,13 @@ fun TracksScreen(
     val newlyImportedTrackId by viewModel.newlyImportedTrackId.collectAsState()
     val saveResultMessage by viewModel.saveResultMessage.collectAsState()
     val onMapTrackIds by viewModel.onMapTrackIds.collectAsState()
+    val stravaConnected by viewModel.stravaConnected.collectAsState()
+    val stravaClientId by viewModel.stravaClientId.collectAsState()
+    val stravaRoutes by viewModel.stravaRoutes.collectAsState()
+    val stravaLoading by viewModel.stravaLoading.collectAsState()
+    val stravaImporting by viewModel.stravaImporting.collectAsState()
+    val stravaConnecting by viewModel.stravaConnecting.collectAsState()
+    var stravaMessage by remember { mutableStateOf<String?>(null) }
 
     var trackToDelete by remember { mutableStateOf<Track?>(null) }
     var trackToRename by remember { mutableStateOf<Track?>(null) }
@@ -77,6 +95,56 @@ fun TracksScreen(
     val openTrackChooserStr = stringResource(Res.string.open_track_chooser)
     val savedToPathFmt = stringResource(Res.string.saved_to_path)
     val failedToSaveTrackFmt = stringResource(Res.string.failed_to_save_track)
+    val callbackDomain = StravaTokenManager.CALLBACK_DOMAIN
+    val stravaConnectedStr = stringResource(Res.string.strava_connected)
+    val stravaConnectFailedStr = stringResource(Res.string.strava_connect_failed, callbackDomain)
+    val stravaLoadFailedStr = stringResource(Res.string.strava_load_failed)
+    val stravaSessionExpiredStr = stringResource(Res.string.strava_session_expired)
+    val stravaRateLimitedStr = stringResource(Res.string.strava_rate_limited)
+    val stravaImportedFmt = stringResource(Res.string.strava_imported_count)
+
+    // Report the OAuth round-trip outcome (the redirect completes outside this screen's scope).
+    LaunchedEffect(Unit) {
+        viewModel.stravaAuthOutcome.collect { ok ->
+            stravaMessage = if (ok) stravaConnectedStr else stravaConnectFailedStr
+        }
+    }
+
+    val stravaHandlers = StravaImportHandlers(
+        credentialsSet = !stravaClientId.isNullOrBlank(),
+        clientId = stravaClientId,
+        connected = stravaConnected,
+        connecting = stravaConnecting,
+        loadingRoutes = stravaLoading,
+        importing = stravaImporting,
+        routes = stravaRoutes,
+        onSaveCredentials = { id, secret -> viewModel.saveStravaCredentials(id, secret) },
+        onRemoveCredentials = { viewModel.forgetStravaCredentials() },
+        onOpenApiSettings = { launchCustomTab(context, "https://www.strava.com/settings/api") },
+        onConnect = {
+            viewModel.connectStrava(
+                onUrl = { url -> launchCustomTab(context, url) },
+                onError = { stravaMessage = stravaConnectFailedStr }
+            )
+        },
+        onLoadRoutes = {
+            viewModel.loadStravaRoutes { result ->
+                stravaMessage = when (result) {
+                    RouteListResult.NotAuthorized -> stravaSessionExpiredStr
+                    RouteListResult.RateLimited -> stravaRateLimitedStr
+                    else -> stravaLoadFailedStr
+                }
+            }
+        },
+        onDismissRoutes = { viewModel.dismissStravaRoutes() },
+        onImport = { routes ->
+            viewModel.importStravaRoutes(routes) { result ->
+                stravaMessage = if (result.rateLimited) stravaRateLimitedStr
+                    else String.format(stravaImportedFmt, result.imported, result.total)
+            }
+        },
+        onDisconnect = { viewModel.disconnectStrava() },
+    )
 
     LaunchedEffect(pendingImportUrl) {
         if (pendingImportUrl != null) urlToConfirm = pendingImportUrl
@@ -254,8 +322,15 @@ fun TracksScreen(
         onRemoveFolder = { viewModel.removeFolder(it) },
         onRestoreFolders = { viewModel.restoreFolders(it) },
         isRecording = isRecording,
-        onMapTrackIds = onMapTrackIds
+        onMapTrackIds = onMapTrackIds,
+        strava = stravaHandlers,
+        stravaMessage = stravaMessage,
+        onStravaMessageShown = { stravaMessage = null }
     )
+}
+
+private fun launchCustomTab(context: Context, url: String) {
+    CustomTabsIntent.Builder().build().launchUrl(context, url.toUri())
 }
 
 private fun Track.gpxFileName() = "${name.replace(" ", "_").replace(":", "-")}.gpx"
@@ -278,7 +353,6 @@ private fun displayNameForUri(context: android.content.Context, uri: Uri): Strin
 private fun friendlySourceName(url: String): String {
     val host = url.toUri().host ?: return url
     return when {
-        "strava.com" in host || "strava.app.link" in host -> "Strava"
         "garmin.com" in host -> "Garmin Connect"
         "komoot.com" in host || "komoot.de" in host -> "Komoot"
         "ut.no" in host -> "UT.no"

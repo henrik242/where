@@ -9,3 +9,9 @@ val MIGRATION_1_2: Migration = object : Migration(1, 2) {
         connection.execSQL("ALTER TABLE tracks ADD COLUMN folder TEXT")
     }
 }
+
+val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE tracks ADD COLUMN sourceId TEXT")
+    }
+}

@@ -11,9 +11,13 @@ import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.OnlineTrackingCoordinator
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.SavedPointsRepository
+import no.synth.where.data.StravaApiClient
+import no.synth.where.data.StravaRouteImporter
+import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.data.createDataStore
+import no.synth.where.data.createDefaultHttpClient
 import no.synth.where.data.db.getDatabaseBuilder
 import no.synth.where.util.CrashReporter
 import platform.CoreLocation.CLLocationManager
@@ -31,6 +35,8 @@ object AppDependencies {
     lateinit var clientIdManager: ClientIdManager
     lateinit var liveTrackingFollower: LiveTrackingFollower
     lateinit var onlineTrackingCoordinator: OnlineTrackingCoordinator
+    lateinit var stravaTokenManager: StravaTokenManager
+    lateinit var stravaRouteImporter: StravaRouteImporter
 }
 
 fun startApp() {
@@ -44,6 +50,11 @@ fun startApp() {
     AppDependencies.userPreferences = UserPreferences(createDataStore("user_prefs"))
     AppDependencies.clientIdManager = ClientIdManager(createDataStore("client_prefs"))
     AppDependencies.liveTrackingFollower = LiveTrackingFollower(AppDependencies.userPreferences.trackingServerUrl.value)
+    val stravaHttpClient = createDefaultHttpClient()
+    AppDependencies.stravaTokenManager = StravaTokenManager(AppDependencies.userPreferences, stravaHttpClient)
+    AppDependencies.stravaRouteImporter = StravaRouteImporter(
+        StravaApiClient(stravaHttpClient), AppDependencies.stravaTokenManager, AppDependencies.trackRepository
+    )
 
     val cachePaths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
     val cacheDir = requireNotNull((cachePaths.first() as NSURL).path) { "Caches directory not found" }

@@ -15,6 +15,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -106,6 +108,28 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _followHistory = MutableStateFlow<List<String>>(emptyList())
     val followHistory: StateFlow<List<String>> = _followHistory.asStateFlow()
 
+    // Strava (BYO credentials): the user creates their own Strava API app and enters its
+    // client id + secret; OAuth token exchange happens on-device. clientId is exposed so the UI
+    // can tell whether credentials are set; the secret and refresh token stay internal.
+    private val _stravaClientId = MutableStateFlow<String?>(null)
+    val stravaClientId: StateFlow<String?> = _stravaClientId.asStateFlow()
+    private val _stravaClientSecret = MutableStateFlow<String?>(null)
+    private val _stravaRefreshToken = MutableStateFlow<String?>(null)
+    private val _stravaOAuthState = MutableStateFlow<String?>(null)
+
+    private val _stravaConnected = MutableStateFlow(false)
+    val stravaConnected: StateFlow<Boolean> = _stravaConnected.asStateFlow()
+
+    private val _stravaAthleteId = MutableStateFlow(0L)
+    val stravaAthleteId: StateFlow<Long> = _stravaAthleteId.asStateFlow()
+
+    private val _stravaAccessToken = MutableStateFlow<String?>(null)
+    val stravaAccessToken: StateFlow<String?> = _stravaAccessToken.asStateFlow()
+
+    /** Access-token expiry, unix epoch seconds. */
+    private val _stravaTokenExpiry = MutableStateFlow(0L)
+    val stravaTokenExpiry: StateFlow<Long> = _stravaTokenExpiry.asStateFlow()
+
     init {
         scope.launch {
             dataStore.data.collect { prefs ->
@@ -135,6 +159,95 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _searchHistory.value = deserializeSearchHistory(prefs[SEARCH_HISTORY])
                 _followedClientId.value = prefs[FOLLOWED_CLIENT_ID]
                 _followHistory.value = prefs[FOLLOW_HISTORY]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+                _stravaClientId.value = prefs[STRAVA_CLIENT_ID]
+                _stravaClientSecret.value = prefs[STRAVA_CLIENT_SECRET]
+                _stravaRefreshToken.value = prefs[STRAVA_REFRESH_TOKEN]
+                _stravaOAuthState.value = prefs[STRAVA_OAUTH_STATE]
+                _stravaConnected.value = prefs[STRAVA_CONNECTED] ?: false
+                _stravaAthleteId.value = prefs[STRAVA_ATHLETE_ID] ?: 0L
+                _stravaAccessToken.value = prefs[STRAVA_ACCESS_TOKEN]
+                _stravaTokenExpiry.value = prefs[STRAVA_TOKEN_EXPIRY] ?: 0L
+            }
+        }
+    }
+
+    // Cached (synchronous) reads for StravaTokenManager. Not exposed as flows, to keep the secret
+    // contained. Use the suspending read* variants when correctness across a cold start matters
+    // (the OAuth redirect can re-launch the app before the init collector has hydrated these).
+    fun stravaClientIdValue(): String? = _stravaClientId.value
+
+    suspend fun readStravaClientId(): String? = dataStore.data.map { it[STRAVA_CLIENT_ID] }.first()
+    suspend fun readStravaClientSecret(): String? = dataStore.data.map { it[STRAVA_CLIENT_SECRET] }.first()
+    suspend fun readStravaRefreshToken(): String? = dataStore.data.map { it[STRAVA_REFRESH_TOKEN] }.first()
+    suspend fun readStravaOAuthState(): String? = dataStore.data.map { it[STRAVA_OAUTH_STATE] }.first()
+
+    fun setStravaCredentials(clientId: String, clientSecret: String) {
+        _stravaClientId.value = clientId
+        _stravaClientSecret.value = clientSecret
+        scope.launch {
+            dataStore.edit {
+                it[STRAVA_CLIENT_ID] = clientId
+                it[STRAVA_CLIENT_SECRET] = clientSecret
+            }
+        }
+    }
+
+    /** Pending OAuth CSRF state, persisted so it survives the browser round-trip / process death. */
+    fun setStravaOAuthState(state: String?) {
+        _stravaOAuthState.value = state
+        scope.launch {
+            dataStore.edit {
+                if (state != null) it[STRAVA_OAUTH_STATE] = state else it.remove(STRAVA_OAUTH_STATE)
+            }
+        }
+    }
+
+    /** Cache freshly minted tokens and mark the account connected. */
+    fun cacheStravaTokens(accessToken: String, refreshToken: String, expirySeconds: Long, athleteId: Long) {
+        _stravaAccessToken.value = accessToken
+        _stravaRefreshToken.value = refreshToken
+        _stravaTokenExpiry.value = expirySeconds
+        _stravaConnected.value = true
+        if (athleteId > 0L) _stravaAthleteId.value = athleteId
+        scope.launch {
+            dataStore.edit {
+                it[STRAVA_ACCESS_TOKEN] = accessToken
+                it[STRAVA_REFRESH_TOKEN] = refreshToken
+                it[STRAVA_TOKEN_EXPIRY] = expirySeconds
+                it[STRAVA_CONNECTED] = true
+                if (athleteId > 0L) it[STRAVA_ATHLETE_ID] = athleteId
+            }
+        }
+    }
+
+    /** Forget the user's stored Strava app credentials (client id + secret). */
+    fun clearStravaCredentials() {
+        _stravaClientId.value = null
+        _stravaClientSecret.value = null
+        scope.launch {
+            dataStore.edit {
+                it.remove(STRAVA_CLIENT_ID)
+                it.remove(STRAVA_CLIENT_SECRET)
+            }
+        }
+    }
+
+    /** Forget the connected session but keep the entered credentials so reconnect is one tap. */
+    fun clearStravaTokens() {
+        _stravaConnected.value = false
+        _stravaAthleteId.value = 0L
+        _stravaAccessToken.value = null
+        _stravaTokenExpiry.value = 0L
+        _stravaRefreshToken.value = null
+        _stravaOAuthState.value = null
+        scope.launch {
+            dataStore.edit {
+                it.remove(STRAVA_CONNECTED)
+                it.remove(STRAVA_ATHLETE_ID)
+                it.remove(STRAVA_ACCESS_TOKEN)
+                it.remove(STRAVA_TOKEN_EXPIRY)
+                it.remove(STRAVA_REFRESH_TOKEN)
+                it.remove(STRAVA_OAUTH_STATE)
             }
         }
     }
@@ -370,5 +483,13 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val SEARCH_HISTORY = stringPreferencesKey("search_history")
         private val FOLLOWED_CLIENT_ID = stringPreferencesKey("followed_client_id")
         private val FOLLOW_HISTORY = stringPreferencesKey("follow_history")
+        private val STRAVA_CLIENT_ID = stringPreferencesKey("strava_client_id")
+        private val STRAVA_CLIENT_SECRET = stringPreferencesKey("strava_client_secret")
+        private val STRAVA_REFRESH_TOKEN = stringPreferencesKey("strava_refresh_token")
+        private val STRAVA_OAUTH_STATE = stringPreferencesKey("strava_oauth_state")
+        private val STRAVA_CONNECTED = booleanPreferencesKey("strava_connected")
+        private val STRAVA_ATHLETE_ID = longPreferencesKey("strava_athlete_id")
+        private val STRAVA_ACCESS_TOKEN = stringPreferencesKey("strava_access_token")
+        private val STRAVA_TOKEN_EXPIRY = longPreferencesKey("strava_token_expiry")
     }
 }

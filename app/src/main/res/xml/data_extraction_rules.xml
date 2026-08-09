@@ -1,20 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
--->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- Keep the Strava client secret / OAuth tokens (stored in the user_prefs DataStore)
+             off the device: don't include them in cloud backup or device transfer. -->
+        <exclude domain="file" path="datastore/user_prefs.preferences_pb" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="file" path="datastore/user_prefs.preferences_pb" />
     </device-transfer>
-    -->
 </data-extraction-rules>

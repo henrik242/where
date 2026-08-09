@@ -56,4 +56,7 @@ interface TrackDao {
 
     @Query("SELECT * FROM tracks ORDER BY startTime DESC")
     suspend fun getAllTracksOnce(): List<TrackEntity>
+
+    @Query("SELECT id FROM tracks WHERE sourceId = :sourceId LIMIT 1")
+    suspend fun findTrackIdBySourceId(sourceId: String): String?
 }

@@ -38,10 +38,17 @@
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Where"
-            android:launchMode="singleTop">
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Strava OAuth callback: the backend redirects here after code exchange. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="where" android:host="strava" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -93,29 +100,6 @@
                 <data android:host="*" />
                 <data android:pathSuffix=".fit" />
             </intent-filter>
-
-<!--
-            &lt;!&ndash; Strava activities and routes &ndash;&gt;
-            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="www.strava.com" android:pathPrefix="/activities/" />
-            </intent-filter>
-            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="www.strava.com" android:pathPrefix="/routes/" />
-            </intent-filter>
-            &lt;!&ndash; Strava share links from the mobile app &ndash;&gt;
-            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="strava.app.link" />
-            </intent-filter>
--->
 
             <!-- Where? live tracking links -->
             <intent-filter android:autoVerify="false">

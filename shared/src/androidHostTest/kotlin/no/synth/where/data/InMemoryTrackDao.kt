@@ -73,4 +73,7 @@ class InMemoryTrackDao : TrackDao {
     }
 
     override suspend fun getAllTracksOnce(): List<TrackEntity> = synchronized(lock) { tracks.values.toList() }
+
+    override suspend fun findTrackIdBySourceId(sourceId: String): String? =
+        synchronized(lock) { tracks.values.firstOrNull { it.sourceId == sourceId }?.id }
 }

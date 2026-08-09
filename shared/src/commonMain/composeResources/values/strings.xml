@@ -212,12 +212,36 @@
 
     <!-- Tracks Screen -->
     <string name="import_gpx">Import file</string>
-    <string name="import_strava">Strava</string>
     <string name="import_url">Import URL</string>
     <string name="import_url_hint">Ut.no, Garmin Connect, Komoot or GPX/FIT URL</string>
     <string name="importing">Importing\u2026</string>
     <string name="import_label">Import</string>
     <string name="import_url_error">Could not import from URL. The activity or route may be private, or the URL is not recognized.</string>
+    <string name="strava_setup">Set up Strava</string>
+    <string name="strava_edit_setup">Edit setup</string>
+    <string name="strava_setup_title">Set up Strava</string>
+    <string name="strava_setup_instructions">Strava allows only one athlete per API app, so you connect your own app.\n\n1. Open the Strava API settings page and sign in.\n2. Create an app: fill in any name and website, and upload any small image as the icon (Strava requires one).\n3. In the Authorization Callback Domain field, enter exactly %1$s — no https:// and no path.\n4. After saving, copy your Client ID and Client Secret (tap Show next to the secret) into the fields below.</string>
+    <string name="strava_open_api_settings">Open Strava API settings</string>
+    <string name="strava_client_id_label">Client ID</string>
+    <string name="strava_client_secret_label">Client Secret</string>
+    <string name="strava_show">Show</string>
+    <string name="strava_hide">Hide</string>
+    <string name="strava_remove_credentials">Remove credentials</string>
+    <string name="strava_save">Save</string>
+    <string name="strava_connect">Connect Strava</string>
+    <string name="strava_import">Import from Strava</string>
+    <string name="strava_routes_title">Strava routes</string>
+    <string name="strava_starred_only">Starred only</string>
+    <string name="strava_no_routes">No routes found</string>
+    <string name="strava_no_starred">No starred routes. Untick \'Starred only\' to see all.</string>
+    <string name="strava_starred">Starred</string>
+    <string name="strava_disconnect">Disconnect</string>
+    <string name="strava_connected">Connected to Strava</string>
+    <string name="strava_connect_failed">Couldn\'t connect. Check your Client ID and Secret, and that the callback domain is %1$s.</string>
+    <string name="strava_load_failed">Couldn\'t load your Strava routes. Try again.</string>
+    <string name="strava_session_expired">Strava session expired. Connect again.</string>
+    <string name="strava_rate_limited">Strava rate limit reached. Try again later.</string>
+    <string name="strava_imported_count">Imported %1$d of %2$d routes</string>
     <string name="import_from_title">Import Track?</string>
     <string name="import_from_message">Import track from %1$s?</string>
     <string name="import_file_message">Import track from file %1$s?</string>

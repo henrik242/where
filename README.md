@@ -22,6 +22,8 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 ### Tracks
 
 - Save, revisit, import (GPX and FIT, several files or a whole zip at once, optionally straight into a folder), and export (GPX) tracks, compatible with other hiking and navigation apps
+- Connect your Strava account (using your own Strava API app) to browse and import your planned routes
+- Import from a Garmin Connect, Komoot, or ut.no activity URL, or a direct GPX/FIT link
 - Organize saved tracks into folders, with move, rename, remove, per-folder select all/none, and undo
 - Navigate along a saved track with remaining distance, elevation, an off-course arrow pointing back to the route, and a reverse-direction toggle, keeping any other tracks you're viewing visible alongside the route; tap the route to see its altitude chart
 - Show several tracks at once, each in its own color, and tap one to focus it
