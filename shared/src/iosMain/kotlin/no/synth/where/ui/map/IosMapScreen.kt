@@ -35,15 +35,12 @@ import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.Track
 import no.synth.where.data.TrackUtils
-import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
 import no.synth.where.di.AppDependencies
 import no.synth.where.location.IosLocationTracker
 import no.synth.where.resources.Res
 import no.synth.where.resources.location_permission_required
-import no.synth.where.resources.online_tracking_disabled
-import no.synth.where.resources.online_tracking_enabled
 import no.synth.where.resources.point_deleted
 import no.synth.where.resources.point_saved
 import no.synth.where.resources.point_updated
@@ -58,6 +55,7 @@ import no.synth.where.util.NamingUtils
 import org.jetbrains.compose.resources.stringResource
 import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * URL template for MapLibre `glyphs:` pointing at PBF files inside the iOS
@@ -266,7 +264,7 @@ fun IosMapScreen(
     LaunchedEffect(locationTracker) {
         while (!hasFix) {
             if (locationTracker.lastLocation != null) hasFix = true
-            else kotlinx.coroutines.delay(1000)
+            else delay(1000.milliseconds)
         }
     }
 
@@ -300,7 +298,7 @@ fun IosMapScreen(
     // Debounced search
     LaunchedEffect(Unit) {
         snapshotFlow { searchQuery }
-            .debounce(300)
+            .debounce(300.milliseconds)
             .distinctUntilChanged()
             .collect { query ->
                 if (query.length < 2) {
@@ -338,7 +336,7 @@ fun IosMapScreen(
 
     // Two-finger tap callback for distance measurement
     DisposableEffect(Unit) {
-        mapViewProvider.setOnTwoFingerTapCallback(MapTwoFingerTapCallback { lat1, lng1, lat2, lng2 ->
+        mapViewProvider.setOnTwoFingerTapCallback( { lat1, lng1, lat2, lng2 ->
             val ll1 = LatLng(lat1, lng1)
             val ll2 = LatLng(lat2, lng2)
             twoFingerMeasurement = TwoFingerMeasurement(lat1, lng1, lat2, lng2, ll1.distanceTo(ll2))
@@ -367,7 +365,7 @@ fun IosMapScreen(
             if (loc != null && loc.size >= 2) {
                 userLocation = LatLng(loc[0], loc[1])
             }
-            kotlinx.coroutines.delay(3000)
+            delay(3000.milliseconds)
         }
     }
 
@@ -376,7 +374,7 @@ fun IosMapScreen(
         val latLng = centerLatLng ?: return@LaunchedEffect
         if (!crosshairActive) return@LaunchedEffect
         crosshairInfo = CrosshairInfo(isLoading = true)
-        kotlinx.coroutines.delay(500)
+        delay(500.milliseconds)
         val info = TerrainClient.getTerrainInfo(latLng)
         crosshairInfo = if (info != null) {
             CrosshairInfo(elevation = info.elevation, slopeDegrees = info.slopeDegrees)
@@ -392,7 +390,7 @@ fun IosMapScreen(
             return@LaunchedEffect
         }
         snapshotFlow { Pair(centerLatLng, cameraZoom) }
-            .debounce(200)
+            .debounce(200.milliseconds)
             .collect { (center, zoom) ->
                 val lat = center?.latitude ?: return@collect
                 val lng = center.longitude
@@ -441,7 +439,7 @@ fun IosMapScreen(
             mapViewProvider.updateMeasurement(buildMeasurementLineGeoJson(m), buildMeasurementPointsGeoJson(m))
         } else {
             mapViewProvider.fadeMeasurement(TwoFingerTap.FADE_OUT_MS.toDouble())
-            delay(TwoFingerTap.FADE_OUT_MS)
+            delay(TwoFingerTap.FADE_OUT_MS.milliseconds)
             mapViewProvider.clearMeasurement()
         }
     }

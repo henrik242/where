@@ -41,7 +41,7 @@ fun renderableTracks(
     navigating: Boolean = false,
 ): List<RenderableTrack> {
     val out = ArrayList<RenderableTrack>(viewing.size + 1)
-    viewing.forEachIndexed { index, track ->
+    viewing.forEachIndexed { _, track ->
         if (track.points.size < 2) return@forEachIndexed
         val isFocused = track.id == focusedId
         // While navigating the route owns the map; other viewed tracks are non-interactive context,

@@ -56,7 +56,6 @@ import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
-import no.synth.where.data.geo.CoordFormat
 import no.synth.where.ui.map.NavigationUiState
 import no.synth.where.ui.map.rememberNavigationProgress
 import no.synth.where.WhereApplication
@@ -78,7 +77,6 @@ import no.synth.where.ui.map.isLocationComponentEnabledSafe
 import no.synth.where.ui.map.MapScreenContent
 import no.synth.where.ui.map.StopNavigationConfirmDialog
 import no.synth.where.ui.map.rememberStopNavigationConfirmState
-import no.synth.where.ui.map.TwoFingerMeasurement
 import no.synth.where.ui.map.rememberAutoDismissingTwoFingerMeasurement
 import no.synth.where.ui.map.RecordingCard
 import no.synth.where.ui.map.RulerCard
@@ -87,12 +85,12 @@ import no.synth.where.ui.map.ViewingPointBanner
 import no.synth.where.ui.map.ViewingTrackBanner
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
-import no.synth.where.data.geo.toCommon
 import no.synth.where.data.geo.toMapLibre
 import org.maplibre.android.maps.MapLibreMap
 import no.synth.where.util.Logger
 import no.synth.where.util.formatDateTime
 import no.synth.where.util.currentTimeMillis
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun MapScreen(
@@ -271,7 +269,7 @@ fun MapScreen(
             return@LaunchedEffect
         }
         snapshotFlow { Triple(savedCameraLat, savedCameraLon, savedCameraZoom) }
-            .debounce(200)
+            .debounce(200.milliseconds)
             .collect { (lat, lng, zoom) ->
                 coordGridGeoJson = withContext(Dispatchers.Default) {
                     CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat)
@@ -367,7 +365,7 @@ fun MapScreen(
         val map = mapInstance ?: return@LaunchedEffect
         if (navigation != null) return@LaunchedEffect   // the camera follows the user while navigating
         val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
-        delay(100)
+        delay(100.milliseconds)
         map.animateToBounds(bounds)
     }
 
@@ -411,7 +409,7 @@ fun MapScreen(
                 } catch (e: Exception) {
                     Logger.d("Could not read user location: %s", e.message ?: "unknown")
                 }
-                if (!hasFix) delay(1000)
+                if (!hasFix) delay(1000.milliseconds)
             }
         }
     }
@@ -435,7 +433,7 @@ fun MapScreen(
                 } catch (e: Exception) {
                     Logger.d("Could not read user location: %s", e.message ?: "unknown")
                 }
-                delay(3000)
+                delay(3000.milliseconds)
             }
         }
     }
@@ -445,7 +443,7 @@ fun MapScreen(
         val latLng = centerLatLng ?: return@LaunchedEffect
         if (!crosshairActive) return@LaunchedEffect
         crosshairInfo = CrosshairInfo(isLoading = true)
-        delay(500)
+        delay(500.milliseconds)
         val info = TerrainClient.getTerrainInfo(latLng)
         crosshairInfo = if (info != null) {
             CrosshairInfo(elevation = info.elevation, slopeDegrees = info.slopeDegrees)
@@ -469,7 +467,7 @@ fun MapScreen(
                 }
 
                 lastKnownLocation?.let { location ->
-                    delay(500)
+                    delay(500.milliseconds)
                     map.animateCamera(
                         org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
                             LatLng(location.latitude, location.longitude).toMapLibre(),
@@ -488,7 +486,7 @@ fun MapScreen(
         val point = viewingPoint
         val map = mapInstance
         if (point != null && map != null) {
-            delay(100)
+            delay(100.milliseconds)
             map.animateCamera(
                 org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
                     point.latLng.toMapLibre(),

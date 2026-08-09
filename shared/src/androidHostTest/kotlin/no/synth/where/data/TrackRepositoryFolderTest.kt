@@ -9,6 +9,7 @@ import no.synth.where.data.geo.LatLng
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.milliseconds
 
 class TrackRepositoryFolderTest {
 
@@ -25,7 +26,7 @@ class TrackRepositoryFolderTest {
     }
 
     private fun awaitFolder(dao: InMemoryTrackDao, trackId: String, expected: String?) = runBlocking {
-        withTimeout(2000) { while (dao.folderOf(trackId) != expected) delay(20) }
+        withTimeout(2000.milliseconds) { while (dao.folderOf(trackId) != expected) delay(20.milliseconds) }
     }
 
     @Test
@@ -67,9 +68,11 @@ class TrackRepositoryFolderTest {
         val repo = repo(dao)
         seed(dao, "t1")
         repo.setTrackColor("t1", "#A34234")
-        runBlocking { withTimeout(2000) { while (dao.colorOf("t1") != "#A34234") delay(20) } }
+        runBlocking { withTimeout(2000.milliseconds) { while (dao.colorOf("t1") != "#A34234") delay(
+            20.milliseconds
+        ) } }
         repo.setTrackColor("t1", null)   // reset to auto palette color
-        runBlocking { withTimeout(2000) { while (dao.colorOf("t1") != null) delay(20) } }
+        runBlocking { withTimeout(2000.milliseconds) { while (dao.colorOf("t1") != null) delay(20.milliseconds) } }
     }
 
     @Test
@@ -157,7 +160,9 @@ class TrackRepositoryFolderTest {
             dao.insertTrack(TrackEntity(id = "t1", name = "t", startTime = 0L, endTime = 1L, isRecording = false, color = "#123456"))
         }
         runBlocking {
-            withTimeout(2000) { while (repo.tracks.value.firstOrNull { it.id == "t1" }?.color != "#123456") delay(20) }
+            withTimeout(2000.milliseconds) { while (repo.tracks.value.firstOrNull { it.id == "t1" }?.color != "#123456") delay(
+                20.milliseconds
+            ) }
         }
     }
 
@@ -173,7 +178,9 @@ class TrackRepositoryFolderTest {
         repo.updateCrop(1, 3)
         repo.applyCrop()
         runBlocking {
-            withTimeout(2000) { while (dao.colorOf("t1") != "#123456" || dao.getPointsForTrack("t1").size != 3) delay(20) }
+            withTimeout(2000.milliseconds) { while (dao.colorOf("t1") != "#123456" || dao.getPointsForTrack("t1").size != 3) delay(
+                20.milliseconds
+            ) }
         }
         assertEquals("#123456", dao.colorOf("t1"))
     }
@@ -190,7 +197,9 @@ class TrackRepositoryFolderTest {
         repo.updateCrop(1, 3)
         repo.applyCrop()
         runBlocking {
-            withTimeout(2000) { while (dao.entity("t1")?.folder != "Skiing" || dao.getPointsForTrack("t1").size != 3) delay(20) }
+            withTimeout(2000.milliseconds) { while (dao.entity("t1")?.folder != "Skiing" || dao.getPointsForTrack("t1").size != 3) delay(
+                20.milliseconds
+            ) }
         }
         assertEquals("Skiing", dao.folderOf("t1"))
     }

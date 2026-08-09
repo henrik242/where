@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -35,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -207,31 +205,30 @@ fun HexMapScreenContent(
                             }
                         }
 
-                        val dl = selectedHexDownload
                         when {
-                            dl != null && dl.status == DownloadStatus.DOWNLOADING -> {
+                            selectedHexDownload?.status == DownloadStatus.DOWNLOADING -> {
                                 LinearProgressIndicator(
-                                    progress = { dl.overallProgress / 100f },
+                                    progress = { selectedHexDownload.overallProgress / 100f },
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    "${dl.mapProgress}%",
+                                    "${selectedHexDownload.mapProgress}%",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            dl != null && dl.status == DownloadStatus.QUEUED -> Text(
+                            selectedHexDownload?.status == DownloadStatus.QUEUED -> Text(
                                 stringResource(Res.string.queued),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            dl != null && dl.status == DownloadStatus.FAILED -> Text(
+                            selectedHexDownload?.status == DownloadStatus.FAILED -> Text(
                                 stringResource(Res.string.download_failed),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
                             )
-                            dl != null && dl.status == DownloadStatus.COMPLETED -> Text(
+                            selectedHexDownload?.status == DownloadStatus.COMPLETED -> Text(
                                 stringResource(Res.string.downloaded),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
@@ -260,8 +257,8 @@ fun HexMapScreenContent(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        val activeInQueue = dl?.status == DownloadStatus.QUEUED || dl?.status == DownloadStatus.DOWNLOADING
-                        val isCompleted = dl?.status == DownloadStatus.COMPLETED
+                        val activeInQueue = selectedHexDownload?.status == DownloadStatus.QUEUED || selectedHexDownload?.status == DownloadStatus.DOWNLOADING
+                        val isCompleted = selectedHexDownload?.status == DownloadStatus.COMPLETED
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (isHexDownloaded || isHexPartiallyDownloaded || isCompleted) {
                                 OutlinedButton(
@@ -273,9 +270,9 @@ fun HexMapScreenContent(
                                     Text(stringResource(Res.string.delete))
                                 }
                             }
-                            if (activeInQueue && dl != null) {
+                            if (activeInQueue) {
                                 Button(onClick = onCancelHexDownload) {
-                                    Text(if (dl.status == DownloadStatus.DOWNLOADING) stringResource(Res.string.stop) else stringResource(Res.string.cancel))
+                                    Text(if (selectedHexDownload.status == DownloadStatus.DOWNLOADING) stringResource(Res.string.stop) else stringResource(Res.string.cancel))
                                 }
                             } else if (!isHexDownloaded && !isCompleted) {
                                 Button(

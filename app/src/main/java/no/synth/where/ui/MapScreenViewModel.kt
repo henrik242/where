@@ -17,6 +17,7 @@ import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
+import kotlin.time.Duration.Companion.milliseconds
 
 class MapScreenViewModel(
     val trackRepository: TrackRepository,
@@ -91,7 +92,7 @@ class MapScreenViewModel(
     fun initSearch() {
         viewModelScope.launch {
             _searchQuery
-                .debounce(300)
+                .debounce(300.milliseconds)
                 .collect { query ->
                     if (query.length < 2) {
                         _searchResults.value = emptyList()

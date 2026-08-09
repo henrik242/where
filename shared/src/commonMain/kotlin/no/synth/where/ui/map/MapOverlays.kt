@@ -78,6 +78,7 @@ import kotlinx.coroutines.delay
 import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun ZoomControls(
@@ -201,7 +202,7 @@ fun RecordingCard(
     val now by produceState(currentTimeMillis(), track.id) {
         while (true) {
             value = currentTimeMillis()
-            delay(1000)
+            delay(1000.milliseconds)
         }
     }
     val elapsedMillis = (now - track.startTime).coerceAtLeast(0L)
@@ -1050,7 +1051,7 @@ fun BoxScope.MapOverlays(
         }
     }
 
-    if (showPointBanner && viewingPointName != null) {
+    if (showPointBanner) {
         ViewingPointBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -1063,7 +1064,7 @@ fun BoxScope.MapOverlays(
         )
     }
 
-    if (showFriendBanner && followedClientId != null) {
+    if (showFriendBanner) {
         FollowingFriendBanner(
             modifier = Modifier
                 .align(Alignment.TopCenter)

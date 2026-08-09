@@ -44,6 +44,7 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -235,7 +236,7 @@ fun TracksScreenContent(
             uiScope.launch {
                 listState.animateScrollToItem(rowIndex + leadingItems)
                 highlightedTrackId = id
-                delay(1500)
+                delay(1500.milliseconds)
                 if (highlightedTrackId == id) highlightedTrackId = null
             }
             uiScope.launch {
@@ -249,7 +250,7 @@ fun TracksScreenContent(
             if (rowIndex < 0) return@LaunchedEffect
             val itemIndex = rowIndex + leadingItems
             // Wait for the expanded content to be measured
-            delay(50)
+            delay(50.milliseconds)
             val layoutInfo = listState.layoutInfo
             val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == itemIndex } ?: return@LaunchedEffect
             val overshoot = (itemInfo.offset + itemInfo.size) - layoutInfo.viewportEndOffset

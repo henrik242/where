@@ -336,7 +336,7 @@ private fun launchCustomTab(context: Context, url: String) {
 
 private fun Track.gpxFileName() = "${name.replace(" ", "_").replace(":", "-")}.gpx"
 
-private fun displayNameForUri(context: android.content.Context, uri: Uri): String {
+private fun displayNameForUri(context: Context, uri: Uri): String {
     if (uri.scheme == "content") {
         runCatching {
             context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
@@ -361,7 +361,7 @@ private fun friendlySourceName(url: String): String {
     }
 }
 
-private fun shareTrack(context: android.content.Context, track: Track, chooserTitle: String) {
+private fun shareTrack(context: Context, track: Track, chooserTitle: String) {
     try {
         val gpxContent = track.toGPX()
         val file = File(context.cacheDir, track.gpxFileName())
@@ -386,7 +386,7 @@ private fun shareTrack(context: android.content.Context, track: Track, chooserTi
     }
 }
 
-private fun saveTrackToDownloads(context: android.content.Context, track: Track, savedFmt: String, failedFmt: String): String {
+private fun saveTrackToDownloads(context: Context, track: Track, savedFmt: String, failedFmt: String): String {
     return try {
         val gpxContent = track.toGPX()
         val resolver = context.contentResolver
@@ -417,7 +417,7 @@ private fun saveTrackToDownloads(context: android.content.Context, track: Track,
     }
 }
 
-private fun openTrack(context: android.content.Context, track: Track, chooserTitle: String, shareChooserTitle: String) {
+private fun openTrack(context: Context, track: Track, chooserTitle: String, shareChooserTitle: String) {
     try {
         val gpxContent = track.toGPX()
         val file = File(context.cacheDir, track.gpxFileName())

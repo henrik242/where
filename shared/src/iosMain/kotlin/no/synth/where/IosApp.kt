@@ -17,7 +17,6 @@ import no.synth.where.data.PendingBulkImport
 import no.synth.where.data.isBulkImport
 import no.synth.where.data.outcome
 import no.synth.where.data.suggestedImportFolder
-import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.DownloadStatus
@@ -26,13 +25,10 @@ import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.OfflineMapManager
 import no.synth.where.data.RouteListResult
 import no.synth.where.data.SavedPoint
-import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.StravaRoute
 import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.Track
-import no.synth.where.data.TrackRepository
 import no.synth.where.data.TrackUrlImporter
-import no.synth.where.data.UserPreferences
 import no.synth.where.ui.AttributionsScreenContent
 import no.synth.where.ui.DownloadQueueScreenContent
 import no.synth.where.ui.DownloadScreenContent
