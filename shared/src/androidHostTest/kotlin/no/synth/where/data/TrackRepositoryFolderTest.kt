@@ -62,6 +62,17 @@ class TrackRepositoryFolderTest {
     }
 
     @Test
+    fun setTrackColorSetsAndResetsToDefault() {
+        val dao = InMemoryTrackDao()
+        val repo = repo(dao)
+        seed(dao, "t1")
+        repo.setTrackColor("t1", "#A34234")
+        runBlocking { withTimeout(2000) { while (dao.colorOf("t1") != "#A34234") delay(20) } }
+        repo.setTrackColor("t1", null)   // reset to auto palette color
+        runBlocking { withTimeout(2000) { while (dao.colorOf("t1") != null) delay(20) } }
+    }
+
+    @Test
     fun renameFolderMovesOnlyMatchingTracks() {
         val dao = InMemoryTrackDao()
         val repo = repo(dao)
@@ -122,6 +133,49 @@ class TrackRepositoryFolderTest {
         repo.restoreFolders(previous)
         awaitFolder(dao, "t1", "Skiing")
         awaitFolder(dao, "t2", null)
+    }
+
+    @Test
+    fun setTrackColorUpdatesViewingTrackImmediately() {
+        val dao = InMemoryTrackDao()
+        val repo = repo(dao)
+        val track = Track(
+            id = "t1", name = "t",
+            points = listOf(TrackPoint(LatLng(60.0, 10.0), timestamp = 0L)),
+            startTime = 0L,
+        )
+        repo.addViewingTrack(track)
+        repo.setTrackColor("t1", "#123456")
+        assertEquals("#123456", repo.viewingTracks.value.first { it.id == "t1" }.color)
+    }
+
+    @Test
+    fun collectTracksExposesStoredColor() {
+        val dao = InMemoryTrackDao()
+        val repo = repo(dao)
+        runBlocking {
+            dao.insertTrack(TrackEntity(id = "t1", name = "t", startTime = 0L, endTime = 1L, isRecording = false, color = "#123456"))
+        }
+        runBlocking {
+            withTimeout(2000) { while (repo.tracks.value.firstOrNull { it.id == "t1" }?.color != "#123456") delay(20) }
+        }
+    }
+
+    @Test
+    fun applyCropPreservesColor() {
+        val dao = InMemoryTrackDao()
+        val repo = repo(dao)
+        val points = (0 until 5).map { TrackPoint(LatLng(60.0 + it * 0.01, 10.0), timestamp = it.toLong()) }
+        val track = Track(id = "t1", name = "t", points = points, startTime = 0L, endTime = 4L, color = "#123456")
+        seed(dao, "t1")
+        repo.addViewingTrack(track)
+        repo.startCrop("t1")
+        repo.updateCrop(1, 3)
+        repo.applyCrop()
+        runBlocking {
+            withTimeout(2000) { while (dao.colorOf("t1") != "#123456" || dao.getPointsForTrack("t1").size != 3) delay(20) }
+        }
+        assertEquals("#123456", dao.colorOf("t1"))
     }
 
     @Test

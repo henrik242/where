@@ -45,6 +45,9 @@ interface TrackDao {
     @Query("UPDATE tracks SET name = :name WHERE id = :trackId")
     suspend fun renameTrack(trackId: String, name: String)
 
+    @Query("UPDATE tracks SET color = :color WHERE id = :trackId")
+    suspend fun updateColor(trackId: String, color: String?)
+
     @Query("UPDATE tracks SET folder = :folder WHERE id IN (:trackIds)")
     suspend fun updateFolderForTracks(trackIds: List<String>, folder: String?)
 

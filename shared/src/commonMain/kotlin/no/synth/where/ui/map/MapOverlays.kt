@@ -288,13 +288,16 @@ fun ViewingTrackBanner(
     modifier: Modifier = Modifier,
     trackName: String,
     trackColorHex: String? = null,
+    currentColor: String? = null,
     canNavigate: Boolean = true,
     onStartNavigation: () -> Unit = {},
+    onSetColor: (String) -> Unit = {},
     onCloseTrack: () -> Unit,
     onCollapse: () -> Unit
 ) {
     var confirmClose by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
+    var showColorDialog by remember { mutableStateOf(false) }
     if (confirmClose) {
         MapDialogs.ConfirmCloseTrackDialog(
             onConfirm = {
@@ -302,6 +305,16 @@ fun ViewingTrackBanner(
                 onCloseTrack()
             },
             onDismiss = { confirmClose = false }
+        )
+    }
+    if (showColorDialog) {
+        no.synth.where.ui.TrackColorDialog(
+            current = currentColor,
+            onPick = {
+                showColorDialog = false
+                onSetColor(it)
+            },
+            onDismiss = { showColorDialog = false }
         )
     }
     Card(
@@ -343,6 +356,18 @@ fun ViewingTrackBanner(
                     )
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(Res.string.color)) },
+                        leadingIcon = {
+                            if (trackColorHex != null) {
+                                Box(Modifier.size(20.dp).background(parseHexColor(trackColorHex), CircleShape))
+                            }
+                        },
+                        onClick = {
+                            menuOpen = false
+                            showColorDialog = true
+                        }
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(Res.string.start_navigation)) },
                         leadingIcon = {
@@ -793,6 +818,7 @@ fun BoxScope.MapOverlays(
     onOnlineTrackingClick: () -> Unit = {},
     onCloseTrack: () -> Unit,
     onCollapseTrack: () -> Unit = {},
+    onSetTrackColor: (trackId: String, color: String?) -> Unit = { _, _ -> },
     onStartNavigation: () -> Unit = {},
     onCloseViewingPoint: () -> Unit,
     onOfflineIndicatorClick: () -> Unit = {},
@@ -813,8 +839,7 @@ fun BoxScope.MapOverlays(
     // Non-null only while the focused track is being cropped; the header + crop chart then replace
     // the banner + read-only chart.
     val activeCrop = focusedTrack?.let { ft -> cropState?.takeIf { it.trackId == ft.id } }
-    val focusedTrackColor = viewingTracks.indexOfFirst { it.id == focusedTrackId }
-        .takeIf { it >= 0 }?.let { TrackColors.forIndex(it) }
+    val focusedTrackColor = focusedTrack?.let { it.color ?: TrackColors.forId(it.id) }
     val topOverlay = topOverlayState(
         showSearch = showSearch,
         hasFocusedTrack = focusedTrack != null,
@@ -1015,8 +1040,10 @@ fun BoxScope.MapOverlays(
                 modifier = topBannerModifier,
                 trackName = focusedTrack.name,
                 trackColorHex = focusedTrackColor,
+                currentColor = focusedTrack.color,
                 canNavigate = focusedTrack.points.size >= 2 && !isRecording,
                 onStartNavigation = onStartNavigation,
+                onSetColor = { onSetTrackColor(focusedTrack.id, it) },
                 onCloseTrack = onCloseTrack,
                 onCollapse = onCollapseTrack
             )

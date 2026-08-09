@@ -14,5 +14,5 @@ fun getDatabaseBuilder(): RoomDatabase.Builder<WhereDatabase> {
     val dbFilePath = "$documentsDir/where_database"
     return Room.databaseBuilder<WhereDatabase>(name = dbFilePath)
         .setDriver(BundledSQLiteDriver())
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 }

@@ -22,6 +22,7 @@ private class NoopTrackDao : TrackDao {
     override suspend fun deleteTrack(trackId: String) {}
     override suspend fun deletePointsForTrack(trackId: String) {}
     override suspend fun renameTrack(trackId: String, name: String) {}
+    override suspend fun updateColor(trackId: String, color: String?) {}
     override suspend fun updateFolderForTracks(trackIds: List<String>, folder: String?) {}
     override suspend fun renameFolder(oldName: String, newName: String) {}
     override suspend fun clearFolder(folderName: String) {}

@@ -11,6 +11,12 @@
     <string name="name_label">Name</string>
     <string name="description_optional">Description (optional)</string>
     <string name="color">Color</string>
+    <string name="track_color_random">Random</string>
+    <string name="track_color_custom">Custom</string>
+    <string name="track_color_apply">Use this color</string>
+    <string name="color_hue">Hue</string>
+    <string name="color_saturation">Saturation</string>
+    <string name="color_brightness">Brightness</string>
     <string name="collapse">Collapse</string>
     <string name="expand">Expand</string>
     <string name="stop">Stop</string>

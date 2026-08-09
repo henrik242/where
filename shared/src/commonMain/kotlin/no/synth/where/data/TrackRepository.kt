@@ -165,7 +165,8 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
                     endTime = entity.endTime,
                     isRecording = entity.isRecording,
                     folder = entity.folder,
-                    sourceId = entity.sourceId
+                    sourceId = entity.sourceId,
+                    color = entity.color
                 )
             }
             _tracks.value = tracks
@@ -184,7 +185,8 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
             endTime = track.endTime,
             isRecording = false,
             folder = track.folder,
-            sourceId = track.sourceId
+            sourceId = track.sourceId,
+            color = track.color
         )
         val pointEntities = track.points.mapIndexed { index, point ->
             TrackPointEntity(
@@ -273,6 +275,14 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
                 trackDao.renameTrack(track.id, newName)
             }
         }
+    }
+
+    /** Set a track's line color; null resets it to the automatic palette color. */
+    fun setTrackColor(trackId: String, color: String?) {
+        // Update the on-map snapshot immediately so the line/banner recolor without a re-add; the
+        // DB write feeds the persisted [tracks] list (and survives restarts).
+        _viewingTracks.value = _viewingTracks.value.map { if (it.id == trackId) it.copy(color = color) else it }
+        scope.launch { trackDao.updateColor(trackId, color) }
     }
 
     /** Move tracks into [folder]; null (or blank) removes them from any folder. */
@@ -530,7 +540,9 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
                 id = existingId ?: parsed.id,
                 name = name,
                 folder = normalizeFolderName(folder),
-                sourceId = sourceId
+                sourceId = sourceId,
+                // Color is a user preference with no GPX source; keep it across re-imports.
+                color = existingId?.let { id -> _tracks.value.firstOrNull { it.id == id }?.color }
             )
             if (existingId != null) overwriteTrack(track) else persistTrack(track)
             track

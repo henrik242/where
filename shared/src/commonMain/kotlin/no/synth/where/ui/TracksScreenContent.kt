@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -31,8 +33,10 @@ import no.synth.where.data.BulkImportResult
 import no.synth.where.data.PendingBulkImport
 import no.synth.where.data.Track
 import no.synth.where.data.normalizeFolderName
+import no.synth.where.ui.map.TrackColors
 import no.synth.where.util.formatDateTime
 import no.synth.where.util.formatKm
+import no.synth.where.util.parseHexColor
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import org.jetbrains.compose.resources.getPluralString
@@ -81,6 +85,7 @@ fun TracksScreenContent(
     onShowSelectedOnMap: (List<Track>) -> Unit = {},
     onNavigate: (Track) -> Unit = {},
     onCrop: (Track) -> Unit = {},
+    onSetTrackColor: (Track, String?) -> Unit = { _, _ -> },
     onMoveToFolder: (List<Track>, String?) -> Unit = { _, _ -> },
     onRenameFolder: (String, String) -> Unit = { _, _ -> },
     onRemoveFolder: (String) -> Unit = {},
@@ -103,6 +108,7 @@ fun TracksScreenContent(
     // tracks being moved (one from a row action, several from the selection bar).
     var collapsedFolders by remember { mutableStateOf(emptySet<String>()) }
     var folderPickerTargets by remember { mutableStateOf<List<Track>?>(null) }
+    var colorPickerTarget by remember { mutableStateOf<Track?>(null) }
     var folderToRename by remember { mutableStateOf<String?>(null) }
     var folderNameDraft by remember { mutableStateOf("") }
     var folderToRemove by remember { mutableStateOf<String?>(null) }
@@ -371,6 +377,7 @@ fun TracksScreenContent(
                                 onShowOnMap = { onShowOnMap(track) },
                                 onNavigate = { onNavigate(track) },
                                 onCrop = { onCrop(track) },
+                                onColor = { colorPickerTarget = track },
                                 onMoveToFolder = { folderPickerTargets = listOf(track) },
                                 canNavigate = !isRecording
                             )
@@ -470,6 +477,17 @@ fun TracksScreenContent(
                 }
             },
             onDismiss = { folderPickerTargets = null }
+        )
+    }
+
+    colorPickerTarget?.let { target ->
+        TrackColorDialog(
+            current = target.color,
+            onPick = { color ->
+                onSetTrackColor(target, color)
+                colorPickerTarget = null
+            },
+            onDismiss = { colorPickerTarget = null }
         )
     }
 
@@ -818,6 +836,7 @@ fun TrackItem(
     onShowOnMap: () -> Unit,
     onNavigate: () -> Unit = {},
     onCrop: () -> Unit = {},
+    onColor: () -> Unit = {},
     onMoveToFolder: () -> Unit = {},
     canNavigate: Boolean = true
 ) {
@@ -851,6 +870,26 @@ fun TrackItem(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!selectionMode) {
+                        // Tap the swatch to recolor the track. An uncolored track still shows a stable
+                        // auto color (by id) so the dot is always visible. 16dp dot in a >=48dp target.
+                        val swatchColor = track.color?.let { runCatching { parseHexColor(it) }.getOrNull() }
+                            ?: parseHexColor(TrackColors.forId(track.id))
+                        Box(
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .clip(CircleShape)
+                                .clickable(onClickLabel = stringResource(Res.string.color)) { onColor() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(swatchColor)
+                            )
+                        }
+                    }
                     Text(
                         text = track.name,
                         style = MaterialTheme.typography.titleMedium,

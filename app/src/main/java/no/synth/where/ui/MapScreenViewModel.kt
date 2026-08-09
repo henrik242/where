@@ -351,6 +351,7 @@ class MapScreenViewModel(
     fun onMapTapOutsideTracks() = trackRepository.onMapTapOutsideTracks()
     fun unfocusTrack() = trackRepository.setFocusedTrack(null)
     fun removeViewingTrack(id: String) = trackRepository.removeViewingTrack(id)
+    fun setTrackColor(id: String, color: String?) = trackRepository.setTrackColor(id, color)
 
     fun clearViewingTracks() {
         trackRepository.clearViewingTracks()

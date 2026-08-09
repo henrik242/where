@@ -7,7 +7,7 @@ import androidx.room.RoomDatabaseConstructor
 
 @Database(
     entities = [TrackEntity::class, TrackPointEntity::class, SavedPointEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @ConstructedBy(WhereDatabaseConstructor::class)

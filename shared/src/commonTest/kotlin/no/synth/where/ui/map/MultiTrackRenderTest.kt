@@ -30,14 +30,40 @@ class MultiTrackRenderTest {
     }
 
     @Test
-    fun renderableTracksAssignsPaletteByIndex() {
+    fun forIdIsStableAndFromPalette() {
+        assertEquals(TrackColors.forId("abc"), TrackColors.forId("abc"))
+        assertTrue(TrackColors.forId("abc") in TrackColors.palette)
+    }
+
+    @Test
+    fun renderableTracksAssignsStableColorById() {
         val tracks = listOf(track("a", 60.0), track("b", 61.0))
         val out = renderableTracks(tracks, focusedId = null, recording = null)
         assertEquals(2, out.size)
-        assertEquals(TrackColors.forIndex(0), out[0].color)
-        assertEquals(TrackColors.forIndex(1), out[1].color)
+        assertEquals(TrackColors.forId("a"), out[0].color)
+        assertEquals(TrackColors.forId("b"), out[1].color)
         // No focus: all full opacity.
         assertTrue(out.all { it.opacity == 0.9 })
+    }
+
+    @Test
+    fun renderableTracksUsesCustomColorAndKeepsSiblingAutoColor() {
+        // A custom color on one track must not change a sibling's auto (by-id) color.
+        val tracks = listOf(track("a", 60.0).copy(color = "#123456"), track("b", 61.0))
+        val out = renderableTracks(tracks, focusedId = null, recording = null)
+        assertEquals("#123456", out[0].color)
+        assertEquals(TrackColors.forId("b"), out[1].color)
+    }
+
+    @Test
+    fun croppedKeptSpanUsesCustomColor() {
+        val t = track("a", 60.0, count = 6).copy(color = "#123456")
+        val out = renderableTracks(
+            listOf(t), focusedId = "a", recording = null,
+            crop = TrackCropState("a", startIndex = 2, endIndex = 4),
+        )
+        assertEquals("#123456", out.first { it.id == "a-kept" }.color)
+        assertEquals(TrackColors.TRIMMED, out.first { it.id == "a-head" }.color)
     }
 
     @Test
@@ -89,7 +115,7 @@ class MultiTrackRenderTest {
         assertTrue(json.startsWith("""{"type":"FeatureCollection","features":["""))
         assertEquals(2, Regex("\"type\":\"Feature\"").findAll(json).count())
         assertTrue(json.contains(""""id":"a""""))
-        assertTrue(json.contains(""""color":"${TrackColors.forIndex(0)}""""))
+        assertTrue(json.contains(""""color":"${TrackColors.forId("a")}""""))
         assertTrue(json.contains(""""opacity":0.3""")) // b dimmed
     }
 
@@ -122,7 +148,7 @@ class MultiTrackRenderTest {
         val tail = out.first { it.id == "a-tail" }
         assertEquals(TrackColors.TRIMMED, head.color)
         assertEquals(TrackColors.TRIMMED, tail.color)
-        assertEquals(TrackColors.forIndex(0), kept.color)
+        assertEquals(TrackColors.forId("a"), kept.color)
         // Boundary points shared: head 0..2 (3), kept 2..4 (3), tail 4..5 (2).
         assertEquals(3, head.points.size)
         assertEquals(3, kept.points.size)
@@ -198,7 +224,14 @@ class MultiTrackRenderTest {
         val json = buildTrackMarkerGeoJson(listOf(t), "a", 1)
         assertTrue(json.contains(""""type":"Point""""))
         assertTrue(json.contains("""[10.001,60.0]"""))   // GeoJSON is [lng,lat] of index 1
-        assertTrue(json.contains(""""color":"${TrackColors.forIndex(0)}""""))
+        assertTrue(json.contains(""""color":"${TrackColors.forId("a")}""""))
+    }
+
+    @Test
+    fun trackMarkerGeoJsonUsesCustomColor() {
+        val t = track("a", 60.0, count = 3).copy(color = "#123456")
+        val json = buildTrackMarkerGeoJson(listOf(t), "a", 1)
+        assertTrue(json.contains(""""color":"#123456""""))
     }
 
     @Test

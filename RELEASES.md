@@ -4,6 +4,13 @@ Version numbers are the git commit count at build time; gaps between tag numbers
 builds that were never released. Each tag below marks a store release; dates are the
 tag dates.
 
+## v516 (2026-08-09)
+
+- Connect your Strava account (using your own Strava API app) to browse and import your
+  planned routes into the tracks list
+- Give each saved track its own colour, from a palette, a custom colour, or random;
+  change it from the track list or from the map details view
+
 ## v511 (2026-08-02)
 
 - Tapping the compass points the map north; tapping again locks it there and blocks

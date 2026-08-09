@@ -26,7 +26,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 - Import from a Garmin Connect, Komoot, or ut.no activity URL, or a direct GPX/FIT link
 - Organize saved tracks into folders, with move, rename, remove, per-folder select all/none, and undo
 - Navigate along a saved track with remaining distance, elevation, an off-course arrow pointing back to the route, and a reverse-direction toggle, keeping any other tracks you're viewing visible alongside the route; tap the route to see its altitude chart
-- Show several tracks at once, each in its own color, and tap one to focus it
+- Show several tracks at once, each in its own color (or pick a custom color per saved track), and tap one to focus it
 - Elevation chart you can scrub to mark the matching point on the map, for a focused track or the route you are navigating
 - Crop the start and end of a saved track
 

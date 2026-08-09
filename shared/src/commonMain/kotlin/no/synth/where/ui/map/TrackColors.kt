@@ -15,6 +15,8 @@ object TrackColors {
         "#6D4C41", // brown
         "#8D6E63", // taupe
         "#7B5E3B", // umber
+        "#3E6E8E", // slate blue
+        "#7A4E7E", // plum
     )
 
     /** Recording (in-progress) track color, kept separate from the viewing palette. */
@@ -27,4 +29,7 @@ object TrackColors {
         val size = palette.size
         return palette[((index % size) + size) % size]
     }
+
+    /** A stable palette color derived from a track id, so an uncolored track still shows a color. */
+    fun forId(id: String): String = forIndex(id.hashCode())
 }

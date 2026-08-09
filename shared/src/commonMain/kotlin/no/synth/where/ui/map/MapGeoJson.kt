@@ -47,7 +47,7 @@ fun renderableTracks(
         // While navigating the route owns the map; other viewed tracks are non-interactive context,
         // so dim them all. Otherwise dim only the non-focused tracks when one is focused.
         val dimmed = navigating || (focusedId != null && !isFocused)
-        val color = TrackColors.forIndex(index)
+        val color = track.color ?: TrackColors.forId(track.id)
         if (crop != null && crop.trackId == track.id) {
             out.addAll(croppedRenderables(track, color, crop))
             return@forEachIndexed
@@ -121,8 +121,9 @@ fun buildTrackMarkerGeoJson(viewing: List<Track>, focusedId: String?, markerInde
     if (markerIndex == null || focusedId == null) return empty
     val trackIndex = viewing.indexOfFirst { it.id == focusedId }
     if (trackIndex < 0) return empty
-    val point = viewing[trackIndex].points.getOrNull(markerIndex) ?: return empty
-    val color = TrackColors.forIndex(trackIndex)
+    val track = viewing[trackIndex]
+    val point = track.points.getOrNull(markerIndex) ?: return empty
+    val color = track.color ?: TrackColors.forId(track.id)
     return markerPointGeoJson(point, color)
 }
 

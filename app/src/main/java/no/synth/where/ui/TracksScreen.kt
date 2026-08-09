@@ -317,6 +317,7 @@ fun TracksScreen(
         onShowSelectedOnMap = onShowTracksOnMap,
         onNavigate = onNavigateTrack,
         onCrop = onCropTrack,
+        onSetTrackColor = { track, color -> viewModel.setTrackColor(track, color) },
         onMoveToFolder = { moved, folder -> viewModel.moveToFolder(moved, folder) },
         onRenameFolder = { oldName, newName -> viewModel.renameFolder(oldName, newName) },
         onRemoveFolder = { viewModel.removeFolder(it) },

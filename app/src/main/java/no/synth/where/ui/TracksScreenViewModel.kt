@@ -83,6 +83,10 @@ class TracksScreenViewModel(
         trackRepository.setTracksFolder(tracks.map { it.id }, folder)
     }
 
+    fun setTrackColor(track: Track, color: String?) {
+        trackRepository.setTrackColor(track.id, color)
+    }
+
     fun renameFolder(oldName: String, newName: String) {
         trackRepository.renameFolder(oldName, newName)
     }

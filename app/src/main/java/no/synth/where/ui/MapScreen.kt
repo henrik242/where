@@ -624,6 +624,7 @@ fun MapScreen(
         onOnlineTrackingClick = onOnlineTrackingSettingsClick,
         onCloseTrack = { focusedTrackId?.let { viewModel.removeViewingTrack(it) } },
         onCollapseTrack = { viewModel.unfocusTrack() },
+        onSetTrackColor = { id, color -> viewModel.setTrackColor(id, color) },
         onStartNavigation = {
             // The foreground service owns the location stream and notification while navigating; it
             // self-stops when navigation ends. Only start it if navigation actually began.

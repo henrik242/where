@@ -11,6 +11,12 @@
     <string name="name_label">Navn</string>
     <string name="description_optional">Beskrivelse (valgfritt)</string>
     <string name="color">Farge</string>
+    <string name="track_color_random">Tilfeldig</string>
+    <string name="track_color_custom">Egendefinert</string>
+    <string name="track_color_apply">Bruk denne fargen</string>
+    <string name="color_hue">Fargetone</string>
+    <string name="color_saturation">Metning</string>
+    <string name="color_brightness">Lysstyrke</string>
     <string name="collapse">Skjul</string>
     <string name="expand">Vis</string>
     <string name="stop">Stopp</string>

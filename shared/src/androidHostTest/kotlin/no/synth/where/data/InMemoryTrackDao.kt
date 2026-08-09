@@ -23,6 +23,7 @@ class InMemoryTrackDao : TrackDao {
 
     fun pointCount(trackId: String): Int = synchronized(lock) { rows.count { it.trackId == trackId } }
     fun folderOf(trackId: String): String? = synchronized(lock) { tracks[trackId]?.folder }
+    fun colorOf(trackId: String): String? = synchronized(lock) { tracks[trackId]?.color }
     fun trackCount(): Int = synchronized(lock) { tracks.size }
     fun entity(trackId: String): TrackEntity? = synchronized(lock) { tracks[trackId] }
 
@@ -54,6 +55,11 @@ class InMemoryTrackDao : TrackDao {
     override suspend fun renameTrack(trackId: String, name: String) = synchronized(lock) {
         tracks[trackId]?.let { tracks[trackId] = it.copy(name = name) }
         Unit
+    }
+
+    override suspend fun updateColor(trackId: String, color: String?) = synchronized(lock) {
+        tracks[trackId]?.let { tracks[trackId] = it.copy(color = color) }
+        allTracks.value = tracks.values.toList()
     }
 
     override suspend fun updateFolderForTracks(trackIds: List<String>, folder: String?) = synchronized(lock) {

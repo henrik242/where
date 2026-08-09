@@ -805,6 +805,7 @@ fun IosMapScreen(
         },
         onCloseTrack = { focusedTrackId?.let { trackRepository.removeViewingTrack(it) } },
         onCollapseTrack = { trackRepository.setFocusedTrack(null) },
+        onSetTrackColor = { id, color -> trackRepository.setTrackColor(id, color) },
         onStartNavigation = {
             focusedTrackId?.let { id -> trackRepository.startNavigationById(id) }
         },

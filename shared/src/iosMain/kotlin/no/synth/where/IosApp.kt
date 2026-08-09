@@ -413,6 +413,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         trackRepository.startCrop(track.id)
                         navigateToMap()
                     },
+                    onSetTrackColor = { track, color -> trackRepository.setTrackColor(track.id, color) },
                     onMoveToFolder = { moved, folder ->
                         trackRepository.setTracksFolder(moved.map { it.id }, folder)
                     },
