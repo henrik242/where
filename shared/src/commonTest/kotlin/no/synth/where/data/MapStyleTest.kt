@@ -91,6 +91,14 @@ class MapStyleTest {
                 MapStyle.OSM_PATHS_MIN_ZOOM,
                 layer.getValue("minzoom").jsonPrimitive.content.toInt()
             )
+            // The width ramp has to start where the layer does, else the first visible zoom draws
+            // at an extrapolated width. ["interpolate", ["linear"], ["zoom"], stop, width, ...]
+            val ramp = layer.getValue("paint").jsonObject.getValue("line-width").jsonArray
+            assertEquals(
+                MapStyle.OSM_PATHS_MIN_ZOOM,
+                ramp[3].jsonPrimitive.content.toInt(),
+                "${layer.id()} width ramp should start at the layer's minzoom"
+            )
         }
     }
 

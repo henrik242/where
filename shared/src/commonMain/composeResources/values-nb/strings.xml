@@ -55,8 +55,8 @@
     <string name="satellite">Satellitt (Sentinel-2)</string>
     <string name="overlays">Overlegg</string>
     <string name="waymarked_trails_osm">Merkede stier (OSM)</string>
-    <string name="paths_and_tractor_roads_osm">Stier og traktorveier (OSM)</string>
-    <string name="zoom_in_for_paths">Zoom inn for å se stier og traktorveier</string>
+    <string name="paths_osm">Stier (OSM)</string>
+    <string name="zoom_in_for_paths">Zoom inn for å se stier</string>
     <string name="steepness_nve">Bratthet (NVE)</string>
     <string name="steepness_runout_nve">Bratthet + skredutløp (NVE)</string>
     <string name="saved_points">Lagrede punkter</string>

@@ -38,7 +38,7 @@ object DownloadLayers {
         DownloadLayer("osm", "OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
         DownloadLayer("opentopomap", "OpenTopoMap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", maxZoom = 17),
         DownloadLayer("waymarkedtrails", "Waymarked Trails", "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", isOverlay = true),
-        DownloadLayer(OSM_PATHS_ID, "Paths and Tractor Roads", MapStyle.OSM_PATHS_TILEJSON_URL, maxZoom = 14, isOverlay = true, isVector = true),
+        DownloadLayer(OSM_PATHS_ID, "Paths (OSM)", MapStyle.OSM_PATHS_TILEJSON_URL, maxZoom = 14, isOverlay = true, isVector = true),
         nveLayer(NveOverlay.STEEPNESS_RUNOUT, "Steepness + Runout (NVE)"),
         nveLayer(NveOverlay.STEEPNESS, "Steepness (NVE)"),
     )

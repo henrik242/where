@@ -12,11 +12,14 @@ object MapStyle {
     const val OSM_PATHS_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 
     /**
-     * First zoom carrying every path: OpenMapTiles keeps only paths on a rank-1 route relation at
-     * z12, and only named/routed/sac_scale ones at z13, so drawing those would hide paths without
-     * saying so. Public so the map screens can prompt for a zoom-in instead of showing nothing.
+     * Lowest zoom with any paths at all; z11 and below carry none. OpenMapTiles thins them on the
+     * way down -- z12 keeps rank-1 routes, z13 adds named and sac_scale ones, z14 has everything --
+     * so zoomed-out views show a subset. Public so the screens can prompt for a zoom-in below this.
      */
-    const val OSM_PATHS_MIN_ZOOM = 14
+    const val OSM_PATHS_MIN_ZOOM = 12
+
+    /** Zoom from which the source carries every path, not just the ones it keeps when thinning. */
+    const val OSM_PATHS_COMPLETE_ZOOM = 14
 
     /** class=path also covers station platforms and indoor corridors in OpenMapTiles; drop those. */
     private const val OSM_PATHS_FILTER =
@@ -149,7 +152,7 @@ object MapStyle {
       "paint": {
         "line-color": "#ffff00",
         "line-opacity": 0.8,
-        "line-width": ["interpolate", ["linear"], ["zoom"], $OSM_PATHS_MIN_ZOOM, 4, 16, 7, 20, 11]
+        "line-width": ["interpolate", ["linear"], ["zoom"], $OSM_PATHS_MIN_ZOOM, 3, $OSM_PATHS_COMPLETE_ZOOM, 4, 16, 7, 20, 11]
       }
     },
     {
@@ -165,7 +168,7 @@ object MapStyle {
       },
       "paint": {
         "line-color": "#000000",
-        "line-width": ["interpolate", ["linear"], ["zoom"], $OSM_PATHS_MIN_ZOOM, 1.4, 16, 1.9, 20, 2.6],
+        "line-width": ["interpolate", ["linear"], ["zoom"], $OSM_PATHS_MIN_ZOOM, 1.1, $OSM_PATHS_COMPLETE_ZOOM, 1.4, 16, 1.9, 20, 2.6],
         "line-dasharray": [2.5, 1.5]
       }
     }""")
