@@ -1,10 +1,13 @@
 default_platform(:ios)
 
+TEAM_ID = "358L7UXVJ4"
+APP_IDENTIFIER = "no.synth.where"
+
 platform :android do
   lane :deploy do
     submit = ENV["SUBMIT_FOR_REVIEW"] != "false"
     upload_to_play_store(
-      package_name: "no.synth.where",
+      package_name: APP_IDENTIFIER,
       track: "production",
       release_status: submit ? "completed" : "draft",
       aab: "app/build/outputs/bundle/release/app-release.aab",
@@ -19,8 +22,33 @@ end
 
 platform :ios do
   lane :build do
+    setup_ci if ENV["CI"]
+
+    cert_path = ENV["DISTRIBUTION_CERTIFICATE_PATH"]
+    if cert_path
+      import_certificate(
+        certificate_path: cert_path,
+        certificate_password: ENV["DISTRIBUTION_CERTIFICATE_PASSWORD"],
+        certificate_format: "pkcs12",
+        keychain_name: ENV["MATCH_KEYCHAIN_NAME"] || "login",
+        keychain_password: ENV["MATCH_KEYCHAIN_PASSWORD"] || "",
+        log_output: true
+      )
+    end
+
+    profile_path = ENV["PROVISIONING_PROFILE_PATH"]
+    install_provisioning_profile(path: profile_path) if profile_path
+
     profile_name = ENV["PROFILE_NAME"] || ""
-    keychain = ENV["KEYCHAIN_PATH"]
+
+    # Manual signing is passed on the xcodebuild command line, which outranks the project
+    # file, so the checked-in Automatic signing config is left untouched.
+    signing_args = profile_name.empty? ? nil : {
+      "CODE_SIGN_STYLE" => "Manual",
+      "DEVELOPMENT_TEAM" => TEAM_ID,
+      "CODE_SIGN_IDENTITY" => "iPhone Distribution",
+      "PROVISIONING_PROFILE_SPECIFIER" => profile_name
+    }
 
     build_app(
       project: "iosApp/Where.xcodeproj",
@@ -31,14 +59,15 @@ platform :ios do
       output_name: "Where.ipa",
       destination: "generic/platform=iOS",
       skip_profile_detection: true,
+      xcargs: signing_args,
       export_options: {
         method: "app-store",
-        teamID: "358L7UXVJ4",
+        teamID: TEAM_ID,
         signingStyle: "manual",
         signingCertificate: "iPhone Distribution",
         uploadSymbols: true,
         provisioningProfiles: {
-          "no.synth.where" => profile_name
+          APP_IDENTIFIER => profile_name
         }
       }
     )
@@ -55,7 +84,7 @@ platform :ios do
     whats_new_no = ENV["WHATS_NEW_NO"] || "Feilrettinger og forbedringer."
     upload_to_app_store(
       api_key: api_key,
-      app_identifier: "no.synth.where",
+      app_identifier: APP_IDENTIFIER,
       ipa: ENV["IPA_PATH"],
       skip_screenshots: true,
       skip_metadata: !submit,

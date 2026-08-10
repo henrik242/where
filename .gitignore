@@ -27,3 +27,7 @@ xcuserdata/
 
 # Local Fastfile with credentials
 /Fastfile
+
+# Bundler
+/.bundle/
+/vendor/bundle/

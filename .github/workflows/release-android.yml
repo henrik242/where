@@ -27,6 +27,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
 
     steps:
     - name: Checkout code
@@ -53,12 +56,11 @@ jobs:
         $v nonempty SIGNING_KEY_PASSWORD
         $v json GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
 
-    - name: Install Fastlane
-      run: |
-        export NONINTERACTIVE=1
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        export PATH=/home/linuxbrew/.linuxbrew/bin:$PATH
-        brew install fastlane
+    - name: Set up Ruby and fastlane
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4'
+        bundler-cache: true
 
     - name: Set up JDK 21
       uses: actions/setup-java@v5
@@ -135,7 +137,7 @@ jobs:
       env:
         GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_PATH: /tmp/play-service-account.json
         SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review }}
-      run: fastlane android deploy
+      run: bundle exec fastlane android deploy
 
     - name: Compute version tag
       id: version

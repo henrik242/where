@@ -9,3 +9,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+  - package-ecosystem: "bundler" # fastlane, pinned by Gemfile.lock
+    directory: "/"
+    schedule:
+      interval: "weekly"

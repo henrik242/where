@@ -27,6 +27,9 @@ jobs:
   release:
     runs-on: macos-26
     environment: production
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
 
     steps:
     - name: Checkout code
@@ -57,6 +60,12 @@ jobs:
         $v nonempty ASC_KEY_ID
         $v nonempty ASC_ISSUER_ID
         $v p8 ASC_KEY_CONTENT
+
+    - name: Set up Ruby and fastlane
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4'
+        bundler-cache: true
 
     - name: Set up JDK 21
       uses: actions/setup-java@v5
@@ -131,68 +140,31 @@ jobs:
     - name: Build shared framework
       run: ./gradlew :shared:linkReleaseFrameworkIosArm64
 
-    - name: Install Apple certificate and provisioning profile
+    - name: Decode signing assets
       env:
         DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}
-        DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
         PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
       run: |
         CERTIFICATE_PATH=$RUNNER_TEMP/distribution.p12
         PROFILE_PATH=$RUNNER_TEMP/distribution.mobileprovision
-        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-        KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
 
         echo "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 -d > "$CERTIFICATE_PATH"
         echo "$PROVISIONING_PROFILE_BASE64" | base64 -d > "$PROFILE_PATH"
 
-        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-        security import "$CERTIFICATE_PATH" -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-        security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-        security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
-        security default-keychain -s "$KEYCHAIN_PATH"
-
-        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PROFILE_PATH"))
-        PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PROFILE_PATH"))
-        cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
-        echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
+        # fastlane imports the cert and installs the profile; it just needs the profile name
+        PROFILE_PLIST=$(/usr/bin/security cms -D -i "$PROFILE_PATH")
+        PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" /dev/stdin <<< "$PROFILE_PLIST")
         echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
-
-    - name: Configure signing for CI
-      run: |
-        PBXPROJ="iosApp/Where.xcodeproj/project.pbxproj"
-        # Switch target-level signing from Automatic to Manual
-        sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' "$PBXPROJ"
-        # Set signing identity to full distribution cert name
-        sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development"/CODE_SIGN_IDENTITY = "iPhone Distribution: Henrik Aronsen (358L7UXVJ4)"/g' "$PBXPROJ"
-        # Set provisioning profile specifier
-        sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = \"\"/PROVISIONING_PROFILE_SPECIFIER = \"$PROFILE_NAME\"/g" "$PBXPROJ"
-        # Fix project-level DEVELOPMENT_TEAM to match target
-        sed -i '' 's/DEVELOPMENT_TEAM = U9DK75CHGD/DEVELOPMENT_TEAM = 358L7UXVJ4/g' "$PBXPROJ"
-
-    - name: Verify signing setup
-      run: |
-        echo "Keychains in search list:"
-        security list-keychains -d user
-        echo ""
-        echo "Signing identities:"
-        security find-identity -v -p codesigning $RUNNER_TEMP/app-signing.keychain-db
-        echo ""
-        echo "Provisioning profiles:"
-        ls ~/Library/MobileDevice/Provisioning\ Profiles/
-
-    - name: Install Fastlane
-      run: brew install fastlane
 
     - name: Build and sign IPA
       env:
         OUTPUT_DIR: ${{ runner.temp }}/export
         PROFILE_NAME: ${{ env.PROFILE_NAME }}
-        KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+        DISTRIBUTION_CERTIFICATE_PATH: ${{ runner.temp }}/distribution.p12
+        DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
+        PROVISIONING_PROFILE_PATH: ${{ runner.temp }}/distribution.mobileprovision
         FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 60
-      run: fastlane ios build
+      run: bundle exec fastlane ios build
 
     - name: Upload IPA
       uses: actions/upload-artifact@v7
@@ -213,7 +185,7 @@ jobs:
         SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review }}
       run: |
         echo "$ASC_KEY_CONTENT" | base64 -d > "$ASC_KEY_PATH"
-        fastlane ios deploy
+        bundle exec fastlane ios deploy
 
     - name: Create version tag and release
       env:
@@ -234,6 +206,6 @@ jobs:
     - name: Cleanup secrets
       if: always()
       run: |
-        security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
-        rm -f $RUNNER_TEMP/distribution.p12 $RUNNER_TEMP/distribution.mobileprovision
+        security delete-keychain fastlane_tmp_keychain 2>/dev/null || true
+        rm -f "$RUNNER_TEMP/distribution.p12" "$RUNNER_TEMP/distribution.mobileprovision" "$RUNNER_TEMP/AuthKey.p8"
         rm -f local.properties

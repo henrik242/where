@@ -1,5 +1,17 @@
 # Release Deployment
 
+## Fastlane Setup
+
+Fastlane is pinned in the root `Gemfile`/`Gemfile.lock` and run through Bundler, both locally and in
+CI (`ruby/setup-ruby` with `bundler-cache: true`).
+
+```sh
+bundle install
+bundle exec fastlane ios build
+```
+
+Bump the pinned version with `bundle update fastlane` and commit `Gemfile.lock`.
+
 ## How to Release
 
 Trigger from GitHub Actions tab → select workflow → "Run workflow" on `main`.
