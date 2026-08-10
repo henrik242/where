@@ -119,6 +119,11 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1540;
 				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					A50001 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+				};
 			};
 			buildConfigurationList = A70000 /* Build configuration list for PBXProject "Where" */;
 			compatibilityVersion = "Xcode 14.0";

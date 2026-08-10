@@ -2,6 +2,7 @@ default_platform(:ios)
 
 TEAM_ID = "358L7UXVJ4"
 APP_IDENTIFIER = "no.synth.where"
+SCHEME = "Where"
 
 platform :android do
   lane :deploy do
@@ -41,25 +42,29 @@ platform :ios do
 
     profile_name = ENV["PROFILE_NAME"] || ""
 
-    # Manual signing is passed on the xcodebuild command line, which outranks the project
-    # file, so the checked-in Automatic signing config is left untouched.
-    signing_args = profile_name.empty? ? nil : {
-      "CODE_SIGN_STYLE" => "Manual",
-      "DEVELOPMENT_TEAM" => TEAM_ID,
-      "CODE_SIGN_IDENTITY" => "iPhone Distribution",
-      "PROVISIONING_PROFILE_SPECIFIER" => profile_name
-    }
+    # Switch the app target to manual signing. This has to be per-target: passing
+    # PROVISIONING_PROFILE_SPECIFIER on the xcodebuild command line hits the SPM package
+    # targets too, and Xcode fails the archive on targets that cannot take a profile.
+    unless profile_name.empty?
+      update_code_signing_settings(
+        path: "iosApp/Where.xcodeproj",
+        targets: [SCHEME],
+        use_automatic_signing: false,
+        team_id: TEAM_ID,
+        code_sign_identity: "iPhone Distribution",
+        profile_name: profile_name
+      )
+    end
 
     build_app(
       project: "iosApp/Where.xcodeproj",
-      scheme: "Where",
+      scheme: SCHEME,
       configuration: "Release",
       export_method: "app-store",
       output_directory: ENV["OUTPUT_DIR"] || "./build",
       output_name: "Where.ipa",
       destination: "generic/platform=iOS",
       skip_profile_detection: true,
-      xcargs: signing_args,
       export_options: {
         method: "app-store",
         teamID: TEAM_ID,
