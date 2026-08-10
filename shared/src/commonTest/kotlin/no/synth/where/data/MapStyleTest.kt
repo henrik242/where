@@ -78,14 +78,19 @@ class MapStyleTest {
             "Should read the keyless OpenFreeMap vector tiles"
         )
         val pathLayers = style.layers().filter { it.id().startsWith("osmpaths") }
-        assertEquals(listOf("osmpaths-casing", "osmpaths-line"), pathLayers.map { it.id() })
+        assertEquals(
+            listOf("osmpaths-casing", "osmpaths-line", "osmpaths-paved"),
+            pathLayers.map { it.id() }
+        )
         for (layer in pathLayers) {
             assertEquals("transportation", layer.getValue("source-layer").jsonPrimitive.content)
             // Paths and tractor roads only, minus the station platforms and indoor corridors that
             // OpenMapTiles also files under class=path.
-            assertEquals(
-                """["all",["in","class","path","track"],["!in","subclass","platform","corridor"]]""",
-                layer.getValue("filter").toString()
+            assertTrue(
+                layer.getValue("filter").toString().startsWith(
+                    """["all",["in","class","path","track"],["!in","subclass","platform","corridor"]"""
+                ),
+                "${layer.id()} should select paths and tractor roads"
             )
             assertEquals(
                 MapStyle.OSM_PATHS_MIN_ZOOM,
@@ -100,6 +105,35 @@ class MapStyleTest {
                 "${layer.id()} width ramp should start at the layer's minzoom"
             )
         }
+    }
+
+    /**
+     * Untagged surface is the norm above the treeline, so it has to stay with the dashed path
+     * symbol; only an explicit "paved" may render as a solid, graded-looking line.
+     */
+    @Test
+    fun onlyExplicitlyPavedWaysDropTheDashes() {
+        val style = parse(MapStyle.getStyle(showOsmPaths = true))
+        val layers = style.layers().associateBy { it.id() }
+
+        val dashed = layers.getValue("osmpaths-line")
+        assertEquals(
+            """["any",["!has","surface"],["==","surface","unpaved"]]""",
+            dashed.getValue("filter").jsonArray.last().toString(),
+            "The dashed layer has to take untagged ways as well as unpaved ones"
+        )
+        assertTrue(dashed.getValue("paint").jsonObject.containsKey("line-dasharray"))
+
+        val paved = layers.getValue("osmpaths-paved")
+        assertEquals(
+            """["==","surface","paved"]""",
+            paved.getValue("filter").jsonArray.last().toString(),
+            "The solid layer takes only explicitly paved ways"
+        )
+        assertFalse(
+            paved.getValue("paint").jsonObject.containsKey("line-dasharray"),
+            "Paved ways are the solid ones"
+        )
     }
 
     @Test
@@ -121,7 +155,7 @@ class MapStyleTest {
         assertEquals(
             listOf(
                 "background", "base-layer", "avalanchezones-layer",
-                "waymarkedtrails-layer", "osmpaths-casing", "osmpaths-line",
+                "waymarkedtrails-layer", "osmpaths-casing", "osmpaths-line", "osmpaths-paved",
             ),
             style.layers().map { it.id() }
         )

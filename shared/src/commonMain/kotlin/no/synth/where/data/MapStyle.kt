@@ -22,8 +22,21 @@ object MapStyle {
     const val OSM_PATHS_COMPLETE_ZOOM = 14
 
     /** class=path also covers station platforms and indoor corridors in OpenMapTiles; drop those. */
-    private const val OSM_PATHS_FILTER =
-        """["all", ["in", "class", "path", "track"], ["!in", "subclass", "platform", "corridor"]]"""
+    private const val OSM_PATHS_CLAUSES =
+        """["in", "class", "path", "track"], ["!in", "subclass", "platform", "corridor"]"""
+
+    private const val OSM_PATHS_FILTER = """["all", $OSM_PATHS_CLAUSES]"""
+
+    // OpenMapTiles normalises surface to paved/unpaved and omits it where nobody tagged it, which
+    // is everything above the treeline. Only an explicit "paved" gets the solid line; unpaved and
+    // untagged both keep the dashed path symbol, so a missing tag never reads as a graded surface.
+    // Spelled out as "untagged or unpaved" rather than "not paved" so an untagged path cannot fall
+    // through the gap between the two layers and vanish.
+    private const val OSM_PATHS_UNPAVED_FILTER =
+        """["all", $OSM_PATHS_CLAUSES, ["any", ["!has", "surface"], ["==", "surface", "unpaved"]]]"""
+
+    private const val OSM_PATHS_PAVED_FILTER =
+        """["all", $OSM_PATHS_CLAUSES, ["==", "surface", "paved"]]"""
 
     fun getStyle(
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
@@ -137,6 +150,8 @@ object MapStyle {
                 // Yellow casing under a black dash, like MapAnt's own OSM path overlay. Vector tiles,
                 // so the dashes stay sharp when overzoomed past the source's z14. The casing carries
                 // the layer on dark ground (satellite), where the dash alone disappears.
+                // Paved ways get their own layer drawn solid: line-dasharray takes no expression, so
+                // the dashed/solid split has to be two layers with complementary filters.
                 append(""",
     {
       "id": "osmpaths-casing",
@@ -160,7 +175,7 @@ object MapStyle {
       "type": "line",
       "source": "osmpaths",
       "source-layer": "transportation",
-      "filter": $OSM_PATHS_FILTER,
+      "filter": $OSM_PATHS_UNPAVED_FILTER,
       "minzoom": $OSM_PATHS_MIN_ZOOM,
       "layout": {
         "line-cap": "butt",
@@ -170,6 +185,22 @@ object MapStyle {
         "line-color": "#000000",
         "line-width": ["interpolate", ["linear"], ["zoom"], $OSM_PATHS_MIN_ZOOM, 1.1, $OSM_PATHS_COMPLETE_ZOOM, 1.4, 16, 1.9, 20, 2.6],
         "line-dasharray": [2.5, 1.5]
+      }
+    },
+    {
+      "id": "osmpaths-paved",
+      "type": "line",
+      "source": "osmpaths",
+      "source-layer": "transportation",
+      "filter": $OSM_PATHS_PAVED_FILTER,
+      "minzoom": $OSM_PATHS_MIN_ZOOM,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#000000",
+        "line-width": ["interpolate", ["linear"], ["zoom"], $OSM_PATHS_MIN_ZOOM, 1.1, $OSM_PATHS_COMPLETE_ZOOM, 1.4, 16, 1.9, 20, 2.6]
       }
     }""")
             }

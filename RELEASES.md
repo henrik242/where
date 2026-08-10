@@ -7,8 +7,9 @@ tag dates.
 ## Unreleased
 
 - New "Paths (OSM)" overlay with paths and tractor roads from OpenStreetMap, drawn like
-  MapAnt's own path overlay, on top of any base map. Zoomed out it shows the main paths and
-  fills in the rest as you zoom in, and it downloads for offline use like the other overlays
+  MapAnt's own path overlay, on top of any base map. Paved ways are solid and the rest dashed.
+  Zoomed out it shows the main paths and fills in the rest as you zoom in, and it downloads
+  for offline use like the other overlays
 - New "Steepness (NVE)" overlay with slope steepness only; the existing NVE overlay is
   renamed "Steepness + Runout (NVE)" and the two replace each other when toggled
 - Both NVE overlays now scale up past zoom 16 instead of going blank, since NVE's tile
