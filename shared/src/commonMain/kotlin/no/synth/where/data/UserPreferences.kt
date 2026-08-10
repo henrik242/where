@@ -32,6 +32,7 @@ import kotlinx.serialization.json.put
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
 import no.synth.where.ui.map.MapLayer
+import no.synth.where.ui.map.NveOverlay
 
 class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -81,8 +82,8 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _showSavedPoints = MutableStateFlow(true)
     val showSavedPoints: StateFlow<Boolean> = _showSavedPoints.asStateFlow()
 
-    private val _showAvalancheZones = MutableStateFlow(false)
-    val showAvalancheZones: StateFlow<Boolean> = _showAvalancheZones.asStateFlow()
+    private val _nveOverlay = MutableStateFlow<NveOverlay?>(null)
+    val nveOverlay: StateFlow<NveOverlay?> = _nveOverlay.asStateFlow()
 
     private val _showHillshade = MutableStateFlow(false)
     val showHillshade: StateFlow<Boolean> = _showHillshade.asStateFlow()
@@ -135,7 +136,13 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
             dataStore.data.collect { prefs ->
                 _showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
                 _showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
-                _showAvalancheZones.value = prefs[SHOW_AVALANCHE_ZONES] ?: false
+                val storedNveOverlay = prefs[NVE_OVERLAY]
+                _nveOverlay.value = if (storedNveOverlay == null) {
+                    // Installs predating the steepness-only overlay only have the legacy boolean.
+                    if (prefs[SHOW_AVALANCHE_ZONES] == true) NveOverlay.STEEPNESS_RUNOUT else null
+                } else {
+                    NveOverlay.entries.find { it.name == storedNveOverlay }
+                }
                 _showHillshade.value = prefs[SHOW_HILLSHADE] ?: false
                 _showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
@@ -262,10 +269,16 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         scope.launch { dataStore.edit { it[SHOW_SAVED_POINTS] = value } }
     }
 
-    fun updateShowAvalancheZones(value: Boolean) {
-        _showAvalancheZones.value = value
-        scope.launch { dataStore.edit { it[SHOW_AVALANCHE_ZONES] = value } }
+    fun updateNveOverlay(value: NveOverlay?) {
+        _nveOverlay.value = value
+        // Stored as "" rather than a missing key, so turning the overlay off doesn't fall back to
+        // the legacy boolean and resurrect the old choice.
+        scope.launch { dataStore.edit { it[NVE_OVERLAY] = value?.name ?: "" } }
     }
+
+    /** Tapping the active overlay turns it off. */
+    fun toggleNveOverlay(value: NveOverlay) =
+        updateNveOverlay(if (_nveOverlay.value == value) null else value)
 
     fun updateShowHillshade(value: Boolean) {
         _showHillshade.value = value
@@ -463,6 +476,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val SHOW_WAYMARKED_TRAILS = booleanPreferencesKey("show_waymarked_trails")
         private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
+        private val NVE_OVERLAY = stringPreferencesKey("nve_overlay")
+
+        // Read-only legacy key: superseded by NVE_OVERLAY, still read to migrate old installs.
         private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")
         private val SHOW_HILLSHADE = booleanPreferencesKey("show_hillshade")
         private val SHOW_COORD_GRID = booleanPreferencesKey("show_coord_grid")

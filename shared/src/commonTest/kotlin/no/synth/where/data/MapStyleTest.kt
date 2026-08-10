@@ -1,11 +1,46 @@
 package no.synth.where.data
 
 import no.synth.where.ui.map.MapLayer
+import no.synth.where.ui.map.NveOverlay
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/**
+ * The JSON from a source or layer key up to that object's closing brace, to assert inside one
+ * block. Splits on the indented brace because tile URLs contain `{z}/{y}/{x}` placeholders.
+ */
+private fun blockAfter(style: String, key: String) = style.substringAfter(key).substringBefore("\n    }")
+
 class MapStyleTest {
+
+    @Test
+    fun styleJsonIsWellFormed() {
+        val style = MapStyle.getStyle()
+        assertTrue(style.trim().startsWith("{"), "Style should start with {")
+        assertTrue(style.trim().endsWith("}"), "Style should end with }")
+        assertTrue(style.contains("\"version\""), "Style should contain version")
+        assertTrue(style.contains("\"sources\""), "Style should contain sources")
+        assertTrue(style.contains("\"layers\""), "Style should contain layers")
+        assertTrue(style.contains("\"kartverket\""), "Style should contain the kartverket source")
+    }
+
+    @Test
+    fun customGlyphsUrlIsEmbedded() {
+        val style = MapStyle.getStyle(glyphsUrl = "asset://fonts/{fontstack}/{range}.pbf")
+        assertTrue(style.contains("\"glyphs\": \"asset://fonts/{fontstack}/{range}.pbf\""))
+    }
+
+    @Test
+    fun onlySelectedBaseSourceIncluded() {
+        val style = MapStyle.getStyle(selectedLayer = MapLayer.OSM)
+        assertTrue(style.contains("\"osm\""), "Should contain the osm source")
+        assertFalse(style.contains("\"kartverket\""))
+        assertFalse(style.contains("\"toporaster\""))
+        assertFalse(style.contains("\"opentopomap\""))
+        assertFalse(style.contains("\"sjokartraster\""))
+    }
 
     @Test
     fun satelliteStyleUsesEoxSourceCappedAtZoom14() {
@@ -32,5 +67,77 @@ class MapStyleTest {
     fun nonSatelliteBaseSourceHasNoMaxzoom() {
         val style = MapStyle.getStyle(selectedLayer = MapLayer.KARTVERKET)
         assertFalse(style.contains("maxzoom"), "Default base layers should not set maxzoom")
+    }
+
+    @Test
+    fun waymarkedTrailsIncludedWhenEnabled() {
+        assertTrue(MapStyle.getStyle(showWaymarkedTrails = true).contains("\"waymarkedtrails\""))
+        assertFalse(MapStyle.getStyle(showWaymarkedTrails = false).contains("\"waymarkedtrails\""))
+    }
+
+    @Test
+    fun steepnessOverlayUsesTheSteepnessOnlyService() {
+        val style = MapStyle.getStyle(nveOverlay = NveOverlay.STEEPNESS)
+        assertTrue(style.contains("\"steepness\""), "Should contain the steepness source")
+        assertTrue(style.contains("\"steepness-layer\""), "Should contain the steepness layer")
+        assertTrue(style.contains("Bratthet_2024"), "Should use the steepness-only NVE service")
+        assertFalse(style.contains("Bratthet_med_utlop_2024"), "Should not pull in runout zones")
+    }
+
+    @Test
+    fun runoutOverlayUsesTheRunoutService() {
+        val style = MapStyle.getStyle(nveOverlay = NveOverlay.STEEPNESS_RUNOUT)
+        assertTrue(style.contains("Bratthet_med_utlop_2024"), "Should use the NVE runout service")
+        assertTrue(style.contains("\"avalanchezones-layer\""), "Source id stays legacy for offline downloads")
+        assertFalse(style.contains("\"steepness\""), "Only one NVE overlay can be in a style")
+    }
+
+    @Test
+    fun noNveOverlayByDefault() {
+        val style = MapStyle.getStyle()
+        assertFalse(style.contains("gis3.nve.no"))
+    }
+
+    @Test
+    fun nveOverlaysAreCappedAtZoom16() {
+        // NVE caches nothing past z16, so MapLibre must overzoom rather than fetch 404s.
+        for (overlay in NveOverlay.entries) {
+            val source = blockAfter(MapStyle.getStyle(nveOverlay = overlay), "\"${overlay.sourceId}\": {")
+            assertTrue(source.contains("\"maxzoom\": 16"), "${overlay.name} source should cap at zoom 16")
+            assertTrue(source.contains("\"minzoom\": 6"), "${overlay.name} source should start at zoom 6")
+        }
+    }
+
+    @Test
+    fun nveOverlayIsDrawnAtSixtyPercentOpacity() {
+        for (overlay in NveOverlay.entries) {
+            val layer = blockAfter(MapStyle.getStyle(nveOverlay = overlay), "\"${overlay.sourceId}-layer\"")
+            assertTrue(layer.contains("\"raster-opacity\": 0.6"), "${overlay.name} layer should be 60% opaque")
+        }
+    }
+
+    @Test
+    fun hillshadeIncludedWhenEnabled() {
+        val style = MapStyle.getStyle(showHillshade = true)
+        assertTrue(style.contains("\"hillshade\""), "Should contain the hillshade source")
+        assertTrue(style.contains("\"hillshade-layer\""), "Should contain the hillshade layer")
+        assertTrue(style.contains("elevation-tiles-prod"))
+
+        val without = MapStyle.getStyle(showHillshade = false)
+        assertFalse(without.contains("\"hillshade\""))
+        assertFalse(without.contains("\"hillshade-layer\""))
+    }
+
+    @Test
+    fun overlaysAreDrawnBaseHillshadeNveTrails() {
+        val style = MapStyle.getStyle(
+            showWaymarkedTrails = true,
+            nveOverlay = NveOverlay.STEEPNESS,
+            showHillshade = true,
+        )
+        val order = listOf("base-layer", "hillshade-layer", "steepness-layer", "waymarkedtrails-layer")
+            .map { style.indexOf(it) }
+        assertFalse(order.contains(-1), "Every overlay should be present")
+        assertEquals(order.sorted(), order, "Overlays should be drawn base, hillshade, NVE, then trails")
     }
 }

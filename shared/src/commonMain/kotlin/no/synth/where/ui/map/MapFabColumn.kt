@@ -58,7 +58,7 @@ fun MapFabColumn(
     selectedLayer: MapLayer,
     showWaymarkedTrails: Boolean,
     showSavedPoints: Boolean,
-    showAvalancheZones: Boolean,
+    nveOverlay: NveOverlay?,
     showHillshade: Boolean = false,
     showCoordGrid: Boolean = false,
     showRecordFab: Boolean = true,
@@ -68,7 +68,7 @@ fun MapFabColumn(
     onLayerSelected: (MapLayer) -> Unit,
     onWaymarkedTrailsToggle: () -> Unit,
     onSavedPointsToggle: () -> Unit,
-    onAvalancheZonesToggle: () -> Unit,
+    onNveOverlayToggle: (NveOverlay) -> Unit,
     onHillshadeToggle: () -> Unit = {},
     onCoordGridToggle: () -> Unit = {},
     onRecordStopClick: () -> Unit,
@@ -113,7 +113,8 @@ fun MapFabColumn(
             HorizontalDivider()
             MenuSection(stringResource(Res.string.overlays))
             LayerMenuItem(stringResource(Res.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
-            LayerMenuItem(stringResource(Res.string.avalanche_zones_nve), showAvalancheZones) { onAvalancheZonesToggle() }
+            LayerMenuItem(stringResource(Res.string.steepness_nve), nveOverlay == NveOverlay.STEEPNESS) { onNveOverlayToggle(NveOverlay.STEEPNESS) }
+            LayerMenuItem(stringResource(Res.string.steepness_runout_nve), nveOverlay == NveOverlay.STEEPNESS_RUNOUT) { onNveOverlayToggle(NveOverlay.STEEPNESS_RUNOUT) }
             LayerMenuItem(stringResource(Res.string.hillshade), showHillshade) { onHillshadeToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
             LayerMenuItem(stringResource(Res.string.coordinate_grid), showCoordGrid) { onCoordGridToggle() }

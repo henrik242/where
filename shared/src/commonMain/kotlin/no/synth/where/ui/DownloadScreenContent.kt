@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import no.synth.where.data.DownloadLayers
 import no.synth.where.data.LayerStats
 import no.synth.where.data.MapCacheConfig
 import no.synth.where.data.QueueSummary
@@ -55,6 +56,26 @@ data class LayerInfo(
     val displayName: String,
     val description: String
 )
+
+/** Every downloadable layer with its localized description. */
+@Composable
+fun rememberLayerInfos(): List<LayerInfo> {
+    val descriptions = mapOf(
+        "kartverket" to stringResource(Res.string.layer_kartverket_desc),
+        "toporaster" to stringResource(Res.string.layer_toporaster_desc),
+        "sjokartraster" to stringResource(Res.string.layer_sjokartraster_desc),
+        "mapant" to stringResource(Res.string.layer_mapant_desc),
+        "osm" to stringResource(Res.string.layer_osm_desc),
+        "opentopomap" to stringResource(Res.string.layer_opentopomap_desc),
+        "waymarkedtrails" to stringResource(Res.string.layer_waymarkedtrails_desc),
+        "avalanchezones" to stringResource(Res.string.layer_steepness_runout_desc),
+        "steepness" to stringResource(Res.string.layer_steepness_desc),
+        "terrain" to stringResource(Res.string.layer_terrain_desc),
+    )
+    return remember(descriptions) {
+        DownloadLayers.all.map { LayerInfo(it.id, it.displayName, descriptions[it.id] ?: "") }
+    }
+}
 
 private data class DetailLevelOption(val zoom: Int, val label: String, val sizeHint: String)
 

@@ -55,7 +55,8 @@
     <string name="satellite">Satellite (Sentinel-2)</string>
     <string name="overlays">Overlays</string>
     <string name="waymarked_trails_osm">Waymarked Trails (OSM)</string>
-    <string name="avalanche_zones_nve">Avalanche Zones (NVE)</string>
+    <string name="steepness_nve">Steepness (NVE)</string>
+    <string name="steepness_runout_nve">Steepness + Runout (NVE)</string>
     <string name="saved_points">Saved Points</string>
     <string name="stop_recording">Stop Recording</string>
     <string name="start_recording">Start Recording</string>
@@ -322,7 +323,8 @@
     <string name="layer_osm_desc">Community-sourced street maps</string>
     <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
-    <string name="layer_avalanchezones_desc">Avalanche zones from NVE</string>
+    <string name="layer_steepness_runout_desc">Slope steepness with avalanche runout, from NVE</string>
+    <string name="layer_steepness_desc">Slope steepness from NVE</string>
     <string name="layer_terrain_desc">Terrain hillshade overlay</string>
 
     <!-- Compass -->

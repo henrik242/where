@@ -18,7 +18,6 @@ import no.synth.where.data.isBulkImport
 import no.synth.where.data.outcome
 import no.synth.where.data.suggestedImportFolder
 import no.synth.where.data.LiveTrackingFollower
-import no.synth.where.data.DownloadLayers
 import no.synth.where.data.DownloadStatus
 import no.synth.where.data.summary
 import no.synth.where.data.IosMapDownloadManager
@@ -32,8 +31,8 @@ import no.synth.where.data.TrackUrlImporter
 import no.synth.where.ui.AttributionsScreenContent
 import no.synth.where.ui.DownloadQueueScreenContent
 import no.synth.where.ui.DownloadScreenContent
-import no.synth.where.ui.LayerInfo
 import no.synth.where.ui.IosLayerHexMapScreen
+import no.synth.where.ui.rememberLayerInfos
 import no.synth.where.ui.OnlineTrackingScreenContent
 import no.synth.where.ui.SavedPointsScreenContent
 import no.synth.where.ui.SettingsScreen
@@ -463,35 +462,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 var cacheSize by remember { mutableLongStateOf(0L) }
                 val freeStorageBytes = remember(refreshTrigger) { iosFreeStorageBytes() }
 
-                val kartverketDesc = stringResource(Res.string.layer_kartverket_desc)
-                val toporasterDesc = stringResource(Res.string.layer_toporaster_desc)
-                val sjokartrasterDesc = stringResource(Res.string.layer_sjokartraster_desc)
-                val mapantDesc = stringResource(Res.string.layer_mapant_desc)
-                val osmDesc = stringResource(Res.string.layer_osm_desc)
-                val opentopomapDesc = stringResource(Res.string.layer_opentopomap_desc)
-                val waymarkedtrailsDesc = stringResource(Res.string.layer_waymarkedtrails_desc)
-                val avalanchezonesDesc = stringResource(Res.string.layer_avalanchezones_desc)
-                val terrainDesc = stringResource(Res.string.layer_terrain_desc)
-
-                val descriptionMap = remember(kartverketDesc) {
-                    mapOf(
-                        "kartverket" to kartverketDesc,
-                        "toporaster" to toporasterDesc,
-                        "sjokartraster" to sjokartrasterDesc,
-                        "mapant" to mapantDesc,
-                        "osm" to osmDesc,
-                        "opentopomap" to opentopomapDesc,
-                        "waymarkedtrails" to waymarkedtrailsDesc,
-                        "avalanchezones" to avalanchezonesDesc,
-                        "terrain" to terrainDesc,
-                    )
-                }
-
-                val layers = remember(descriptionMap) {
-                    DownloadLayers.all.map { layer ->
-                        LayerInfo(layer.id, layer.displayName, descriptionMap[layer.id] ?: "")
-                    }
-                }
+                val layers = rememberLayerInfos()
 
                 // Refresh cache size + layer stats whenever the queue drains an item.
                 LaunchedEffect(downloadQueue.count { it.status == DownloadStatus.COMPLETED }) {

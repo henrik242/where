@@ -1,6 +1,7 @@
 package no.synth.where.data
 
 import no.synth.where.ui.map.MapLayer
+import no.synth.where.ui.map.NveOverlay
 
 object MapStyle {
     /** Network fallback used only by tests; production callers pass a platform-local URL. */
@@ -10,7 +11,7 @@ object MapStyle {
     fun getStyle(
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
         showWaymarkedTrails: Boolean = false,
-        showAvalancheZones: Boolean = false,
+        nveOverlay: NveOverlay? = null,
         showHillshade: Boolean = false,
         glyphsUrl: String = DEFAULT_GLYPHS_URL,
     ): String {
@@ -54,16 +55,16 @@ object MapStyle {
       "attribution": "© <a href='https://waymarkedtrails.org'>Waymarked Trails</a> (CC-BY-SA)"
     }""")
             }
-            if (showAvalancheZones) {
+            if (nveOverlay != null) {
                 append(""",
-    "avalanchezones": {
+    "${nveOverlay.sourceId}": {
       "type": "raster",
       "scheme": "xyz",
-      "tiles": ["https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}"],
+      "tiles": ["${nveOverlay.tileUrl}"],
       "tileSize": 256,
       "attribution": "© <a href='https://www.nve.no'>NVE</a> (NLOD)",
-      "minzoom": 6,
-      "maxzoom": 19
+      "minzoom": ${NveOverlay.MIN_ZOOM},
+      "maxzoom": ${NveOverlay.MAX_ZOOM}
     }""")
             }
             if (showHillshade) {
@@ -107,12 +108,12 @@ object MapStyle {
       }
     }""")
             }
-            if (showAvalancheZones) {
+            if (nveOverlay != null) {
                 append(""",
     {
-      "id": "avalanchezones-layer",
+      "id": "${nveOverlay.sourceId}-layer",
       "type": "raster",
-      "source": "avalanchezones",
+      "source": "${nveOverlay.sourceId}",
       "paint": {
         "raster-opacity": 0.6
       }

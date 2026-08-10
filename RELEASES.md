@@ -4,6 +4,14 @@ Version numbers are the git commit count at build time; gaps between tag numbers
 builds that were never released. Each tag below marks a store release; dates are the
 tag dates.
 
+## Unreleased
+
+- New "Steepness (NVE)" overlay with slope steepness only; the existing NVE overlay is
+  renamed "Steepness + Runout (NVE)" and the two replace each other when toggled
+- Both NVE overlays now scale up past zoom 16 instead of going blank, since NVE's tile
+  cache ends there
+- Layer menu stays open when toggling an overlay, so you can flip several at once
+
 ## v516 (2026-08-09)
 
 - Connect your Strava account (using your own Strava API app) to browse and import your

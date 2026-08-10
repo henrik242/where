@@ -1,5 +1,6 @@
 package no.synth.where.data
 
+import no.synth.where.ui.map.NveOverlay
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -8,8 +9,21 @@ import kotlin.test.assertTrue
 class DownloadLayersTest {
 
     @Test
-    fun hasTenLayers() {
-        assertEquals(10, DownloadLayers.all.size)
+    fun hasElevenLayers() {
+        assertEquals(11, DownloadLayers.all.size)
+    }
+
+    @Test
+    fun nveLayersMirrorTheOverlayEnum() {
+        NveOverlay.entries.forEach { overlay ->
+            val layer = assertNotNull(
+                DownloadLayers.all.find { it.id == overlay.sourceId },
+                "${overlay.name} should be downloadable"
+            )
+            assertEquals(overlay.tileUrl, layer.tileUrl)
+            assertEquals(16, layer.maxZoom, "NVE caches nothing past z16")
+            assertTrue(layer.isOverlay)
+        }
     }
 
     @Test

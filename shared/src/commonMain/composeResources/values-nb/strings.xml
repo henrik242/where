@@ -55,7 +55,8 @@
     <string name="satellite">Satellitt (Sentinel-2)</string>
     <string name="overlays">Overlegg</string>
     <string name="waymarked_trails_osm">Merkede stier (OSM)</string>
-    <string name="avalanche_zones_nve">Brattkart (NVE)</string>
+    <string name="steepness_nve">Bratthet (NVE)</string>
+    <string name="steepness_runout_nve">Bratthet + skredutløp (NVE)</string>
     <string name="saved_points">Lagrede punkter</string>
     <string name="stop_recording">Stopp opptak</string>
     <string name="start_recording">Start opptak</string>
@@ -322,7 +323,8 @@
     <string name="layer_osm_desc">Brukergenererte gatekart</string>
     <string name="layer_opentopomap_desc">Topografiske kart med turstier</string>
     <string name="layer_waymarkedtrails_desc">Kartlag med merkede stier</string>
-    <string name="layer_avalanchezones_desc">Brattkart fra NVE</string>
+    <string name="layer_steepness_runout_desc">Bratthet med utløpsområder for snøskred, fra NVE</string>
+    <string name="layer_steepness_desc">Bratthet fra NVE</string>
     <string name="layer_terrain_desc">Terrengskygge-kartlag</string>
 
     <!-- Map Screen snackbars -->

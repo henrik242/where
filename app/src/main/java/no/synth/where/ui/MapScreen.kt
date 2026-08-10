@@ -219,7 +219,7 @@ fun MapScreen(
     val selectedLayer by viewModel.userPreferences.selectedMapLayer.collectAsState()
     var showLayerMenu by remember { mutableStateOf(false) }
     val showWaymarkedTrails by viewModel.userPreferences.showWaymarkedTrails.collectAsState()
-    val showAvalancheZones by viewModel.userPreferences.showAvalancheZones.collectAsState()
+    val nveOverlay by viewModel.userPreferences.nveOverlay.collectAsState()
     val showHillshade by viewModel.userPreferences.showHillshade.collectAsState()
     val showCoordGrid by viewModel.userPreferences.showCoordGrid.collectAsState()
     var hasLocationPermission by remember {
@@ -504,7 +504,7 @@ fun MapScreen(
         selectedLayer = selectedLayer,
         showWaymarkedTrails = showWaymarkedTrails,
         showSavedPoints = showSavedPoints,
-        showAvalancheZones = showAvalancheZones,
+        nveOverlay = nveOverlay,
         showHillshade = showHillshade,
         showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
@@ -558,19 +558,13 @@ fun MapScreen(
         onSearchClick = { viewModel.openSearch() },
         onLayerMenuToggle = { showLayerMenu = it },
         onLayerSelected = { viewModel.userPreferences.updateSelectedMapLayer(it); showLayerMenu = false },
-        onWaymarkedTrailsToggle = {
-            viewModel.userPreferences.updateShowWaymarkedTrails(!showWaymarkedTrails); showLayerMenu = false
-        },
-        onAvalancheZonesToggle = {
-            viewModel.userPreferences.updateShowAvalancheZones(!showAvalancheZones); showLayerMenu = false
-        },
-        onHillshadeToggle = {
-            viewModel.userPreferences.updateShowHillshade(!showHillshade); showLayerMenu = false
-        },
-        onCoordGridToggle = {
-            viewModel.userPreferences.updateShowCoordGrid(!showCoordGrid); showLayerMenu = false
-        },
-        onSavedPointsToggle = { viewModel.userPreferences.updateShowSavedPoints(!showSavedPoints); showLayerMenu = false },
+        // Overlay toggles leave the menu open (as on iOS) so their effect on the other
+        // items — the two NVE overlays replace each other — stays visible.
+        onWaymarkedTrailsToggle = { viewModel.userPreferences.updateShowWaymarkedTrails(!showWaymarkedTrails) },
+        onNveOverlayToggle = { viewModel.userPreferences.toggleNveOverlay(it) },
+        onHillshadeToggle = { viewModel.userPreferences.updateShowHillshade(!showHillshade) },
+        onCoordGridToggle = { viewModel.userPreferences.updateShowCoordGrid(!showCoordGrid) },
+        onSavedPointsToggle = { viewModel.userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {
             if (isRecording) {
                 viewModel.openStopTrackDialog()
@@ -671,7 +665,7 @@ fun MapScreen(
                 hasLocationPermission = hasLocationPermission,
                 isRecording = isRecording,
                 showWaymarkedTrails = showWaymarkedTrails,
-                showAvalancheZones = showAvalancheZones,
+                nveOverlay = nveOverlay,
                 showHillshade = showHillshade,
                 showSavedPoints = showSavedPoints,
                 savedPoints = savedPoints,
@@ -937,7 +931,7 @@ private fun MapScreenFullPreview() {
             selectedLayer = MapLayer.KARTVERKET,
             showWaymarkedTrails = false,
             showSavedPoints = true,
-            showAvalancheZones = false,
+            nveOverlay = null,
             onlineTrackingEnabled = false,
             recordingTrack = sampleTrack,
             viewingTracks = listOf(sampleTrack),
@@ -953,7 +947,7 @@ private fun MapScreenFullPreview() {
             onLayerMenuToggle = {},
             onLayerSelected = {},
             onWaymarkedTrailsToggle = {},
-            onAvalancheZonesToggle = {},
+            onNveOverlayToggle = {},
             onSavedPointsToggle = {},
             onRecordStopClick = {},
             onMyLocationClick = {},

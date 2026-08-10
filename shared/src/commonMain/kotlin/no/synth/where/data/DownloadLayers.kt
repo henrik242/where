@@ -1,5 +1,7 @@
 package no.synth.where.data
 
+import no.synth.where.ui.map.NveOverlay
+
 data class DownloadLayer(
     val id: String,
     val displayName: String,
@@ -10,6 +12,15 @@ data class DownloadLayer(
 )
 
 object DownloadLayers {
+    private fun nveLayer(overlay: NveOverlay, displayName: String) = DownloadLayer(
+        overlay.sourceId,
+        displayName,
+        overlay.tileUrl,
+        minZoom = NveOverlay.MIN_ZOOM,
+        maxZoom = NveOverlay.MAX_ZOOM,
+        isOverlay = true,
+    )
+
     val all: List<DownloadLayer> = listOf(
         DownloadLayer("kartverket", "Kartverket", "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"),
         DownloadLayer("toporaster", "Kartverket Toporaster", "https://cache.kartverket.no/v1/wmts/1.0.0/toporaster/default/webmercator/{z}/{y}/{x}.png"),
@@ -19,7 +30,8 @@ object DownloadLayers {
         DownloadLayer("osm", "OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
         DownloadLayer("opentopomap", "OpenTopoMap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", maxZoom = 17),
         DownloadLayer("waymarkedtrails", "Waymarked Trails", "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", isOverlay = true),
-        DownloadLayer("avalanchezones", "Avalanche Zones (NVE)", "https://gis3.nve.no/arcgis/rest/services/wmts/Bratthet_med_utlop_2024/MapServer/tile/{z}/{y}/{x}", minZoom = 6, maxZoom = 19, isOverlay = true),
+        nveLayer(NveOverlay.STEEPNESS_RUNOUT, "Steepness + Runout (NVE)"),
+        nveLayer(NveOverlay.STEEPNESS, "Steepness (NVE)"),
         DownloadLayer("terrain", "Terrain (Hillshade)", "https://s3.amazonaws.com/elevation-tiles-prod/normal/{z}/{x}/{y}.png", maxZoom = 15, isOverlay = true),
     )
 

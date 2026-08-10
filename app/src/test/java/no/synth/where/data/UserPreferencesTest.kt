@@ -1,6 +1,9 @@
 package no.synth.where.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import no.synth.where.ui.map.NveOverlay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -105,6 +108,58 @@ class UserPreferencesTest {
         assertEquals(CoordFormat.UTM, prefs.coordFormat.value)
         prefs.updateCoordFormat(CoordFormat.DMS)
         assertEquals(CoordFormat.DMS, prefs.coordFormat.value)
+    }
+
+    @Test
+    fun toggleNveOverlay_selectsThenClears() {
+        prefs.toggleNveOverlay(NveOverlay.STEEPNESS)
+        assertEquals(NveOverlay.STEEPNESS, prefs.nveOverlay.value)
+        prefs.toggleNveOverlay(NveOverlay.STEEPNESS)
+        assertNull(prefs.nveOverlay.value)
+    }
+
+    @Test
+    fun toggleNveOverlay_replacesTheOtherVariant() {
+        prefs.toggleNveOverlay(NveOverlay.STEEPNESS_RUNOUT)
+        prefs.toggleNveOverlay(NveOverlay.STEEPNESS)
+        assertEquals(NveOverlay.STEEPNESS, prefs.nveOverlay.value)
+    }
+
+    @Test
+    fun nveOverlay_persistsBothChoiceAndOff() = runBlocking {
+        val file = tempFolder.newFile("nve_overlay_persist.preferences_pb")
+        assertEquals(NveOverlay.STEEPNESS, reload(file) { it.updateNveOverlay(NveOverlay.STEEPNESS) })
+        // Turning it off must survive a reload, not fall back to the legacy boolean.
+        assertNull(reload(file) { it.updateNveOverlay(null) })
+    }
+
+    @Test
+    fun nveOverlay_migratesLegacyAvalancheZonesFlag() = runBlocking {
+        val file = tempFolder.newFile("nve_overlay_legacy.preferences_pb")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val store = PreferenceDataStoreFactory.create(scope = scope, produceFile = { file })
+        store.edit { it[booleanPreferencesKey("show_avalanche_zones")] = true }
+        val migrated = UserPreferences(store)
+        delay(200)
+        assertEquals(NveOverlay.STEEPNESS_RUNOUT, migrated.nveOverlay.value)
+        scope.cancel()
+    }
+
+    /** Applies [change], then reopens the same file in a fresh UserPreferences and reads it back. */
+    private suspend fun reload(file: java.io.File, change: (UserPreferences) -> Unit): NveOverlay? {
+        val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val writeStore = PreferenceDataStoreFactory.create(scope = writeScope, produceFile = { file })
+        val writer = UserPreferences(writeStore)
+        delay(100)
+        change(writer)
+        delay(200)
+        writeScope.cancel()
+
+        val readScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val readStore = PreferenceDataStoreFactory.create(scope = readScope, produceFile = { file })
+        val reader = UserPreferences(readStore)
+        delay(200)
+        return reader.nveOverlay.value.also { readScope.cancel() }
     }
 
     @Test

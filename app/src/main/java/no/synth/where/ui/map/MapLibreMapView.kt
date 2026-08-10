@@ -58,7 +58,7 @@ fun MapLibreMapView(
     hasLocationPermission: Boolean = false,
     isRecording: Boolean = false,
     showWaymarkedTrails: Boolean = false,
-    showAvalancheZones: Boolean = false,
+    nveOverlay: NveOverlay? = null,
     showHillshade: Boolean = false,
     showSavedPoints: Boolean = true,
     savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
@@ -198,11 +198,18 @@ fun MapLibreMapView(
     var clickListener by remember { mutableStateOf<MapLibreMap.OnMapClickListener?>(null) }
     var longClickListener by remember { mutableStateOf<MapLibreMap.OnMapLongClickListener?>(null) }
 
+    val styleJson = remember(selectedLayer, showWaymarkedTrails, nveOverlay, showHillshade) {
+        MapStyle.getStyle(
+            selectedLayer = selectedLayer,
+            showWaymarkedTrails = showWaymarkedTrails,
+            nveOverlay = nveOverlay,
+            showHillshade = showHillshade,
+            glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
+        )
+    }
+
     LaunchedEffect(
-        selectedLayer,
-        showWaymarkedTrails,
-        showAvalancheZones,
-        showHillshade,
+        styleJson,
         showSavedPoints,
         savedPoints.size,
         isOnline,
@@ -210,13 +217,6 @@ fun MapLibreMapView(
     ) {
         map?.let { mapInstance ->
             try {
-                val styleJson = MapStyle.getStyle(
-                    selectedLayer,
-                    showWaymarkedTrails,
-                    showAvalancheZones,
-                    showHillshade = showHillshade,
-                    glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
-                )
                 val current = currentTrack
                 val hasNoTracks = viewingTracks.isEmpty() && current == null
                 mapInstance.setStyle(
@@ -289,13 +289,6 @@ fun MapLibreMapView(
         if (wasInitialized && isOnline && map != null) {
 
             map?.let { mapInstance ->
-                val styleJson = MapStyle.getStyle(
-                    selectedLayer,
-                    showWaymarkedTrails,
-                    showAvalancheZones,
-                    showHillshade = showHillshade,
-                    glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
-                )
                 try {
                     mapInstance.setStyle(
                         Style.Builder().fromJson(styleJson),
@@ -485,13 +478,6 @@ fun MapLibreMapView(
                     // Don't add any click listeners here to avoid conflicts
 
                     try {
-                        val styleJson = MapStyle.getStyle(
-                            selectedLayer,
-                            showWaymarkedTrails,
-                            showAvalancheZones,
-                            showHillshade = showHillshade,
-                            glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
-                        )
                         mapInstance.setStyle(
                             Style.Builder().fromJson(styleJson),
                             object : Style.OnStyleLoaded {

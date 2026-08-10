@@ -11,13 +11,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
-import no.synth.where.data.DownloadLayers
 import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.summary
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
-import org.jetbrains.compose.resources.stringResource
 import no.synth.where.data.MapDownloadManager
 import java.io.File
 
@@ -37,35 +35,7 @@ fun DownloadScreen(
     val downloadElevationData by app.userPreferences.downloadElevationData.collectAsState()
     val downloadMaxZoom by app.userPreferences.downloadMaxZoom.collectAsState()
 
-    val kartverketDesc = stringResource(Res.string.layer_kartverket_desc)
-    val toporasterDesc = stringResource(Res.string.layer_toporaster_desc)
-    val sjokartrasterDesc = stringResource(Res.string.layer_sjokartraster_desc)
-    val mapantDesc = stringResource(Res.string.layer_mapant_desc)
-    val osmDesc = stringResource(Res.string.layer_osm_desc)
-    val opentopomapDesc = stringResource(Res.string.layer_opentopomap_desc)
-    val waymarkedtrailsDesc = stringResource(Res.string.layer_waymarkedtrails_desc)
-    val avalanchezonesDesc = stringResource(Res.string.layer_avalanchezones_desc)
-    val terrainDesc = stringResource(Res.string.layer_terrain_desc)
-
-    val descriptionMap = remember(kartverketDesc) {
-        mapOf(
-            "kartverket" to kartverketDesc,
-            "toporaster" to toporasterDesc,
-            "sjokartraster" to sjokartrasterDesc,
-            "mapant" to mapantDesc,
-            "osm" to osmDesc,
-            "opentopomap" to opentopomapDesc,
-            "waymarkedtrails" to waymarkedtrailsDesc,
-            "avalanchezones" to avalanchezonesDesc,
-            "terrain" to terrainDesc,
-        )
-    }
-
-    val layers = remember(descriptionMap) {
-        DownloadLayers.all.map { layer ->
-            LayerInfo(layer.id, layer.displayName, descriptionMap[layer.id] ?: "")
-        }
-    }
+    val layers = rememberLayerInfos()
 
     LaunchedEffect(refreshTrigger) {
         val maplibreTilesDir = File(context.getExternalFilesDir(null), "maplibre-tiles")

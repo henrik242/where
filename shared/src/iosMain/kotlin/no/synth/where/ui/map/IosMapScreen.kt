@@ -90,7 +90,7 @@ fun IosMapScreen(
     var showLayerMenu by remember { mutableStateOf(false) }
     val currentLayer by userPreferences.selectedMapLayer.collectAsState()
     val waymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
-    val avalancheZones by userPreferences.showAvalancheZones.collectAsState()
+    val nveOverlay by userPreferences.nveOverlay.collectAsState()
     val hillshade by userPreferences.showHillshade.collectAsState()
     val showSavedPoints by userPreferences.showSavedPoints.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -240,11 +240,11 @@ fun IosMapScreen(
     var isResolvingRulerName by remember { mutableStateOf(false) }
 
     val glyphsUrl = remember { iosBundleGlyphsUrl() }
-    val styleJson = remember(currentLayer, waymarkedTrails, avalancheZones, hillshade) {
+    val styleJson = remember(currentLayer, waymarkedTrails, nveOverlay, hillshade) {
         MapStyle.getStyle(
             selectedLayer = currentLayer,
             showWaymarkedTrails = waymarkedTrails,
-            showAvalancheZones = avalancheZones,
+            nveOverlay = nveOverlay,
             showHillshade = hillshade,
             glyphsUrl = glyphsUrl,
         )
@@ -628,7 +628,7 @@ fun IosMapScreen(
         selectedLayer = currentLayer,
         showWaymarkedTrails = waymarkedTrails,
         showSavedPoints = showSavedPoints,
-        showAvalancheZones = avalancheZones,
+        nveOverlay = nveOverlay,
         showHillshade = hillshade,
         showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
@@ -687,7 +687,7 @@ fun IosMapScreen(
         onLayerMenuToggle = { showLayerMenu = it },
         onLayerSelected = { userPreferences.updateSelectedMapLayer(it) },
         onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!waymarkedTrails) },
-        onAvalancheZonesToggle = { userPreferences.updateShowAvalancheZones(!avalancheZones) },
+        onNveOverlayToggle = { userPreferences.toggleNveOverlay(it) },
         onHillshadeToggle = { userPreferences.updateShowHillshade(!hillshade) },
         onCoordGridToggle = { userPreferences.updateShowCoordGrid(!showCoordGrid) },
         onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },
