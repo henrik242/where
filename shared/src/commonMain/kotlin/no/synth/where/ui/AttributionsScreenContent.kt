@@ -32,7 +32,7 @@ private val dataSources = listOf(
     Attribution("EOxCloudless", "Satellite imagery (modified Copernicus Sentinel data)", "CC BY-NC-SA 4.0"),
     Attribution("Waymarked Trails", "Hiking trail overlay", "CC-BY-SA"),
     Attribution("NVE", "Slope steepness and avalanche terrain data", "NLOD"),
-    Attribution("Tilezen Joerd", "Terrain hillshade and elevation tiles", "Public Domain"),
+    Attribution("Tilezen Joerd", "Terrain elevation tiles", "Public Domain"),
     Attribution("Open-Meteo", "Elevation data", "CC BY 4.0"),
     Attribution("Nominatim", "Geocoding and reverse geocoding", "ODbL"),
 )

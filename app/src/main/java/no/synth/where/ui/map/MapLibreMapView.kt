@@ -59,7 +59,6 @@ fun MapLibreMapView(
     isRecording: Boolean = false,
     showWaymarkedTrails: Boolean = false,
     nveOverlay: NveOverlay? = null,
-    showHillshade: Boolean = false,
     showSavedPoints: Boolean = true,
     savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
     currentTrack: Track? = null,
@@ -198,12 +197,11 @@ fun MapLibreMapView(
     var clickListener by remember { mutableStateOf<MapLibreMap.OnMapClickListener?>(null) }
     var longClickListener by remember { mutableStateOf<MapLibreMap.OnMapLongClickListener?>(null) }
 
-    val styleJson = remember(selectedLayer, showWaymarkedTrails, nveOverlay, showHillshade) {
+    val styleJson = remember(selectedLayer, showWaymarkedTrails, nveOverlay) {
         MapStyle.getStyle(
             selectedLayer = selectedLayer,
             showWaymarkedTrails = showWaymarkedTrails,
             nveOverlay = nveOverlay,
-            showHillshade = showHillshade,
             glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
         )
     }

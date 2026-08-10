@@ -65,12 +65,12 @@ fun rememberLayerInfos(): List<LayerInfo> {
         "toporaster" to stringResource(Res.string.layer_toporaster_desc),
         "sjokartraster" to stringResource(Res.string.layer_sjokartraster_desc),
         "mapant" to stringResource(Res.string.layer_mapant_desc),
+        "satellite" to stringResource(Res.string.layer_satellite_desc),
         "osm" to stringResource(Res.string.layer_osm_desc),
         "opentopomap" to stringResource(Res.string.layer_opentopomap_desc),
         "waymarkedtrails" to stringResource(Res.string.layer_waymarkedtrails_desc),
         "avalanchezones" to stringResource(Res.string.layer_steepness_runout_desc),
         "steepness" to stringResource(Res.string.layer_steepness_desc),
-        "terrain" to stringResource(Res.string.layer_terrain_desc),
     )
     return remember(descriptions) {
         DownloadLayers.all.map { LayerInfo(it.id, it.displayName, descriptions[it.id] ?: "") }

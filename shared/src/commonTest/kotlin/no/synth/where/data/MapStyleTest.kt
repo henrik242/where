@@ -117,27 +117,14 @@ class MapStyleTest {
     }
 
     @Test
-    fun hillshadeIncludedWhenEnabled() {
-        val style = MapStyle.getStyle(showHillshade = true)
-        assertTrue(style.contains("\"hillshade\""), "Should contain the hillshade source")
-        assertTrue(style.contains("\"hillshade-layer\""), "Should contain the hillshade layer")
-        assertTrue(style.contains("elevation-tiles-prod"))
-
-        val without = MapStyle.getStyle(showHillshade = false)
-        assertFalse(without.contains("\"hillshade\""))
-        assertFalse(without.contains("\"hillshade-layer\""))
-    }
-
-    @Test
-    fun overlaysAreDrawnBaseHillshadeNveTrails() {
+    fun overlaysAreDrawnBaseNveTrails() {
         val style = MapStyle.getStyle(
             showWaymarkedTrails = true,
             nveOverlay = NveOverlay.STEEPNESS,
-            showHillshade = true,
         )
-        val order = listOf("base-layer", "hillshade-layer", "steepness-layer", "waymarkedtrails-layer")
+        val order = listOf("base-layer", "steepness-layer", "waymarkedtrails-layer")
             .map { style.indexOf(it) }
         assertFalse(order.contains(-1), "Every overlay should be present")
-        assertEquals(order.sorted(), order, "Overlays should be drawn base, hillshade, NVE, then trails")
+        assertEquals(order.sorted(), order, "Overlays should be drawn base, NVE, then trails")
     }
 }

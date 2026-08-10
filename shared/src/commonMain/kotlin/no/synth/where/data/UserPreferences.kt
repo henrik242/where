@@ -85,9 +85,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _nveOverlay = MutableStateFlow<NveOverlay?>(null)
     val nveOverlay: StateFlow<NveOverlay?> = _nveOverlay.asStateFlow()
 
-    private val _showHillshade = MutableStateFlow(false)
-    val showHillshade: StateFlow<Boolean> = _showHillshade.asStateFlow()
-
     private val _showCoordGrid = MutableStateFlow(false)
     val showCoordGrid: StateFlow<Boolean> = _showCoordGrid.asStateFlow()
 
@@ -143,7 +140,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 } else {
                     NveOverlay.entries.find { it.name == storedNveOverlay }
                 }
-                _showHillshade.value = prefs[SHOW_HILLSHADE] ?: false
                 _showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
                 _northLocked.value = prefs[NORTH_LOCKED] ?: false
@@ -279,11 +275,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     /** Tapping the active overlay turns it off. */
     fun toggleNveOverlay(value: NveOverlay) =
         updateNveOverlay(if (_nveOverlay.value == value) null else value)
-
-    fun updateShowHillshade(value: Boolean) {
-        _showHillshade.value = value
-        scope.launch { dataStore.edit { it[SHOW_HILLSHADE] = value } }
-    }
 
     fun updateShowCoordGrid(value: Boolean) {
         _showCoordGrid.value = value
@@ -480,7 +471,6 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
 
         // Read-only legacy key: superseded by NVE_OVERLAY, still read to migrate old installs.
         private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")
-        private val SHOW_HILLSHADE = booleanPreferencesKey("show_hillshade")
         private val SHOW_COORD_GRID = booleanPreferencesKey("show_coord_grid")
         private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")
         private val NORTH_LOCKED = booleanPreferencesKey("north_locked")

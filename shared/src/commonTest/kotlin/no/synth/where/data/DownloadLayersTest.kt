@@ -9,8 +9,14 @@ import kotlin.test.assertTrue
 class DownloadLayersTest {
 
     @Test
-    fun hasElevenLayers() {
-        assertEquals(11, DownloadLayers.all.size)
+    fun offersExactlyTheSupportedLayers() {
+        assertEquals(
+            listOf(
+                "kartverket", "toporaster", "sjokartraster", "mapant", "satellite",
+                "osm", "opentopomap", "waymarkedtrails", "avalanchezones", "steepness",
+            ),
+            DownloadLayers.all.map { it.id },
+        )
     }
 
     @Test
@@ -45,12 +51,6 @@ class DownloadLayersTest {
     }
 
     @Test
-    fun allIdsAreUnique() {
-        val ids = DownloadLayers.all.map { it.id }
-        assertEquals(ids.size, ids.toSet().size, "Layer IDs should be unique")
-    }
-
-    @Test
     fun knownLayerReturnsCorrectUrl() {
         val url = DownloadLayers.tileUrlForLayer("kartverket")
         assertTrue(url.contains("kartverket"), "Kartverket URL should contain 'kartverket'")
@@ -81,8 +81,8 @@ class DownloadLayersTest {
     fun effectiveMaxZoomClampsToLayerMax() {
         // Satellite tops out at z14, so a z16 request is clamped down.
         assertEquals(14, DownloadLayers.effectiveMaxZoom("satellite", 16))
-        // Terrain tops out at z15.
-        assertEquals(15, DownloadLayers.effectiveMaxZoom("terrain", 16))
+        // Requesting exactly the layer max is the boundary, and passes through unclamped.
+        assertEquals(16, DownloadLayers.effectiveMaxZoom("mapant", 16))
     }
 
     @Test

@@ -320,12 +320,12 @@
     <string name="layer_toporaster_desc">Topografiske rasterkart</string>
     <string name="layer_sjokartraster_desc">Sjøkart</string>
     <string name="layer_mapant_desc">Orienteringskart for Norge</string>
+    <string name="layer_satellite_desc">Skyfrie satellittbilder</string>
     <string name="layer_osm_desc">Brukergenererte gatekart</string>
     <string name="layer_opentopomap_desc">Topografiske kart med turstier</string>
     <string name="layer_waymarkedtrails_desc">Kartlag med merkede stier</string>
     <string name="layer_steepness_runout_desc">Bratthet med utløpsområder for snøskred, fra NVE</string>
     <string name="layer_steepness_desc">Bratthet fra NVE</string>
-    <string name="layer_terrain_desc">Terrengskygge-kartlag</string>
 
     <!-- Map Screen snackbars -->
     <string name="recording_snackbar">Tar opp\u2026</string>
@@ -347,7 +347,6 @@
     <string name="lock_map_to_north">Lås kartet mot nord</string>
 
     <!-- Crosshair -->
-    <string name="hillshade">Terrengskygge</string>
     <string name="crosshair">Kryssmarkør</string>
     <string name="coordinate_grid">Koordinatrutenett</string>
     <string name="elevation_format">%1$s m</string>

@@ -220,7 +220,6 @@ fun MapScreen(
     var showLayerMenu by remember { mutableStateOf(false) }
     val showWaymarkedTrails by viewModel.userPreferences.showWaymarkedTrails.collectAsState()
     val nveOverlay by viewModel.userPreferences.nveOverlay.collectAsState()
-    val showHillshade by viewModel.userPreferences.showHillshade.collectAsState()
     val showCoordGrid by viewModel.userPreferences.showCoordGrid.collectAsState()
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -505,7 +504,6 @@ fun MapScreen(
         showWaymarkedTrails = showWaymarkedTrails,
         showSavedPoints = showSavedPoints,
         nveOverlay = nveOverlay,
-        showHillshade = showHillshade,
         showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
@@ -562,7 +560,6 @@ fun MapScreen(
         // items — the two NVE overlays replace each other — stays visible.
         onWaymarkedTrailsToggle = { viewModel.userPreferences.updateShowWaymarkedTrails(!showWaymarkedTrails) },
         onNveOverlayToggle = { viewModel.userPreferences.toggleNveOverlay(it) },
-        onHillshadeToggle = { viewModel.userPreferences.updateShowHillshade(!showHillshade) },
         onCoordGridToggle = { viewModel.userPreferences.updateShowCoordGrid(!showCoordGrid) },
         onSavedPointsToggle = { viewModel.userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {
@@ -666,7 +663,6 @@ fun MapScreen(
                 isRecording = isRecording,
                 showWaymarkedTrails = showWaymarkedTrails,
                 nveOverlay = nveOverlay,
-                showHillshade = showHillshade,
                 showSavedPoints = showSavedPoints,
                 savedPoints = savedPoints,
                 currentTrack = currentTrack,

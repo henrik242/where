@@ -12,7 +12,6 @@ object MapStyle {
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
         showWaymarkedTrails: Boolean = false,
         nveOverlay: NveOverlay? = null,
-        showHillshade: Boolean = false,
         glyphsUrl: String = DEFAULT_GLYPHS_URL,
     ): String {
         data class TileSource(val id: String, val tiles: String, val attribution: String, val maxZoom: Int? = null)
@@ -67,17 +66,6 @@ object MapStyle {
       "maxzoom": ${NveOverlay.MAX_ZOOM}
     }""")
             }
-            if (showHillshade) {
-                append(""",
-    "hillshade": {
-      "type": "raster",
-      "scheme": "xyz",
-      "tiles": ["https://s3.amazonaws.com/elevation-tiles-prod/normal/{z}/{x}/{y}.png"],
-      "tileSize": 256,
-      "maxzoom": 15,
-      "attribution": "© <a href='https://github.com/tilezen/joerd'>Tilezen Joerd</a> (data from USGS, GMTED, SRTM, ETOPO1)"
-    }""")
-            }
         }
 
         val layers = buildString {
@@ -97,17 +85,6 @@ object MapStyle {
         "raster-opacity": 1.0
       }
     }""")
-            if (showHillshade) {
-                append(""",
-    {
-      "id": "hillshade-layer",
-      "type": "raster",
-      "source": "hillshade",
-      "paint": {
-        "raster-opacity": 0.3
-      }
-    }""")
-            }
             if (nveOverlay != null) {
                 append(""",
     {

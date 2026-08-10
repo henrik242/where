@@ -11,6 +11,8 @@ tag dates.
 - Both NVE overlays now scale up past zoom 16 instead of going blank, since NVE's tile
   cache ends there
 - Layer menu stays open when toggling an overlay, so you can flip several at once
+- Removed the hillshade overlay and its downloadable terrain layer. Elevation and slope
+  readouts are unaffected; they use a different tile set
 
 ## v516 (2026-08-09)
 

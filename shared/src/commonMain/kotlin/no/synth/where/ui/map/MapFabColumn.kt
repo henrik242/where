@@ -59,7 +59,6 @@ fun MapFabColumn(
     showWaymarkedTrails: Boolean,
     showSavedPoints: Boolean,
     nveOverlay: NveOverlay?,
-    showHillshade: Boolean = false,
     showCoordGrid: Boolean = false,
     showRecordFab: Boolean = true,
     cameraFollowMode: CameraFollowMode = CameraFollowMode.OFF,
@@ -69,7 +68,6 @@ fun MapFabColumn(
     onWaymarkedTrailsToggle: () -> Unit,
     onSavedPointsToggle: () -> Unit,
     onNveOverlayToggle: (NveOverlay) -> Unit,
-    onHillshadeToggle: () -> Unit = {},
     onCoordGridToggle: () -> Unit = {},
     onRecordStopClick: () -> Unit,
     onMyLocationClick: () -> Unit,
@@ -115,7 +113,6 @@ fun MapFabColumn(
             LayerMenuItem(stringResource(Res.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
             LayerMenuItem(stringResource(Res.string.steepness_nve), nveOverlay == NveOverlay.STEEPNESS) { onNveOverlayToggle(NveOverlay.STEEPNESS) }
             LayerMenuItem(stringResource(Res.string.steepness_runout_nve), nveOverlay == NveOverlay.STEEPNESS_RUNOUT) { onNveOverlayToggle(NveOverlay.STEEPNESS_RUNOUT) }
-            LayerMenuItem(stringResource(Res.string.hillshade), showHillshade) { onHillshadeToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
             LayerMenuItem(stringResource(Res.string.coordinate_grid), showCoordGrid) { onCoordGridToggle() }
             LayerMenuItem(stringResource(Res.string.crosshair), crosshairActive) { onCrosshairToggle() }

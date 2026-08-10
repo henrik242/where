@@ -320,12 +320,12 @@
     <string name="layer_toporaster_desc">Topographic raster maps</string>
     <string name="layer_sjokartraster_desc">Nautical charts</string>
     <string name="layer_mapant_desc">Orienteering maps for Norway</string>
+    <string name="layer_satellite_desc">Cloud-free satellite imagery</string>
     <string name="layer_osm_desc">Community-sourced street maps</string>
     <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
     <string name="layer_steepness_runout_desc">Slope steepness with avalanche runout, from NVE</string>
     <string name="layer_steepness_desc">Slope steepness from NVE</string>
-    <string name="layer_terrain_desc">Terrain hillshade overlay</string>
 
     <!-- Compass -->
     <string name="compass_reset_north">Point map north</string>
@@ -333,7 +333,6 @@
     <string name="lock_map_to_north">Lock map to north</string>
 
     <!-- Crosshair -->
-    <string name="hillshade">Hillshade</string>
     <string name="crosshair">Crosshair</string>
     <string name="coordinate_grid">Coordinate Grid</string>
     <string name="elevation_format">%1$s m</string>

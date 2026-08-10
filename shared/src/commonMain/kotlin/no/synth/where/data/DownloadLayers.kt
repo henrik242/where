@@ -32,7 +32,6 @@ object DownloadLayers {
         DownloadLayer("waymarkedtrails", "Waymarked Trails", "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", isOverlay = true),
         nveLayer(NveOverlay.STEEPNESS_RUNOUT, "Steepness + Runout (NVE)"),
         nveLayer(NveOverlay.STEEPNESS, "Steepness (NVE)"),
-        DownloadLayer("terrain", "Terrain (Hillshade)", "https://s3.amazonaws.com/elevation-tiles-prod/normal/{z}/{x}/{y}.png", maxZoom = 15, isOverlay = true),
     )
 
     fun tileUrlForLayer(layerName: String): String =
@@ -42,7 +41,7 @@ object DownloadLayers {
     /**
      * The zoom a region download should actually stop at: the user's requested detail level,
      * clamped to the layer's own [DownloadLayer.maxZoom] so we never request tiles the source
-     * doesn't have (e.g. satellite tops out at 14, terrain at 15).
+     * doesn't have (e.g. satellite tops out at 14, MapAnt at 16).
      */
     fun effectiveMaxZoom(layerId: String, requestedMaxZoom: Int): Int {
         val layerMax = all.find { it.id == layerId }?.maxZoom ?: 18

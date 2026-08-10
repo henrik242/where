@@ -91,7 +91,6 @@ fun IosMapScreen(
     val currentLayer by userPreferences.selectedMapLayer.collectAsState()
     val waymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
     val nveOverlay by userPreferences.nveOverlay.collectAsState()
-    val hillshade by userPreferences.showHillshade.collectAsState()
     val showSavedPoints by userPreferences.showSavedPoints.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var rulerState by remember { mutableStateOf(RulerState()) }
@@ -240,12 +239,11 @@ fun IosMapScreen(
     var isResolvingRulerName by remember { mutableStateOf(false) }
 
     val glyphsUrl = remember { iosBundleGlyphsUrl() }
-    val styleJson = remember(currentLayer, waymarkedTrails, nveOverlay, hillshade) {
+    val styleJson = remember(currentLayer, waymarkedTrails, nveOverlay) {
         MapStyle.getStyle(
             selectedLayer = currentLayer,
             showWaymarkedTrails = waymarkedTrails,
             nveOverlay = nveOverlay,
-            showHillshade = hillshade,
             glyphsUrl = glyphsUrl,
         )
     }
@@ -629,7 +627,6 @@ fun IosMapScreen(
         showWaymarkedTrails = waymarkedTrails,
         showSavedPoints = showSavedPoints,
         nveOverlay = nveOverlay,
-        showHillshade = hillshade,
         showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
@@ -688,7 +685,6 @@ fun IosMapScreen(
         onLayerSelected = { userPreferences.updateSelectedMapLayer(it) },
         onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!waymarkedTrails) },
         onNveOverlayToggle = { userPreferences.toggleNveOverlay(it) },
-        onHillshadeToggle = { userPreferences.updateShowHillshade(!hillshade) },
         onCoordGridToggle = { userPreferences.updateShowCoordGrid(!showCoordGrid) },
         onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {
