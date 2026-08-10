@@ -9,6 +9,9 @@ fun buildHexMapStyle(layerId: String, hexGeoJson: String): String {
     val layer = DownloadLayers.all.find { it.id == layerId }
     val tileUrl = layer?.tileUrl ?: DownloadLayers.tileUrlForLayer(layerId)
     val isOverlay = layer?.isOverlay == true
+    // Vector layers have no {z}/{x}/{y} template to draw as raster, and their content starts too
+    // far in to show at hex-picking zooms, so the picker keeps the OSM base and the grid alone.
+    val hasRasterTiles = layer?.isVector != true
     val osmSource = if (isOverlay) """
     "osm": {
       "type": "raster",
@@ -19,25 +22,27 @@ fun buildHexMapStyle(layerId: String, hexGeoJson: String): String {
     },""" else ""
     val osmLayer = if (isOverlay) """
     {"id":"osm-base","type":"raster","source":"osm"},""" else ""
-    return """
-{
-  "version": 8,
-  "sources": {$osmSource
+    val rasterSource = if (hasRasterTiles) """
     "$layerId": {
       "type": "raster",
       "tiles": ["$tileUrl"],
       "tileSize": 256,
       "minzoom": ${layer?.minZoom ?: 0},
       "maxzoom": ${layer?.maxZoom ?: 18}
-    },
+    },""" else ""
+    val rasterLayer = if (hasRasterTiles) """
+    {"id":"base","type":"raster","source":"$layerId"},""" else ""
+    return """
+{
+  "version": 8,
+  "sources": {$osmSource$rasterSource
     "hexgrid": {
       "type": "geojson",
       "data": $hexGeoJson
     }
   },
   "layers": [
-    {"id":"background","type":"background","paint":{"background-color":"#e8e8e8"}},$osmLayer
-    {"id":"base","type":"raster","source":"$layerId"},
+    {"id":"background","type":"background","paint":{"background-color":"#e8e8e8"}},$osmLayer$rasterLayer
     {
       "id": "hex-fill",
       "type": "fill",

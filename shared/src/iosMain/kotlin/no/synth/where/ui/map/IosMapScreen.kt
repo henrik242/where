@@ -51,6 +51,7 @@ import no.synth.where.resources.track_discarded
 import no.synth.where.resources.track_saved
 import no.synth.where.resources.undo
 import no.synth.where.resources.unnamed_point
+import no.synth.where.resources.zoom_in_for_paths
 import no.synth.where.util.NamingUtils
 import org.jetbrains.compose.resources.stringResource
 import platform.Foundation.NSBundle
@@ -90,6 +91,7 @@ fun IosMapScreen(
     var showLayerMenu by remember { mutableStateOf(false) }
     val currentLayer by userPreferences.selectedMapLayer.collectAsState()
     val waymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
+    val osmPaths by userPreferences.showOsmPaths.collectAsState()
     val nveOverlay by userPreferences.nveOverlay.collectAsState()
     val showSavedPoints by userPreferences.showSavedPoints.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -170,6 +172,7 @@ fun IosMapScreen(
     val pointUpdatedMsg = stringResource(Res.string.point_updated)
     val locationPermissionMsg = stringResource(Res.string.location_permission_required)
     val trackCroppedMsg = stringResource(Res.string.track_cropped)
+    val zoomInForPathsMsg = stringResource(Res.string.zoom_in_for_paths)
     val undoLabel = stringResource(Res.string.undo)
 
     // After a crop overwrites the track, offer a one-tap undo of the (otherwise irreversible) change.
@@ -239,11 +242,12 @@ fun IosMapScreen(
     var isResolvingRulerName by remember { mutableStateOf(false) }
 
     val glyphsUrl = remember { iosBundleGlyphsUrl() }
-    val styleJson = remember(currentLayer, waymarkedTrails, nveOverlay) {
+    val styleJson = remember(currentLayer, waymarkedTrails, osmPaths, nveOverlay) {
         MapStyle.getStyle(
             selectedLayer = currentLayer,
             showWaymarkedTrails = waymarkedTrails,
             nveOverlay = nveOverlay,
+            showOsmPaths = osmPaths,
             glyphsUrl = glyphsUrl,
         )
     }
@@ -625,6 +629,7 @@ fun IosMapScreen(
         showLayerMenu = showLayerMenu,
         selectedLayer = currentLayer,
         showWaymarkedTrails = waymarkedTrails,
+        showOsmPaths = osmPaths,
         showSavedPoints = showSavedPoints,
         nveOverlay = nveOverlay,
         showCoordGrid = showCoordGrid,
@@ -684,6 +689,14 @@ fun IosMapScreen(
         onLayerMenuToggle = { showLayerMenu = it },
         onLayerSelected = { userPreferences.updateSelectedMapLayer(it) },
         onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!waymarkedTrails) },
+        onOsmPathsToggle = {
+            userPreferences.updateShowOsmPaths(!osmPaths)
+            // The source carries no complete path data below OSM_PATHS_MIN_ZOOM, so say so rather
+            // than leaving a checked menu item that draws nothing.
+            if (!osmPaths && cameraZoom < MapStyle.OSM_PATHS_MIN_ZOOM) {
+                scope.launch { snackbarHostState.showSnackbar(zoomInForPathsMsg) }
+            }
+        },
         onNveOverlayToggle = { userPreferences.toggleNveOverlay(it) },
         onCoordGridToggle = { userPreferences.updateShowCoordGrid(!showCoordGrid) },
         onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },

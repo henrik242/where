@@ -1,5 +1,10 @@
 package no.synth.where.data
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.NveOverlay
 import kotlin.test.Test
@@ -62,6 +67,95 @@ class MapStyleTest {
         assertTrue(style.contains("opentopomap.org"), "Should use the OpenTopoMap tiles")
         assertTrue(style.contains("\"maxzoom\": 17"), "OpenTopoMap source should be capped at zoom 17 (z18+ returns 404)")
     }
+
+    @Test
+    fun osmPathsOverlayReadsPathsAndTracksFromVectorTiles() {
+        val style = parse(MapStyle.getStyle(showOsmPaths = true))
+        val source = style.source("osmpaths")
+        assertEquals("vector", source.getValue("type").jsonPrimitive.content)
+        assertTrue(
+            source.getValue("url").jsonPrimitive.content.contains("openfreemap.org"),
+            "Should read the keyless OpenFreeMap vector tiles"
+        )
+        val pathLayers = style.layers().filter { it.id().startsWith("osmpaths") }
+        assertEquals(listOf("osmpaths-casing", "osmpaths-line"), pathLayers.map { it.id() })
+        for (layer in pathLayers) {
+            assertEquals("transportation", layer.getValue("source-layer").jsonPrimitive.content)
+            // Paths and tractor roads only, minus the station platforms and indoor corridors that
+            // OpenMapTiles also files under class=path.
+            assertEquals(
+                """["all",["in","class","path","track"],["!in","subclass","platform","corridor"]]""",
+                layer.getValue("filter").toString()
+            )
+            assertEquals(
+                MapStyle.OSM_PATHS_MIN_ZOOM,
+                layer.getValue("minzoom").jsonPrimitive.content.toInt()
+            )
+        }
+    }
+
+    @Test
+    fun osmPathsOverlayIsOffByDefault() {
+        val style = parse(MapStyle.getStyle())
+        assertFalse(style.getValue("sources").jsonObject.containsKey("osmpaths"))
+        assertTrue(style.layers().none { it.id().startsWith("osmpaths") })
+    }
+
+    @Test
+    fun osmPathsLayersDrawAboveTheRasterOverlays() {
+        val style = parse(
+            MapStyle.getStyle(
+                showWaymarkedTrails = true,
+                nveOverlay = NveOverlay.STEEPNESS_RUNOUT,
+                showOsmPaths = true,
+            )
+        )
+        assertEquals(
+            listOf(
+                "background", "base-layer", "avalanchezones-layer",
+                "waymarkedtrails-layer", "osmpaths-casing", "osmpaths-line",
+            ),
+            style.layers().map { it.id() }
+        )
+    }
+
+    /** The style is concatenated by hand, so check every combination parses and resolves. */
+    @Test
+    fun everyLayerReferencesADeclaredSource() {
+        for (selectedLayer in MapLayer.entries) {
+            for (nveOverlay in listOf(null) + NveOverlay.entries) {
+                for (overlays in listOf(false, true)) {
+                    val style = parse(
+                        MapStyle.getStyle(
+                            selectedLayer = selectedLayer,
+                            showWaymarkedTrails = overlays,
+                            nveOverlay = nveOverlay,
+                            showOsmPaths = overlays,
+                        )
+                    )
+                    val declared = style.getValue("sources").jsonObject.keys
+                    val referenced = style.layers()
+                        .mapNotNull { it["source"]?.jsonPrimitive?.content }
+                        .toSet()
+                    assertTrue(
+                        declared.containsAll(referenced),
+                        "$selectedLayer/$nveOverlay (overlays=$overlays) references undeclared " +
+                            "${referenced - declared}"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun parse(style: String): JsonObject = Json.parseToJsonElement(style).jsonObject
+
+    private fun JsonObject.source(id: String): JsonObject =
+        getValue("sources").jsonObject.getValue(id).jsonObject
+
+    private fun JsonObject.layers(): List<JsonObject> =
+        getValue("layers").jsonArray.map { it.jsonObject }
+
+    private fun JsonObject.id(): String = getValue("id").jsonPrimitive.content
 
     @Test
     fun nonSatelliteBaseSourceHasNoMaxzoom() {

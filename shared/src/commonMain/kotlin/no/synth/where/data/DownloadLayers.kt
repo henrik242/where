@@ -1,17 +1,25 @@
 package no.synth.where.data
 
+import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.NveOverlay
 
+/**
+ * A layer offered for offline download. Vector layers carry a TileJSON URL in [tileUrl] rather than
+ * an `{z}/{x}/{y}` template, so their styles come from [MapStyle] instead of being built here.
+ */
 data class DownloadLayer(
     val id: String,
     val displayName: String,
     val tileUrl: String,
     val minZoom: Int = 0,
     val maxZoom: Int = 18,
-    val isOverlay: Boolean = false
+    val isOverlay: Boolean = false,
+    val isVector: Boolean = false
 )
 
 object DownloadLayers {
+    const val OSM_PATHS_ID = "osmpaths"
+
     private fun nveLayer(overlay: NveOverlay, displayName: String) = DownloadLayer(
         overlay.sourceId,
         displayName,
@@ -30,6 +38,7 @@ object DownloadLayers {
         DownloadLayer("osm", "OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
         DownloadLayer("opentopomap", "OpenTopoMap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", maxZoom = 17),
         DownloadLayer("waymarkedtrails", "Waymarked Trails", "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", isOverlay = true),
+        DownloadLayer(OSM_PATHS_ID, "Paths and Tractor Roads", MapStyle.OSM_PATHS_TILEJSON_URL, maxZoom = 14, isOverlay = true, isVector = true),
         nveLayer(NveOverlay.STEEPNESS_RUNOUT, "Steepness + Runout (NVE)"),
         nveLayer(NveOverlay.STEEPNESS, "Steepness (NVE)"),
     )
@@ -52,6 +61,14 @@ object DownloadLayers {
 
     fun getDownloadStyleJson(layerName: String): String {
         val layer = all.find { it.id == layerName }
+
+        // Vector layers reuse the live style, so the pack stores tiles under exactly the URLs the
+        // map will later look up in the offline cache. Its OSM base doubles as the backdrop that
+        // raster overlays get below.
+        if (layer?.isVector == true) {
+            return MapStyle.getStyle(selectedLayer = MapLayer.OSM, showOsmPaths = true)
+        }
+
         val tileUrl = layer?.tileUrl ?: OSM_TILE_URL
         val minZoom = layer?.minZoom ?: 0
         val maxZoom = layer?.maxZoom ?: 18

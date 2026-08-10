@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.LiveTrackingFollower
+import no.synth.where.data.MapStyle
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.TerrainClient
 import no.synth.where.resources.Res
@@ -219,6 +220,7 @@ fun MapScreen(
     val selectedLayer by viewModel.userPreferences.selectedMapLayer.collectAsState()
     var showLayerMenu by remember { mutableStateOf(false) }
     val showWaymarkedTrails by viewModel.userPreferences.showWaymarkedTrails.collectAsState()
+    val showOsmPaths by viewModel.userPreferences.showOsmPaths.collectAsState()
     val nveOverlay by viewModel.userPreferences.nveOverlay.collectAsState()
     val showCoordGrid by viewModel.userPreferences.showCoordGrid.collectAsState()
     var hasLocationPermission by remember {
@@ -284,6 +286,7 @@ fun MapScreen(
     val pointDeletedMsg = stringResource(Res.string.point_deleted)
     val pointUpdatedMsg = stringResource(Res.string.point_updated)
     val trackCroppedMsg = stringResource(Res.string.track_cropped)
+    val zoomInForPathsMsg = stringResource(Res.string.zoom_in_for_paths)
     val undoLabel = stringResource(Res.string.undo)
 
     // After a crop overwrites the track, offer a one-tap undo of the (otherwise irreversible) change.
@@ -502,6 +505,7 @@ fun MapScreen(
         showLayerMenu = showLayerMenu,
         selectedLayer = selectedLayer,
         showWaymarkedTrails = showWaymarkedTrails,
+        showOsmPaths = showOsmPaths,
         showSavedPoints = showSavedPoints,
         nveOverlay = nveOverlay,
         showCoordGrid = showCoordGrid,
@@ -557,8 +561,17 @@ fun MapScreen(
         onLayerMenuToggle = { showLayerMenu = it },
         onLayerSelected = { viewModel.userPreferences.updateSelectedMapLayer(it); showLayerMenu = false },
         // Overlay toggles leave the menu open (as on iOS) so their effect on the other
-        // items — the two NVE overlays replace each other — stays visible.
+        // items -- the two NVE overlays replace each other -- stays visible.
         onWaymarkedTrailsToggle = { viewModel.userPreferences.updateShowWaymarkedTrails(!showWaymarkedTrails) },
+        onOsmPathsToggle = {
+            viewModel.userPreferences.updateShowOsmPaths(!showOsmPaths)
+            // The source carries no complete path data below OSM_PATHS_MIN_ZOOM, so say so rather
+            // than leaving a checked menu item that draws nothing.
+            val zoom = mapInstance?.cameraPosition?.zoom
+            if (!showOsmPaths && zoom != null && zoom < MapStyle.OSM_PATHS_MIN_ZOOM) {
+                scope.launch { snackbarHostState.showSnackbar(zoomInForPathsMsg) }
+            }
+        },
         onNveOverlayToggle = { viewModel.userPreferences.toggleNveOverlay(it) },
         onCoordGridToggle = { viewModel.userPreferences.updateShowCoordGrid(!showCoordGrid) },
         onSavedPointsToggle = { viewModel.userPreferences.updateShowSavedPoints(!showSavedPoints) },
@@ -662,6 +675,7 @@ fun MapScreen(
                 hasLocationPermission = hasLocationPermission,
                 isRecording = isRecording,
                 showWaymarkedTrails = showWaymarkedTrails,
+                showOsmPaths = showOsmPaths,
                 nveOverlay = nveOverlay,
                 showSavedPoints = showSavedPoints,
                 savedPoints = savedPoints,
@@ -926,6 +940,7 @@ private fun MapScreenFullPreview() {
             showLayerMenu = false,
             selectedLayer = MapLayer.KARTVERKET,
             showWaymarkedTrails = false,
+            showOsmPaths = false,
             showSavedPoints = true,
             nveOverlay = null,
             onlineTrackingEnabled = false,
@@ -943,6 +958,7 @@ private fun MapScreenFullPreview() {
             onLayerMenuToggle = {},
             onLayerSelected = {},
             onWaymarkedTrailsToggle = {},
+            onOsmPathsToggle = {},
             onNveOverlayToggle = {},
             onSavedPointsToggle = {},
             onRecordStopClick = {},

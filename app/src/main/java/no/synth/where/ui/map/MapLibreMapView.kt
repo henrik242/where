@@ -58,6 +58,7 @@ fun MapLibreMapView(
     hasLocationPermission: Boolean = false,
     isRecording: Boolean = false,
     showWaymarkedTrails: Boolean = false,
+    showOsmPaths: Boolean = false,
     nveOverlay: NveOverlay? = null,
     showSavedPoints: Boolean = true,
     savedPoints: List<no.synth.where.data.SavedPoint> = emptyList(),
@@ -91,7 +92,6 @@ fun MapLibreMapView(
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
     val context = LocalContext.current
     var isOnline by remember { mutableStateOf(true) }
-    var wasInitialized by remember { mutableStateOf(false) }
     val gpsKeepAlive = remember(context) { GpsKeepAlive(context) }
     val hasLocationPermissionState = rememberUpdatedState(hasLocationPermission)
     val isRecordingState = rememberUpdatedState(isRecording)
@@ -107,6 +107,8 @@ fun MapLibreMapView(
     val coordGridGeoJsonState = rememberUpdatedState(coordGridGeoJson)
     val savedPointsState = rememberUpdatedState(savedPoints)
     val showSavedPointsState = rememberUpdatedState(showSavedPoints)
+    val searchResultsState = rememberUpdatedState(searchResults)
+    val highlightedSearchResultState = rememberUpdatedState(highlightedSearchResult)
     val navigationLayersState = rememberUpdatedState(navigationLayers)
     // Read live so reapplyOverlays restores the follow mode after a style reload (activating the
     // location component resets its cameraMode to NONE).
@@ -158,6 +160,11 @@ fun MapLibreMapView(
         if (showSavedPointsState.value && savedPointsState.value.isNotEmpty()) {
             MapRenderUtils.updateSavedPointsOnMap(style, savedPointsState.value)
         }
+        // Search markers are added by effects that only key on the query results, so without these
+        // two a style reload (layer switch, overlay toggle, reconnect) would drop them until the
+        // next search.
+        MapRenderUtils.updateSearchResultsOnMap(style, searchResultsState.value)
+        MapRenderUtils.updateHighlightedSearchResult(style, highlightedSearchResultState.value)
         navigationLayersState.value?.let {
             MapRenderUtils.updateNavigationOnMap(style, it.completed, it.remaining, it.offCourse)
         }
@@ -197,22 +204,22 @@ fun MapLibreMapView(
     var clickListener by remember { mutableStateOf<MapLibreMap.OnMapClickListener?>(null) }
     var longClickListener by remember { mutableStateOf<MapLibreMap.OnMapLongClickListener?>(null) }
 
-    val styleJson = remember(selectedLayer, showWaymarkedTrails, nveOverlay) {
+    // One owner of the style JSON, so adding an overlay flag cannot leave a stale copy behind.
+    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay) {
         MapStyle.getStyle(
             selectedLayer = selectedLayer,
             showWaymarkedTrails = showWaymarkedTrails,
             nveOverlay = nveOverlay,
+            showOsmPaths = showOsmPaths,
             glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
         )
     }
 
-    LaunchedEffect(
-        styleJson,
-        showSavedPoints,
-        savedPoints.size,
-        isOnline,
-        map
-    ) {
+    // The only place the style is applied: on the first map, on a layer/overlay change, and on
+    // reconnect (a style loaded while offline has empty sources). setStyle wipes every runtime
+    // layer, so each load ends in reapplyOverlays. Saved points are deliberately not a key -- they
+    // have their own effect, and rebuilding the style for them would re-fetch every tile.
+    LaunchedEffect(styleJson, isOnline, map) {
         map?.let { mapInstance ->
             try {
                 val current = currentTrack
@@ -228,6 +235,7 @@ fun MapLibreMapView(
                                     .zoom(savedCameraZoom)
                                     .build()
                             }
+                            mapInstance.triggerRepaint()
                         }
                     })
             } catch (e: Exception) {
@@ -280,29 +288,6 @@ fun MapLibreMapView(
             // updateMeasurementOnMap started the fade; tear the layers down once it finishes.
             delay(TwoFingerTap.FADE_OUT_MS)
             map?.getStyle { style -> MapRenderUtils.removeMeasurementLayers(style) }
-        }
-    }
-
-    LaunchedEffect(isOnline, map) {
-        if (wasInitialized && isOnline && map != null) {
-
-            map?.let { mapInstance ->
-                try {
-                    mapInstance.setStyle(
-                        Style.Builder().fromJson(styleJson),
-                        object : Style.OnStyleLoaded {
-                            override fun onStyleLoaded(style: Style) {
-                                reapplyOverlays(mapInstance, style)
-                            }
-                        })
-                } catch (e: Exception) {
-                    Logger.e(e, "Map screen error")
-                }
-            }
-        }
-
-        if (map != null) {
-            wasInitialized = true
         }
     }
 
@@ -474,19 +459,8 @@ fun MapLibreMapView(
 
                     // Click listeners are handled by LaunchedEffect above
                     // Don't add any click listeners here to avoid conflicts
-
-                    try {
-                        mapInstance.setStyle(
-                            Style.Builder().fromJson(styleJson),
-                            object : Style.OnStyleLoaded {
-                                override fun onStyleLoaded(style: Style) {
-                                    reapplyOverlays(mapInstance, style)
-                                    mapInstance.triggerRepaint()
-                                }
-                            })
-                    } catch (e: Exception) {
-                        Logger.e(e, "Map screen error")
-                    }
+                    // The style is not set here: assigning `map` above re-runs the style effect,
+                    // which loads it. Doing both parsed and fetched the whole style twice.
                 }
             }
         },

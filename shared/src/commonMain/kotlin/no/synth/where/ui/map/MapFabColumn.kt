@@ -57,6 +57,7 @@ fun MapFabColumn(
     showLayerMenu: Boolean,
     selectedLayer: MapLayer,
     showWaymarkedTrails: Boolean,
+    showOsmPaths: Boolean,
     showSavedPoints: Boolean,
     nveOverlay: NveOverlay?,
     showCoordGrid: Boolean = false,
@@ -66,6 +67,7 @@ fun MapFabColumn(
     onLayerMenuToggle: (Boolean) -> Unit,
     onLayerSelected: (MapLayer) -> Unit,
     onWaymarkedTrailsToggle: () -> Unit,
+    onOsmPathsToggle: () -> Unit,
     onSavedPointsToggle: () -> Unit,
     onNveOverlayToggle: (NveOverlay) -> Unit,
     onCoordGridToggle: () -> Unit = {},
@@ -111,6 +113,7 @@ fun MapFabColumn(
             HorizontalDivider()
             MenuSection(stringResource(Res.string.overlays))
             LayerMenuItem(stringResource(Res.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
+            LayerMenuItem(stringResource(Res.string.paths_and_tractor_roads_osm), showOsmPaths) { onOsmPathsToggle() }
             LayerMenuItem(stringResource(Res.string.steepness_nve), nveOverlay == NveOverlay.STEEPNESS) { onNveOverlayToggle(NveOverlay.STEEPNESS) }
             LayerMenuItem(stringResource(Res.string.steepness_runout_nve), nveOverlay == NveOverlay.STEEPNESS_RUNOUT) { onNveOverlayToggle(NveOverlay.STEEPNESS_RUNOUT) }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }

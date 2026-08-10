@@ -11,7 +11,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 ### Maps
 
 - Offline base maps: Kartverket (topo, toporaster, nautical charts), MapAnt (LiDAR-based orienteering maps), OpenTopoMap, OpenStreetMap, and Sentinel-2 satellite imagery
-- Overlays: waymarked hiking trails, slope steepness from NVE (with or without avalanche runout zones), a coordinate grid, and a crosshair with live elevation and slope readout
+- Overlays: waymarked hiking trails, OSM paths and tractor roads (the detail MapAnt lacks), slope steepness from NVE (with or without avalanche runout zones), a coordinate grid, and a crosshair with live elevation and slope readout
 
 ### Location and sharing
 

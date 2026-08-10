@@ -8,10 +8,25 @@ object MapStyle {
     private const val DEFAULT_GLYPHS_URL =
         "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf"
 
+    /** OpenMapTiles-schema vector tiles, no API key. TileJSON, so the weekly planet build stays current. */
+    const val OSM_PATHS_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
+
+    /**
+     * First zoom carrying every path: OpenMapTiles keeps only paths on a rank-1 route relation at
+     * z12, and only named/routed/sac_scale ones at z13, so drawing those would hide paths without
+     * saying so. Public so the map screens can prompt for a zoom-in instead of showing nothing.
+     */
+    const val OSM_PATHS_MIN_ZOOM = 14
+
+    /** class=path also covers station platforms and indoor corridors in OpenMapTiles; drop those. */
+    private const val OSM_PATHS_FILTER =
+        """["all", ["in", "class", "path", "track"], ["!in", "subclass", "platform", "corridor"]]"""
+
     fun getStyle(
         selectedLayer: MapLayer = MapLayer.KARTVERKET,
         showWaymarkedTrails: Boolean = false,
         nveOverlay: NveOverlay? = null,
+        showOsmPaths: Boolean = false,
         glyphsUrl: String = DEFAULT_GLYPHS_URL,
     ): String {
         data class TileSource(val id: String, val tiles: String, val attribution: String, val maxZoom: Int? = null)
@@ -66,6 +81,14 @@ object MapStyle {
       "maxzoom": ${NveOverlay.MAX_ZOOM}
     }""")
             }
+            if (showOsmPaths) {
+                append(""",
+    "osmpaths": {
+      "type": "vector",
+      "url": "$OSM_PATHS_TILEJSON_URL",
+      "attribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors, tiles <a href='https://openfreemap.org'>OpenFreeMap</a> © <a href='https://www.openmaptiles.org/'>OpenMapTiles</a>"
+    }""")
+            }
         }
 
         val layers = buildString {
@@ -104,6 +127,46 @@ object MapStyle {
       "source": "waymarkedtrails",
       "paint": {
         "raster-opacity": 1.0
+      }
+    }""")
+            }
+            if (showOsmPaths) {
+                // Yellow casing under a black dash, like MapAnt's own OSM path overlay. Vector tiles,
+                // so the dashes stay sharp when overzoomed past the source's z14. The casing carries
+                // the layer on dark ground (satellite), where the dash alone disappears.
+                append(""",
+    {
+      "id": "osmpaths-casing",
+      "type": "line",
+      "source": "osmpaths",
+      "source-layer": "transportation",
+      "filter": $OSM_PATHS_FILTER,
+      "minzoom": $OSM_PATHS_MIN_ZOOM,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#ffff00",
+        "line-opacity": 0.8,
+        "line-width": ["interpolate", ["linear"], ["zoom"], $OSM_PATHS_MIN_ZOOM, 4, 16, 7, 20, 11]
+      }
+    },
+    {
+      "id": "osmpaths-line",
+      "type": "line",
+      "source": "osmpaths",
+      "source-layer": "transportation",
+      "filter": $OSM_PATHS_FILTER,
+      "minzoom": $OSM_PATHS_MIN_ZOOM,
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#000000",
+        "line-width": ["interpolate", ["linear"], ["zoom"], $OSM_PATHS_MIN_ZOOM, 1.4, 16, 1.9, 20, 2.6],
+        "line-dasharray": [2.5, 1.5]
       }
     }""")
             }

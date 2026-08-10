@@ -79,6 +79,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _showWaymarkedTrails = MutableStateFlow(false)
     val showWaymarkedTrails: StateFlow<Boolean> = _showWaymarkedTrails.asStateFlow()
 
+    private val _showOsmPaths = MutableStateFlow(false)
+    val showOsmPaths: StateFlow<Boolean> = _showOsmPaths.asStateFlow()
+
     private val _showSavedPoints = MutableStateFlow(true)
     val showSavedPoints: StateFlow<Boolean> = _showSavedPoints.asStateFlow()
 
@@ -132,6 +135,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         scope.launch {
             dataStore.data.collect { prefs ->
                 _showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
+                _showOsmPaths.value = prefs[SHOW_OSM_PATHS] ?: false
                 _showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
                 val storedNveOverlay = prefs[NVE_OVERLAY]
                 _nveOverlay.value = if (storedNveOverlay == null) {
@@ -258,6 +262,11 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     fun updateShowWaymarkedTrails(value: Boolean) {
         _showWaymarkedTrails.value = value
         scope.launch { dataStore.edit { it[SHOW_WAYMARKED_TRAILS] = value } }
+    }
+
+    fun updateShowOsmPaths(value: Boolean) {
+        _showOsmPaths.value = value
+        scope.launch { dataStore.edit { it[SHOW_OSM_PATHS] = value } }
     }
 
     fun updateShowSavedPoints(value: Boolean) {
@@ -466,6 +475,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private const val MAX_SEARCH_HISTORY = 10
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
         private val SHOW_WAYMARKED_TRAILS = booleanPreferencesKey("show_waymarked_trails")
+        private val SHOW_OSM_PATHS = booleanPreferencesKey("show_osm_paths")
         private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
         private val NVE_OVERLAY = stringPreferencesKey("nve_overlay")
 

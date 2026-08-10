@@ -55,6 +55,8 @@
     <string name="satellite">Satellite (Sentinel-2)</string>
     <string name="overlays">Overlays</string>
     <string name="waymarked_trails_osm">Waymarked Trails (OSM)</string>
+    <string name="paths_and_tractor_roads_osm">Paths and Tractor Roads (OSM)</string>
+    <string name="zoom_in_for_paths">Zoom in to see paths and tractor roads</string>
     <string name="steepness_nve">Steepness (NVE)</string>
     <string name="steepness_runout_nve">Steepness + Runout (NVE)</string>
     <string name="saved_points">Saved Points</string>
@@ -324,6 +326,7 @@
     <string name="layer_osm_desc">Community-sourced street maps</string>
     <string name="layer_opentopomap_desc">Topographic maps with hiking trails</string>
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
+    <string name="layer_osmpaths_desc">Path overlay, re-download after a while to refresh</string>
     <string name="layer_steepness_runout_desc">Slope steepness with avalanche runout, from NVE</string>
     <string name="layer_steepness_desc">Slope steepness from NVE</string>
 

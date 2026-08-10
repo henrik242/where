@@ -6,6 +6,9 @@ tag dates.
 
 ## Unreleased
 
+- New "Paths and tractor roads (OSM)" overlay, drawn like MapAnt's own path overlay, on top
+  of any base map. Shows from zoom 14, and can be downloaded for offline use like the other
+  overlays
 - New "Steepness (NVE)" overlay with slope steepness only; the existing NVE overlay is
   renamed "Steepness + Runout (NVE)" and the two replace each other when toggled
 - Both NVE overlays now scale up past zoom 16 instead of going blank, since NVE's tile

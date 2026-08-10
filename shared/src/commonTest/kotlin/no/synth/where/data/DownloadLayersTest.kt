@@ -1,8 +1,16 @@
 package no.synth.where.data
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import no.synth.where.ui.EMPTY_HEX_GEOJSON
+import no.synth.where.ui.buildHexMapStyle
+import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.NveOverlay
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -13,7 +21,8 @@ class DownloadLayersTest {
         assertEquals(
             listOf(
                 "kartverket", "toporaster", "sjokartraster", "mapant", "satellite",
-                "osm", "opentopomap", "waymarkedtrails", "avalanchezones", "steepness",
+                "osm", "opentopomap", "waymarkedtrails", DownloadLayers.OSM_PATHS_ID,
+                "avalanchezones", "steepness",
             ),
             DownloadLayers.all.map { it.id },
         )
@@ -30,6 +39,53 @@ class DownloadLayersTest {
             assertEquals(16, layer.maxZoom, "NVE caches nothing past z16")
             assertTrue(layer.isOverlay)
         }
+    }
+
+    /**
+     * The pack is only usable if it stores tiles under the URLs the live map asks for, so the
+     * vector overlay's download style has to be the live style rather than a hand-built copy.
+     */
+    @Test
+    fun osmPathsDownloadStyleMatchesTheLiveOverlayStyle() {
+        val json = DownloadLayers.getDownloadStyleJson(DownloadLayers.OSM_PATHS_ID)
+        assertEquals(
+            MapStyle.getStyle(selectedLayer = MapLayer.OSM, showOsmPaths = true),
+            json,
+        )
+        assertTrue(json.contains("\"type\": \"vector\""), "Should download the vector source")
+        assertTrue(json.contains("tile.openstreetmap.org"), "Overlays download over an OSM base")
+    }
+
+    /** Both styles are concatenated by hand, so check every layer yields resolvable JSON. */
+    @Test
+    fun everyLayerBuildsParseableDownloadAndPreviewStyles() {
+        for (layer in DownloadLayers.all) {
+            for ((what, json) in listOf(
+                "download" to DownloadLayers.getDownloadStyleJson(layer.id),
+                "preview" to buildHexMapStyle(layer.id, EMPTY_HEX_GEOJSON),
+            )) {
+                val style = Json.parseToJsonElement(json).jsonObject
+                val declared = style.getValue("sources").jsonObject.keys
+                val referenced = style.getValue("layers").jsonArray
+                    .mapNotNull { it.jsonObject["source"]?.jsonPrimitive?.content }
+                    .toSet()
+                assertTrue(
+                    declared.containsAll(referenced),
+                    "${layer.id} $what style references undeclared ${referenced - declared}"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun osmPathsHexPreviewSkipsTheVectorSourceItCannotDrawAsRaster() {
+        val style = buildHexMapStyle(DownloadLayers.OSM_PATHS_ID, EMPTY_HEX_GEOJSON)
+        assertFalse(
+            style.contains(MapStyle.OSM_PATHS_TILEJSON_URL),
+            "TileJSON URL is not an {z}/{x}/{y} template and must not be used as raster tiles"
+        )
+        assertTrue(style.contains("\"hexgrid\""), "Grid should still be drawn")
+        assertTrue(style.contains("tile.openstreetmap.org"), "OSM base should still be drawn")
     }
 
     @Test

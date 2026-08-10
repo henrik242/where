@@ -163,6 +163,25 @@ class UserPreferencesTest {
     }
 
     @Test
+    fun showOsmPaths_defaultsOffAndPersistsAcrossReload() = runBlocking {
+        assertEquals(false, prefs.showOsmPaths.value)
+
+        val file = tempFolder.newFile("osm_paths_persist.preferences_pb")
+        val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val first = UserPreferences(PreferenceDataStoreFactory.create(scope = firstScope, produceFile = { file }))
+        delay(100)
+        first.updateShowOsmPaths(true)
+        delay(200)
+        firstScope.cancel()
+
+        val secondScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val second = UserPreferences(PreferenceDataStoreFactory.create(scope = secondScope, produceFile = { file }))
+        delay(200)
+        assertEquals(true, second.showOsmPaths.value)
+        secondScope.cancel()
+    }
+
+    @Test
     fun updateCoordFormat_persistsAcrossReload() = runBlocking {
         val file = tempFolder.newFile("coord_format_persist.preferences_pb")
         val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
