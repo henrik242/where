@@ -1,12 +1,9 @@
 package no.synth.where.data
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class UtNoImporterTest {
 
@@ -23,6 +20,14 @@ class UtNoImporterTest {
     @Test
     fun parseUtNoUrl_kartTur() {
         val ref = UtNoImporter.parseUtNoUrl("https://ut.no/kart/tur/1234567/besseggen#12/61.5/8.8")
+        assertNotNull(ref)
+        assertEquals(1234567, ref.id)
+        assertEquals(UtNoImporter.UtNoType.TRIP, ref.type)
+    }
+
+    @Test
+    fun parseUtNoUrl_kartTurforslag() {
+        val ref = UtNoImporter.parseUtNoUrl("https://ut.no/kart/turforslag/1234567/besseggen")
         assertNotNull(ref)
         assertEquals(1234567, ref.id)
         assertEquals(UtNoImporter.UtNoType.TRIP, ref.type)
@@ -46,6 +51,24 @@ class UtNoImporterTest {
         assertEquals(UtNoImporter.UtNoType.ROUTE, ref.type)
     }
 
+    // --- URL parsing: the GPX endpoint itself ---
+
+    @Test
+    fun parseUtNoUrl_gpxApiTrip() {
+        val ref = UtNoImporter.parseUtNoUrl("https://ut.no/api/gpx/trip/1113800")
+        assertNotNull(ref)
+        assertEquals(1113800, ref.id)
+        assertEquals(UtNoImporter.UtNoType.TRIP, ref.type)
+    }
+
+    @Test
+    fun parseUtNoUrl_gpxApiRoute() {
+        val ref = UtNoImporter.parseUtNoUrl("https://ut.no/api/gpx/route/135551")
+        assertNotNull(ref)
+        assertEquals(135551, ref.id)
+        assertEquals(UtNoImporter.UtNoType.ROUTE, ref.type)
+    }
+
     // --- URL parsing: edge cases ---
 
     @Test
@@ -53,6 +76,21 @@ class UtNoImporterTest {
         val ref = UtNoImporter.parseUtNoUrl("https://ut.no/turforslag/1234567")
         assertNotNull(ref)
         assertEquals(1234567, ref.id)
+    }
+
+    @Test
+    fun parseUtNoUrl_withWwwPrefix() {
+        val ref = UtNoImporter.parseUtNoUrl("https://www.ut.no/turforslag/1234567/besseggen")
+        assertNotNull(ref)
+        assertEquals(1234567, ref.id)
+    }
+
+    @Test
+    fun parseUtNoUrl_withTrailingPathSegment() {
+        val ref = UtNoImporter.parseUtNoUrl("https://ut.no/rutebeskrivelse/136969/fra-a-til-b/kart")
+        assertNotNull(ref)
+        assertEquals(136969, ref.id)
+        assertEquals(UtNoImporter.UtNoType.ROUTE, ref.type)
     }
 
     @Test
@@ -70,8 +108,21 @@ class UtNoImporterTest {
     }
 
     @Test
+    fun parseUtNoUrl_uppercaseHost() {
+        val ref = UtNoImporter.parseUtNoUrl("https://UT.NO/Turforslag/1234567")
+        assertNotNull(ref)
+        assertEquals(1234567, ref.id)
+        assertEquals(UtNoImporter.UtNoType.TRIP, ref.type)
+    }
+
+    @Test
     fun parseUtNoUrl_invalidUrl() {
         assertNull(UtNoImporter.parseUtNoUrl("https://example.com/turforslag/123"))
+    }
+
+    @Test
+    fun parseUtNoUrl_unknownPath() {
+        assertNull(UtNoImporter.parseUtNoUrl("https://ut.no/hytte/1234567/gjendebu"))
     }
 
     @Test
@@ -89,56 +140,29 @@ class UtNoImporterTest {
         assertNull(UtNoImporter.parseUtNoUrl("https://ut.no/turforslag/"))
     }
 
-    // --- GeoJSON coordinate parsing ---
+    @Test
+    fun parseUtNoUrl_idOutOfIntRange() {
+        assertNull(UtNoImporter.parseUtNoUrl("https://ut.no/turforslag/99999999999"))
+    }
+
+    // --- GPX endpoint URL ---
 
     @Test
-    fun parseGeoJsonCoordinates_withElevation() {
-        val geojson = Json.parseToJsonElement("""
-            {"type":"LineString","coordinates":[[8.123,61.456,1200.0],[8.124,61.457,1205.5]]}
-        """.trimIndent()).jsonObject
-        val points = UtNoImporter.parseGeoJsonCoordinates(geojson)
-        assertEquals(2, points.size)
-        assertEquals(61.456, points[0].first, 0.001)
-        assertEquals(8.123, points[0].second, 0.001)
-        assertEquals(1200.0, points[0].third)
-        assertEquals(61.457, points[1].first, 0.001)
-        assertEquals(1205.5, points[1].third)
+    fun gpxUrl_trip() {
+        val ref = UtNoImporter.UtNoRef(1113800, UtNoImporter.UtNoType.TRIP)
+        assertEquals("https://ut.no/api/gpx/trip/1113800", UtNoImporter.gpxUrl(ref))
     }
 
     @Test
-    fun parseGeoJsonCoordinates_withoutElevation() {
-        val geojson = Json.parseToJsonElement("""
-            {"type":"LineString","coordinates":[[8.123,61.456],[8.124,61.457]]}
-        """.trimIndent()).jsonObject
-        val points = UtNoImporter.parseGeoJsonCoordinates(geojson)
-        assertEquals(2, points.size)
-        assertEquals(61.456, points[0].first, 0.001)
-        assertEquals(8.123, points[0].second, 0.001)
-        assertNull(points[0].third)
+    fun gpxUrl_route() {
+        val ref = UtNoImporter.UtNoRef(135551, UtNoImporter.UtNoType.ROUTE)
+        assertEquals("https://ut.no/api/gpx/route/135551", UtNoImporter.gpxUrl(ref))
     }
 
     @Test
-    fun parseGeoJsonCoordinates_emptyCoordinates() {
-        val geojson = Json.parseToJsonElement("""
-            {"type":"LineString","coordinates":[]}
-        """.trimIndent()).jsonObject
-        val points = UtNoImporter.parseGeoJsonCoordinates(geojson)
-        assertTrue(points.isEmpty())
-    }
-
-    @Test
-    fun parseGeoJsonCoordinates_noCoordinatesField() {
-        val geojson = Json.parseToJsonElement("""{"type":"LineString"}""").jsonObject
-        val points = UtNoImporter.parseGeoJsonCoordinates(geojson)
-        assertTrue(points.isEmpty())
-    }
-
-    @Test
-    fun parseGeoJsonCoordinates_singlePointSkipped() {
-        val geojson = Json.parseToJsonElement("""
-            {"type":"LineString","coordinates":[[8.123]]}
-        """.trimIndent()).jsonObject
-        val points = UtNoImporter.parseGeoJsonCoordinates(geojson)
-        assertTrue(points.isEmpty())
+    fun gpxUrl_roundTripsFromPageUrl() {
+        val ref = UtNoImporter.parseUtNoUrl("https://ut.no/turforslag/1113800/01-hystadmarkjo")
+        assertNotNull(ref)
+        assertEquals("https://ut.no/api/gpx/trip/1113800", UtNoImporter.gpxUrl(ref))
     }
 }

@@ -113,20 +113,15 @@ afterEvaluate {
     val debugUnitTest = tasks.named<Test>("testDebugUnitTest").get()
     tasks.register<Test>("integrationTest") {
         group = "verification"
-        description = "Runs integration tests (configure URLs in local.properties)"
+        description = "Runs integration tests against the real remote services"
         dependsOn("compileDebugUnitTestKotlin")
         testClassesDirs = debugUnitTest.testClassesDirs
         classpath = debugUnitTest.classpath
         filter { includeTestsMatching("no.synth.where.integration.*") }
+        outputs.upToDateWhen { false }
         testLogging {
             showStandardStreams = true
             events("passed", "failed", "skipped")
-        }
-        val localProps = Properties()
-        rootProject.file("local.properties").takeIf { it.exists() }
-            ?.inputStream()?.use { localProps.load(it) }
-        localProps.stringPropertyNames().forEach { key ->
-            environment(key, localProps.getProperty(key))
         }
     }
 }

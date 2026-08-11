@@ -6,6 +6,11 @@ tag dates.
 
 ## Unreleased
 
+- Fixed ut.no import, which broke when the API it used was taken down. It now downloads
+  the same GPX file the ut.no page links to, and also accepts that GPX link directly
+
+## v525 (2026-08-10)
+- 
 - New "Paths (OSM)" overlay with paths and tractor roads from OpenStreetMap, drawn like
   MapAnt's own path overlay, on top of any base map. Paved ways are solid and the rest dashed.
   Zoomed out it shows the main paths and fills in the rest as you zoom in, and it downloads

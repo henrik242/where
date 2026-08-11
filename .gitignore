@@ -9,6 +9,7 @@ build
 .cxx
 local.properties
 .kotlin
+.claude
 
 # Environment files with secrets
 .env

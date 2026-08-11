@@ -81,6 +81,9 @@ $trackPointsXml
     fun bounds(): LatLngBounds? = points.map { it.latLng }.bounds()
 
     companion object {
+        /** Name given to an import that carries none of its own. */
+        const val DEFAULT_IMPORT_NAME = "Imported Track"
+
         /** Combined lat/lng envelope over all [tracks], or null when none have points. */
         fun combinedBounds(tracks: List<Track>): LatLngBounds? =
             tracks.flatMap { track -> track.points.map { it.latLng } }.bounds()
@@ -97,7 +100,7 @@ $trackPointsXml
             val points = FitParser.parse(data)
             if (points.isEmpty()) return null
             return Track(
-                name = "Imported Track",
+                name = DEFAULT_IMPORT_NAME,
                 points = points,
                 startTime = points.minOf { it.timestamp },
                 endTime = points.maxOf { it.timestamp },
@@ -190,7 +193,7 @@ $trackPointsXml
                 if (name.isNotEmpty()) return name.unescapeXml()
             }
             val fallback = gpxContent.substringAfter("<name>", "").substringBefore("</name>", "").trim()
-            return if (fallback.isNotEmpty()) fallback.unescapeXml() else "Imported Track"
+            return if (fallback.isNotEmpty()) fallback.unescapeXml() else DEFAULT_IMPORT_NAME
         }
 
         fun fromGPX(gpxContent: String): Track? {
