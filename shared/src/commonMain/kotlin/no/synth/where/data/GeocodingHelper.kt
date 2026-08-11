@@ -7,7 +7,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.parameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -18,10 +17,18 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
+import kotlin.concurrent.Volatile
 
 private const val NOMINATIM = "https://nominatim.openstreetmap.org"
-private const val OVERPASS = "https://overpass-api.de/api/interpreter"
 private const val MAX_CACHE_ENTRIES = 1000
+
+// Public Overpass instances rate-limit and time out independently of each other, so a query
+// that one rejects usually succeeds on the next.
+private val OVERPASS_MIRRORS = listOf(
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
+)
 
 object GeocodingHelper {
     var client: HttpClient = createDefaultHttpClient()
@@ -41,22 +48,32 @@ object GeocodingHelper {
         return Json.parseToJsonElement(response.bodyAsText()).jsonObject
     }
 
+    /** Mirror that answered last, so a struggling one is not picked first on every lookup. */
+    @Volatile
+    private var preferredMirror = 0
+
     private suspend fun overpassQuery(query: String): List<JsonObject> {
-        // Public Overpass returns 429 / 5xx under load. Retry once after a short pause.
-        val first = overpassAttempt(query)
-        if (first.success) return first.elements
-        if (!first.retryable) return emptyList()
-        delay(1500)
-        return overpassAttempt(query).elements
+        val start = preferredMirror
+        for (offset in OVERPASS_MIRRORS.indices) {
+            val index = (start + offset) % OVERPASS_MIRRORS.size
+            val result = overpassAttempt(OVERPASS_MIRRORS[index], query)
+            if (result.success) {
+                preferredMirror = index
+                return result.elements
+            }
+            // A rejected query fails the same way everywhere; only load problems are worth a mirror hop.
+            if (!result.retryable) return emptyList()
+        }
+        return emptyList()
     }
 
     private data class OverpassResult(val success: Boolean, val retryable: Boolean, val elements: List<JsonObject>)
 
-    private suspend fun overpassAttempt(query: String): OverpassResult {
+    private suspend fun overpassAttempt(endpoint: String, query: String): OverpassResult {
         val response = try {
-            client.submitForm(OVERPASS, parameters { append("data", query) })
+            client.submitForm(endpoint, parameters { append("data", query) })
         } catch (e: Exception) {
-            Logger.d("overpass call failed: ${e.message}")
+            Logger.d("overpass call to $endpoint failed: ${e.message}")
             return OverpassResult(success = false, retryable = true, elements = emptyList())
         }
         val status = response.status.value
@@ -67,7 +84,7 @@ object GeocodingHelper {
                 ?: emptyList()
             return OverpassResult(success = true, retryable = false, elements = elements)
         }
-        Logger.d("overpass status=$status")
+        Logger.d("overpass $endpoint status=$status")
         val retryable = status == 429 || status in 500..599
         return OverpassResult(success = false, retryable = retryable, elements = emptyList())
     }
@@ -94,18 +111,23 @@ object GeocodingHelper {
     }
 
     private suspend fun searchEnclosingWater(latLng: LatLng): String? {
+        // Plain is_in carries the source tags on the areas it returns, so filtering here is
+        // cheaper for the server than resolving each area back to its way/relation with pivot.
         val elements = overpassQuery(
-            "[out:json][timeout:10];is_in(${latLng.latitude},${latLng.longitude})->.a;(" +
-                "relation(pivot.a)[\"natural\"=\"water\"][\"name\"];" +
-                "way(pivot.a)[\"natural\"=\"water\"][\"name\"];" +
-                ");out tags 1;"
+            "[out:json][timeout:10];is_in(${latLng.latitude},${latLng.longitude});out tags;"
         )
-        if (elements.isEmpty()) return null
-        return elements[0]["tags"]?.jsonObject?.string("name")
+        return elements.firstNotNullOfOrNull { element ->
+            val tags = element["tags"]?.jsonObject ?: return@firstNotNullOfOrNull null
+            tags.string("name")?.takeIf { tags.string("natural") == "water" }
+        }
     }
 
     private val landmarkNaturalTypes = setOf("water", "peak", "bay", "spring", "beach", "glacier", "cliff")
     private val landmarkLeisureTypes = setOf("park", "nature_reserve", "stadium")
+
+    // POI classes that normally sit inside a building (a cafe, an office, a defibrillator on a
+    // wall). The building is the more useful answer than the POI that happened to be nearest.
+    private val inBuildingClasses = setOf("amenity", "shop", "office", "emergency", "healthcare", "craft")
 
     private fun isLandmark(cls: String?, type: String?): Boolean = when (cls) {
         "historic", "tourism", "waterway" -> true
@@ -125,7 +147,7 @@ object GeocodingHelper {
         val broad = json["address"]?.jsonObject?.broadLocation()
         if (!name.isNullOrBlank() && isLandmark(cls, type)) return name to broad
         // Non-landmark POIs (bars, parking lots, shops) may be inside a named building
-        if (cls in setOf("amenity", "shop", "office")) {
+        if (cls in inBuildingClasses) {
             val building = try { searchEnclosingBuilding(latLng) } catch (_: Exception) { null }
             if (!building.isNullOrBlank()) return building to broad
         }

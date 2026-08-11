@@ -11,19 +11,17 @@ import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.geo.LatLng
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
  * Integration tests against real Nominatim + Overpass APIs.
  * Run with: ../gradlew integrationTest --tests "no.synth.where.integration.GeocodingIntegrationTest"
  *
- * Tests that depend on Overpass accept multiple valid outcomes since
- * Overpass availability affects which lookup path succeeds.
+ * Each probe below is grouped by the lookup path it exercises. Every probe asserts its exact
+ * expected name; the ones that need Overpass retry first, since the public mirrors drop a large
+ * share of requests and a single miss would say nothing about our own code.
  */
 class GeocodingIntegrationTest {
 
@@ -31,21 +29,14 @@ class GeocodingIntegrationTest {
 
     @Before
     fun setUp() {
-        if (Timber.treeCount == 0) {
-            Timber.plant(object : Timber.Tree() {
-                override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
-                    println("[$tag] $message")
-                    t?.printStackTrace()
-                }
-            })
-        }
+        IntegrationTestSupport.plantLogger()
         runBlocking { GeocodingHelper.clearCaches() }
         originalClient = GeocodingHelper.client
         GeocodingHelper.client = HttpClient(OkHttp) {
             engine {
                 config {
                     connectTimeout(15, TimeUnit.SECONDS)
-                    readTimeout(30, TimeUnit.SECONDS)
+                    readTimeout(45, TimeUnit.SECONDS)
                 }
             }
             defaultRequest {
@@ -66,6 +57,23 @@ class GeocodingIntegrationTest {
         }
     }
 
+    /**
+     * For probes that need Overpass: public mirrors reject a large share of requests under load,
+     * so one miss proves nothing. Retry until [expected] shows up, then report whatever came last.
+     */
+    private fun geocodeExpecting(expected: String, lat: Double, lon: Double): String? {
+        var result: String? = null
+        repeat(4) { attempt ->
+            if (attempt > 0) runBlocking {
+                GeocodingHelper.clearCaches()
+                delay(5000)
+            }
+            result = geocode(lat, lon)
+            if (result == expected) return result
+        }
+        return result
+    }
+
     // --- Diagnostic: prints results without asserting ---
 
     @Test
@@ -84,44 +92,40 @@ class GeocodingIntegrationTest {
         }
     }
 
-    // --- Nominatim-only (stable): historic site and lake ---
+    // --- Nominatim answers directly: the reverse lookup already returns a landmark ---
 
     @Test
     fun skansebakken_historicCroft() {
         assertEquals("Skansebakken, Oslo", geocode(60.0181775, 10.582963))
     }
 
-    @Test
-    fun maridalsvannet_lake() {
-        assertEquals("Maridalsvannet, Oslo", geocode(59.9829, 10.7800))
-    }
-
-    // --- Overpass-dependent: building and peak lookups (may fall back to road name) ---
-
-    @Test
-    fun munchmuseet_museum() {
-        val result = geocode(59.9056239, 10.7551554) ?: ""
-        assertTrue(
-            "Expected Munchmuseet or road fallback, got: $result",
-            result.startsWith("Munchmuseet") || result.contains("Oslo")
-        )
-    }
+    // --- Nominatim finds a non-landmark POI, the nearby-peak search (also Nominatim) rescues it ---
 
     @Test
     fun ljanskollen_peak() {
-        val result = geocode(59.8373838, 10.7741729) ?: ""
-        assertTrue(
-            "Expected Ljanskollen or road fallback, got: $result",
-            result.startsWith("Ljanskollen") || result.contains("Oslo")
-        )
+        assertEquals("Ljanskollen, Oslo", geocode(59.8373838, 10.7741729))
     }
 
     @Test
     fun kraketjernfjellet_peak() {
-        val result = geocode(60.6471842, 9.4447617) ?: ""
-        assertTrue(
-            "Expected Kråketjernfjellet or road fallback, got: $result",
-            result.startsWith("Kråketjernfjellet") || result.contains("Sør-Aurdal")
-        )
+        assertEquals("Kråketjernfjellet, Sør-Aurdal", geocode(60.6471842, 9.4447617))
+    }
+
+    // --- Overpass supplies the answer: the enclosing building around a POI node ---
+
+    // Nominatim resolves this point to a defibrillator node; the museum is the building it hangs on.
+    @Test
+    fun munchmuseet_building() {
+        val expected = "Munchmuseet, Oslo"
+        assertEquals(expected, geocodeExpecting(expected, 59.9056239, 10.7551554))
+    }
+
+    // --- Overpass supplies the answer: the enclosing water body around a cape ---
+
+    // Nominatim resolves this point to the cape "Nestangen"; only Overpass knows the lake.
+    @Test
+    fun maridalsvannet_lake() {
+        val expected = "Maridalsvannet, Oslo"
+        assertEquals(expected, geocodeExpecting(expected, 59.9829, 10.7800))
     }
 }

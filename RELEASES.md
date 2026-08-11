@@ -8,6 +8,9 @@ tag dates.
 
 - Fixed ut.no import, which broke when the API it used was taken down. It now downloads
   the same GPX file the ut.no page links to, and also accepts that GPX link directly
+- Place names resolve more often: lookups fall back to other OpenStreetMap servers when the
+  main one is busy, and a point on a building now gets the building name instead of the
+  nearest road
 
 ## v525 (2026-08-10)
 - 
