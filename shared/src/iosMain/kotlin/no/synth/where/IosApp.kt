@@ -34,6 +34,7 @@ import no.synth.where.ui.DownloadScreenContent
 import no.synth.where.ui.IosLayerHexMapScreen
 import no.synth.where.ui.rememberLayerInfos
 import no.synth.where.ui.OnlineTrackingScreenContent
+import no.synth.where.ui.PointImportState
 import no.synth.where.ui.SavedPointsScreenContent
 import no.synth.where.ui.SettingsScreen
 import no.synth.where.ui.StravaImportHandlers
@@ -56,6 +57,9 @@ import platform.Foundation.NSFileSystemFreeSize
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSNumber
 import platform.Foundation.NSUserDefaults
+
+/** Types the import pickers accept. public.data is the catch-all, so this matches Android's any-file pick. */
+private val IMPORT_FILE_TYPES = listOf("public.xml", "org.topografix.gpx", "public.data", "public.zip-archive")
 
 enum class Screen {
     MAP,
@@ -290,9 +294,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     onNewlyImportedTrackConsumed = { newlyImportedTrackId = null },
                     onBackClick = { navigateBack() },
                     onImport = {
-                        IosPlatformActions.pickFiles(
-                            listOf("public.xml", "org.topografix.gpx", "public.data", "public.zip-archive")
-                        ) { files ->
+                        IosPlatformActions.pickFiles(IMPORT_FILE_TYPES) { files ->
                             when {
                                 files.isEmpty() -> Unit
                                 isBulkImport(files) -> {
@@ -428,6 +430,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
             Screen.SAVED_POINTS -> {
                 var showEditDialog by remember { mutableStateOf(false) }
                 var editingPoint by remember { mutableStateOf<SavedPoint?>(null) }
+                val pointImport = remember { PointImportState(savedPointsRepository, scope) }
 
                 SavedPointsScreenContent(
                     savedPoints = savedPoints,
@@ -453,6 +456,12 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         }
                         showEditDialog = false
                         editingPoint = null
+                    },
+                    pointImport = pointImport,
+                    onPickFiles = {
+                        IosPlatformActions.pickFiles(IMPORT_FILE_TYPES) { files ->
+                            if (files.isNotEmpty()) pointImport.read(files.map { it.bytes })
+                        }
                     }
                 )
             }

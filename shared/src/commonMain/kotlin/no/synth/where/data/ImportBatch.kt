@@ -34,6 +34,15 @@ fun BulkImportResult.outcome(): BulkImportOutcome = when {
 fun isTrackFileName(name: String): Boolean =
     name.endsWith(".gpx", ignoreCase = true) || name.endsWith(".fit", ignoreCase = true)
 
+/** True for the file extensions the waypoint parser understands. */
+fun isPointFileName(name: String): Boolean = name.endsWith(".gpx", ignoreCase = true)
+
+/** The payloads to try parsing: each file as-is, or, for a zip, its entries that [keep] accepts. */
+internal fun expandArchives(files: List<ByteArray>, keep: (String) -> Boolean): List<ByteArray> =
+    files.flatMap { bytes ->
+        if (isZip(bytes)) ArchiveExtractor.extract(bytes, keep).map { it.bytes } else listOf(bytes)
+    }
+
 /**
  * A pick is a "bulk" import (folder prompt + batch progress) when it is more than one file, or a
  * single zip archive. A single plain track file keeps the simpler one-shot import path.

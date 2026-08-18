@@ -374,4 +374,18 @@
     <string name="nav_stop">Stop navigation</string>
     <string name="nav_stop_confirm_title">Stop navigation?</string>
     <string name="nav_stop_confirm_message">This ends route guidance.</string>
+
+    <!-- Saved Points Screen -->
+    <string name="import_points">Import points</string>
+    <string name="import_points_hint">Reads waypoints from GPX files, several files or a whole zip at once.</string>
+    <string name="import_no_points_found">No points found in the selected files.</string>
+    <string name="import_points_failed">Could not save the points. Try again.</string>
+    <plurals name="points_imported">
+        <item quantity="one">Imported %1$d point</item>
+        <item quantity="other">Imported %1$d points</item>
+    </plurals>
+    <plurals name="import_files_without_points">
+        <item quantity="one">%1$d file had no points</item>
+        <item quantity="other">%1$d files had no points</item>
+    </plurals>
 </resources>

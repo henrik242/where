@@ -374,4 +374,18 @@
     <string name="nav_stop">Stopp navigering</string>
     <string name="nav_stop_confirm_title">Stoppe navigering?</string>
     <string name="nav_stop_confirm_message">Dette avslutter navigeringen.</string>
+
+    <!-- Saved Points Screen -->
+    <string name="import_points">Importer punkter</string>
+    <string name="import_points_hint">Leser veipunkter fra GPX-filer, flere filer eller en hel zip om gangen.</string>
+    <string name="import_no_points_found">Fant ingen punkter i de valgte filene.</string>
+    <string name="import_points_failed">Kunne ikke lagre punktene. Prøv igjen.</string>
+    <plurals name="points_imported">
+        <item quantity="one">Importerte %1$d punkt</item>
+        <item quantity="other">Importerte %1$d punkter</item>
+    </plurals>
+    <plurals name="import_files_without_points">
+        <item quantity="one">%1$d fil hadde ingen punkter</item>
+        <item quantity="other">%1$d filer hadde ingen punkter</item>
+    </plurals>
 </resources>

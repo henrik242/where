@@ -110,71 +110,23 @@ $trackPointsXml
 
         fun fromBytes(data: ByteArray): Track? {
             if (data.isEmpty()) return null
-            return if (FitParser.isFitFile(data)) {
-                fromFIT(data)
-            } else {
-                val text = try { data.decodeToString() } catch (_: Exception) { return null }
-                if (!text.contains("<gpx", ignoreCase = true)) return null
-                fromGPX(text)
-            }
+            return if (FitParser.isFitFile(data)) fromFIT(data) else gpxTextOrNull(data)?.let { fromGPX(it) }
         }
 
         // Ordered by priority: prefer tracks over routes over waypoints
         private val pointTagNames = listOf("trkpt", "rtept", "wpt")
 
         private fun parsePointsFromTag(gpxContent: String, lower: String, tagName: String, points: MutableList<TrackPoint>) {
-            val tagLower = tagName.lowercase()
-            val openMarker = "<$tagLower "
-            var searchFrom = 0
-            while (true) {
-                val start = lower.indexOf(openMarker, searchFrom)
-                if (start < 0) break
-
-                // Find the end of the opening tag with a local scan and detect self-closing from
-                // the char before it. A non-self-closing element runs until the next tag of the
-                // same type (or end of document) — bounding by the next open tag keeps this
-                // linear. Scanning for "</tag>" or "/>" from `start` would instead rescan toward
-                // end-of-document on every point (tags close with </trkpt>) or on unclosed tags,
-                // making the parse O(n^2).
-                val openEnd = lower.indexOf('>', start)
-                if (openEnd < 0) break
-
-                val (tag, nextSearchFrom) = if (lower[openEnd - 1] == '/') {
-                    gpxContent.substring(start, openEnd + 1) to openEnd + 1
-                } else {
-                    val next = lower.indexOf(openMarker, openEnd)
-                    val end = if (next < 0) gpxContent.length else next
-                    gpxContent.substring(start, end) to end
-                }
-
-                searchFrom = nextSearchFrom
-                val tagLc = tag.lowercase()
-
-                val lat = tagLc.substringAfter("lat=\"", "").substringBefore("\"", "").toDoubleOrNull()
-                    ?: tagLc.substringAfter("lat='", "").substringBefore("'", "").toDoubleOrNull()
-                    ?: continue
-                val lon = tagLc.substringAfter("lon=\"", "").substringBefore("\"", "").toDoubleOrNull()
-                    ?: tagLc.substringAfter("lon='", "").substringBefore("'", "").toDoubleOrNull()
-                    ?: continue
-
-                if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue
-
-                val ele = tagLc.substringAfter("<ele>", "").substringBefore("</ele>", "").toDoubleOrNull()
-                // Extract time from original-case tag — Instant.parse requires uppercase T and Z
-                val timeStart = tagLc.indexOf("<time>")
-                val timeEnd = tagLc.indexOf("</time>")
-                val timeStr = if (timeStart >= 0 && timeEnd > timeStart) tag.substring(timeStart + 6, timeEnd) else ""
-                val timestamp = try {
-                    Instant.parse(timeStr).toEpochMilliseconds()
-                } catch (_: Exception) {
-                    0L
-                }
+            forEachGpxElement(gpxContent, lower, tagName) { element ->
+                val lat = element.gpxAttr("lat")?.toDoubleOrNull() ?: return@forEachGpxElement
+                val lon = element.gpxAttr("lon")?.toDoubleOrNull() ?: return@forEachGpxElement
+                if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return@forEachGpxElement
 
                 points.add(
                     TrackPoint(
                         latLng = LatLng(lat, lon),
-                        timestamp = timestamp,
-                        altitude = ele,
+                        timestamp = element.gpxTimeMillis() ?: 0L,
+                        altitude = element.gpxChild("ele")?.trim()?.toDoubleOrNull(),
                         accuracy = null
                     )
                 )
@@ -183,15 +135,7 @@ $trackPointsXml
 
         private fun extractName(gpxContent: String): String {
             val lower = gpxContent.lowercase()
-            // Try metadata name first, then trk name, then rte name, then first name
-            for (parent in listOf("<metadata>", "<trk>", "<rte>")) {
-                val parentStart = lower.indexOf(parent)
-                if (parentStart < 0) continue
-                val parentClose = lower.indexOf(parent.replace("<", "</"), parentStart)
-                val section = if (parentClose >= 0) gpxContent.substring(parentStart, parentClose) else gpxContent.substring(parentStart)
-                val name = section.substringAfter("<name>", "").substringBefore("</name>", "").trim()
-                if (name.isNotEmpty()) return name.unescapeXml()
-            }
+            gpxDocumentName(gpxContent, lower)?.let { return it }
             val fallback = gpxContent.substringAfter("<name>", "").substringBefore("</name>", "").trim()
             return if (fallback.isNotEmpty()) fallback.unescapeXml() else DEFAULT_IMPORT_NAME
         }
@@ -242,18 +186,3 @@ $trackPointsXml
         }
     }
 }
-
-private fun String.escapeXml(): String = this
-    .replace("&", "&amp;")
-    .replace("<", "&lt;")
-    .replace(">", "&gt;")
-    .replace("\"", "&quot;")
-    .replace("'", "&apos;")
-
-private fun String.unescapeXml(): String = this
-    .replace("&lt;", "<")
-    .replace("&gt;", ">")
-    .replace("&quot;", "\"")
-    .replace("&apos;", "'")
-    .replace("&amp;", "&")
-

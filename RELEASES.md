@@ -6,6 +6,9 @@ tag dates.
 
 ## Unreleased
 
+- Saved points can be imported from GPX files: the Saved Points screen got an import
+  button that reads the waypoints out of one or more files, or a whole zip, then lets you
+  tick off which of them to keep
 - Fixed ut.no import, which broke when the API it used was taken down. It now downloads
   the same GPX file the ut.no page links to, and also accepts that GPX link directly
 - Place names resolve more often: lookups fall back to other OpenStreetMap servers when the

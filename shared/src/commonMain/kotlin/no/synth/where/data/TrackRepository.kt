@@ -556,13 +556,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     suspend fun importTracks(files: List<ByteArray>, folder: String? = null): BulkImportResult =
         withContext(Dispatchers.Default) {
             val destination = normalizeFolderName(folder)
-            val payloads = files.flatMap { bytes ->
-                if (isZip(bytes)) {
-                    ArchiveExtractor.extract(bytes) { isTrackFileName(it) }.map { it.bytes }
-                } else {
-                    listOf(bytes)
-                }
-            }
+            val payloads = expandArchives(files, ::isTrackFileName)
             val existingNames = _tracks.value.mapTo(mutableListOf()) { it.name }
             val imported = mutableListOf<Track>()
             var failed = 0

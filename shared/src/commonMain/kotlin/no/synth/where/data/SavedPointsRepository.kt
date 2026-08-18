@@ -7,14 +7,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.synth.where.data.db.SavedPointDao
 import no.synth.where.data.db.SavedPointEntity
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
+import no.synth.where.util.currentTimeMillis
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+
+/** Waypoints found in the picked files, offered to the user before any of them are stored. */
+data class PointImportCandidates(val waypoints: List<ParsedWaypoint>, val failedCount: Int)
 
 class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: SavedPointDao) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -38,16 +43,7 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
                 val text = pointsFile.readText()
                 val points: List<SavedPoint> = json.decodeFromString(text)
                 for (point in points) {
-                    val entity = SavedPointEntity(
-                        id = point.id,
-                        name = point.name,
-                        latitude = point.latLng.latitude,
-                        longitude = point.latLng.longitude,
-                        description = point.description,
-                        timestamp = point.timestamp,
-                        color = point.color
-                    )
-                    savedPointDao.insertPoint(entity)
+                    savedPointDao.insertPoint(point.toEntity())
                 }
                 pointsFile.renameTo(migratedFile)
                 Logger.d("Migrated ${points.size} saved points from JSON to Room")
@@ -92,6 +88,41 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
         }
     }
 
+    /**
+     * Read the `<wpt>` waypoints out of [files] (each a .gpx, or a .zip whose .gpx entries are all
+     * read) without storing anything, so the user can pick which ones to keep. A file holding no
+     * readable waypoint counts as a failure. Parsing runs off the main thread.
+     */
+    suspend fun readPoints(files: List<ByteArray>): PointImportCandidates = withContext(Dispatchers.Default) {
+        val waypoints = mutableListOf<ParsedWaypoint>()
+        var failed = 0
+        for (payload in expandArchives(files, ::isPointFileName)) {
+            val parsed = GpxWaypoints.parse(payload)
+            if (parsed.isEmpty()) failed++ else waypoints.addAll(parsed)
+        }
+        PointImportCandidates(waypoints, failed)
+    }
+
+    /**
+     * Store the [waypoints] the user picked, making each name unique against the existing points and
+     * within the batch. The DB writes are awaited, so the points are stored by the time this returns.
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    suspend fun importPoints(waypoints: List<ParsedWaypoint>): List<SavedPoint> = withContext(Dispatchers.Default) {
+        val existingNames = _savedPoints.value.mapTo(mutableListOf()) { it.name }
+        waypoints.map { waypoint ->
+            val uniqueName = NamingUtils.makeUnique(waypoint.name, existingNames)
+            existingNames.add(uniqueName)
+            SavedPoint(
+                id = Uuid.random().toString(),
+                name = uniqueName,
+                latLng = waypoint.latLng,
+                description = waypoint.description,
+                timestamp = waypoint.timestamp ?: currentTimeMillis()
+            ).also { savedPointDao.insertPoint(it.toEntity()) }
+        }
+    }
+
     fun deletePoint(pointId: String) {
         scope.launch {
             try {
@@ -115,3 +146,13 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
         }
     }
 }
+
+private fun SavedPoint.toEntity() = SavedPointEntity(
+    id = id,
+    name = name,
+    latitude = latLng.latitude,
+    longitude = latLng.longitude,
+    description = description,
+    timestamp = timestamp,
+    color = color
+)

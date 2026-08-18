@@ -1,6 +1,7 @@
 package no.synth.where.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import no.synth.where.data.SavedPointsRepository
 
 class SavedPointsScreenViewModel(
@@ -8,6 +9,9 @@ class SavedPointsScreenViewModel(
 ) : ViewModel() {
 
     val savedPoints = savedPointsRepository.savedPoints
+
+    // Held here, not remembered in the composable, so an import survives a rotation.
+    val pointImport = PointImportState(savedPointsRepository, viewModelScope)
 
     fun deletePoint(pointId: String) {
         savedPointsRepository.deletePoint(pointId)

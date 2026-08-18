@@ -17,6 +17,7 @@ import no.synth.where.ui.map.PointColors
 import no.synth.where.util.parseHexColor
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -31,9 +32,20 @@ fun SavedPointsScreenContent(
     onDelete: (SavedPoint) -> Unit,
     onShowOnMap: (SavedPoint) -> Unit,
     onDismissEdit: () -> Unit,
-    onSaveEdit: (String, String, String) -> Unit
+    onSaveEdit: (String, String, String) -> Unit,
+    pointImport: PointImportState,
+    onPickFiles: () -> Unit
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(pointImport.importedCount) {
+        val count = pointImport.importedCount ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(getPluralString(Res.plurals.points_imported, count, count))
+        pointImport.onImportedCountShown()
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.saved_points)) },
@@ -45,36 +57,78 @@ fun SavedPointsScreenContent(
             )
         }
     ) { padding ->
-        if (savedPoints.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(Res.string.no_saved_points),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                items(savedPoints, key = { it.id }) { point ->
-                    SavedPointItem(
-                        point = point,
-                        onEdit = { onEdit(point) },
-                        onDelete = { onDelete(point) },
-                        onShowOnMap = { onShowOnMap(point) }
-                    )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            item { ImportPointsSection(onImport = onPickFiles) }
+            if (pointImport.isImporting) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            text = stringResource(Res.string.importing),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     HorizontalDivider()
                 }
             }
+            if (savedPoints.isEmpty() && !pointImport.isImporting) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillParentMaxHeight(0.5f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.no_saved_points),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            items(savedPoints, key = { it.id }) { point ->
+                SavedPointItem(
+                    point = point,
+                    onEdit = { onEdit(point) },
+                    onDelete = { onDelete(point) },
+                    onShowOnMap = { onShowOnMap(point) }
+                )
+                HorizontalDivider()
+            }
         }
+    }
+
+    pointImport.candidates?.let { candidates ->
+        PointImportPickerDialog(
+            waypoints = candidates.waypoints,
+            failedCount = candidates.failedCount,
+            importing = pointImport.isImporting,
+            onImport = { pointImport.importSelected(it) },
+            onDismiss = { pointImport.dismissCandidates() }
+        )
+    }
+
+    pointImport.error?.let { message ->
+        AlertDialog(
+            onDismissRequest = { pointImport.dismissError() },
+            title = { Text(stringResource(Res.string.import_failed)) },
+            text = { Text(stringResource(message)) },
+            confirmButton = {
+                TextButton(onClick = { pointImport.dismissError() }) { Text(stringResource(Res.string.ok)) }
+            }
+        )
     }
 
     if (showEditDialog && editingPoint != null) {
@@ -83,6 +137,39 @@ fun SavedPointsScreenContent(
             onDismiss = onDismissEdit,
             onSave = onSaveEdit
         )
+    }
+}
+
+@Composable
+private fun ImportPointsSection(onImport: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            OutlinedButton(
+                onClick = onImport,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_file_upload),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(stringResource(Res.string.import_points))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(Res.string.import_points_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
