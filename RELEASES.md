@@ -6,6 +6,10 @@ tag dates.
 
 ## Unreleased
 
+n/a
+
+## v532 (2026-08-19)
+
 - Saved points can be imported from GPX files: the Saved Points screen got an import
   button that reads the waypoints out of one or more files, or a whole zip, then lets you
   tick off which of them to keep
