@@ -32,6 +32,11 @@ jobs:
         cd web
         bun install
 
+    - name: Typecheck
+      run: |
+        cd web
+        bun run typecheck
+
     - name: Generate version info
       run: |
         cd web

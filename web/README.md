@@ -107,9 +107,10 @@ bun run typecheck
 ## Deployment
 
 Deployment is automated via GitHub Actions. On push to `main`:
-1. GHA builds `app.ts` → `app.js` (minified)
-2. GHA deploys files to server via SSH
-3. Server auto-restarts when files change
+1. GHA type-checks server and client, and fails the deploy on any error
+2. GHA builds `app.ts` → `app.js` (minified)
+3. GHA deploys files to server via SSH
+4. Server auto-restarts when files change
 
 Manual deployment on server:
 ```bash
