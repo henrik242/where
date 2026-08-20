@@ -9,7 +9,7 @@ composeMaterial3 = "1.11.0-alpha07" # see release notes for matching version
 # composeMaterial3 pulls androidx material3 1.5.0-alpha17, which is built against compose 1.11.
 # Do not bump past the 1.11 train: compose 1.12 changed foundation.style and OutlinedTextField
 # then crashes with a ClassCastException in ResolvedStyle.build.
-composeBom = "2026.06.01"
+composeBom = "2026.08.00"
 core = "1.7.0"
 coreKtx = "1.19.0"
 crashlyticsPlugin = "3.0.7"
