@@ -99,6 +99,7 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
         unitTests.all { test ->
             test.testLogging {
                 showStandardStreams = true
@@ -148,6 +149,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.robolectric)
     testImplementation(libs.mockk)
     testImplementation(libs.mockk.android)
     debugImplementation(libs.androidx.ui.test.manifest)

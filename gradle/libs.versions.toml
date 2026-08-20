@@ -1,15 +1,16 @@
 [versions]
 activityCompose = "1.13.0"
 agp = "9.3.1"
+# Must stay on the same compose train as composeBom. composeMaterial3 redirects android to
+# androidx material3 1.5.0-alpha17, which is built against compose 1.11 and crashes
+# OutlinedTextField in ResolvedStyle.build on the reshaped 1.12 foundation.style API.
+androidxMaterial3 = "1.5.0-alpha26"
 appcompat = "1.8.0"
 browser = "1.10.0"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
 composeMultiplatform = "1.11.1"
 composeMaterial3 = "1.11.0-alpha07" # see release notes for matching version
-# composeMaterial3 pulls androidx material3 1.5.0-alpha17, which is built against compose 1.11.
-# Do not bump past the 1.11 train: compose 1.12 changed foundation.style and OutlinedTextField
-# then crashes with a ClassCastException in ResolvedStyle.build.
-composeBom = "2026.06.01"
+composeBom = "2026.08.00"
 core = "1.7.0"
 coreKtx = "1.19.0"
 crashlyticsPlugin = "3.0.7"
@@ -32,6 +33,7 @@ mockk = "1.14.11"
 mockkAndroid = "1.14.11"
 navigationCompose = "2.9.8"
 playServicesLocation = "21.4.0"
+robolectric = "4.16.1"
 room = "2.8.4"
 sqlite = "2.7.0"
 timber = "5.0.1"
@@ -47,7 +49,7 @@ androidx-datastore-preferences = { module = "androidx.datastore:datastore-prefer
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeCompose" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "androidxMaterial3" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
@@ -72,6 +74,7 @@ material = { group = "com.google.android.material", name = "material", version.r
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockkAndroid" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

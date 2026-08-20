@@ -137,6 +137,9 @@ kotlin {
             implementation(libs.ktor.client.mock)
         }
         androidMain.dependencies {
+            // compose.material3 redirects android to an androidx material3 built against an older
+            // compose; pin the one that matches composeBom so this module compiles against it too.
+            implementation(libs.androidx.material3)
             api(libs.ktor.client.okhttp)
             api(libs.timber)
             api(libs.maplibre.android.sdk)
