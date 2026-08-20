@@ -6,7 +6,6 @@ import platform.AuthenticationServices.ASWebAuthenticationPresentationContextPro
 import platform.AuthenticationServices.ASWebAuthenticationSession
 import platform.Foundation.NSError
 import platform.Foundation.NSURL
-import platform.UIKit.UIApplication
 import platform.UIKit.UIWindow
 import platform.darwin.NSObject
 
@@ -45,8 +44,5 @@ object IosWebAuth {
 private class AnchorProvider : NSObject(), ASWebAuthenticationPresentationContextProvidingProtocol {
     override fun presentationAnchorForWebAuthenticationSession(
         session: ASWebAuthenticationSession
-    ): ASPresentationAnchor {
-        @Suppress("DEPRECATION")
-        return UIApplication.sharedApplication.keyWindow ?: UIWindow()
-    }
+    ): ASPresentationAnchor = keyUIWindow() ?: UIWindow()
 }

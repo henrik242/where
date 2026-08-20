@@ -122,8 +122,7 @@ object IosPlatformActions {
     }
 
     private fun topViewController(): UIViewController? {
-        val keyWindow = UIApplication.sharedApplication.keyWindow ?: return null
-        var vc = keyWindow.rootViewController ?: return null
+        var vc = keyUIWindow()?.rootViewController ?: return null
         while (true) {
             val presented = vc.presentedViewController ?: break
             vc = presented

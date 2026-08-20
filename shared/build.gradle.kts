@@ -72,7 +72,7 @@ val trackingSecret = providers.environmentVariable("TRACKING_HINT").orElse(
     }
 )
 
-val generateBuildInfo by tasks.registering(GenerateBuildInfoTask::class) {
+val generateBuildInfo = tasks.register<GenerateBuildInfoTask>("generateBuildInfo") {
     outputDir.set(layout.buildDirectory.dir("generated/buildinfo"))
     trackingHint.set(trackingSecret)
     outputs.upToDateWhen { false }
