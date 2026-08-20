@@ -1,7 +1,10 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ESNext", "DOM", "DOM.Iterable"]
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    // maplibre-gl comes from a CDN <script> in index.html, so it is only reachable as the UMD
+    // global. The devDependency exists solely to type it at the version index.html pins.
+    "allowUmdGlobalAccess": true
   },
   "include": [
     "src/client/**/*",

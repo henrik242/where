@@ -24,6 +24,7 @@
   ],
   "devDependencies": {
     "@types/bun": "latest",
+    "maplibre-gl": "3.6.2",
     "typescript": "^6.0.3"
   }
 }

@@ -8,12 +8,13 @@ const COLORS = [
   '#2196F3', '#00BCD4', '#009688', '#4CAF50', '#8BC34A',
   '#CDDC39', '#FFC107', '#FF9800', '#FF5722', '#795548'
 ];
+const FALLBACK_COLOR = '#FF5722';
 
 function generateColor(userId: string): string {
   const hash = userId.split('').reduce((acc, char) => {
     return char.charCodeAt(0) + ((acc << 5) - acc);
   }, 0);
-  return COLORS[Math.abs(hash) % COLORS.length];
+  return COLORS[Math.abs(hash) % COLORS.length] ?? FALLBACK_COLOR;
 }
 
 interface TrackRow {

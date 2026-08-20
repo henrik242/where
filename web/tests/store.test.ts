@@ -142,7 +142,7 @@ describe('TrackStore', () => {
       const activeTracks = store.getAllActiveTracks();
 
       expect(activeTracks).toHaveLength(1);
-      expect(activeTracks[0].id).toBe('active');
+      expect(activeTracks[0]?.id).toBe('active');
     });
 
     test('should return empty array when no active tracks', () => {
@@ -193,7 +193,7 @@ describe('TrackStore', () => {
     test('should filter by single client ID', () => {
       const tracks = store.getTracksByClientIds(['abc123']);
       expect(tracks).toHaveLength(1);
-      expect(tracks[0].userId).toBe('abc123');
+      expect(tracks[0]?.userId).toBe('abc123');
     });
 
     test('should filter by multiple client IDs', () => {
@@ -346,7 +346,7 @@ describe('TrackStore', () => {
 
       const deleted = store.cleanupOldTracks();
       expect(deleted).toHaveLength(1);
-      expect(deleted[0].id).toBe('old-inactive');
+      expect(deleted[0]?.id).toBe('old-inactive');
       expect(store.getTrack('old-inactive')).toBeUndefined();
     });
 
@@ -436,7 +436,7 @@ describe('TrackStore', () => {
 
       expect(updated).toBeDefined();
       expect(updated?.points).toHaveLength(1);
-      expect(updated?.points[0].lat).toBe(59.9);
+      expect(updated?.points[0]?.lat).toBe(59.9);
     });
 
     test('should return undefined for non-existent track', () => {

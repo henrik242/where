@@ -5,7 +5,7 @@ import { CLIENT_IDS_RE } from '../shared/validation';
 import { trackStore } from './store';
 import { broadcastToAll, startStaleTrackChecker } from './tracking';
 import { verifyHmacSignature } from './auth';
-import { websocketHandlers } from './ws';
+import { websocketHandlers, type WsData } from './ws';
 
 const CLIENT_DIR = `${import.meta.dir}/../client`;
 const OG_META_PATH = `${import.meta.dir}/og-meta.html`;
@@ -32,13 +32,13 @@ function makeFetchHandler({ handleAPI, ogMeta }: FetchHandlerDeps) {
     });
   }
 
-  return async function fetch(req: Request, server: Server): Promise<Response | undefined> {
+  return async function fetch(req: Request, server: Server<WsData>): Promise<Response | undefined> {
     const url = new URL(req.url);
     // /about/ and /about serve the same page
     const pathname = url.pathname === '/' ? '/' : url.pathname.replace(/\/+$/, '') || '/';
 
     if (url.pathname === '/ws') {
-      return server.upgrade(req)
+      return server.upgrade(req, { data: { clients: [], admin: false } })
         ? undefined
         : new Response('WebSocket upgrade failed', { status: 400 });
     }

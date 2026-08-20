@@ -26,10 +26,10 @@ describe('parseGPX', () => {
     expect(track).toBeDefined();
     expect(track?.name).toBe('Test Track');
     expect(track?.points).toHaveLength(2);
-    expect(track?.points[0].lat).toBe(59.9139);
-    expect(track?.points[0].lon).toBe(10.7522);
-    expect(track?.points[0].altitude).toBe(100);
-    expect(track?.points[1].altitude).toBe(150);
+    expect(track?.points[0]?.lat).toBe(59.9139);
+    expect(track?.points[0]?.lon).toBe(10.7522);
+    expect(track?.points[0]?.altitude).toBe(100);
+    expect(track?.points[1]?.altitude).toBe(150);
   });
 
   test('should parse GPX without elevation', () => {
@@ -48,7 +48,7 @@ describe('parseGPX', () => {
     const track = parseGPX(gpxContent);
 
     expect(track).toBeDefined();
-    expect(track?.points[0].altitude).toBeUndefined();
+    expect(track?.points[0]?.altitude).toBeUndefined();
   });
 
   test('should use default name if not provided', () => {

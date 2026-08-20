@@ -2,6 +2,7 @@ import type { ServerWebSocket, WebSocketHandler } from 'bun';
 import { CONFIG } from './config';
 import { trackStore } from './store';
 import { addSubscribedClient, enrichTrack, removeSubscribedClient } from './tracking';
+import type { Track } from '../shared/types';
 
 export interface WsData {
   clients: string[];
@@ -9,9 +10,8 @@ export interface WsData {
 }
 
 export const websocketHandlers: WebSocketHandler<WsData> = {
-  open(ws) {
+  open() {
     console.log('WebSocket client connected');
-    ws.data = { clients: [], admin: false };
   },
 
   message(ws, message) {
@@ -41,7 +41,7 @@ function handleSubscribe(
   ws.data = { clients, admin: isAdmin };
   addSubscribedClient(ws);
 
-  let tracks;
+  let tracks: Track[];
   if (isAdmin) {
     tracks = includeHistorical ? trackStore.getAllTracks() : trackStore.getAllActiveTracks();
   } else if (clients.length === 0) {

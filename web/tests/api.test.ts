@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { createTestServer } from '../test-server';
+import { readJson } from './helpers';
 
 let SERVER_URL: string;
 let server: any;
@@ -53,7 +54,7 @@ describe('API Integration Tests', () => {
       });
 
       expect(response.status).toBe(201);
-      const data = await response.json();
+      const data = await readJson(response);
       expect(data.id).toBeDefined();
       expect(data.userId).toBe('test123');
       expect(data.name).toBe('Integration Test Track');
@@ -107,7 +108,7 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${SERVER_URL}/api/tracks?clients=user1`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await readJson(response);
       expect(Array.isArray(data.tracks)).toBe(true);
       expect(data.tracks.length).toBeGreaterThanOrEqual(1);
     });
@@ -126,7 +127,7 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${SERVER_URL}/api/tracks?clients=filter1`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await readJson(response);
       expect(data.tracks.length).toBeGreaterThanOrEqual(1);
       expect(data.tracks.some((t: any) => t.userId === 'filter1')).toBe(true);
     });
@@ -153,7 +154,7 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${SERVER_URL}/api/tracks?clients=multi1,multi2`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await readJson(response);
       expect(data.tracks.length).toBeGreaterThanOrEqual(2);
       const userIds = data.tracks.map((t: any) => t.userId);
       expect(userIds).toContain('multi1');
@@ -164,7 +165,7 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${SERVER_URL}/api/tracks?clients=nonexist`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await readJson(response);
       expect(data.tracks.length).toBe(0);
     });
 
@@ -172,7 +173,7 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${SERVER_URL}/api/tracks?clients=`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await readJson(response);
       expect(Array.isArray(data.tracks)).toBe(true);
     });
 
@@ -191,7 +192,7 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${SERVER_URL}/api/tracks`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await readJson(response);
       expect(data.tracks).toEqual([]);
     });
   });
@@ -205,12 +206,12 @@ describe('API Integration Tests', () => {
           'X-Client-Id': 'gettest'
         },
         body: JSON.stringify({ userId: 'gettest', name: 'Get Test Track' })
-      }).then(r => r.json());
+      }).then(readJson);
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await readJson(response);
       expect(data.id).toBe(track.id);
       expect(data.userId).toBe('gettest');
     });
@@ -230,7 +231,7 @@ describe('API Integration Tests', () => {
           'X-Client-Id': 'pointtest'
         },
         body: JSON.stringify({ userId: 'pointtest', name: 'Point Test Track' })
-      }).then(r => r.json());
+      }).then(readJson);
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/points`, {
         method: 'POST',
@@ -248,7 +249,7 @@ describe('API Integration Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await readJson(response);
       expect(data.points).toHaveLength(1);
       expect(data.points[0].lat).toBe(59.9139);
     });
@@ -278,7 +279,7 @@ describe('API Integration Tests', () => {
           'X-Client-Id': 'owner1'
         },
         body: JSON.stringify({ userId: 'owner1', name: 'Owned Track' })
-      }).then(r => r.json());
+      }).then(readJson);
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/points`, {
         method: 'POST',
@@ -304,7 +305,7 @@ describe('API Integration Tests', () => {
           'X-Client-Id': 'validtest'
         },
         body: JSON.stringify({ userId: 'validtest', name: 'Validation Test' })
-      }).then(r => r.json());
+      }).then(readJson);
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/points`, {
         method: 'POST',
@@ -332,7 +333,7 @@ describe('API Integration Tests', () => {
           'X-Client-Id': 'stoptest'
         },
         body: JSON.stringify({ userId: 'stoptest', name: 'Stop Test Track' })
-      }).then(r => r.json());
+      }).then(readJson);
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/stop`, {
         method: 'PUT',
@@ -340,7 +341,7 @@ describe('API Integration Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = await response.json();
+      const data = await readJson(response);
       expect(data.isActive).toBe(false);
       expect(data.endTime).toBeDefined();
     });
@@ -353,7 +354,7 @@ describe('API Integration Tests', () => {
           'X-Client-Id': 'stopowner'
         },
         body: JSON.stringify({ userId: 'stopowner', name: 'Stop Auth Test' })
-      }).then(r => r.json());
+      }).then(readJson);
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}/stop`, {
         method: 'PUT',
@@ -381,7 +382,7 @@ describe('API Integration Tests', () => {
           'X-Client-Id': 'deletetest'
         },
         body: JSON.stringify({ userId: 'deletetest', name: 'Delete Test Track' })
-      }).then(r => r.json());
+      }).then(readJson);
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}`, {
         method: 'DELETE',
@@ -403,7 +404,7 @@ describe('API Integration Tests', () => {
           'X-Client-Id': 'delowner'
         },
         body: JSON.stringify({ userId: 'delowner', name: 'Delete Auth Test' })
-      }).then(r => r.json());
+      }).then(readJson);
 
       const response = await fetch(`${SERVER_URL}/api/tracks/${track.id}`, {
         method: 'DELETE',
@@ -429,7 +430,7 @@ describe('API Integration Tests', () => {
   describe('Session counting', () => {
     test('should count iOS sessions from User-Agent', async () => {
       // Get baseline stats
-      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       const iosBefore = before.day?.ios || 0;
 
       await fetch(`${SERVER_URL}/api/tracks`, {
@@ -442,12 +443,12 @@ describe('API Integration Tests', () => {
         body: JSON.stringify({ userId: 'ios001', name: 'iOS Track' })
       });
 
-      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       expect(after.day.ios).toBe(iosBefore + 1);
     });
 
     test('should count Android sessions from User-Agent', async () => {
-      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       const androidBefore = before.day?.android || 0;
 
       await fetch(`${SERVER_URL}/api/tracks`, {
@@ -460,12 +461,12 @@ describe('API Integration Tests', () => {
         body: JSON.stringify({ userId: 'and001', name: 'Android Track' })
       });
 
-      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       expect(after.day.android).toBe(androidBefore + 1);
     });
 
     test('should not count sessions for unknown User-Agent', async () => {
-      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       const iosBefore = before.day?.ios || 0;
       const androidBefore = before.day?.android || 0;
 
@@ -479,13 +480,13 @@ describe('API Integration Tests', () => {
         body: JSON.stringify({ userId: 'desk01', name: 'Desktop Track' })
       });
 
-      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       expect(after.day?.ios || 0).toBe(iosBefore);
       expect(after.day?.android || 0).toBe(androidBefore);
     });
 
     test('should accumulate multiple sessions', async () => {
-      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const before = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       const iosBefore = before.day?.ios || 0;
 
       for (let i = 0; i < 3; i++) {
@@ -501,12 +502,12 @@ describe('API Integration Tests', () => {
         });
       }
 
-      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const after = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       expect(after.day.ios).toBe(iosBefore + 3);
     });
 
     test('should return stats with week and month aggregations', async () => {
-      const stats = await fetch(`${SERVER_URL}/api/session-stats`).then(r => r.json());
+      const stats = await fetch(`${SERVER_URL}/api/session-stats`).then(readJson);
       expect(stats).toHaveProperty('day');
       expect(stats).toHaveProperty('week');
       expect(stats).toHaveProperty('month');

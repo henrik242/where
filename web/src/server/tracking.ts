@@ -60,7 +60,7 @@ export function checkStaleTracks() {
     let lastUpdate = track.lastUpdateTime;
 
     if (!lastUpdate && track.points.length > 0) {
-      lastUpdate = track.points[track.points.length - 1].timestamp;
+      lastUpdate = track.points.at(-1)?.timestamp;
     }
 
     if (!lastUpdate) {

@@ -32,12 +32,10 @@ export function calculateTrackDistance(points: TrackPoint[]): number {
 
   let distance = 0;
   for (let i = 1; i < points.length; i++) {
-    distance += calculateDistance(
-      points[i - 1].lat,
-      points[i - 1].lon,
-      points[i].lat,
-      points[i].lon
-    );
+    const from = points[i - 1];
+    const to = points[i];
+    if (!from || !to) continue;
+    distance += calculateDistance(from.lat, from.lon, to.lat, to.lon);
   }
   return distance;
 }
@@ -51,8 +49,9 @@ export function getTrackLastUpdate(track: {
     return track.lastUpdateTime;
   }
 
-  if (track.points.length > 0) {
-    return track.points[track.points.length - 1].timestamp;
+  const last = track.points.at(-1);
+  if (last) {
+    return last.timestamp;
   }
 
   return track.startTime;

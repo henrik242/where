@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { $ } from 'bun';
 
 let SERVER_URL: string;
-let serverProc: ReturnType<typeof Bun.spawn>;
+let serverProc: Bun.Subprocess<'ignore', 'pipe', 'inherit'>;
 
 beforeAll(async () => {
   // Start the real server on a random port
@@ -89,7 +89,7 @@ describe('static routes', () => {
       ['/about/', 'Open source'],
       ['/guide/', 'Feature Guide'],
       ['/privacy/', 'Privacy Policy'],
-    ]) {
+    ] as const) {
       const res = await fetch(`${SERVER_URL}${path}`);
       expect(res.status).toBe(200);
       expect(await res.text()).toContain(marker);

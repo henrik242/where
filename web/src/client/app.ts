@@ -284,9 +284,9 @@ function selectTrack(trackId: string): void {
 
   const track = tracks.get(trackId);
   if (track && track.points.length > 0) {
-    if (track.points.length === 1) {
-      const p = track.points[0];
-      map.flyTo({ center: [p.lon, p.lat], zoom: 15 });
+    const only = track.points.length === 1 ? track.points[0] : null;
+    if (only) {
+      map.flyTo({ center: [only.lon, only.lat], zoom: 15 });
     } else {
       const bounds = new maplibregl.LngLatBounds();
       track.points.forEach(p => bounds.extend([p.lon, p.lat]));
@@ -354,11 +354,14 @@ function cleanupTrackLayers(trackId: string): void {
 
 // Render single point
 function renderSinglePoint(track: Track, sourceId: string, layerId: string): void {
+  const point = track.points[0];
+  if (!point) return;
   const geojson = {
     type: 'Feature' as const,
+    properties: {},
     geometry: {
       type: 'Point' as const,
-      coordinates: [track.points[0].lon, track.points[0].lat]
+      coordinates: [point.lon, point.lat]
     }
   };
 
@@ -395,6 +398,7 @@ function renderSinglePoint(track: Track, sourceId: string, layerId: string): voi
 function renderTrackLine(track: Track, sourceId: string, layerId: string): void {
   const geojson = {
     type: 'Feature' as const,
+    properties: {},
     geometry: {
       type: 'LineString' as const,
       coordinates: track.points.map(p => [p.lon, p.lat])
@@ -431,13 +435,18 @@ function renderTrackLine(track: Track, sourceId: string, layerId: string): void 
 // Render start and end points
 function renderStartEndPoints(track: Track, trackId: string): void {
   // Start point (green)
+  const firstPoint = track.points[0];
+  const lastPoint = track.points.at(-1);
+  if (!firstPoint || !lastPoint) return;
+
   const startSourceId = `track-start-${trackId}`;
   const startLayerId = `track-start-layer-${trackId}`;
   const startGeoJson = {
     type: 'Feature' as const,
+    properties: {},
     geometry: {
       type: 'Point' as const,
-      coordinates: [track.points[0].lon, track.points[0].lat]
+      coordinates: [firstPoint.lon, firstPoint.lat]
     }
   };
 
@@ -461,9 +470,9 @@ function renderStartEndPoints(track: Track, trackId: string): void {
   // End point (blue for active, red for stopped)
   const endSourceId = `track-end-${trackId}`;
   const endLayerId = `track-end-layer-${trackId}`;
-  const lastPoint = track.points[track.points.length - 1];
   const endGeoJson = {
     type: 'Feature' as const,
+    properties: {},
     geometry: {
       type: 'Point' as const,
       coordinates: [lastPoint.lon, lastPoint.lat]
