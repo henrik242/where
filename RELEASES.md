@@ -8,6 +8,7 @@ tag dates.
 
 - Fixed a crash that could close the app when opening a screen with a text field, such as
   the map search or the rename dialogs
+- Fixed a setting snapping back to its previous value when toggled twice in quick succession
 
 ## v532 (2026-08-19)
 

@@ -35,7 +35,10 @@ import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.NveOverlay
 
 class UserPreferences(private val dataStore: DataStore<Preferences>) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // Parallelism 1 so the persist coroutines run in call order. On a multi-threaded dispatcher a
+    // rapid toggle can write the older value last, and the init collector then reads that stale
+    // value back over the newer in-memory state.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
 
     private val _crashReportingEnabled = MutableStateFlow(true)
     val crashReportingEnabled: StateFlow<Boolean> = _crashReportingEnabled.asStateFlow()

@@ -85,6 +85,26 @@ class UserPreferencesTest {
         assertEquals(true, prefs.hasSeenTrackingInfo.value)
     }
 
+    /** Writes launched on a multi-threaded dispatcher used to land out of order, so the init
+     * collector read the stale value back over the newer one. Repeated because it is a race. */
+    @Test
+    fun rapidToggle_keepsTheLastCall() = runBlocking {
+        repeat(20) { i ->
+            val storeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            val store = PreferenceDataStoreFactory.create(
+                scope = storeScope,
+                produceFile = { tempFolder.newFile("rapid_toggle_$i.preferences_pb") }
+            )
+            val rapid = UserPreferences(store)
+            delay(60)
+            rapid.confirmTrackingInfoAndEnable()
+            rapid.updateOnlineTrackingEnabled(false)
+            delay(150)
+            assertEquals(false, rapid.onlineTrackingEnabled.value)
+            storeScope.cancel()
+        }
+    }
+
     @Test
     fun defaults_downloadMaxZoomIsStandard() {
         assertEquals(12, UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM)
