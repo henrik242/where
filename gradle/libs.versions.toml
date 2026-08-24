@@ -1,6 +1,6 @@
 [versions]
 activityCompose = "1.13.0"
-agp = "9.3.1"
+agp = "9.3.2"
 # Must stay on the same compose train as composeBom. composeMaterial3 redirects android to
 # androidx material3 1.5.0-alpha17, which is built against compose 1.11 and crashes
 # OutlinedTextField in ResolvedStyle.build on the reshaped 1.12 foundation.style API.
