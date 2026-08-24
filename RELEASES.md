@@ -4,6 +4,10 @@ Version numbers are the git commit count at build time; gaps between tag numbers
 builds that were never released. Each tag below marks a store release; dates are the
 tag dates.
 
+## Unreleased
+
+n/a
+
 ## v544 (2026-08-24)
 
 - Saved points take a description when you create them, not just when editing one afterwards
