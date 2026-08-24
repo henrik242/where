@@ -4,7 +4,7 @@ Version numbers are the git commit count at build time; gaps between tag numbers
 builds that were never released. Each tag below marks a store release; dates are the
 tag dates.
 
-## Unreleased
+## v544 (2026-08-24)
 
 - Saved points take a description when you create them, not just when editing one afterwards
 - Fixed a saved point's description, name and colour reverting when edited from the map: tapping
@@ -16,9 +16,12 @@ tag dates.
 - Delete moved away from Save in the point dialog, and long descriptions scroll instead of pushing
   the buttons out of reach
 - Fixed the navigated route not being tappable on iOS after starting or stopping navigation
+-  Fixed a setting snapping back to its previous value when toggled twice in quick succession
+
+## v534 (2026-08-20)
+
 - Fixed a crash that could close the app when opening a screen with a text field, such as
   the map search or the rename dialogs
-- Fixed a setting snapping back to its previous value when toggled twice in quick succession
 
 ## v532 (2026-08-19)
 
