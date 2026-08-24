@@ -87,7 +87,8 @@ platform :ios do
     )
     whats_new_en = ENV["WHATS_NEW_EN"] || "Bug fixes and improvements."
     whats_new_no = ENV["WHATS_NEW_NO"] || "Feilrettinger og forbedringer."
-    upload_to_app_store(
+
+    options = {
       api_key: api_key,
       app_identifier: APP_IDENTIFIER,
       ipa: ENV["IPA_PATH"],
@@ -98,6 +99,20 @@ platform :ios do
       automatic_release: submit,
       precheck_include_in_app_purchases: false,
       release_notes: { "en-US" => whats_new_en, "no" => whats_new_no }
-    )
+    }
+
+    # App Store Connect rejects the review submission unless the App Review contact
+    # is set on the version. Phone must be +countrycode, e.g. +4712345678.
+    contact_email = ENV["ASC_CONTACT_EMAIL"]
+    if submit && contact_email && !contact_email.empty?
+      options[:app_review_information] = {
+        first_name: ENV["ASC_CONTACT_FIRST_NAME"],
+        last_name: ENV["ASC_CONTACT_LAST_NAME"],
+        phone_number: ENV["ASC_CONTACT_PHONE"],
+        email_address: contact_email
+      }
+    end
+
+    upload_to_app_store(options)
   end
 end

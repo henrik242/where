@@ -49,6 +49,10 @@ jobs:
         ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+        ASC_CONTACT_FIRST_NAME: ${{ secrets.ASC_CONTACT_FIRST_NAME }}
+        ASC_CONTACT_LAST_NAME: ${{ secrets.ASC_CONTACT_LAST_NAME }}
+        ASC_CONTACT_PHONE: ${{ secrets.ASC_CONTACT_PHONE }}
+        ASC_CONTACT_EMAIL: ${{ secrets.ASC_CONTACT_EMAIL }}
       run: |
         v=".github/verify-secret.sh"
         $v nonempty TRACKING_HINT
@@ -60,6 +64,10 @@ jobs:
         $v nonempty ASC_KEY_ID
         $v nonempty ASC_ISSUER_ID
         $v p8 ASC_KEY_CONTENT
+        $v nonempty ASC_CONTACT_FIRST_NAME
+        $v nonempty ASC_CONTACT_LAST_NAME
+        $v phone ASC_CONTACT_PHONE
+        $v email ASC_CONTACT_EMAIL
 
     - name: Set up Ruby and fastlane
       uses: ruby/setup-ruby@v1
@@ -182,6 +190,10 @@ jobs:
         ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
         ASC_KEY_PATH: ${{ runner.temp }}/AuthKey.p8
         IPA_PATH: ${{ runner.temp }}/export/Where.ipa
+        ASC_CONTACT_FIRST_NAME: ${{ secrets.ASC_CONTACT_FIRST_NAME }}
+        ASC_CONTACT_LAST_NAME: ${{ secrets.ASC_CONTACT_LAST_NAME }}
+        ASC_CONTACT_PHONE: ${{ secrets.ASC_CONTACT_PHONE }}
+        ASC_CONTACT_EMAIL: ${{ secrets.ASC_CONTACT_EMAIL }}
         WHATS_NEW_EN: ${{ github.event.inputs.whats_new_en }}
         WHATS_NEW_NO: ${{ github.event.inputs.whats_new_no }}
         SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review }}

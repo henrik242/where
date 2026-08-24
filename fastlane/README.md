@@ -58,6 +58,10 @@ Both can be triggered from the same commit. The second one adds its artifact to 
 | `ASC_KEY_ID` | App Store Connect API key ID | From App Store Connect → Users and Access → Integrations → Keys |
 | `ASC_ISSUER_ID` | App Store Connect issuer ID | Shown at the top of the Keys page |
 | `ASC_KEY_CONTENT` | App Store Connect .p8 key contents | Download when creating the key (one-time only) |
+| `ASC_CONTACT_FIRST_NAME` | App Review contact first name | Required by App Store Connect on every review submission |
+| `ASC_CONTACT_LAST_NAME` | App Review contact last name | |
+| `ASC_CONTACT_PHONE` | App Review contact phone | Must be `+countrycode`, e.g. `+4712345678` |
+| `ASC_CONTACT_EMAIL` | App Review contact email | |
 
 ## Setup Guides
 

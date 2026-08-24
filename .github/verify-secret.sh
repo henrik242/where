@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Validates a secret value based on its expected type.
 # Usage: verify <type> <name> [<password>]
-# Types: nonempty, base64, json, p8, p12, mobileprovision
+# Types: nonempty, email, phone, base64, json, p8, p12, mobileprovision
 
 set -euo pipefail
 
@@ -15,6 +15,12 @@ fail() { echo "ERROR: $name: $1"; exit 1; }
 
 case "$type" in
   nonempty)
+    ;;
+  email)
+    [[ "$value" == *@*.* ]] || fail "is not an email address"
+    ;;
+  phone)
+    [[ "$value" =~ ^\+[0-9\ -]{6,}$ ]] || fail "must start with + and a country code, e.g. +4712345678"
     ;;
   base64)
     echo "$value" | base64 -d > /dev/null 2>&1 || fail "is not valid base64"
