@@ -38,7 +38,6 @@
     <string name="enter_track_name">Skriv inn et navn for sporet:</string>
     <string name="track_name">Spornavn</string>
     <string name="save_location">Lagre posisjon</string>
-    <string name="enter_location_name">Skriv inn et navn for denne posisjonen:</string>
     <string name="location_name">Stedsnavn</string>
     <string name="edit_location">Rediger posisjon</string>
     <string name="save_route_as_track">Lagre som spor</string>
@@ -341,7 +340,6 @@
     <string name="online_tracking_disabled">Direktesporing deaktivert</string>
     <string name="saved_as_track_name">Lagret som spor: %1$s</string>
     <string name="location_permission_required">Posisjonstillatelse kreves</string>
-    <string name="unnamed_point">Navnløst punkt</string>
     <string name="locating">Søker etter posisjon…</string>
 
     <!-- Compass -->

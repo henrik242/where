@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -30,11 +31,11 @@ import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.MapStyle
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.TerrainClient
+import no.synth.where.data.MapTapTarget
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
-import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.Track
-import no.synth.where.data.TrackUtils
+import no.synth.where.data.resolveMapTap
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
 import no.synth.where.di.AppDependencies
@@ -50,7 +51,6 @@ import no.synth.where.resources.track_cropped
 import no.synth.where.resources.track_discarded
 import no.synth.where.resources.track_saved
 import no.synth.where.resources.undo
-import no.synth.where.resources.unnamed_point
 import no.synth.where.resources.zoom_in_for_paths
 import no.synth.where.util.NamingUtils
 import org.jetbrains.compose.resources.stringResource
@@ -110,6 +110,9 @@ fun IosMapScreen(
     val navChartTrack = remember(navigation?.track?.id, navigation?.reversed) {
         navigation?.let { if (it.reversed) it.track.copy(points = it.track.points.reversed()) else it.track }
     }
+    // Read live: the tap callback below outlives its registration, and starting or stopping
+    // navigation changes neither remember key.
+    val navChartTrackState = rememberUpdatedState(navChartTrack)
     val cropState by trackRepository.cropState.collectAsState()
     val cropUndo by trackRepository.cropUndo.collectAsState()
     val elevationMarker by trackRepository.elevationMarker.collectAsState()
@@ -185,7 +188,6 @@ fun IosMapScreen(
         )
         if (result == SnackbarResult.ActionPerformed) trackRepository.undoCrop() else trackRepository.clearCropUndo()
     }
-    val unnamedPointStr = stringResource(Res.string.unnamed_point)
 
     var showStopTrackDialog by remember { mutableStateOf(false) }
     var trackNameInput by remember { mutableStateOf("") }
@@ -206,7 +208,15 @@ fun IosMapScreen(
     var showSavePointDialog by remember { mutableStateOf(false) }
     var savePointLatLng by remember { mutableStateOf<LatLng?>(null) }
     var savePointName by remember { mutableStateOf("") }
+    var savePointDescription by remember { mutableStateOf("") }
     var isResolvingPointName by remember { mutableStateOf(false) }
+
+    fun closeSavePointDialog() {
+        showSavePointDialog = false
+        savePointLatLng = null
+        savePointName = ""
+        savePointDescription = ""
+    }
 
     // Edit point state (tap)
     var showPointInfoDialog by remember { mutableStateOf(false) }
@@ -447,18 +457,19 @@ fun IosMapScreen(
     }
 
     // Set gesture callbacks
-    LaunchedEffect(rulerState.isActive, savedPoints.size) {
+    LaunchedEffect(Unit) {
         mapViewProvider.setOnLongPressCallback(object : MapLongPressCallback {
             override fun onLongPress(latitude: Double, longitude: Double) {
                 if (rulerState.isActive) return
                 val latLng = LatLng(latitude, longitude)
                 savePointLatLng = latLng
                 savePointName = ""
+                savePointDescription = ""
                 isResolvingPointName = true
                 showSavePointDialog = true
                 scope.launch {
                     val name = GeocodingHelper.reverseGeocode(latLng)
-                    if (name != null) {
+                    if (name != null && savePointName.isBlank()) {
                         savePointName = NamingUtils.makeUnique(
                             name, savedPoints.map { it.name }
                         )
@@ -476,18 +487,21 @@ fun IosMapScreen(
                     rulerState = rulerState.addPoint(LatLng(latitude, longitude))
                     return
                 }
-                val tapLocation = LatLng(latitude, longitude)
-                val nearest = SavedPointUtils.findNearestPoint(tapLocation, savedPoints)
-                if (nearest != null) {
-                    clickedPoint = nearest
-                    showPointInfoDialog = true
-                } else {
-                    val tolerance = TrackUtils.metersPerPixel(latitude, cameraZoom) *
-                        TrackUtils.TAP_RADIUS_PX
-                    val candidates = TrackUtils.tappableTracks(viewingTracks, navChartTrack)
-                    val tapped = TrackUtils.findTappedTrack(tapLocation, candidates, tolerance)
-                    if (tapped != null) trackRepository.onTrackTapped(tapped.id)
-                    else if (candidates.isNotEmpty()) trackRepository.onMapTapOutsideTracks()
+                val target = resolveMapTap(
+                    tap = LatLng(latitude, longitude),
+                    zoom = cameraZoom,
+                    savedPoints = savedPoints,
+                    viewingTracks = viewingTracks,
+                    navigationTrack = navChartTrackState.value
+                )
+                when (target) {
+                    is MapTapTarget.Point -> {
+                        clickedPoint = target.point
+                        showPointInfoDialog = true
+                    }
+                    is MapTapTarget.TrackLine -> trackRepository.onTrackTapped(target.trackId)
+                    MapTapTarget.OutsideTracks -> trackRepository.onMapTapOutsideTracks()
+                    MapTapTarget.Nothing -> {}
                 }
             }
         })
@@ -539,31 +553,28 @@ fun IosMapScreen(
         MapDialogs.SavePointDialog(
             pointName = savePointName,
             onPointNameChange = { savePointName = it },
+            pointDescription = savePointDescription,
+            onPointDescriptionChange = { savePointDescription = it },
             isLoading = isResolvingPointName,
             coordinates = "${latLng.latitude.toString().take(10)}, ${latLng.longitude.toString().take(10)}",
             onSave = {
                 savedPointsRepository.addPoint(
-                    name = savePointName.ifBlank { unnamedPointStr },
-                    latLng = latLng
+                    name = savePointName,
+                    latLng = latLng,
+                    description = savePointDescription
                 )
-                showSavePointDialog = false
-                savePointLatLng = null
-                savePointName = ""
+                closeSavePointDialog()
                 scope.launch { snackbarHostState.showSnackbar(pointSavedMsg) }
             },
-            onDismiss = {
-                showSavePointDialog = false
-                savePointLatLng = null
-                savePointName = ""
-            }
+            onDismiss = { closeSavePointDialog() }
         )
     }
 
-    if (showPointInfoDialog && clickedPoint != null) {
-        val point = clickedPoint ?: return
-        var editName by remember { mutableStateOf(point.name) }
-        var editDescription by remember { mutableStateOf(point.description ?: "") }
-        var editColor by remember { mutableStateOf(point.color ?: PointColors.DEFAULT) }
+    clickedPoint?.let { point ->
+        if (!showPointInfoDialog) return@let
+        var editName by remember(point.id) { mutableStateOf(point.name) }
+        var editDescription by remember(point.id) { mutableStateOf(point.description ?: "") }
+        var editColor by remember(point.id) { mutableStateOf(point.color ?: PointColors.DEFAULT) }
 
         val colors = PointColors.withSelected(point.color)
 

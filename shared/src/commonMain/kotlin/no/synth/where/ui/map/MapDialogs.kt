@@ -1,17 +1,14 @@
 package no.synth.where.ui.map
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,18 +16,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.RulerState
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
-import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.stringResource
 
 object MapDialogs {
+
+    /** Caps the description field so a long note can't push the dialog's buttons out of reach. */
+    private const val DESCRIPTION_MAX_LINES = 4
+
+    private val nameKeyboardOptions = KeyboardOptions(
+        capitalization = KeyboardCapitalization.Words,
+        imeAction = ImeAction.Next
+    )
+
+    private val descriptionKeyboardOptions = KeyboardOptions(
+        capitalization = KeyboardCapitalization.Sentences
+    )
 
     @Composable
     fun TrackingInfoDialog(
@@ -196,6 +207,8 @@ object MapDialogs {
     fun SavePointDialog(
         pointName: String,
         onPointNameChange: (String) -> Unit,
+        pointDescription: String,
+        onPointDescriptionChange: (String) -> Unit,
         coordinates: String,
         onSave: () -> Unit,
         onDismiss: () -> Unit,
@@ -205,23 +218,29 @@ object MapDialogs {
             onDismissRequest = onDismiss,
             title = { Text(stringResource(Res.string.save_location)) },
             text = {
-                Column {
-                    Text(
-                        text = stringResource(Res.string.enter_location_name),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     OutlinedTextField(
                         value = pointName,
                         onValueChange = onPointNameChange,
                         label = { Text(stringResource(Res.string.location_name)) },
                         singleLine = true,
+                        keyboardOptions = nameKeyboardOptions,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = if (isLoading) {
                             { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) }
                         } else null
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = pointDescription,
+                        onValueChange = onPointDescriptionChange,
+                        label = { Text(stringResource(Res.string.description_optional)) },
+                        maxLines = DESCRIPTION_MAX_LINES,
+                        keyboardOptions = descriptionKeyboardOptions,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Text(
                         text = coordinates,
                         style = MaterialTheme.typography.bodySmall,
@@ -230,7 +249,7 @@ object MapDialogs {
                 }
             },
             confirmButton = {
-                TextButton(onClick = onSave) {
+                TextButton(onClick = onSave, enabled = pointName.isNotBlank()) {
                     Text(stringResource(Res.string.save))
                 }
             },
@@ -260,11 +279,16 @@ object MapDialogs {
             onDismissRequest = onDismiss,
             title = { Text(stringResource(Res.string.edit_location)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     OutlinedTextField(
                         value = pointName,
                         onValueChange = onNameChange,
                         label = { Text(stringResource(Res.string.name_label)) },
+                        singleLine = true,
+                        keyboardOptions = nameKeyboardOptions,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -272,31 +296,17 @@ object MapDialogs {
                         value = pointDescription,
                         onValueChange = onDescriptionChange,
                         label = { Text(stringResource(Res.string.description_optional)) },
+                        maxLines = DESCRIPTION_MAX_LINES,
+                        keyboardOptions = descriptionKeyboardOptions,
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Text(stringResource(Res.string.color), style = MaterialTheme.typography.labelMedium)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        availableColors.forEach { (colorHex, _) ->
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(
-                                        color = parseHexColor(colorHex),
-                                        shape = CircleShape
-                                    )
-                                    .clickable { onColorChange(colorHex) }
-                                    .then(
-                                        if (pointColor == colorHex) {
-                                            Modifier.padding(4.dp)
-                                        } else Modifier
-                                    )
-                            )
-                        }
-                    }
+                    PointColorPicker(
+                        colors = availableColors,
+                        selectedColor = pointColor,
+                        onColorChange = onColorChange
+                    )
 
                     Text(
                         text = coordinates,
@@ -306,6 +316,13 @@ object MapDialogs {
                 }
             },
             confirmButton = {
+                TextButton(onClick = onSave, enabled = pointName.isNotBlank()) {
+                    Text(stringResource(Res.string.save))
+                }
+            },
+            dismissButton = {
+                // Delete sits away from Save so a cold-hands tap on the primary action can't erase
+                // the point.
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = onDelete,
@@ -315,14 +332,9 @@ object MapDialogs {
                     ) {
                         Text(stringResource(Res.string.delete))
                     }
-                    TextButton(onClick = onSave) {
-                        Text(stringResource(Res.string.save))
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(Res.string.cancel))
                     }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(Res.string.cancel))
                 }
             }
         )

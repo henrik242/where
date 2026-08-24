@@ -131,6 +131,7 @@ fun MapScreen(
     val showSavePointDialog by viewModel.showSavePointDialog.collectAsState()
     val savePointLatLng by viewModel.savePointLatLng.collectAsState()
     val savePointName by viewModel.savePointName.collectAsState()
+    val savePointDescription by viewModel.savePointDescription.collectAsState()
     val isResolvingPointName by viewModel.isResolvingPointName.collectAsState()
     val clickedPoint by viewModel.clickedPoint.collectAsState()
     val showPointInfoDialog by viewModel.showPointInfoDialog.collectAsState()
@@ -739,6 +740,8 @@ fun MapScreen(
         MapDialogs.SavePointDialog(
             pointName = savePointName,
             onPointNameChange = { viewModel.updateSavePointName(it) },
+            pointDescription = savePointDescription,
+            onPointDescriptionChange = { viewModel.updateSavePointDescription(it) },
             isLoading = isResolvingPointName,
             coordinates = "${latLng.latitude.toString().take(10)}, ${
                 latLng.longitude.toString().take(10)
@@ -753,11 +756,11 @@ fun MapScreen(
         )
     }
 
-    if (showPointInfoDialog && clickedPoint != null) {
-        val point = clickedPoint ?: return
-        var editName by remember { mutableStateOf(point.name) }
-        var editDescription by remember { mutableStateOf(point.description ?: "") }
-        var editColor by remember { mutableStateOf(point.color ?: PointColors.DEFAULT) }
+    clickedPoint?.let { point ->
+        if (!showPointInfoDialog) return@let
+        var editName by remember(point.id) { mutableStateOf(point.name) }
+        var editDescription by remember(point.id) { mutableStateOf(point.description ?: "") }
+        var editColor by remember(point.id) { mutableStateOf(point.color ?: PointColors.DEFAULT) }
 
         val colors = PointColors.withSelected(point.color)
 

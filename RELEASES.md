@@ -6,6 +6,16 @@ tag dates.
 
 ## Unreleased
 
+- Saved points take a description when you create them, not just when editing one afterwards
+- Fixed a saved point's description, name and colour reverting when edited from the map: tapping
+  the point again handed out its pre-edit values, and saving that dialog wrote them back
+- The point colour picker shows which colour is selected, wraps so every colour stays reachable on
+  narrow screens, and reads out its colour names
+- Save is disabled until a point has a name, instead of closing the dialog and dropping what you
+  typed, and a slow place-name lookup no longer overwrites a name you typed yourself
+- Delete moved away from Save in the point dialog, and long descriptions scroll instead of pushing
+  the buttons out of reach
+- Fixed the navigated route not being tappable on iOS after starting or stopping navigation
 - Fixed a crash that could close the app when opening a screen with a text field, such as
   the map search or the rename dialogs
 - Fixed a setting snapping back to its previous value when toggled twice in quick succession

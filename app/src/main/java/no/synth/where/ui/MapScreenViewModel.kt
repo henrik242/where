@@ -70,6 +70,9 @@ class MapScreenViewModel(
     private val _savePointName = MutableStateFlow("")
     val savePointName: StateFlow<String> = _savePointName.asStateFlow()
 
+    private val _savePointDescription = MutableStateFlow("")
+    val savePointDescription: StateFlow<String> = _savePointDescription.asStateFlow()
+
     private val _isResolvingPointName = MutableStateFlow(false)
     val isResolvingPointName: StateFlow<Boolean> = _isResolvingPointName.asStateFlow()
 
@@ -202,6 +205,7 @@ class MapScreenViewModel(
     fun openSavePointDialog(latLng: LatLng) {
         _savePointLatLng.value = latLng
         _savePointName.value = ""
+        _savePointDescription.value = ""
         _showSavePointDialog.value = true
         resolvePointName(latLng)
     }
@@ -210,9 +214,14 @@ class MapScreenViewModel(
         _savePointName.value = name
     }
 
+    fun updateSavePointDescription(description: String) {
+        _savePointDescription.value = description
+    }
+
     fun dismissSavePointDialog() {
         _showSavePointDialog.value = false
         _savePointName.value = ""
+        _savePointDescription.value = ""
         _savePointLatLng.value = null
     }
 
@@ -220,7 +229,11 @@ class MapScreenViewModel(
         val name = _savePointName.value
         val latLng = _savePointLatLng.value
         if (name.isNotBlank() && latLng != null) {
-            savedPointsRepository.addPoint(name = name, latLng = latLng)
+            savedPointsRepository.addPoint(
+                name = name,
+                latLng = latLng,
+                description = _savePointDescription.value
+            )
         }
         dismissSavePointDialog()
     }
@@ -229,7 +242,7 @@ class MapScreenViewModel(
         viewModelScope.launch {
             _isResolvingPointName.value = true
             val locationName = GeocodingHelper.reverseGeocode(latLng)
-            if (locationName != null) {
+            if (locationName != null && _savePointName.value.isBlank()) {
                 _savePointName.value = NamingUtils.makeUnique(
                     locationName,
                     savedPointsRepository.savedPoints.value.map { it.name }

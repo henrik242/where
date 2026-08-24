@@ -5,7 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.SavedPoint
+import no.synth.where.ui.map.PointColorPicker
 import no.synth.where.ui.map.PointColors
 import no.synth.where.util.parseHexColor
 import no.synth.where.resources.Res
@@ -317,12 +320,14 @@ fun EditPointDialog(
         title = { Text(stringResource(Res.string.edit_point)) },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text(stringResource(Res.string.name_label)) },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -330,31 +335,16 @@ fun EditPointDialog(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text(stringResource(Res.string.description_optional)) },
+                    maxLines = 4,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Text(stringResource(Res.string.color), style = MaterialTheme.typography.labelMedium)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    colors.forEach { (colorHex, _) ->
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(
-                                    color = parseHexColor(colorHex),
-                                    shape = CircleShape
-                                )
-                                .clickable { selectedColor = colorHex }
-                                .then(
-                                    if (selectedColor == colorHex) {
-                                        Modifier.padding(4.dp)
-                                    } else Modifier
-                                )
-                        )
-                    }
-                }
+                PointColorPicker(
+                    colors = colors,
+                    selectedColor = selectedColor,
+                    onColorChange = { selectedColor = it }
+                )
             }
         },
         confirmButton = {

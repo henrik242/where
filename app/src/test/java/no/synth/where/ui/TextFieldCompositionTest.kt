@@ -1,6 +1,5 @@
 package no.synth.where.ui
 
-import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -17,7 +16,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 /**
  * material3 draws text field containers through a foundation style modifier, so an androidx
@@ -25,8 +23,6 @@ import org.robolectric.annotation.Config
  * that node and every screen with a text field dies. Composing text fields for real catches it.
  */
 @RunWith(RobolectricTestRunner::class)
-// a plain Application because WhereApplication wires up Firebase
-@Config(sdk = [35], application = Application::class)
 class TextFieldCompositionTest {
 
     @get:Rule

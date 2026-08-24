@@ -28,11 +28,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import android.view.MotionEvent
 import no.synth.where.data.MapStyle
+import no.synth.where.data.MapTapTarget
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
-import no.synth.where.data.SavedPointUtils
 import no.synth.where.data.Track
-import no.synth.where.data.TrackUtils
+import no.synth.where.data.resolveMapTap
 import no.synth.where.location.GpsKeepAlive
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.toCommon
@@ -292,7 +292,7 @@ fun MapLibreMapView(
     }
 
     // Update saved points on map when they change (including color changes)
-    LaunchedEffect(savedPoints.toList(), showSavedPoints) {
+    LaunchedEffect(savedPoints, showSavedPoints) {
         map?.getStyle { style ->
             if (showSavedPoints) {
                 MapRenderUtils.updateSavedPointsOnMap(style, savedPoints)
@@ -332,7 +332,10 @@ fun MapLibreMapView(
         }
     }
 
-    LaunchedEffect(rulerState.isActive, savedPoints.size, map) {
+    // Registered once per map: every value the handlers read is a live state holder, so nothing here
+    // goes stale between registrations. The callback lambdas are the only plain captures, and they
+    // only close over the view model.
+    LaunchedEffect(map) {
         map?.let { mapInstance ->
             // Remove old listeners if they exist
             clickListener?.let { mapInstance.removeOnMapClickListener(it) }
@@ -344,30 +347,22 @@ fun MapLibreMapView(
                     onTwoFingerMeasure(null)
                 }
                 val commonPoint = point.toCommon()
-                if (rulerState.isActive) {
+                if (rulerStateState.value.isActive) {
                     onRulerPointAdded(commonPoint)
                     true
                 } else {
-                    val clickedSavedPoint = SavedPointUtils.findNearestPoint(commonPoint, savedPoints)
-
-                    if (clickedSavedPoint != null) {
-                        onPointClick(clickedSavedPoint)
-                        true
-                    } else {
-                        val tolerance = TrackUtils.metersPerPixel(
-                            commonPoint.latitude, mapInstance.cameraPosition.zoom
-                        ) * TrackUtils.TAP_RADIUS_PX
-                        val candidates = TrackUtils.tappableTracks(
-                            viewingTracksState.value, navigationTrackState.value
-                        )
-                        val tapped = TrackUtils.findTappedTrack(commonPoint, candidates, tolerance)
-                        if (tapped != null) {
-                            onTrackClick(tapped.id)
-                            true
-                        } else {
-                            if (candidates.isNotEmpty()) onMapClickOutsideTrack()
-                            false
-                        }
+                    val target = resolveMapTap(
+                        tap = commonPoint,
+                        zoom = mapInstance.cameraPosition.zoom,
+                        savedPoints = savedPointsState.value,
+                        viewingTracks = viewingTracksState.value,
+                        navigationTrack = navigationTrackState.value
+                    )
+                    when (target) {
+                        is MapTapTarget.Point -> onPointClick(target.point).let { true }
+                        is MapTapTarget.TrackLine -> onTrackClick(target.trackId).let { true }
+                        MapTapTarget.OutsideTracks -> onMapClickOutsideTrack().let { false }
+                        MapTapTarget.Nothing -> false
                     }
                 }
             }
@@ -376,7 +371,7 @@ fun MapLibreMapView(
 
             // Create and add new long click listener
             val newLongClickListener = MapLibreMap.OnMapLongClickListener { point ->
-                if (!rulerState.isActive) {
+                if (!rulerStateState.value.isActive) {
                     onLongPress(point.toCommon())
                     true
                 } else {

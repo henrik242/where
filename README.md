@@ -34,7 +34,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 
 - Place search
 - Distance measurement with the ruler or a two-finger gesture
-- Save and manage points of interest, and import GPX waypoints (several files or a whole zip at once, ticking off which ones to keep)
+- Save and manage points of interest, each with an optional description and colour, and import GPX waypoints (several files or a whole zip at once, ticking off which ones to keep)
 - Coordinate readout in UTM, MGRS, latitude/longitude, or DMS
 - Compass rose that points the map north on tap, and locks it there on the next tap
 
