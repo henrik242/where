@@ -17,8 +17,6 @@ Note: `cd app && ../gradlew testDebugUnitTest` only covers the `app` module. The
 
 ## General Code Guidelines
 
-- Maintain good test coverage — write tests for new logic
-- Keep code clean and concise; no needless comments or boilerplate
 - Make sure features are implemented both in Android and iOS, but keep as much of the implementation
   as shared/common code. Try to avoid ios/android specific code if you can.
 
@@ -37,8 +35,7 @@ map rendering and live-location polling are per-platform. Concretely:
 
 ## Android App Code Guidelines
 
-- Follow Android design guidelines and Material 3 best practices
-- Kotlin with Jetpack Compose, manual constructor injection (no DI framework), Room for local storage
+- Manual constructor injection, no DI framework
 - Dependencies are wired in `WhereApplication` (lazy properties); access via `applicationContext as WhereApplication`
 - ViewModels are created with `viewModel { MyViewModel(app.dep1, app.dep2) }` in Composables
 - Use Timber for logging, never `println` or `Log.*`
