@@ -107,6 +107,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="where.synth.no" android:pathPattern="/......" />
+                <!-- Group link: /abc123,def456,... MainActivity applies the strict check. -->
+                <data android:scheme="https" android:host="where.synth.no" android:pathPattern="/......,.*" />
             </intent-filter>
 
             <!-- Garmin Connect activities and courses (/modern/ and /app/ paths) -->

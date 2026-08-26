@@ -23,7 +23,7 @@ import no.synth.where.ui.*
 fun WhereApp(
     pendingGpxUri: Uri? = null,
     pendingImportUrl: String? = null,
-    pendingFollowClientId: String? = null,
+    pendingFollowClientIds: List<String> = emptyList(),
     onGpxHandled: () -> Unit = {},
     onImportUrlHandled: () -> Unit = {},
     onFollowHandled: () -> Unit = {}
@@ -41,10 +41,12 @@ fun WhereApp(
         org.maplibre.android.MapLibre.setConnected(!offlineModeEnabled)
     }
 
-    LaunchedEffect(pendingFollowClientId) {
-        pendingFollowClientId?.let { clientId ->
-            app.userPreferences.updateFollowedClientId(clientId)
-            app.liveTrackingFollower.follow(clientId)
+    // A group link shows that group, so it replaces the followed set rather than appending to it.
+    LaunchedEffect(pendingFollowClientIds) {
+        if (pendingFollowClientIds.isNotEmpty()) {
+            val self = app.clientIdManager.getClientId()
+            app.userPreferences.setFollowedClientIds(pendingFollowClientIds.filter { it != self })
+            app.liveTrackingFollower.follow(app.userPreferences.followedClientIds.value)
             onFollowHandled()
         }
     }

@@ -106,8 +106,8 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _searchHistory = MutableStateFlow<List<PlaceSearchClient.SearchResult>>(emptyList())
     val searchHistory: StateFlow<List<PlaceSearchClient.SearchResult>> = _searchHistory.asStateFlow()
 
-    private val _followedClientId = MutableStateFlow<String?>(null)
-    val followedClientId: StateFlow<String?> = _followedClientId.asStateFlow()
+    private val _followedClientIds = MutableStateFlow<List<String>>(emptyList())
+    val followedClientIds: StateFlow<List<String>> = _followedClientIds.asStateFlow()
 
     private val _followHistory = MutableStateFlow<List<String>>(emptyList())
     val followHistory: StateFlow<List<String>> = _followHistory.asStateFlow()
@@ -167,7 +167,9 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 _themeMode.value = prefs[THEME_MODE] ?: "system"
                 _coordFormat.value = try { CoordFormat.valueOf(prefs[COORD_FORMAT] ?: "LATLNG") } catch (_: Exception) { CoordFormat.LATLNG }
                 _searchHistory.value = deserializeSearchHistory(prefs[SEARCH_HISTORY])
-                _followedClientId.value = prefs[FOLLOWED_CLIENT_ID]
+                _followedClientIds.value = LiveTrackingFollower.sanitize(
+                    prefs[FOLLOWED_CLIENT_ID]?.split(",") ?: emptyList()
+                )
                 _followHistory.value = prefs[FOLLOW_HISTORY]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
                 _stravaClientId.value = prefs[STRAVA_CLIENT_ID]
                 _stravaClientSecret.value = prefs[STRAVA_CLIENT_SECRET]
@@ -404,12 +406,30 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    fun updateFollowedClientId(value: String?) {
-        _followedClientId.value = value
+    /** False when [clientId] is already followed or the set is full. */
+    fun addFollowedClientId(clientId: String): Boolean {
+        val current = _followedClientIds.value
+        if (clientId in current || current.size >= LiveTrackingFollower.MAX_FOLLOWED) return false
+        setFollowedClientIds(current + clientId)
+        return true
+    }
+
+    fun removeFollowedClientId(clientId: String) {
+        setFollowedClientIds(_followedClientIds.value - clientId)
+    }
+
+    fun clearFollowedClientIds() {
+        setFollowedClientIds(emptyList())
+    }
+
+    /** Replaces the followed set; a group deep link carries a whole group at once. */
+    fun setFollowedClientIds(value: List<String>) {
+        val sanitized = LiveTrackingFollower.sanitize(value)
+        _followedClientIds.value = sanitized
         scope.launch {
             dataStore.edit {
-                if (value != null) {
-                    it[FOLLOWED_CLIENT_ID] = value
+                if (sanitized.isNotEmpty()) {
+                    it[FOLLOWED_CLIENT_ID] = sanitized.joinToString(",")
                 } else {
                     it.remove(FOLLOWED_CLIENT_ID)
                 }
@@ -500,6 +520,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         private val THEME_MODE = stringPreferencesKey("theme_mode")
         private val COORD_FORMAT = stringPreferencesKey("coord_format")
         private val SEARCH_HISTORY = stringPreferencesKey("search_history")
+        // Comma-joined; the key predates following more than one client at a time.
         private val FOLLOWED_CLIENT_ID = stringPreferencesKey("followed_client_id")
         private val FOLLOW_HISTORY = stringPreferencesKey("follow_history")
         private val STRAVA_CLIENT_ID = stringPreferencesKey("strava_client_id")

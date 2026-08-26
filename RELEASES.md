@@ -6,7 +6,10 @@ tag dates.
 
 ## Unreleased
 
-n/a
+- Follow several friends at once: add up to five client IDs and each live track draws in its own
+  colour, labelled with the client ID, with a banner listing who you follow
+- Fixed a followed track losing its points when it went stale and resumed
+- Fixed followed tracks on iOS drawing without their colour and client-ID label
 
 ## v544 (2026-08-24)
 

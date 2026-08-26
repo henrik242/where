@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.LiveTrackingFollower
+import no.synth.where.data.stopFollowingAll
 import no.synth.where.data.MapStyle
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.TerrainClient
@@ -71,6 +72,7 @@ import no.synth.where.ui.map.NavigationLayers
 import no.synth.where.ui.map.PointColors
 import no.synth.where.ui.map.MapZoomLevels
 import no.synth.where.ui.map.buildElevationMarkerGeoJson
+import no.synth.where.ui.map.followedFriends
 import no.synth.where.ui.map.buildTracksGeoJson
 import no.synth.where.ui.map.renderableTracks
 import no.synth.where.ui.map.animateToBounds
@@ -142,14 +144,17 @@ fun MapScreen(
     val liveTrackingFollower = app.liveTrackingFollower
     val followState by liveTrackingFollower.state.collectAsState()
     val friendTrackGeoJson by liveTrackingFollower.friendTrackGeoJson.collectAsState()
-    val followedClientId by viewModel.userPreferences.followedClientId.collectAsState()
+    val followedClientIds by viewModel.userPreferences.followedClientIds.collectAsState()
+    val followedFriends = remember(followedClientIds, followState) {
+        followedFriends(
+            followedClientIds,
+            (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList()
+        )
+    }
 
-    // Auto-follow on startup if a client ID is persisted
-    LaunchedEffect(followedClientId) {
-        val id = followedClientId
-        if (id != null && followState is LiveTrackingFollower.FollowState.Idle) {
-            liveTrackingFollower.follow(id)
-        }
+    // Prefs are the source of truth for who is followed; follow() is a no-op for an unchanged set.
+    LaunchedEffect(followedClientIds) {
+        liveTrackingFollower.follow(followedClientIds)
     }
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
@@ -203,7 +208,7 @@ fun MapScreen(
 
     // Zoom to friend track when first data arrives
     var hasZoomedToFriend by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(followedClientId) {
+    LaunchedEffect(followedClientIds) {
         hasZoomedToFriend = false
     }
     LaunchedEffect(followState, mapInstance) {
@@ -657,18 +662,14 @@ fun MapScreen(
             highlightedSearchResult = null
             viewModel.closeSearch()
         },
-        followedClientId = followedClientId,
+        followedFriends = followedFriends,
         isFollowConnecting = followState is LiveTrackingFollower.FollowState.Connecting,
-        isFollowedTrackActive = (followState as? LiveTrackingFollower.FollowState.Following)?.tracks?.any { it.isActive } == true,
         onFollowBannerClick = {
             val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
             val bounds = following.tracks.flatMap { it.points }.bounds() ?: return@MapScreenContent
             mapInstance?.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
         },
-        onStopFollowing = {
-            viewModel.userPreferences.updateFollowedClientId(null)
-            liveTrackingFollower.stopFollowing()
-        },
+        onStopFollowing = { stopFollowingAll(viewModel.userPreferences, liveTrackingFollower) },
         mapContent = {
             MapLibreMapView(
                 onMapReady = { mapInstance = it },

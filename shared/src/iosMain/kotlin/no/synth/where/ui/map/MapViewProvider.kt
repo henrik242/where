@@ -61,7 +61,7 @@ interface MapViewProvider {
     fun clearSearchResults()
     fun highlightSearchResult(geoJson: String)
     fun clearHighlightedSearchResult()
-    fun updateFriendTrackLine(geoJson: String, color: String)
+    fun updateFriendTrackLine(geoJson: String)
     fun clearFriendTrackLine()
     fun updateNavigation(completedGeoJson: String, remainingGeoJson: String, offCourseGeoJson: String?)
     fun clearNavigation()

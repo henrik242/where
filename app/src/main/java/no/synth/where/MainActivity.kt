@@ -25,7 +25,7 @@ import no.synth.where.ui.theme.WhereTheme
 class MainActivity : AppCompatActivity() {
     private var pendingGpxUri by mutableStateOf<Uri?>(null)
     private var pendingImportUrl by mutableStateOf<String?>(null)
-    private var pendingFollowClientId by mutableStateOf<String?>(null)
+    private var pendingFollowClientIds by mutableStateOf<List<String>>(emptyList())
     private val userPreferences: UserPreferences get() = (application as WhereApplication).userPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,10 +54,10 @@ class MainActivity : AppCompatActivity() {
                     WhereApp(
                         pendingGpxUri = pendingGpxUri,
                         pendingImportUrl = pendingImportUrl,
-                        pendingFollowClientId = pendingFollowClientId,
+                        pendingFollowClientIds = pendingFollowClientIds,
                         onGpxHandled = { pendingGpxUri = null },
                         onImportUrlHandled = { pendingImportUrl = null },
-                        onFollowHandled = { pendingFollowClientId = null }
+                        onFollowHandled = { pendingFollowClientIds = emptyList() }
                     )
                 }
             }
@@ -81,9 +81,10 @@ class MainActivity : AppCompatActivity() {
                 return
             }
             if ((uri.scheme == "https" || uri.scheme == "http") && uri.host == "where.synth.no") {
+                // where.synth.no/<id> or /<id>,<id>,..., the same group link the web viewer takes.
                 val path = uri.path?.removePrefix("/") ?: ""
-                if (path.matches(Regex("^[a-z0-9]{6}$"))) {
-                    pendingFollowClientId = path
+                if (path.matches(Regex("^[a-z0-9]{6}(,[a-z0-9]{6})*$"))) {
+                    pendingFollowClientIds = path.split(",")
                     return
                 }
             }

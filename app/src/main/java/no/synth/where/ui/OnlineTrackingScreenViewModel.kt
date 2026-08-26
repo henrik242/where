@@ -9,6 +9,9 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.UserPreferences
+import no.synth.where.data.startFollowing
+import no.synth.where.data.stopFollowingAll
+import no.synth.where.data.unfollow
 
 class OnlineTrackingScreenViewModel(
     private val userPreferences: UserPreferences,
@@ -20,8 +23,9 @@ class OnlineTrackingScreenViewModel(
     val hasSeenTrackingInfo = userPreferences.hasSeenTrackingInfo
     val trackingServerUrl = userPreferences.trackingServerUrl
     val viewerCount = userPreferences.viewerCount
-    val followedClientId = userPreferences.followedClientId
+    val followedClientIds = userPreferences.followedClientIds
     val followHistory = userPreferences.followHistory
+    val followState = liveTrackingFollower.state
     val liveShareUntilMillis = userPreferences.liveShareUntilMillis
 
     private val _clientId = MutableStateFlow("")
@@ -63,18 +67,16 @@ class OnlineTrackingScreenViewModel(
         _followClientIdInput.value = value
     }
 
-    fun startFollowing() {
-        val followId = _followClientIdInput.value
-        if (!LiveTrackingFollower.CLIENT_ID_REGEX.matches(followId)) return
-        if (followId == _clientId.value) return // prevent self-follow
-        userPreferences.updateFollowedClientId(followId)
-        userPreferences.addFollowHistoryEntry(followId)
-        liveTrackingFollower.follow(followId)
-        _followClientIdInput.value = ""
+    /** Returns true when the id was added, so the caller can jump to the map. */
+    fun startFollowing(): Boolean {
+        val added = startFollowing(
+            userPreferences, liveTrackingFollower, _followClientIdInput.value, _clientId.value
+        )
+        if (added) _followClientIdInput.value = ""
+        return added
     }
 
-    fun stopFollowing() {
-        userPreferences.updateFollowedClientId(null)
-        liveTrackingFollower.stopFollowing()
-    }
+    fun unfollow(clientId: String) = unfollow(userPreferences, liveTrackingFollower, clientId)
+
+    fun stopFollowing() = stopFollowingAll(userPreferences, liveTrackingFollower)
 }

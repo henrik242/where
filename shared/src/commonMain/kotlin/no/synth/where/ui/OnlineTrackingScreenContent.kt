@@ -1,7 +1,11 @@
 package no.synth.where.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -44,13 +49,16 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import no.synth.where.data.LiveTrackingFollower.Companion.MAX_FOLLOWED
+import no.synth.where.ui.map.FollowedFriend
 import no.synth.where.util.currentTimeMillis
+import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun OnlineTrackingScreenContent(
     isTrackingEnabled: Boolean,
@@ -70,11 +78,12 @@ fun OnlineTrackingScreenContent(
     liveShareUntilMillis: Long = 0L,
     onStartLiveShare: (Long) -> Unit = {},
     onStopLiveShare: () -> Unit = {},
-    followedClientId: String? = null,
+    followedFriends: List<FollowedFriend> = emptyList(),
     followClientIdInput: String = "",
     followHistory: List<String> = emptyList(),
     onFollowClientIdChange: (String) -> Unit = {},
     onStartFollowing: () -> Unit = {},
+    onUnfollow: (String) -> Unit = {},
     onStopFollowing: () -> Unit = {}
 ) {
     var showDurationDialog by remember { mutableStateOf(false) }
@@ -321,29 +330,47 @@ fun OnlineTrackingScreenContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    if (followedClientId != null) {
+                    for (friend in followedFriends) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column {
-                                Text(
-                                    text = stringResource(Res.string.following_friend, followedClientId),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
+                            Box(
+                                Modifier
+                                    .size(12.dp)
+                                    .background(parseHexColor(friend.color), CircleShape)
+                            )
+                            Text(
+                                text = friend.clientId,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (friend.isActive) {
+                                    stringResource(Res.string.following_live)
+                                } else {
+                                    stringResource(Res.string.following_no_tracks)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            IconButton(onClick = { onUnfollow(friend.clientId) }) {
+                                Icon(
+                                    painterResource(Res.drawable.ic_close),
+                                    contentDescription = stringResource(Res.string.unfollow_friend, friend.clientId)
                                 )
                             }
                         }
-                        Button(
-                            onClick = onStopFollowing,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Text(stringResource(Res.string.stop_following))
-                        }
+                    }
+
+                    if (followedFriends.size >= MAX_FOLLOWED) {
+                        Text(
+                            text = stringResource(Res.string.follow_max_reached, MAX_FOLLOWED),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     } else {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -370,21 +397,34 @@ fun OnlineTrackingScreenContent(
                                 Text(stringResource(Res.string.follow))
                             }
                         }
-                        if (followHistory.isNotEmpty()) {
-                            Row(
+                        val suggestions = followHistory.filter { id -> followedFriends.none { it.clientId == id } }
+                        if (suggestions.isNotEmpty()) {
+                            FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                for (historyId in followHistory) {
+                                for (historyId in suggestions) {
                                     Text(
                                         text = historyId,
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier
                                             .clickable { onFollowClientIdChange(historyId) }
-                                            .padding(vertical = 4.dp)
+                                            .padding(vertical = 12.dp, horizontal = 8.dp)
                                     )
                                 }
                             }
+                        }
+                    }
+
+                    if (followedFriends.size > 1) {
+                        Button(
+                            onClick = onStopFollowing,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text(stringResource(Res.string.stop_following_all))
                         }
                     }
                 }

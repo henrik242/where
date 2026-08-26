@@ -36,6 +36,7 @@ import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.Track
 import no.synth.where.data.resolveMapTap
+import no.synth.where.data.stopFollowingAll
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
 import no.synth.where.di.AppDependencies
@@ -143,19 +144,20 @@ fun IosMapScreen(
     val liveTrackingFollower = remember { AppDependencies.liveTrackingFollower }
     val followState by liveTrackingFollower.state.collectAsState()
     val friendTrackGeoJson by liveTrackingFollower.friendTrackGeoJson.collectAsState()
-    val followedClientId by userPreferences.followedClientId.collectAsState()
+    val followedClientIds by userPreferences.followedClientIds.collectAsState()
+    val followedFriends = followedFriends(
+        followedClientIds,
+        (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList()
+    )
 
-    // Auto-follow on startup
-    LaunchedEffect(followedClientId) {
-        val id = followedClientId
-        if (id != null && followState is LiveTrackingFollower.FollowState.Idle) {
-            liveTrackingFollower.follow(id)
-        }
+    // Prefs are the source of truth for who is followed; follow() is a no-op for an unchanged set.
+    LaunchedEffect(followedClientIds) {
+        liveTrackingFollower.follow(followedClientIds)
     }
 
     // Zoom to friend track when first data arrives
     var hasZoomedToFriend by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(followedClientId) {
+    LaunchedEffect(followedClientIds) {
         hasZoomedToFriend = false
     }
     LaunchedEffect(followState) {
@@ -856,18 +858,14 @@ fun IosMapScreen(
             searchQuery = ""
             searchResults = emptyList()
         },
-        followedClientId = followedClientId,
+        followedFriends = followedFriends,
         isFollowConnecting = followState is LiveTrackingFollower.FollowState.Connecting,
-        isFollowedTrackActive = (followState as? LiveTrackingFollower.FollowState.Following)?.tracks?.any { it.isActive } == true,
         onFollowBannerClick = {
             val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
             val bounds = following.tracks.flatMap { it.points }.bounds() ?: return@MapScreenContent
             mapViewProvider.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
         },
-        onStopFollowing = {
-            userPreferences.updateFollowedClientId(null)
-            liveTrackingFollower.stopFollowing()
-        },
+        onStopFollowing = { stopFollowingAll(userPreferences, liveTrackingFollower) },
         mapContent = {
             UIKitView(
                 factory = { mapViewProvider.createMapView() },
@@ -884,7 +882,7 @@ fun IosMapScreen(
                     // Friend track rendering
                     val friendGeoJson = friendTrackGeoJson
                     if (friendGeoJson != null) {
-                        mapViewProvider.updateFriendTrackLine(friendGeoJson, "#8D6E63")
+                        mapViewProvider.updateFriendTrackLine(friendGeoJson)
                     } else {
                         mapViewProvider.clearFriendTrackLine()
                     }

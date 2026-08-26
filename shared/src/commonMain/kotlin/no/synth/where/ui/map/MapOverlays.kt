@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -604,15 +606,16 @@ fun ViewingPointBanner(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FollowingFriendBanner(
     modifier: Modifier = Modifier,
-    clientId: String,
+    friends: List<FollowedFriend>,
     isConnecting: Boolean,
-    isActive: Boolean,
     onClick: () -> Unit,
     onClose: () -> Unit
 ) {
+    if (friends.isEmpty()) return
     Card(
         modifier = modifier.clickable { onClick() },
         colors = CardDefaults.cardColors(
@@ -629,26 +632,74 @@ fun FollowingFriendBanner(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
-                    text = stringResource(Res.string.following_friend, clientId),
+                    text = if (friends.size == 1) {
+                        stringResource(Res.string.following_friend, friends.first().clientId)
+                    } else {
+                        stringResource(Res.string.following_friends, friends.size)
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                Text(
-                    text = when {
-                        isConnecting -> stringResource(Res.string.following_connecting)
-                        isActive -> stringResource(Res.string.following_live)
-                        else -> stringResource(Res.string.following_no_tracks)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
+                if (isConnecting) {
+                    Text(
+                        text = stringResource(Res.string.following_connecting),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                } else if (friends.size == 1) {
+                    Text(
+                        text = if (friends.first().isActive) {
+                            stringResource(Res.string.following_live)
+                        } else {
+                            stringResource(Res.string.following_no_tracks)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                } else {
+                    // One chip per friend in their map color, dimmed while they aren't sending, so
+                    // the banner doubles as the legend for the lines on the map.
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        for (friend in friends) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            parseHexColor(friend.color)
+                                                .copy(alpha = if (friend.isActive) 1f else 0.4f),
+                                            CircleShape
+                                        )
+                                )
+                                Text(
+                                    text = friend.clientId,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
             }
             IconButton(onClick = onClose) {
                 Icon(
                     painterResource(Res.drawable.ic_close),
-                    contentDescription = stringResource(Res.string.stop_following),
+                    contentDescription = if (friends.size > 1) {
+                        stringResource(Res.string.stop_following_all)
+                    } else {
+                        stringResource(Res.string.stop_following)
+                    },
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
@@ -827,9 +878,8 @@ fun BoxScope.MapOverlays(
     onSearchResultClick: (PlaceSearchClient.SearchResult) -> Unit,
     onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit,
-    followedClientId: String? = null,
+    followedFriends: List<FollowedFriend> = emptyList(),
     isFollowConnecting: Boolean = false,
-    isFollowedTrackActive: Boolean = false,
     onFollowBannerClick: () -> Unit = {},
     onStopFollowing: () -> Unit = {},
     liveShareUntilMillis: Long = 0L,
@@ -845,7 +895,7 @@ fun BoxScope.MapOverlays(
         showSearch = showSearch,
         hasFocusedTrack = focusedTrack != null,
         hasViewingPoint = showViewingPoint && viewingPointName != null,
-        isFollowing = followedClientId != null,
+        isFollowing = followedFriends.isNotEmpty(),
         isNavigating = navigation.isNavigating,
     )
     val hideCornerControls = topOverlay.hidesCornerControls
@@ -877,7 +927,7 @@ fun BoxScope.MapOverlays(
     var pointBannerHeight by remember { mutableStateOf(0.dp) }
     var friendBannerHeight by remember { mutableStateOf(0.dp) }
     val showPointBanner = showViewingPoint && viewingPointName != null
-    val showFriendBanner = followedClientId != null && !showSearch
+    val showFriendBanner = followedFriends.isNotEmpty() && !showSearch
     val stack = topCenterStack(
         isNavigating = navigation.isNavigating,
         hasFocusedTrack = focusedTrack != null,
@@ -1071,9 +1121,8 @@ fun BoxScope.MapOverlays(
                 .padding(top = stack.friendBannerTop)
                 .padding(horizontal = 16.dp)
                 .onSizeChanged { friendBannerHeight = with(density) { it.height.toDp() } },
-            clientId = followedClientId,
+            friends = followedFriends,
             isConnecting = isFollowConnecting,
-            isActive = isFollowedTrackActive,
             onClick = onFollowBannerClick,
             onClose = onStopFollowing
         )

@@ -10,9 +10,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.service.LocationTrackingService
+import no.synth.where.ui.map.followedFriends
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -30,7 +32,11 @@ fun OnlineTrackingScreen(
     val clientId by viewModel.clientId.collectAsState()
     val viewerCount by viewModel.viewerCount.collectAsState()
     val trackingServerUrl by viewModel.trackingServerUrl.collectAsState()
-    val followedClientId by viewModel.followedClientId.collectAsState()
+    val followedClientIds by viewModel.followedClientIds.collectAsState()
+    val followState by viewModel.followState.collectAsState()
+    val followedFriends = remember(followedClientIds, followState) {
+        followedFriends(followedClientIds, (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList())
+    }
     val followClientIdInput by viewModel.followClientIdInput.collectAsState()
     val followHistory by viewModel.followHistory.collectAsState()
     val liveShareUntilMillis by viewModel.liveShareUntilMillis.collectAsState()
@@ -86,16 +92,14 @@ fun OnlineTrackingScreen(
             LocationTrackingService.start(context)
         },
         onStopLiveShare = { viewModel.stopLiveShare() },
-        followedClientId = followedClientId,
+        followedFriends = followedFriends,
         followClientIdInput = followClientIdInput,
         followHistory = followHistory,
         onFollowClientIdChange = { viewModel.updateFollowClientIdInput(it) },
         onStartFollowing = {
-            viewModel.startFollowing()
-            if (viewModel.followedClientId.value != null) {
-                onNavigateToMap()
-            }
+            if (viewModel.startFollowing()) onNavigateToMap()
         },
+        onUnfollow = { viewModel.unfollow(it) },
         onStopFollowing = { viewModel.stopFollowing() }
     )
 }

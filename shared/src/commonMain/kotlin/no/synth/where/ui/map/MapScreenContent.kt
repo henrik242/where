@@ -108,9 +108,8 @@ fun MapScreenContent(
     onSearchResultHover: (PlaceSearchClient.SearchResult?) -> Unit = {},
     onSearchClose: () -> Unit,
     // Follow friend state
-    followedClientId: String? = null,
+    followedFriends: List<FollowedFriend> = emptyList(),
     isFollowConnecting: Boolean = false,
-    isFollowedTrackActive: Boolean = false,
     onFollowBannerClick: () -> Unit = {},
     onStopFollowing: () -> Unit = {},
     // Map slot
@@ -220,9 +219,8 @@ fun MapScreenContent(
                 onSearchResultClick = onSearchResultClick,
                 onSearchResultHover = onSearchResultHover,
                 onSearchClose = onSearchClose,
-                followedClientId = followedClientId,
+                followedFriends = followedFriends,
                 isFollowConnecting = isFollowConnecting,
-                isFollowedTrackActive = isFollowedTrackActive,
                 onFollowBannerClick = onFollowBannerClick,
                 onStopFollowing = onStopFollowing
             )

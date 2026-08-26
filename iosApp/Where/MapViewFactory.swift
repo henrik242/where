@@ -21,7 +21,6 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingSearchResultsGeoJson: String?
     private var pendingSearchHighlightGeoJson: String?
     private var pendingFriendTrackGeoJson: String?
-    private var pendingFriendTrackColor: String?
     private var pendingCoordGridGeoJson: String?
     private var pendingNavCompletedGeoJson: String?
     private var pendingNavRemainingGeoJson: String?
@@ -415,18 +414,16 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         removeSearchHighlight(style: style)
     }
 
-    func updateFriendTrackLine(geoJson: String, color: String) {
+    func updateFriendTrackLine(geoJson: String) {
         guard let mapView = self.mapView, let style = mapView.style else {
             pendingFriendTrackGeoJson = geoJson
-            pendingFriendTrackColor = color
             return
         }
-        applyFriendTrackLine(style: style, geoJson: geoJson, color: color)
+        applyFriendTrackLine(style: style, geoJson: geoJson)
     }
 
     func clearFriendTrackLine() {
         pendingFriendTrackGeoJson = nil
-        pendingFriendTrackColor = nil
         guard let mapView = self.mapView, let style = mapView.style else { return }
         removeFriendTrackLine(style: style)
     }
@@ -589,8 +586,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let geoJson = pendingSearchHighlightGeoJson {
             applySearchHighlight(style: style, geoJson: geoJson)
         }
-        if let geoJson = pendingFriendTrackGeoJson, let color = pendingFriendTrackColor {
-            applyFriendTrackLine(style: style, geoJson: geoJson, color: color)
+        if let geoJson = pendingFriendTrackGeoJson {
+            applyFriendTrackLine(style: style, geoJson: geoJson)
         }
         if let geoJson = pendingCoordGridGeoJson {
             applyCoordGrid(style: style, geoJson: geoJson)
@@ -978,71 +975,81 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let source = style.source(withIdentifier: searchHighlightSourceId) { style.removeSource(source) }
     }
 
-    private func applyFriendTrackLine(style: MLNStyle, geoJson: String, color: String) {
-        removeFriendTrackLine(style: style)
-
+    // Colors come from each feature's `color` property so every followed friend gets their own
+    // (keep in sync with MapRenderUtils.updateFriendTrackOnMap on Android). The sources must hold
+    // feature collections, not bare shapes, or the per-feature color and clientId are dropped.
+    private func applyFriendTrackLine(style: MLNStyle, geoJson: String) {
         guard let data = geoJson.data(using: .utf8),
               let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
             print("Failed to parse friend track GeoJSON")
             return
         }
 
-        // Split features by geometry type into separate sources
-        var lineShapes: [MLNShape] = []
-        var pointShapes: [MLNShape] = []
+        // Split features by geometry type: the dashed line and the labelled endpoint dot need
+        // separate layers, and a symbol layer over a line would label every vertex.
+        var lineFeatures: [MLNShape] = []
+        var pointFeatures: [MLNShape] = []
 
         if let collection = shape as? MLNShapeCollectionFeature {
             for s in collection.shapes {
                 if s is MLNPolylineFeature {
-                    lineShapes.append(s)
+                    lineFeatures.append(s)
                 } else if s is MLNPointFeature {
-                    pointShapes.append(s)
+                    pointFeatures.append(s)
                 }
             }
         } else if shape is MLNPolylineFeature {
-            lineShapes.append(shape)
+            lineFeatures.append(shape)
         } else if shape is MLNPointFeature {
-            pointShapes.append(shape)
+            pointFeatures.append(shape)
         }
 
-        if !lineShapes.isEmpty {
-            let lineSource = MLNShapeSource(identifier: friendTrackLineSourceId, shapes: lineShapes, options: nil)
-            style.addSource(lineSource)
+        let lineCollection = MLNShapeCollectionFeature(shapes: lineFeatures)
+        let pointCollection = MLNShapeCollectionFeature(shapes: pointFeatures)
 
-            let lineLayer = MLNLineStyleLayer(identifier: friendTrackLineLayerId, source: lineSource)
-            lineLayer.lineColor = NSExpression(forConstantValue: UIColor(hex: color))
-            lineLayer.lineWidth = NSExpression(forConstantValue: 4)
-            lineLayer.lineOpacity = NSExpression(forConstantValue: 0.8)
-            lineLayer.lineDashPattern = NSExpression(forConstantValue: [4, 2])
-            lineLayer.lineCap = NSExpression(forConstantValue: "round")
-            lineLayer.lineJoin = NSExpression(forConstantValue: "round")
-            style.addLayer(lineLayer)
+        // Update the existing sources in place (mirrors applyTracks) so a friend's every incoming
+        // point doesn't tear down the layers and shuffle them back above the other overlays.
+        if let lineSource = style.source(withIdentifier: friendTrackLineSourceId) as? MLNShapeSource,
+           let pointSource = style.source(withIdentifier: friendTrackPointSourceId) as? MLNShapeSource,
+           style.layer(withIdentifier: friendTrackLineLayerId) != nil {
+            lineSource.shape = lineCollection
+            pointSource.shape = pointCollection
+            pendingFriendTrackGeoJson = geoJson
+            return
         }
+        removeFriendTrackLine(style: style)
 
-        if !pointShapes.isEmpty {
-            let pointSource = MLNShapeSource(identifier: friendTrackPointSourceId, shapes: pointShapes, options: nil)
-            style.addSource(pointSource)
+        let lineSource = MLNShapeSource(identifier: friendTrackLineSourceId, shape: lineCollection, options: nil)
+        style.addSource(lineSource)
+        let lineLayer = MLNLineStyleLayer(identifier: friendTrackLineLayerId, source: lineSource)
+        lineLayer.lineColor = NSExpression(forKeyPath: "color")
+        lineLayer.lineWidth = NSExpression(forConstantValue: 4)
+        lineLayer.lineOpacity = NSExpression(forConstantValue: 0.8)
+        lineLayer.lineDashPattern = NSExpression(forConstantValue: [4, 2])
+        lineLayer.lineCap = NSExpression(forConstantValue: "round")
+        lineLayer.lineJoin = NSExpression(forConstantValue: "round")
+        style.addLayer(lineLayer)
 
-            let pointLayer = MLNCircleStyleLayer(identifier: friendTrackPointLayerId, source: pointSource)
-            pointLayer.circleRadius = NSExpression(forConstantValue: 8)
-            pointLayer.circleColor = NSExpression(forConstantValue: UIColor(hex: color))
-            pointLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
-            pointLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)
-            style.addLayer(pointLayer)
+        let pointSource = MLNShapeSource(identifier: friendTrackPointSourceId, shape: pointCollection, options: nil)
+        style.addSource(pointSource)
+        let pointLayer = MLNCircleStyleLayer(identifier: friendTrackPointLayerId, source: pointSource)
+        pointLayer.circleRadius = NSExpression(forConstantValue: 8)
+        pointLayer.circleColor = NSExpression(forKeyPath: "color")
+        pointLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+        pointLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)
+        style.addLayer(pointLayer)
 
-            let labelLayer = MLNSymbolStyleLayer(identifier: friendTrackLabelLayerId, source: pointSource)
-            labelLayer.text = NSExpression(forKeyPath: "clientId")
-            labelLayer.textFontSize = NSExpression(forConstantValue: 12)
-            labelLayer.textColor = NSExpression(forConstantValue: UIColor(hex: color))
-            labelLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
-            labelLayer.textHaloWidth = NSExpression(forConstantValue: 1.5)
-            labelLayer.textOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: 1.5)))
-            labelLayer.textAnchor = NSExpression(forConstantValue: "top")
-            style.addLayer(labelLayer)
-        }
+        let labelLayer = MLNSymbolStyleLayer(identifier: friendTrackLabelLayerId, source: pointSource)
+        labelLayer.text = NSExpression(forKeyPath: "clientId")
+        labelLayer.textFontSize = NSExpression(forConstantValue: 12)
+        labelLayer.textColor = NSExpression(forKeyPath: "color")
+        labelLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
+        labelLayer.textHaloWidth = NSExpression(forConstantValue: 1.5)
+        labelLayer.textOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: 1.5)))
+        labelLayer.textAnchor = NSExpression(forConstantValue: "top")
+        style.addLayer(labelLayer)
 
         pendingFriendTrackGeoJson = geoJson
-        pendingFriendTrackColor = color
     }
 
     private func applyCoordGrid(style: MLNStyle, geoJson: String) {

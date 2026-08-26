@@ -18,6 +18,9 @@ import no.synth.where.data.isBulkImport
 import no.synth.where.data.outcome
 import no.synth.where.data.suggestedImportFolder
 import no.synth.where.data.LiveTrackingFollower
+import no.synth.where.data.startFollowing
+import no.synth.where.data.stopFollowingAll
+import no.synth.where.data.unfollow
 import no.synth.where.data.DownloadStatus
 import no.synth.where.data.summary
 import no.synth.where.data.IosMapDownloadManager
@@ -40,6 +43,7 @@ import no.synth.where.ui.SettingsScreen
 import no.synth.where.ui.StravaImportHandlers
 import no.synth.where.ui.TracksScreenContent
 import no.synth.where.ui.map.IosMapScreen
+import no.synth.where.ui.map.followedFriends
 import no.synth.where.ui.map.MapViewProvider
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -570,7 +574,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 var showTrackingInfoDialog by remember { mutableStateOf(false) }
                 val hasSeenTrackingInfo by userPreferences.hasSeenTrackingInfo.collectAsState()
                 val trackingServerUrl by userPreferences.trackingServerUrl.collectAsState()
-                val followedClientIdVal by userPreferences.followedClientId.collectAsState()
+                val followedClientIdsVal by userPreferences.followedClientIds.collectAsState()
+                val followState by AppDependencies.liveTrackingFollower.state.collectAsState()
                 val followHistoryVal by userPreferences.followHistory.collectAsState()
                 var followClientIdInput by remember { mutableStateOf("") }
                 val liveTrackingFollower = remember { AppDependencies.liveTrackingFollower }
@@ -622,23 +627,21 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         userPreferences.startLiveShare(durationMillis)
                     },
                     onStopLiveShare = { userPreferences.stopLiveShare() },
-                    followedClientId = followedClientIdVal,
+                    followedFriends = followedFriends(
+                        followedClientIdsVal,
+                        (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList()
+                    ),
                     followClientIdInput = followClientIdInput,
                     followHistory = followHistoryVal,
                     onFollowClientIdChange = { followClientIdInput = it },
                     onStartFollowing = {
-                        if (LiveTrackingFollower.CLIENT_ID_REGEX.matches(followClientIdInput) && followClientIdInput != clientId) {
-                            userPreferences.updateFollowedClientId(followClientIdInput)
-                            userPreferences.addFollowHistoryEntry(followClientIdInput)
-                            liveTrackingFollower.follow(followClientIdInput)
+                        if (startFollowing(userPreferences, liveTrackingFollower, followClientIdInput, clientId)) {
                             followClientIdInput = ""
                             navigateToMap()
                         }
                     },
-                    onStopFollowing = {
-                        userPreferences.updateFollowedClientId(null)
-                        liveTrackingFollower.stopFollowing()
-                    }
+                    onUnfollow = { id -> unfollow(userPreferences, liveTrackingFollower, id) },
+                    onStopFollowing = { stopFollowingAll(userPreferences, liveTrackingFollower) }
                 )
             }
         }
