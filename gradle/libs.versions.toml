@@ -1,15 +1,14 @@
 [versions]
 activityCompose = "1.13.0"
 agp = "9.3.2"
-# Must stay on the same compose train as composeBom. composeMaterial3 redirects android to
-# androidx material3 1.5.0-alpha17, which is built against compose 1.11 and crashes
-# OutlinedTextField in ResolvedStyle.build on the reshaped 1.12 foundation.style API.
+# Must stay on the same compose train as composeBom. Overrides the androidx material3
+# 1.5.0-alpha22 that composeMaterial3 pulls in on android.
 androidxMaterial3 = "1.5.0-alpha26"
 appcompat = "1.8.0"
 browser = "1.10.0"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
-composeMultiplatform = "1.11.1"
-composeMaterial3 = "1.11.0-alpha07" # see release notes for matching version
+composeMultiplatform = "1.12.0"
+composeMaterial3 = "1.12.0-alpha03" # see release notes for matching version
 composeBom = "2026.08.00"
 core = "1.7.0"
 coreKtx = "1.19.0"
@@ -20,7 +19,7 @@ firebaseBom = "34.18.0"
 googleServicesPlugin = "4.5.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
-kmpZip = "0.14.0"
+kmpZip = "0.15.0"
 kotlin = "2.4.10"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerializationJson = "1.11.0"
