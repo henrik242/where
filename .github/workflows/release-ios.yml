@@ -122,9 +122,12 @@ jobs:
         COMMIT_COUNT=$(git rev-list --count HEAD)
         SHORT_SHA=$(git rev-parse --short HEAD)
         BUILD_DATE=$(date +%Y-%m-%d)
+        VERSION_TAG="v$COMMIT_COUNT"
         echo "commit_count=$COMMIT_COUNT" >> "$GITHUB_OUTPUT"
-        echo "tag=v$COMMIT_COUNT" >> "$GITHUB_OUTPUT"
-        echo "Version: $COMMIT_COUNT ($SHORT_SHA, $BUILD_DATE)"
+        echo "tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+        echo "Version tag: $VERSION_TAG ($SHORT_SHA, $BUILD_DATE)"
+        echo "### iOS release $VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
+        echo "Commit \`$SHORT_SHA\`, built $BUILD_DATE" >> "$GITHUB_STEP_SUMMARY"
 
     - name: Update iOS version
       run: |
@@ -201,7 +204,7 @@ jobs:
         echo "$ASC_KEY_CONTENT" | base64 -d > "$ASC_KEY_PATH"
         bundle exec fastlane ios deploy
 
-    - name: Create version tag and release
+    - name: Create version tag and release ${{ steps.version.outputs.tag }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |

@@ -37,6 +37,16 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Compute version tag
+      id: version
+      run: |
+        VERSION_TAG="v$(git rev-list --count HEAD)"
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        echo "tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
+        echo "Version tag: $VERSION_TAG ($SHORT_SHA)"
+        echo "### Android release $VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
+        echo "Commit \`$SHORT_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+
     - name: Validate secrets
       env:
         TRACKING_HINT: ${{ secrets.TRACKING_HINT }}
@@ -141,11 +151,7 @@ jobs:
         SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review }}
       run: bundle exec fastlane android deploy
 
-    - name: Compute version tag
-      id: version
-      run: echo "tag=v$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
-
-    - name: Create version tag and release
+    - name: Create version tag and release ${{ steps.version.outputs.tag }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
