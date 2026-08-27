@@ -16,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,6 +35,7 @@ import no.synth.where.data.StravaRoute
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.formatKm
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -137,10 +139,11 @@ fun StravaRoutePickerDialog(
                                     )
                                 }
                                 if (route.starred) {
-                                    Text(
-                                        stringResource(Res.string.strava_starred),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.primary
+                                    Icon(
+                                        painterResource(Res.drawable.ic_star),
+                                        contentDescription = stringResource(Res.string.strava_starred),
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
