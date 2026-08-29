@@ -69,6 +69,44 @@ To verify just the shared framework without Xcode:
 ./gradlew :shared:linkDebugFrameworkIosArm64            # device
 ```
 
+### iOS crash reports (Crashlytics dSYMs)
+
+Crashlytics needs a build's dSYM to turn addresses into function names. Releases handle this in two
+places: the `Upload Crashlytics dSYMs` build phase in `Where.xcodeproj` runs on every Release build,
+and `fastlane ios build` uploads the dSYM gym produced. The shared Kotlin framework is static, so
+Kotlin/Native frames live in the app's own dSYM — there is no separate framework dSYM to upload.
+
+To check what actually arrived: Firebase console > Crashlytics > gear icon > **dSYMs**, which lists
+uploaded UUIDs and flags versions with missing symbols.
+
+#### Symbolicating a build that already shipped
+
+Builds released before this automation existed have no dSYM in Crashlytics, so their crashes show
+raw addresses. Recover the dSYM from App Store Connect (uploads set `uploadSymbols: true`, so Apple
+has it):
+
+1. App Store Connect > the app > **TestFlight** (or the App Store version) > the build >
+   **Build Metadata** > **Download dSYM**. From Xcode instead: **Window > Organizer**, right-click
+   the archive > **Download Debug Symbols**.
+2. Unzip it. You get an `appDsyms` folder containing one or more `.dSYM` bundles.
+3. Upload with the `upload-symbols` binary from the Firebase SPM checkout. Open
+   `iosApp/Where.xcodeproj` in Xcode once first so SPM resolves the package and this path exists:
+
+   ```
+   DD=$(ls -d ~/Library/Developer/Xcode/DerivedData/Where-* | head -1)
+   "$DD/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols" \
+     -gsp iosApp/Where/GoogleService-Info.plist \
+     -p ios \
+     ~/Downloads/appDsyms
+   ```
+
+   Dragging the `.dSYM` bundles onto the Firebase console dSYMs page does the same thing.
+4. Re-open the crash in Crashlytics. Symbolication is retroactive: reports already collected for
+   that build redraw with real frames a few minutes after the upload.
+
+Release CI also keeps the dSYM as the `release-ipa` workflow artifact for 90 days, so a recent
+build's symbols can be re-uploaded from there without going through App Store Connect.
+
 ### Web server
 
 See [web/README.md](web/README.md).

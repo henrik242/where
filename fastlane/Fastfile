@@ -56,10 +56,15 @@ platform :ios do
       )
     end
 
+    # Pin derived data so we know where SPM checks out firebase-ios-sdk; upload-symbols
+    # lives inside that checkout and Crashlytics dSYM upload below needs its path.
+    derived_data = File.expand_path(ENV["DERIVED_DATA_PATH"] || "build/ios-derived-data")
+
     build_app(
       project: "iosApp/Where.xcodeproj",
       scheme: SCHEME,
       configuration: "Release",
+      derived_data_path: derived_data,
       export_method: "app-store",
       output_directory: ENV["OUTPUT_DIR"] || "./build",
       output_name: "Where.ipa",
@@ -76,6 +81,31 @@ platform :ios do
         }
       }
     )
+
+    # Belt and braces: the "Upload Crashlytics dSYMs" build phase already uploads during the
+    # archive, but that phase silently skips itself if anything is missing. Uploading the dSYM
+    # gym just produced means an App Store build can never ship without symbols in Crashlytics.
+    # Crashlytics dedupes by dSYM UUID, so a double upload is harmless.
+    dsym_path = lane_context[SharedValues::DSYM_OUTPUT_PATH]
+    gsp_path = "iosApp/Where/GoogleService-Info.plist"
+    upload_symbols = File.join(
+      derived_data, "SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols"
+    )
+
+    if dsym_path.nil? || !File.exist?(dsym_path)
+      UI.important("No dSYM produced by gym; skipping Crashlytics upload")
+    elsif !File.exist?(gsp_path)
+      UI.important("#{gsp_path} missing; skipping Crashlytics upload")
+    elsif !File.exist?(upload_symbols)
+      UI.important("upload-symbols not found at #{upload_symbols}; skipping Crashlytics upload")
+    else
+      upload_symbols_to_crashlytics(
+        dsym_path: dsym_path,
+        gsp_path: gsp_path,
+        binary_path: upload_symbols,
+        platform: "ios"
+      )
+    end
   end
 
   lane :deploy do

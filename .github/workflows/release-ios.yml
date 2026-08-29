@@ -179,11 +179,17 @@ jobs:
         FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 60
       run: bundle exec fastlane ios build
 
-    - name: Upload IPA
+    # Keep the dSYM alongside the IPA: without it a crash in this build can never be
+    # symbolicated after the fact. See "iOS crash reports" in README.md.
+    - name: Upload IPA and dSYMs
+      if: always()
       uses: actions/upload-artifact@v7
       with:
         name: release-ipa
-        path: ${{ runner.temp }}/export/Where.ipa
+        path: |
+          ${{ runner.temp }}/export/Where.ipa
+          ${{ runner.temp }}/export/*.dSYM.zip
+        if-no-files-found: warn
         retention-days: 90
 
     - name: Upload to App Store Connect

@@ -96,6 +96,7 @@
 				A50003 /* Resources */,
 				A60003 /* Set Build Number */,
 				A60002 /* Copy Firebase Config */,
+				A60004 /* Upload Crashlytics dSYMs */,
 			);
 			buildRules = (
 			);
@@ -216,6 +217,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "cd \"$SRCROOT/..\"\nCOMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo \"1\")\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $COMMIT_COUNT\" \"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\"\n/usr/libexec/PlistBuddy -c \"Set :CFBundleShortVersionString 1.0.$COMMIT_COUNT\" \"${BUILT_PRODUCTS_DIR}/${INFOPLIST_PATH}\"\n";
+		};
+		A60004 /* Upload Crashlytics dSYMs */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}.debug.dylib",
+			);
+			name = "Upload Crashlytics dSYMs";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Upload the app dSYM to Firebase Crashlytics so crash reports symbolicate.\n# The shared Kotlin framework is static (isStatic = true), so Kotlin/Native symbols are\n# linked into the app binary and are already covered by this one dSYM.\nDSYM=\"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\nif [ ! -d \"$DSYM\" ]; then\n  echo \"note: no dSYM at $DSYM (expected for Debug builds); skipping Crashlytics upload\"\n  exit 0\nfi\nUPLOAD_SYMBOLS=\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols\"\nif [ ! -x \"$UPLOAD_SYMBOLS\" ]; then\n  echo \"warning: upload-symbols not found at $UPLOAD_SYMBOLS; skipping Crashlytics upload\"\n  exit 0\nfi\nGSP=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nif [ ! -f \"$GSP\" ]; then\n  GSP=\"${SRCROOT}/Where/GoogleService-Info.plist\"\nfi\nif [ ! -f \"$GSP\" ]; then\n  echo \"warning: GoogleService-Info.plist not found; skipping Crashlytics upload\"\n  exit 0\nfi\n\"$UPLOAD_SYMBOLS\" -gsp \"$GSP\" -p ios \"$DSYM\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
