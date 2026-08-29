@@ -79,33 +79,35 @@ Kotlin/Native frames live in the app's own dSYM — there is no separate framewo
 To check what actually arrived: Firebase console > Crashlytics > gear icon > **dSYMs**, which lists
 uploaded UUIDs and flags versions with missing symbols.
 
-#### Symbolicating a build that already shipped
+#### Re-uploading a dSYM
 
-Builds released before this automation existed have no dSYM in Crashlytics, so their crashes show
-raw addresses. Recover the dSYM from App Store Connect (uploads set `uploadSymbols: true`, so Apple
-has it):
+Release CI keeps the dSYM in the `release-ipa` workflow artifact for 90 days, so a recent build's
+symbols can be re-uploaded by hand if the automatic upload failed. Open `iosApp/Where.xcodeproj` in
+Xcode once first, so SPM resolves the package and the `upload-symbols` path below exists:
 
-1. App Store Connect > the app > **TestFlight** (or the App Store version) > the build >
-   **Build Metadata** > **Download dSYM**. From Xcode instead: **Window > Organizer**, right-click
-   the archive > **Download Debug Symbols**.
-2. Unzip it. You get an `appDsyms` folder containing one or more `.dSYM` bundles.
-3. Upload with the `upload-symbols` binary from the Firebase SPM checkout. Open
-   `iosApp/Where.xcodeproj` in Xcode once first so SPM resolves the package and this path exists:
+```
+DD=$(ls -d ~/Library/Developer/Xcode/DerivedData/Where-* | head -1)
+"$DD/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols" \
+  -gsp iosApp/Where/GoogleService-Info.plist -p ios <path to the unzipped .dSYM>
+```
 
-   ```
-   DD=$(ls -d ~/Library/Developer/Xcode/DerivedData/Where-* | head -1)
-   "$DD/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols" \
-     -gsp iosApp/Where/GoogleService-Info.plist \
-     -p ios \
-     ~/Downloads/appDsyms
-   ```
+Dragging the `.dSYM` onto the Firebase console dSYMs page does the same thing. Symbolication is
+retroactive: crashes already collected for that build redraw with real frames a few minutes later.
 
-   Dragging the `.dSYM` bundles onto the Firebase console dSYMs page does the same thing.
-4. Re-open the crash in Crashlytics. Symbolication is retroactive: reports already collected for
-   that build redraw with real frames a few minutes after the upload.
+#### Builds released before this automation
 
-Release CI also keeps the dSYM as the `release-ipa` workflow artifact for 90 days, so a recent
-build's symbols can be re-uploaded from there without going through App Store Connect.
+Their dSYM is usually gone for good. App Store Connect only offers a dSYM download for builds
+submitted **with bitcode**, which Xcode dropped in 14 — there is no *Download dSYM* under Build
+Metadata for a modern build, because Apple ships the binary as archived and has no dSYM of its own
+to hand back. `uploadSymbols: true` sends symbols *to* Apple; it does not get them back. For a CI
+release the only copy lived on the runner and went away with it.
+
+Two things still work without a dSYM:
+
+- **Xcode > Window > Organizer > Crashes** shows App Store crashes symbolicated by Apple, using the
+  symbols submission already sent. Independent of Crashlytics, and covers builds from before this.
+- **Reproduce it on a local build.** A crash you can trigger is worth more than a symbolicated
+  report: running the same commit from Xcode gives a live stack plus the exception message.
 
 ### Web server
 
