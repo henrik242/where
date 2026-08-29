@@ -188,6 +188,10 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     // (the OAuth redirect can re-launch the app before the init collector has hydrated these).
     fun stravaClientIdValue(): String? = _stravaClientId.value
 
+    /** Reads the persisted deadline directly: [liveShareUntilMillis] is still 0 until the
+     *  DataStore collector in `init` has run, which is too late for cold-start checks. */
+    suspend fun readLiveShareUntil(): Long = dataStore.data.map { it[LIVE_SHARE_UNTIL] ?: 0L }.first()
+
     suspend fun readStravaClientId(): String? = dataStore.data.map { it[STRAVA_CLIENT_ID] }.first()
     suspend fun readStravaClientSecret(): String? = dataStore.data.map { it[STRAVA_CLIENT_SECRET] }.first()
     suspend fun readStravaRefreshToken(): String? = dataStore.data.map { it[STRAVA_REFRESH_TOKEN] }.first()

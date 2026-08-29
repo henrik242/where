@@ -10,6 +10,19 @@ tag dates.
   colour, labelled with the client ID, with a banner listing who you follow
 - Fixed a followed track losing its points when it went stale and resumed
 - Fixed followed tracks on iOS drawing without their colour and client-ID label
+- Followed friends are easier to spot when zoomed out: their marker grows and gets a halo in
+  their own colour as you zoom out
+- Fixed live sharing on iOS stopping as soon as you left the map screen: the location stream now
+  runs for the whole app, so a share keeps sending from the tracking and settings screens
+- Fixed an Android live share going silent after the app was force-stopped, killed or the phone
+  rebooted: the sharing service is restarted next time you open the app, as long as the share is
+  still running
+- Fixed a live share never sending anything on iOS when location permission was granted from the
+  share prompt itself, and holding the GPS on while offline mode blocked every upload
+- Sharing on iOS with location access set to "While Using the App" now warns that the share stops
+  when you leave the app, with a button straight to Settings
+- Sharing while offline mode is on now says so on the tracking screen, with a button to turn
+  offline mode off, instead of counting down a share that reaches nobody
 
 ## v544 (2026-08-24)
 

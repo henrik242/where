@@ -218,6 +218,26 @@ class OnlineTrackingCoordinatorTest {
         assertEquals(false, coordinator.isLiveSharing.value)
     }
 
+    /**
+     * Offline mode drops the session, and the fix stream with it: holding the GPS on for a share
+     * that provably cannot upload is pure battery burn. Turning offline mode off resumes both.
+     */
+    @Test
+    fun offlineModeWhileSharingStopsTrackingAndResumesOnDisable() = runTest(dispatcher) {
+        enterLive()
+        assertEquals(true, coordinator.shouldTrackLocation.value)
+
+        offlineModeEnabled.value = true
+
+        assertEquals(false, coordinator.shouldTrackLocation.value)
+
+        offlineModeEnabled.value = false
+
+        assertEquals(OnlineTrackingCoordinator.Mode.LIVE, coordinator.mode.value)
+        assertEquals(true, coordinator.shouldTrackLocation.value)
+        assertEquals(2, createdSessions.size, "a fresh session is built when uploads resume")
+    }
+
     @Test
     fun sendPointForwardsWhileLive() = runTest(dispatcher) {
         enterLive()

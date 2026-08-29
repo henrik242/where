@@ -27,6 +27,7 @@ class OnlineTrackingScreenViewModel(
     val followHistory = userPreferences.followHistory
     val followState = liveTrackingFollower.state
     val liveShareUntilMillis = userPreferences.liveShareUntilMillis
+    val offlineModeEnabled = userPreferences.offlineModeEnabled
 
     private val _clientId = MutableStateFlow("")
     val clientId: StateFlow<String> = _clientId.asStateFlow()
@@ -50,6 +51,10 @@ class OnlineTrackingScreenViewModel(
 
     fun stopLiveShare() {
         userPreferences.stopLiveShare()
+    }
+
+    fun disableOfflineMode() {
+        userPreferences.updateOfflineModeEnabled(false)
     }
 
     fun confirmTrackingInfoAndEnable() {

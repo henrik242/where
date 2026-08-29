@@ -50,6 +50,7 @@ import no.synth.where.resources.*
 import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.di.AppDependencies
+import platform.UIKit.UIApplicationOpenSettingsURLString
 import no.synth.where.util.CrashReporter
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -114,6 +115,23 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
 
     val scope = rememberCoroutineScope()
     var clientId by remember { mutableStateOf("") }
+
+    // App-scoped tracker (see AppSetup): a live share must survive leaving the map screen.
+    val coordinator = remember { AppDependencies.onlineTrackingCoordinator }
+    val locationTracker = remember { AppDependencies.locationTracker }
+    val shouldTrackLocation by coordinator.shouldTrackLocation.collectAsState()
+    val alwaysPermissionGranted by locationTracker.alwaysPermissionGranted.collectAsState()
+    LaunchedEffect(shouldTrackLocation) {
+        if (shouldTrackLocation) {
+            // Start unconditionally, even while the prompt is still up: CoreLocation holds a start
+            // issued in `notDetermined` and resumes it from the authorization callback. Waiting for
+            // permission first would leave trackingActive false, and nothing would ever restart it.
+            if (!locationTracker.hasAlwaysPermission) locationTracker.requestAlwaysPermission()
+            locationTracker.startTracking()
+        } else {
+            locationTracker.stopTracking()
+        }
+    }
 
     fun navigateTo(screen: Screen) {
         backStack = backStack + currentScreen
@@ -627,6 +645,14 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         userPreferences.startLiveShare(durationMillis)
                     },
                     onStopLiveShare = { userPreferences.stopLiveShare() },
+                    offlineModeEnabled = offlineModeEnabled,
+                    onDisableOfflineMode = { userPreferences.updateOfflineModeEnabled(false) },
+                    // Always permission can only be granted once from a prompt; after that the
+                    // Settings app is the only way back, so link straight to this app's page.
+                    backgroundLocationMissing = !alwaysPermissionGranted,
+                    onOpenLocationSettings = {
+                        IosPlatformActions.openUrl(UIApplicationOpenSettingsURLString)
+                    },
                     followedFriends = followedFriends(
                         followedClientIdsVal,
                         (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList()

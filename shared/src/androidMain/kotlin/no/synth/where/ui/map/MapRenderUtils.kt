@@ -107,9 +107,20 @@ object MapRenderUtils {
         }
     }
 
+    // A followed friend is easiest to lose when zoomed out: a fixed-size dot disappears into
+    // Kartverket's topo detail. Marker sizes therefore ramp between zoom 15 (normal) and 8 (fully
+    // grown), flat outside that range.
+    // (keep in sync with MapViewFactory.friendZoomRamp on iOS)
+    private fun friendZoomRamp(zoomedOut: Float, zoomedIn: Float): Expression =
+        Expression.interpolate(
+            Expression.linear(), Expression.zoom(),
+            Expression.stop(8f, zoomedOut),
+            Expression.stop(15f, zoomedIn)
+        )
+
     /**
-     * Draw the followed friends' live tracks as dashed lines with an endpoint dot and clientId
-     * label. Colors come from the `color` property so every followed friend gets their own
+     * Draw the followed friends' live tracks as dashed lines with an endpoint dot, halo and
+     * clientId label. Colors come from the `color` property so every followed friend gets their own
      * (keep in sync with MapViewFactory.applyFriendTrackLine on iOS).
      */
     fun updateFriendTrackOnMap(style: Style, geoJson: String?) {
@@ -117,6 +128,7 @@ object MapRenderUtils {
             val lineSourceId = "friend-track-line-source"
             val pointSourceId = "friend-track-point-source"
             val lineLayerId = "friend-track-line-layer"
+            val haloLayerId = "friend-track-halo-layer"
             val pointLayerId = "friend-track-point-layer"
             val labelLayerId = "friend-track-label-layer"
 
@@ -156,14 +168,25 @@ object MapRenderUtils {
                     PropertyFactory.lineColor(Expression.get("color")),
                     PropertyFactory.lineWidth(4f),
                     PropertyFactory.lineOpacity(0.8f),
-                    PropertyFactory.lineDasharray(arrayOf(4f, 2f))
+                    PropertyFactory.lineDasharray(arrayOf(4f, 2f)),
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
                 )
             )
 
             style.addSource(GeoJsonSource(pointSourceId, points))
+            // Halo only where it is needed: it fades to nothing by the zoom where the dot alone
+            // is easy to see, so it never sits on top of the map you are actually reading.
+            style.addLayer(
+                CircleLayer(haloLayerId, pointSourceId).withProperties(
+                    PropertyFactory.circleRadius(friendZoomRamp(zoomedOut = 26f, zoomedIn = 0f)),
+                    PropertyFactory.circleColor(Expression.get("color")),
+                    PropertyFactory.circleOpacity(0.22f)
+                )
+            )
             style.addLayer(
                 CircleLayer(pointLayerId, pointSourceId).withProperties(
-                    PropertyFactory.circleRadius(8f),
+                    PropertyFactory.circleRadius(friendZoomRamp(zoomedOut = 12f, zoomedIn = 8f)),
                     PropertyFactory.circleColor(Expression.get("color")),
                     PropertyFactory.circleStrokeWidth(2f),
                     PropertyFactory.circleStrokeColor("#FFFFFF")

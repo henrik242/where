@@ -40,7 +40,6 @@ import no.synth.where.data.stopFollowingAll
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
 import no.synth.where.di.AppDependencies
-import no.synth.where.location.IosLocationTracker
 import no.synth.where.resources.Res
 import no.synth.where.resources.location_permission_required
 import no.synth.where.resources.point_deleted
@@ -87,7 +86,7 @@ fun IosMapScreen(
     val savedPointsRepository = remember { AppDependencies.savedPointsRepository }
     val userPreferences = remember { AppDependencies.userPreferences }
     val coordinator = remember { AppDependencies.onlineTrackingCoordinator }
-    val locationTracker = remember { IosLocationTracker(trackRepository, coordinator) }
+    val locationTracker = remember { AppDependencies.locationTracker }
 
     var showLayerMenu by remember { mutableStateOf(false) }
     val currentLayer by userPreferences.selectedMapLayer.collectAsState()
@@ -291,23 +290,8 @@ fun IosMapScreen(
         mapViewProvider.setRotationEnabled(!northLocked)
     }
 
-    val shouldTrackLocation by coordinator.shouldTrackLocation.collectAsState()
+    // Recording / live sharing drive the location stream from IosApp, which outlives this screen.
     val isLiveSharing by coordinator.isLiveSharing.collectAsState()
-
-    LaunchedEffect(shouldTrackLocation) {
-        if (shouldTrackLocation) {
-            when {
-                !locationTracker.hasPermission -> locationTracker.requestAlwaysPermission()
-                !locationTracker.hasAlwaysPermission -> {
-                    locationTracker.requestAlwaysPermission()
-                    locationTracker.startTracking()
-                }
-                else -> locationTracker.startTracking()
-            }
-        } else {
-            locationTracker.stopTracking()
-        }
-    }
 
     // Debounced search
     LaunchedEffect(Unit) {

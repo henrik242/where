@@ -105,7 +105,9 @@ class OnlineTrackingCoordinator(
                 val live = until > clock()
                 val onlineActive = online && !offline
                 Desired(
-                    shouldTrackLocation = rec || live,
+                    // A share that cannot upload (offline mode, online tracking off) must not hold
+                    // the GPS on for hours — recording still needs fixes, it writes them locally.
+                    shouldTrackLocation = rec || (live && onlineActive),
                     mode = when {
                         !onlineActive || (!rec && !live) -> Mode.NONE
                         rec -> Mode.RECORDING

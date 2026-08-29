@@ -57,6 +57,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let friendTrackLineSourceId = "friend-track-line-source"
     private let friendTrackPointSourceId = "friend-track-point-source"
     private let friendTrackLineLayerId = "friend-track-line-layer"
+    private let friendTrackHaloLayerId = "friend-track-halo-layer"
     private let friendTrackPointLayerId = "friend-track-point-layer"
     private let friendTrackLabelLayerId = "friend-track-label-layer"
     private let coordGridSourceId = "coord-grid-source"
@@ -975,6 +976,17 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let source = style.source(withIdentifier: searchHighlightSourceId) { style.removeSource(source) }
     }
 
+    // A followed friend is easiest to lose when zoomed out: a fixed-size dot disappears into the
+    // topo detail. Marker sizes therefore ramp between zoom 15 (normal) and 8 (fully grown), flat
+    // outside that range.
+    // (keep in sync with MapRenderUtils.friendZoomRamp on Android)
+    private func friendZoomRamp(zoomedOut: Double, zoomedIn: Double) -> NSExpression {
+        NSExpression(
+            format: "mgl_interpolate:withCurveType:parameters:stops:($zoomLevel, 'linear', nil, %@)",
+            [8: zoomedOut, 15: zoomedIn]
+        )
+    }
+
     // Colors come from each feature's `color` property so every followed friend gets their own
     // (keep in sync with MapRenderUtils.updateFriendTrackOnMap on Android). The sources must hold
     // feature collections, not bare shapes, or the per-feature color and clientId are dropped.
@@ -1032,8 +1044,18 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
         let pointSource = MLNShapeSource(identifier: friendTrackPointSourceId, shape: pointCollection, options: nil)
         style.addSource(pointSource)
+
+        // Halo under the dot, in the friend's own colour, so they stay findable in an overview.
+        // It fades to nothing by the zoom where the dot alone is easy to see, so it never sits on
+        // top of the map you are actually reading.
+        let haloLayer = MLNCircleStyleLayer(identifier: friendTrackHaloLayerId, source: pointSource)
+        haloLayer.circleRadius = friendZoomRamp(zoomedOut: 26, zoomedIn: 0)
+        haloLayer.circleColor = NSExpression(forKeyPath: "color")
+        haloLayer.circleOpacity = NSExpression(forConstantValue: 0.22)
+        style.addLayer(haloLayer)
+
         let pointLayer = MLNCircleStyleLayer(identifier: friendTrackPointLayerId, source: pointSource)
-        pointLayer.circleRadius = NSExpression(forConstantValue: 8)
+        pointLayer.circleRadius = friendZoomRamp(zoomedOut: 12, zoomedIn: 8)
         pointLayer.circleColor = NSExpression(forKeyPath: "color")
         pointLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
         pointLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)
@@ -1133,6 +1155,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let layer = style.layer(withIdentifier: friendTrackLabelLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: friendTrackLineLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: friendTrackPointLayerId) { style.removeLayer(layer) }
+        if let layer = style.layer(withIdentifier: friendTrackHaloLayerId) { style.removeLayer(layer) }
         if let source = style.source(withIdentifier: friendTrackLineSourceId) { style.removeSource(source) }
         if let source = style.source(withIdentifier: friendTrackPointSourceId) { style.removeSource(source) }
     }

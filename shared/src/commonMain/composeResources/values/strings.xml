@@ -128,6 +128,10 @@
     <string name="always_share_description">Share your live location for a limited time, even when not recording a track.</string>
     <string name="always_share_disabled_hint">Enable online tracking first.</string>
     <string name="always_share_remaining">%1$s left</string>
+    <string name="sharing_blocked_offline">Offline mode is on, so nothing is uploaded — nobody can see your position.</string>
+    <string name="turn_off_offline_mode">Turn off offline mode</string>
+    <string name="sharing_stops_in_background">Location access is set to "While Using the App", so sharing stops when you leave the app.</string>
+    <string name="open_settings">Open Settings</string>
     <string name="share_duration_title">How long should location be shared?</string>
     <string name="share_duration_15min">15 minutes</string>
     <string name="share_duration_1hour">1 hour</string>

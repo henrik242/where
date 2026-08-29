@@ -40,6 +40,7 @@ fun OnlineTrackingScreen(
     val followClientIdInput by viewModel.followClientIdInput.collectAsState()
     val followHistory by viewModel.followHistory.collectAsState()
     val liveShareUntilMillis by viewModel.liveShareUntilMillis.collectAsState()
+    val offlineModeEnabled by viewModel.offlineModeEnabled.collectAsState()
     var showRegenerateDialog by remember { mutableStateOf(false) }
     var showTrackingInfoDialog by remember { mutableStateOf(false) }
 
@@ -92,6 +93,8 @@ fun OnlineTrackingScreen(
             LocationTrackingService.start(context)
         },
         onStopLiveShare = { viewModel.stopLiveShare() },
+        offlineModeEnabled = offlineModeEnabled,
+        onDisableOfflineMode = { viewModel.disableOfflineMode() },
         followedFriends = followedFriends,
         followClientIdInput = followClientIdInput,
         followHistory = followHistory,

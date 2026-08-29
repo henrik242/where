@@ -1,12 +1,18 @@
 package no.synth.where
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -39,6 +45,24 @@ fun WhereApp(
 
     LaunchedEffect(offlineModeEnabled) {
         org.maplibre.android.MapLibre.setConnected(!offlineModeEnabled)
+    }
+
+    // A live share outlives the process — its deadline is in prefs — but the foreground service
+    // that feeds the coordinator does not, so after a force-stop, a reboot or an OEM battery kill
+    // the countdown keeps ticking while nothing is sent. Restarting it is gated on RESUMED because
+    // a location-typed service may only be started while the app really is in the foreground, and
+    // re-running per resume also picks up a location permission granted after launch — without it
+    // the service can never start, and there would be nothing to send anyway.
+    val shouldTrackLocation by app.onlineTrackingCoordinator.shouldTrackLocation.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(shouldTrackLocation) {
+        if (!shouldTrackLocation) return@LaunchedEffect
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val granted = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (granted) LocationTrackingService.start(context)
+        }
     }
 
     // A group link shows that group, so it replaces the followed set rather than appending to it.

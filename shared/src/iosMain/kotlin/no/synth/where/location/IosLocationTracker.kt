@@ -3,6 +3,9 @@ package no.synth.where.location
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.useContents
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import no.synth.where.data.OnlineTrackingCoordinator
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.geo.LatLng
@@ -38,8 +41,10 @@ class IosLocationTracker(
         applyBackgroundUpdatesFlag()
     }
 
+    // Only while actually tracking: the tracker is a process-wide singleton, so a flag left on
+    // after a share ends would keep CoreLocation running in the background for the app's lifetime.
     private fun applyBackgroundUpdatesFlag() {
-        locationManager.allowsBackgroundLocationUpdates = hasAlwaysPermission
+        locationManager.allowsBackgroundLocationUpdates = trackingActive && hasAlwaysPermission
     }
 
     val hasPermission: Boolean
@@ -51,6 +56,14 @@ class IosLocationTracker(
 
     val hasAlwaysPermission: Boolean
         get() = CLLocationManager.authorizationStatus() == kCLAuthorizationStatusAuthorizedAlways
+
+    private val _alwaysPermissionGranted = MutableStateFlow(hasAlwaysPermission)
+
+    /**
+     * Observable mirror of [hasAlwaysPermission] — without it a live share keeps sending only
+     * while the app is in the foreground, which the tracking screen warns about.
+     */
+    val alwaysPermissionGranted: StateFlow<Boolean> = _alwaysPermissionGranted.asStateFlow()
 
     fun requestPermission() {
         locationManager.requestWhenInUseAuthorization()
@@ -68,6 +81,7 @@ class IosLocationTracker(
 
     fun stopTracking() {
         trackingActive = false
+        applyBackgroundUpdatesFlag()
         if (!keepAliveActive) locationManager.stopUpdatingLocation()
     }
 
@@ -117,6 +131,7 @@ class IosLocationTracker(
     }
 
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
+        _alwaysPermissionGranted.value = hasAlwaysPermission
         applyBackgroundUpdatesFlag()
         if (hasPermission && (keepAliveActive || trackingActive)) {
             locationManager.startUpdatingLocation()

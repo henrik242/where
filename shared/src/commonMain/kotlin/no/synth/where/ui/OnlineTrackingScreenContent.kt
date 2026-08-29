@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -78,6 +79,10 @@ fun OnlineTrackingScreenContent(
     liveShareUntilMillis: Long = 0L,
     onStartLiveShare: (Long) -> Unit = {},
     onStopLiveShare: () -> Unit = {},
+    offlineModeEnabled: Boolean = false,
+    onDisableOfflineMode: () -> Unit = {},
+    backgroundLocationMissing: Boolean = false,
+    onOpenLocationSettings: () -> Unit = {},
     followedFriends: List<FollowedFriend> = emptyList(),
     followClientIdInput: String = "",
     followHistory: List<String> = emptyList(),
@@ -198,6 +203,26 @@ fun OnlineTrackingScreenContent(
                         )
                     }
                 }
+            }
+
+            // Both warnings cover the same trap: the countdown keeps ticking while the share
+            // reaches nobody. Offline mode blocks every upload outright; without background
+            // location (iOS "While Using the App") the fixes stop the moment you leave the app.
+            if (isTrackingEnabled && offlineModeEnabled) {
+                SharingWarningCard(
+                    icon = painterResource(Res.drawable.ic_cloud_off),
+                    text = stringResource(Res.string.sharing_blocked_offline),
+                    actionLabel = stringResource(Res.string.turn_off_offline_mode),
+                    onAction = onDisableOfflineMode,
+                )
+            }
+            if (isLiveShareActive && backgroundLocationMissing) {
+                SharingWarningCard(
+                    icon = painterResource(Res.drawable.ic_my_location),
+                    text = stringResource(Res.string.sharing_stops_in_background),
+                    actionLabel = stringResource(Res.string.open_settings),
+                    onAction = onOpenLocationSettings,
+                )
             }
 
             if (viewerCount > 0) {
@@ -521,6 +546,42 @@ fun OnlineTrackingScreenContent(
                 }
             }
         )
+    }
+}
+
+/** A share is running but cannot reach anyone: what is wrong, and the one tap that fixes it. */
+@Composable
+private fun SharingWarningCard(
+    icon: Painter,
+    text: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            TextButton(onClick = onAction, modifier = Modifier.align(Alignment.End)) {
+                Text(text = actionLabel, color = MaterialTheme.colorScheme.onErrorContainer)
+            }
+        }
     }
 }
 

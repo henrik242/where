@@ -19,6 +19,7 @@ import no.synth.where.data.UserPreferences
 import no.synth.where.data.createDataStore
 import no.synth.where.data.createDefaultHttpClient
 import no.synth.where.data.db.getDatabaseBuilder
+import no.synth.where.location.IosLocationTracker
 import no.synth.where.util.CrashReporter
 import platform.CoreLocation.CLLocationManager
 import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
@@ -37,6 +38,7 @@ object AppDependencies {
     lateinit var onlineTrackingCoordinator: OnlineTrackingCoordinator
     lateinit var stravaTokenManager: StravaTokenManager
     lateinit var stravaRouteImporter: StravaRouteImporter
+    lateinit var locationTracker: IosLocationTracker
 }
 
 fun startApp() {
@@ -66,14 +68,10 @@ fun startApp() {
 
     CrashReporter.setEnabled(AppDependencies.userPreferences.crashReportingEnabled.value)
 
-    // Don't silently auto-resume live sharing on cold start without Always
-    // permission — would trigger an unsolicited Always prompt and may surprise
-    // the user. Drop the timer; user can re-enable explicitly.
     val prefs = AppDependencies.userPreferences
-    if (prefs.liveShareUntilMillis.value > 0L &&
-        CLLocationManager.authorizationStatus() != kCLAuthorizationStatusAuthorizedAlways) {
-        prefs.stopLiveShare()
-    }
+    // Read the authorization status here, on the main thread, for the cold-start check below.
+    val hasAlwaysPermission =
+        CLLocationManager.authorizationStatus() == kCLAuthorizationStatusAuthorizedAlways
 
     AppDependencies.onlineTrackingCoordinator = OnlineTrackingCoordinator(
         sources = OnlineTrackingCoordinator.Sources(
@@ -89,5 +87,23 @@ fun startApp() {
         trackingHint = BuildInfo.TRACKING_HINT,
         parentScope = appScope,
     )
-    AppDependencies.onlineTrackingCoordinator.start()
+
+    // App-scoped, not map-screen-scoped: a live share has to keep sending while the user sits on
+    // the tracking or settings screen, and a CLLocationManager owned by a screen stops feeding the
+    // coordinator the moment that screen is disposed. IosApp drives start/stop from
+    // OnlineTrackingCoordinator.shouldTrackLocation.
+    AppDependencies.locationTracker = IosLocationTracker(
+        AppDependencies.trackRepository,
+        AppDependencies.onlineTrackingCoordinator,
+    )
+
+    // Don't silently auto-resume live sharing on cold start without Always permission — it would
+    // trigger an unsolicited Always prompt. Drop the timer; the user can re-enable explicitly.
+    // The deadline has to be read straight from disk: the prefs flow is still 0 until its
+    // DataStore collector has run. Start the coordinator only after that check, so it never sees
+    // a restored deadline we are about to drop.
+    appScope.launch {
+        if (!hasAlwaysPermission && prefs.readLiveShareUntil() > 0L) prefs.stopLiveShare()
+        AppDependencies.onlineTrackingCoordinator.start()
+    }
 }
