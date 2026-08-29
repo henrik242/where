@@ -17,6 +17,7 @@ tag dates.
   share prompt itself, and holding the GPS on while offline mode blocked every upload
 - Sharing on iOS with location access set to "While Using the App" now warns that the share stops
   when you leave the app, with a button straight to Settings
+- Fixed backslashes showing up around the quoted setting name under "How it works"
 - Sharing while offline mode is on now says so on the tracking screen, with a button to turn
   offline mode off, instead of counting down a share that reaches nobody
 

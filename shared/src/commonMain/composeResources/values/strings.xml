@@ -121,7 +121,7 @@
     <string name="regenerate_id">Regenerate ID</string>
     <string name="regenerate_client_id">Regenerate Client ID</string>
     <string name="how_it_works">\u2139\uFE0F How it works</string>
-    <string name="how_it_works_description">When online tracking is enabled, your location is shared in real-time with anyone who has your Client ID — either while you record a track in map view, or while \"Share location temporarily\" is active.</string>
+    <string name="how_it_works_description">When online tracking is enabled, your location is shared in real-time with anyone who has your Client ID — either while you record a track in map view, or while “Share location temporarily” is active.</string>
 
     <!-- Temporary share -->
     <string name="always_share_location">Share location temporarily</string>
@@ -130,7 +130,7 @@
     <string name="always_share_remaining">%1$s left</string>
     <string name="sharing_blocked_offline">Offline mode is on, so nothing is uploaded — nobody can see your position.</string>
     <string name="turn_off_offline_mode">Turn off offline mode</string>
-    <string name="sharing_stops_in_background">Location access is set to "While Using the App", so sharing stops when you leave the app.</string>
+    <string name="sharing_stops_in_background">Location access is set to “While Using the App”, so sharing stops when you leave the app.</string>
     <string name="open_settings">Open Settings</string>
     <string name="share_duration_title">How long should location be shared?</string>
     <string name="share_duration_15min">15 minutes</string>

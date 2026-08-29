@@ -121,7 +121,7 @@
     <string name="regenerate_id">Generer ny ID</string>
     <string name="regenerate_client_id">Generer ny klient-ID</string>
     <string name="how_it_works">\u2139\uFE0F Slik fungerer det</string>
-    <string name="how_it_works_description">Når direktesporing er aktivert deles posisjonen din i sanntid med alle som har din klient-ID — enten mens du tar opp et spor i kartvisningen, eller mens \"Del posisjon midlertidig\" er aktiv.</string>
+    <string name="how_it_works_description">Når direktesporing er aktivert deles posisjonen din i sanntid med alle som har din klient-ID — enten mens du tar opp et spor i kartvisningen, eller mens «Del posisjon midlertidig» er aktiv.</string>
 
     <!-- Del posisjon midlertidig -->
     <string name="always_share_location">Del posisjon midlertidig</string>
