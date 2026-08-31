@@ -3,7 +3,7 @@ activityCompose = "1.13.0"
 agp = "9.3.2"
 # Must stay on the same compose train as composeBom. Overrides the androidx material3
 # 1.5.0-alpha22 that composeMaterial3 pulls in on android.
-androidxMaterial3 = "1.5.0-alpha26"
+androidxMaterial3 = "1.5.0-alpha27"
 appcompat = "1.8.0"
 browser = "1.10.0"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
