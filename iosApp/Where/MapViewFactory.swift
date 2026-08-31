@@ -977,9 +977,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let source = style.source(withIdentifier: searchHighlightSourceId) { style.removeSource(source) }
     }
 
-    // A followed friend is easiest to lose when zoomed out: a fixed-size dot disappears into the
-    // topo detail. Marker sizes therefore ramp between zoom 15 (normal) and 8 (fully grown), flat
-    // outside that range.
+    // A followed friend is easiest to lose when zoomed out: their dot is the same size as any other
+    // point, so it disappears into the topo detail. The halo therefore grows between zoom 15 (gone)
+    // and 8 (fully grown), flat outside that range.
     // (keep in sync with MapRenderUtils.friendZoomRamp on Android)
     private func friendZoomRamp(zoomedOut: Double, zoomedIn: Double) -> NSExpression {
         NSExpression(
@@ -1064,7 +1064,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         style.addLayer(haloLayer)
 
         let pointLayer = MLNCircleStyleLayer(identifier: friendTrackPointLayerId, source: pointSource)
-        pointLayer.circleRadius = friendZoomRamp(zoomedOut: 12, zoomedIn: 8)
+        // The same dot as a saved point; the halo does the zoomed-out work.
+        pointLayer.circleRadius = NSExpression(forConstantValue: 6)
         pointLayer.circleColor = NSExpression(forKeyPath: "color")
         pointLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
         pointLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)

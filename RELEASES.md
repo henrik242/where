@@ -6,8 +6,8 @@ tag dates.
 
 ## Unreleased
 
-- Followed friends are easier to spot when zoomed out: their marker grows and gets a halo in their
-  own colour with a white ring around it, so it reads over the topo colours
+- Followed friends are easier to spot when zoomed out: their marker gets a halo in their own colour
+  with a white ring around it, growing as you zoom out so it reads over the topo colours
 - Fixed a followed friend's name never drawing, and on iOS the marker and halo disappearing with
   it, leaving only the dashed track line
 - A followed friend now gets one marker instead of one per track, so a friend who stops and
@@ -17,6 +17,8 @@ tag dates.
 - Friend names are hidden when zoomed out past the point where they are readable
 - Tapping a friend in the follow banner zooms to that friend, which the banner itself could not do
   when the friends you follow are in different parts of the country
+- The zoom buttons stay usable while you follow someone: they move below the follow banner instead
+  of hiding for the whole trip
 - Fixed live sharing on iOS stopping as soon as you left the map screen: the location stream now
   runs for the whole app, so a share keeps sending from the tracking and settings screens
 - Fixed an Android live share going silent after the app was force-stopped, killed or the phone

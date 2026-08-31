@@ -5,13 +5,17 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Which top-of-map overlays are active, factored out of [MapOverlays] so the deliberate
- * navigation asymmetry can be unit-tested: navigation occupies the top-center slot (hiding the
+ * asymmetries can be unit-tested. Navigation occupies the top-center slot (hiding the
  * LocatingPill) but leaves the top-corner controls (zoom on the left, chips on the right) visible,
- * because the NavigationCard is centered and does not collide with them.
+ * because the NavigationCard is centered and does not collide with them. Following is the other
+ * asymmetry: its banner stays up for a whole trip, too long to give up zooming, so the zoom
+ * controls move below it instead of hiding.
  */
 data class TopOverlayState(
-    /** Zoom controls and corner chips must hide. */
+    /** The corner chips must hide. */
     val hidesCornerControls: Boolean,
+    /** The zoom controls must hide; following only moves them, see [TopCenterStack]. */
+    val hidesZoomControls: Boolean,
     /** The top-center slot is taken, so the LocatingPill must hide. */
     val hidesTopCenter: Boolean,
 )
@@ -26,6 +30,8 @@ fun topOverlayState(
     val hidesCornerControls = showSearch || hasFocusedTrack || hasViewingPoint || isFollowing
     return TopOverlayState(
         hidesCornerControls = hidesCornerControls,
+        // Search replaces the friend banner rather than stacking under it, so it still hides them.
+        hidesZoomControls = showSearch || hasFocusedTrack || hasViewingPoint,
         hidesTopCenter = hidesCornerControls || isNavigating,
     )
 }

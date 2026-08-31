@@ -27,6 +27,7 @@ class TopOverlayStateTest {
     fun nothingActive_showsEverything() {
         val s = state()
         assertFalse(s.hidesCornerControls)
+        assertFalse(s.hidesZoomControls)
         assertFalse(s.hidesTopCenter)
     }
 
@@ -43,6 +44,7 @@ class TopOverlayStateTest {
     fun search_hidesCornerControlsAndTopCenter() {
         val s = state(showSearch = true)
         assertTrue(s.hidesCornerControls)
+        assertTrue(s.hidesZoomControls)
         assertTrue(s.hidesTopCenter)
     }
 
@@ -50,6 +52,7 @@ class TopOverlayStateTest {
     fun focusedTrack_hidesCornerControlsAndTopCenter() {
         val s = state(hasFocusedTrack = true)
         assertTrue(s.hidesCornerControls)
+        assertTrue(s.hidesZoomControls)
         assertTrue(s.hidesTopCenter)
     }
 
@@ -57,14 +60,23 @@ class TopOverlayStateTest {
     fun viewingPoint_hidesCornerControlsAndTopCenter() {
         val s = state(hasViewingPoint = true)
         assertTrue(s.hidesCornerControls)
+        assertTrue(s.hidesZoomControls)
         assertTrue(s.hidesTopCenter)
     }
 
     @Test
-    fun following_hidesCornerControlsAndTopCenter() {
+    fun following_keepsZoomControlsVisible_butHidesTheRest() {
+        // The friend banner is up for a whole trip, so the zoom controls move below it instead.
         val s = state(isFollowing = true)
         assertTrue(s.hidesCornerControls)
+        assertFalse(s.hidesZoomControls, "zoom controls drop below the friend banner")
         assertTrue(s.hidesTopCenter)
+    }
+
+    @Test
+    fun searchWhileFollowing_hidesZoomControls() {
+        // Search replaces the friend banner, so there is nothing to sit below.
+        assertTrue(state(showSearch = true, isFollowing = true).hidesZoomControls)
     }
 
     private fun stack(

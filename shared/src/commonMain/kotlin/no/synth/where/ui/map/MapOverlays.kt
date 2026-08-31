@@ -906,7 +906,6 @@ fun BoxScope.MapOverlays(
         isFollowing = followedFriends.isNotEmpty(),
         isNavigating = navigation.isNavigating,
     )
-    val hideCornerControls = topOverlay.hidesCornerControls
     val hasTopOverlay = topOverlay.hidesTopCenter
 
     // The altitude chart is pinned bottom-center; when it is shown the bottom-left
@@ -970,21 +969,28 @@ fun BoxScope.MapOverlays(
             .padding(top = compassTopOffset, end = 8.dp)
     )
 
+    // The friend banner is up for a whole trip, so the zoom controls drop below it (sliding with
+    // the compass) instead of hiding the way they do for the shorter-lived top-center overlays.
     AnimatedVisibility(
-        visible = !hideCornerControls,
+        visible = !topOverlay.hidesZoomControls,
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = Modifier.align(Alignment.TopStart)
     ) {
         ZoomControls(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(
+                start = 16.dp,
+                top = if (showFriendBanner) compassTopOffset else TOP_OVERLAY_INSET,
+                end = 16.dp,
+                bottom = 16.dp
+            ),
             onZoomIn = onZoomIn,
             onZoomOut = onZoomOut
         )
     }
 
     AnimatedVisibility(
-        visible = !hideCornerControls,
+        visible = !topOverlay.hidesCornerControls,
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = Modifier.align(Alignment.TopEnd)

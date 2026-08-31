@@ -111,9 +111,9 @@ object MapRenderUtils {
         }
     }
 
-    // A followed friend is easiest to lose when zoomed out: a fixed-size dot disappears into
-    // Kartverket's topo detail. Marker sizes therefore ramp between zoom 15 (normal) and 8 (fully
-    // grown), flat outside that range.
+    // A followed friend is easiest to lose when zoomed out: their dot is the same size as any other
+    // point, so it disappears into Kartverket's topo detail. The halo therefore grows between zoom
+    // 15 (gone) and 8 (fully grown), flat outside that range.
     // (keep in sync with MapViewFactory.friendZoomRamp on iOS)
     private fun friendZoomRamp(zoomedOut: Float, zoomedIn: Float): Expression =
         Expression.interpolate(
@@ -200,7 +200,8 @@ object MapRenderUtils {
             )
             style.addLayer(
                 CircleLayer(pointLayerId, pointSourceId).withProperties(
-                    PropertyFactory.circleRadius(friendZoomRamp(zoomedOut = 12f, zoomedIn = 8f)),
+                    // The same dot as a saved point; the halo does the zoomed-out work.
+                    PropertyFactory.circleRadius(6f),
                     PropertyFactory.circleColor(Expression.get("color")),
                     PropertyFactory.circleStrokeWidth(2f),
                     PropertyFactory.circleStrokeColor("#FFFFFF"),
