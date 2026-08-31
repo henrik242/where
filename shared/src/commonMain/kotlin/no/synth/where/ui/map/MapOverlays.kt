@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -613,6 +614,7 @@ fun FollowingFriendBanner(
     friends: List<FollowedFriend>,
     isConnecting: Boolean,
     onClick: () -> Unit,
+    onFriendClick: (String) -> Unit,
     onClose: () -> Unit
 ) {
     if (friends.isEmpty()) return
@@ -663,13 +665,19 @@ fun FollowingFriendBanner(
                     )
                 } else {
                     // One chip per friend in their map color, dimmed while they aren't sending, so
-                    // the banner doubles as the legend for the lines on the map.
+                    // the banner doubles as the legend for the lines on the map. Tapping one zooms
+                    // to that friend; the banner itself fits them all, which is no help when they
+                    // are in different parts of the country.
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         for (friend in friends) {
                             Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable { onFriendClick(friend.clientId) }
+                                    .padding(horizontal = 4.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
@@ -880,7 +888,7 @@ fun BoxScope.MapOverlays(
     onSearchClose: () -> Unit,
     followedFriends: List<FollowedFriend> = emptyList(),
     isFollowConnecting: Boolean = false,
-    onFollowBannerClick: () -> Unit = {},
+    onFollowBannerClick: (clientId: String?) -> Unit = {},
     onStopFollowing: () -> Unit = {},
     liveShareUntilMillis: Long = 0L,
     isLiveSharing: Boolean = false
@@ -1123,7 +1131,8 @@ fun BoxScope.MapOverlays(
                 .onSizeChanged { friendBannerHeight = with(density) { it.height.toDp() } },
             friends = followedFriends,
             isConnecting = isFollowConnecting,
-            onClick = onFollowBannerClick,
+            onClick = { onFollowBannerClick(null) },
+            onFriendClick = { onFollowBannerClick(it) },
             onClose = onStopFollowing
         )
     }

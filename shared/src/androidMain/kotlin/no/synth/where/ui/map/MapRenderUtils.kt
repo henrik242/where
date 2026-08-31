@@ -34,6 +34,10 @@ import no.synth.where.util.Logger
  */
 object MapRenderUtils {
 
+    // The only glyph stack bundled with the app (asset://fonts/NotoSansRegular). A text layer that
+    // leaves the font unset asks for MapLibre's default "Open Sans Regular" stack and draws nothing.
+    private val GLYPH_FONTS = arrayOf("NotoSansRegular")
+
     private const val LOCATION_ENGINE_INTERVAL_MS = 2000L
     private const val LOCATION_ENGINE_FASTEST_INTERVAL_MS = 1000L
     private const val STALE_FIX_TIMEOUT_MS = 30_000L
@@ -154,13 +158,18 @@ object MapRenderUtils {
 
             // Update the existing sources in place (mirrors updateTracksOnMap) so a friend's every
             // incoming point doesn't rebuild the layers and lift them above the other overlays.
+            // The label layer is added last, so its presence means the whole overlay is there: on a
+            // source that outlived its layers this would otherwise keep feeding an invisible map.
             val existingLines = style.getSourceAs<GeoJsonSource>(lineSourceId)
             val existingPoints = style.getSourceAs<GeoJsonSource>(pointSourceId)
-            if (existingLines != null && existingPoints != null) {
+            if (existingLines != null && existingPoints != null && style.getLayer(labelLayerId) != null) {
                 existingLines.setGeoJson(lines)
                 existingPoints.setGeoJson(points)
                 return
             }
+            // Half an overlay left over: adding a source whose id is taken throws, so clear first.
+            listOf(labelLayerId, pointLayerId, haloLayerId, lineLayerId).forEach { style.removeLayer(it) }
+            listOf(pointSourceId, lineSourceId).forEach { style.removeSource(it) }
 
             style.addSource(GeoJsonSource(lineSourceId, lines))
             style.addLayer(
@@ -168,7 +177,7 @@ object MapRenderUtils {
                     PropertyFactory.lineColor(Expression.get("color")),
                     PropertyFactory.lineWidth(4f),
                     PropertyFactory.lineOpacity(0.8f),
-                    PropertyFactory.lineDasharray(arrayOf(4f, 2f)),
+                    PropertyFactory.lineDasharray(arrayOf(3f, 1.5f)),
                     PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                     PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
                 )
@@ -176,32 +185,52 @@ object MapRenderUtils {
 
             style.addSource(GeoJsonSource(pointSourceId, points))
             // Halo only where it is needed: it fades to nothing by the zoom where the dot alone
-            // is easy to see, so it never sits on top of the map you are actually reading.
+            // is easy to see, so it never sits on top of the map you are actually reading. Half the
+            // friend palette is Kartverket's own yellow/green/brown, so the colour alone can be
+            // invisible over topo -- a white ring makes it read as a halo whatever the hue. Only a
+            // friend who is still sharing gets one; a stopped friend keeps just their dot and name.
             style.addLayer(
                 CircleLayer(haloLayerId, pointSourceId).withProperties(
-                    PropertyFactory.circleRadius(friendZoomRamp(zoomedOut = 26f, zoomedIn = 0f)),
+                    PropertyFactory.circleRadius(friendZoomRamp(zoomedOut = 18f, zoomedIn = 0f)),
                     PropertyFactory.circleColor(Expression.get("color")),
-                    PropertyFactory.circleOpacity(0.22f)
-                )
+                    PropertyFactory.circleOpacity(0.22f),
+                    PropertyFactory.circleStrokeWidth(friendZoomRamp(zoomedOut = 3f, zoomedIn = 0f)),
+                    PropertyFactory.circleStrokeColor("#FFFFFF")
+                ).withFilter(Expression.eq(Expression.get("active"), Expression.literal(true)))
             )
             style.addLayer(
                 CircleLayer(pointLayerId, pointSourceId).withProperties(
                     PropertyFactory.circleRadius(friendZoomRamp(zoomedOut = 12f, zoomedIn = 8f)),
                     PropertyFactory.circleColor(Expression.get("color")),
                     PropertyFactory.circleStrokeWidth(2f),
-                    PropertyFactory.circleStrokeColor("#FFFFFF")
+                    PropertyFactory.circleStrokeColor("#FFFFFF"),
+                    // A friend who stopped sharing is dimmed, like their chip in the banner, so a
+                    // stale position doesn't look live at the zoom where you act on it.
+                    PropertyFactory.circleOpacity(
+                        Expression.switchCase(Expression.get("active"), Expression.literal(1f), Expression.literal(0.5f))
+                    )
                 )
             )
             style.addLayer(
                 SymbolLayer(labelLayerId, pointSourceId).withProperties(
                     PropertyFactory.textField(Expression.get("clientId")),
+                    PropertyFactory.textFont(GLYPH_FONTS),
                     PropertyFactory.textSize(12f),
                     PropertyFactory.textColor(Expression.get("color")),
                     PropertyFactory.textHaloColor("#FFFFFF"),
                     PropertyFactory.textHaloWidth(1.5f),
                     PropertyFactory.textOffset(arrayOf(0f, 1.5f)),
-                    PropertyFactory.textAnchor("top")
-                )
+                    PropertyFactory.textAnchor("top"),
+                    // Placement is spelled out rather than inherited, like the coord grid labels.
+                    PropertyFactory.textAllowOverlap(false),
+                    PropertyFactory.textPadding(2f)
+                ).apply {
+                    // Six-character sharing codes are unreadable in an overview and only collide
+                    // with each other, so the label stops where the halo takes over the job. A min
+                    // zoom rather than a fade: an invisible label would still hold its placement
+                    // slot against the grid labels.
+                    minZoom = 11f
+                }
             )
         } catch (e: Exception) {
             Logger.e(e, "Map render error")
@@ -313,7 +342,7 @@ object MapRenderUtils {
 
             style.addLayer(SymbolLayer(MEASURE_LABEL_LAYER, MEASURE_POINT_SOURCE).withProperties(
                 PropertyFactory.textField(Expression.get("label")),
-                PropertyFactory.textFont(arrayOf("NotoSansRegular")),
+                PropertyFactory.textFont(GLYPH_FONTS),
                 PropertyFactory.textSize(14f),
                 PropertyFactory.textColor("#000000"),
                 PropertyFactory.textHaloColor("#FFFFFF"),
@@ -542,7 +571,7 @@ object MapRenderUtils {
 
                 val labelLayer = SymbolLayer(labelLayerId, sourceId).withProperties(
                     PropertyFactory.textField(Expression.get("label")),
-                    PropertyFactory.textFont(arrayOf("NotoSansRegular")),
+                    PropertyFactory.textFont(GLYPH_FONTS),
                     PropertyFactory.textSize(10f),
                     PropertyFactory.textColor("#000000"),
                     PropertyFactory.textOpacity(0.6f),
@@ -558,7 +587,7 @@ object MapRenderUtils {
 
                 val cellLayer = SymbolLayer(cellLayerId, sourceId).withProperties(
                     PropertyFactory.textField(Expression.get("label")),
-                    PropertyFactory.textFont(arrayOf("NotoSansRegular")),
+                    PropertyFactory.textFont(GLYPH_FONTS),
                     PropertyFactory.textSize(14f),
                     PropertyFactory.textColor("#C62828"),
                     PropertyFactory.textOpacity(0.85f),

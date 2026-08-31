@@ -162,7 +162,7 @@ fun IosMapScreen(
     LaunchedEffect(followState) {
         val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@LaunchedEffect
         if (hasZoomedToFriend) return@LaunchedEffect
-        val bounds = following.tracks.flatMap { it.points }.bounds() ?: return@LaunchedEffect
+        val bounds = following.tracks.friendBounds() ?: return@LaunchedEffect
         hasZoomedToFriend = true
         mapViewProvider.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
     }
@@ -844,9 +844,9 @@ fun IosMapScreen(
         },
         followedFriends = followedFriends,
         isFollowConnecting = followState is LiveTrackingFollower.FollowState.Connecting,
-        onFollowBannerClick = {
+        onFollowBannerClick = { clientId ->
             val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
-            val bounds = following.tracks.flatMap { it.points }.bounds() ?: return@MapScreenContent
+            val bounds = following.tracks.friendBounds(clientId) ?: return@MapScreenContent
             mapViewProvider.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
         },
         onStopFollowing = { stopFollowingAll(userPreferences, liveTrackingFollower) },

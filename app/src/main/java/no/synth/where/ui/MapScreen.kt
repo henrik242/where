@@ -73,6 +73,7 @@ import no.synth.where.ui.map.PointColors
 import no.synth.where.ui.map.MapZoomLevels
 import no.synth.where.ui.map.buildElevationMarkerGeoJson
 import no.synth.where.ui.map.followedFriends
+import no.synth.where.ui.map.friendBounds
 import no.synth.where.ui.map.buildTracksGeoJson
 import no.synth.where.ui.map.renderableTracks
 import no.synth.where.ui.map.animateToBounds
@@ -215,7 +216,7 @@ fun MapScreen(
         val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@LaunchedEffect
         val map = mapInstance ?: return@LaunchedEffect
         if (hasZoomedToFriend) return@LaunchedEffect
-        val bounds = following.tracks.flatMap { it.points }.bounds() ?: return@LaunchedEffect
+        val bounds = following.tracks.friendBounds() ?: return@LaunchedEffect
         hasZoomedToFriend = true
         map.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
     }
@@ -664,9 +665,9 @@ fun MapScreen(
         },
         followedFriends = followedFriends,
         isFollowConnecting = followState is LiveTrackingFollower.FollowState.Connecting,
-        onFollowBannerClick = {
+        onFollowBannerClick = { clientId ->
             val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
-            val bounds = following.tracks.flatMap { it.points }.bounds() ?: return@MapScreenContent
+            val bounds = following.tracks.friendBounds(clientId) ?: return@MapScreenContent
             mapInstance?.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
         },
         onStopFollowing = { stopFollowingAll(viewModel.userPreferences, liveTrackingFollower) },

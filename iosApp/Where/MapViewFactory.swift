@@ -54,6 +54,10 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let searchResultsLayerId = "search-results-layer"
     private let searchHighlightSourceId = "search-highlight-source"
     private let searchHighlightLayerId = "search-highlight-layer"
+    // The only glyph stack in the bundle. A text layer that leaves the font unset asks for
+    // MapLibre's default "Open Sans Regular" stack, and the failed glyph load takes down every
+    // layer on that source, not just the label.
+    private let glyphFontNames = NSExpression(forConstantValue: ["NotoSansRegular"])
     private let friendTrackLineSourceId = "friend-track-line-source"
     private let friendTrackPointSourceId = "friend-track-point-source"
     private let friendTrackLineLayerId = "friend-track-line-layer"
@@ -794,10 +798,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
             let label = MLNSymbolStyleLayer(identifier: measureLabelLayerId, source: pointSource)
             label.predicate = NSPredicate(format: "role == 'label'")
             label.text = NSExpression(forKeyPath: "label")
-            // The bundle only ships the NotoSansRegular glyph stack; without this the default
-            // "Open Sans" stack 404s and the distance label silently doesn't draw (matches Android
-            // and the coord-grid layers).
-            label.textFontNames = NSExpression(forConstantValue: ["NotoSansRegular"])
+            label.textFontNames = glyphFontNames
             label.textFontSize = NSExpression(forConstantValue: 14)
             label.textColor = NSExpression(forConstantValue: UIColor.black)
             label.textHaloColor = NSExpression(forConstantValue: UIColor.white)
@@ -1020,10 +1021,12 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         let pointCollection = MLNShapeCollectionFeature(shapes: pointFeatures)
 
         // Update the existing sources in place (mirrors applyTracks) so a friend's every incoming
-        // point doesn't tear down the layers and shuffle them back above the other overlays.
+        // point doesn't tear down the layers and shuffle them back above the other overlays. The
+        // label layer is added last, so its presence means the whole overlay is there: on a source
+        // that outlived its layers this would otherwise keep feeding an invisible map.
         if let lineSource = style.source(withIdentifier: friendTrackLineSourceId) as? MLNShapeSource,
            let pointSource = style.source(withIdentifier: friendTrackPointSourceId) as? MLNShapeSource,
-           style.layer(withIdentifier: friendTrackLineLayerId) != nil {
+           style.layer(withIdentifier: friendTrackLabelLayerId) != nil {
             lineSource.shape = lineCollection
             pointSource.shape = pointCollection
             pendingFriendTrackGeoJson = geoJson
@@ -1037,7 +1040,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         lineLayer.lineColor = NSExpression(forKeyPath: "color")
         lineLayer.lineWidth = NSExpression(forConstantValue: 4)
         lineLayer.lineOpacity = NSExpression(forConstantValue: 0.8)
-        lineLayer.lineDashPattern = NSExpression(forConstantValue: [4, 2])
+        lineLayer.lineDashPattern = NSExpression(forConstantValue: [3, 1.5])
         lineLayer.lineCap = NSExpression(forConstantValue: "round")
         lineLayer.lineJoin = NSExpression(forConstantValue: "round")
         style.addLayer(lineLayer)
@@ -1047,11 +1050,17 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
         // Halo under the dot, in the friend's own colour, so they stay findable in an overview.
         // It fades to nothing by the zoom where the dot alone is easy to see, so it never sits on
-        // top of the map you are actually reading.
+        // top of the map you are actually reading. Half the friend palette is Kartverket's own
+        // yellow/green/brown, so the colour alone can be invisible over topo: a white ring makes it
+        // read as a halo whatever the hue. Only a friend who is still sharing gets one; a stopped
+        // friend keeps just their dot and name.
         let haloLayer = MLNCircleStyleLayer(identifier: friendTrackHaloLayerId, source: pointSource)
-        haloLayer.circleRadius = friendZoomRamp(zoomedOut: 26, zoomedIn: 0)
+        haloLayer.circleRadius = friendZoomRamp(zoomedOut: 18, zoomedIn: 0)
         haloLayer.circleColor = NSExpression(forKeyPath: "color")
         haloLayer.circleOpacity = NSExpression(forConstantValue: 0.22)
+        haloLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+        haloLayer.circleStrokeWidth = friendZoomRamp(zoomedOut: 3, zoomedIn: 0)
+        haloLayer.predicate = NSPredicate(format: "active == YES")
         style.addLayer(haloLayer)
 
         let pointLayer = MLNCircleStyleLayer(identifier: friendTrackPointLayerId, source: pointSource)
@@ -1059,16 +1068,30 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         pointLayer.circleColor = NSExpression(forKeyPath: "color")
         pointLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
         pointLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)
+        // A friend who stopped sharing is dimmed, like their chip in the banner, so a stale position
+        // doesn't look live at the zoom where you act on it.
+        pointLayer.circleOpacity = NSExpression(
+            forConditional: NSPredicate(format: "active == YES"),
+            trueExpression: NSExpression(forConstantValue: 1),
+            falseExpression: NSExpression(forConstantValue: 0.5)
+        )
         style.addLayer(pointLayer)
 
         let labelLayer = MLNSymbolStyleLayer(identifier: friendTrackLabelLayerId, source: pointSource)
         labelLayer.text = NSExpression(forKeyPath: "clientId")
+        labelLayer.textFontNames = glyphFontNames
         labelLayer.textFontSize = NSExpression(forConstantValue: 12)
         labelLayer.textColor = NSExpression(forKeyPath: "color")
         labelLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
         labelLayer.textHaloWidth = NSExpression(forConstantValue: 1.5)
         labelLayer.textOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: 1.5)))
         labelLayer.textAnchor = NSExpression(forConstantValue: "top")
+        // Six-character sharing codes are unreadable in an overview and only collide with each
+        // other, so the label stops where the halo takes over the job. A min zoom rather than a
+        // fade: an invisible label would still hold its placement slot against the grid labels.
+        labelLayer.minimumZoomLevel = 11
+        labelLayer.textAllowsOverlap = NSExpression(forConstantValue: false)
+        labelLayer.textPadding = NSExpression(forConstantValue: 2)
         style.addLayer(labelLayer)
 
         pendingFriendTrackGeoJson = geoJson
@@ -1115,7 +1138,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
             let labelLayer = MLNSymbolStyleLayer(identifier: coordGridLabelLayerId, source: source)
             labelLayer.text = NSExpression(forKeyPath: "label")
-            labelLayer.textFontNames = NSExpression(forConstantValue: ["NotoSansRegular"])
+            labelLayer.textFontNames = glyphFontNames
             labelLayer.textFontSize = NSExpression(forConstantValue: 10)
             labelLayer.textColor = NSExpression(forConstantValue: UIColor.black.withAlphaComponent(0.6))
             labelLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)
@@ -1126,7 +1149,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
 
             let cellLayer = MLNSymbolStyleLayer(identifier: coordGridCellLayerId, source: source)
             cellLayer.text = NSExpression(forKeyPath: "label")
-            cellLayer.textFontNames = NSExpression(forConstantValue: ["NotoSansRegular"])
+            cellLayer.textFontNames = glyphFontNames
             cellLayer.textFontSize = NSExpression(forConstantValue: 14)
             cellLayer.textColor = NSExpression(forConstantValue: UIColor(red: 0.776, green: 0.157, blue: 0.157, alpha: 0.85))
             cellLayer.textHaloColor = NSExpression(forConstantValue: UIColor.white)

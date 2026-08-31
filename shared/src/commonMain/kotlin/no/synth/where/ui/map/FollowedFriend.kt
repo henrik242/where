@@ -1,6 +1,8 @@
 package no.synth.where.ui.map
 
 import no.synth.where.data.FriendTrack
+import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.data.geo.bounds
 
 /** A followed client as the UI needs it: its map color and whether it is currently sending. */
 data class FollowedFriend(
@@ -21,3 +23,7 @@ fun followedFriends(clientIds: List<String>, tracks: List<FriendTrack>): List<Fo
             isActive = tracks.any { it.clientId == clientId && it.isActive }
         )
     }
+
+/** Bounds of everything [clientId] has sent, or of every followed friend when it is null. */
+fun List<FriendTrack>.friendBounds(clientId: String? = null): LatLngBounds? =
+    filter { clientId == null || it.clientId == clientId }.flatMap { it.points }.bounds()

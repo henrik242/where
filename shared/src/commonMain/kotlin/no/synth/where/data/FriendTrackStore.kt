@@ -114,9 +114,10 @@ internal class FriendTrackStore(
     private fun countFor(clientId: String): Int = tracks.values.count { it.clientId == clientId }
 
     /**
-     * One dashed LineString plus an endpoint marker per track, each carrying `clientId` (the map
-     * label) and `color` so a single data-driven layer can draw everyone at once. Both values are
-     * ours, not the server's: clientId is one of the followed ids, color is its list position.
+     * A dashed LineString per track, plus one endpoint marker per client, each carrying `clientId`
+     * (the map label), `color` and `active` so a single data-driven layer can draw everyone at once.
+     * The values are ours, not the server's: clientId is one of the followed ids, color is its list
+     * position.
      */
     fun geoJson(): String? {
         val drawable = tracks.values.filter { it.points.isNotEmpty() }
@@ -125,25 +126,36 @@ internal class FriendTrackStore(
         sb.append("""{"type":"FeatureCollection","features":[""")
         var first = true
         for (track in drawable) {
-            val color = TrackColors.forIndex(clientIds.indexOf(track.clientId))
-            val props = """"properties":{"clientId":"${track.clientId}","color":"$color"}"""
-            if (track.points.size >= 2) {
-                if (!first) sb.append(",")
-                first = false
-                sb.append("""{"type":"Feature",$props,"geometry":{"type":"LineString","coordinates":[""")
-                track.points.forEachIndexed { i, p ->
-                    if (i > 0) sb.append(",")
-                    sb.append("[${p.longitude},${p.latitude}]")
-                }
-                sb.append("]}}")
+            if (track.points.size < 2) continue
+            if (!first) sb.append(",")
+            first = false
+            sb.append("""{"type":"Feature",${props(track)},"geometry":{"type":"LineString","coordinates":[""")
+            track.points.forEachIndexed { i, p ->
+                if (i > 0) sb.append(",")
+                sb.append("[${p.longitude},${p.latitude}]")
             }
+            sb.append("]}}")
+        }
+        // One marker per client, not per track: a friend who stops and restarts recording would
+        // otherwise pile up identical dots and names, and their halos would composite into a blob.
+        for (track in drawable.groupBy { it.clientId }.values.map(::markerTrack)) {
             val last = track.points.last()
             if (!first) sb.append(",")
             first = false
-            sb.append("""{"type":"Feature",$props,"geometry":{"type":"Point","coordinates":[${last.longitude},${last.latitude}]}}""")
+            sb.append("""{"type":"Feature",${props(track)},"geometry":{"type":"Point","coordinates":[${last.longitude},${last.latitude}]}}""")
         }
         sb.append("]}")
         return sb.toString()
+    }
+
+    // Neither tracks nor points carry a timestamp, so "newest" can only mean last in insertion
+    // order, which initial_state rebuilds in the server's order. An active track wins regardless.
+    private fun markerTrack(clientTracks: List<FriendTrack>): FriendTrack =
+        clientTracks.lastOrNull { it.isActive } ?: clientTracks.last()
+
+    private fun props(track: FriendTrack): String {
+        val color = TrackColors.forIndex(clientIds.indexOf(track.clientId))
+        return """"properties":{"clientId":"${track.clientId}","color":"$color","active":${track.isActive}}"""
     }
 
     private fun parsePoints(array: JsonArray?): List<LatLng> =

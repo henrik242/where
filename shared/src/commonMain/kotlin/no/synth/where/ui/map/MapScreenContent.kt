@@ -110,7 +110,7 @@ fun MapScreenContent(
     // Follow friend state
     followedFriends: List<FollowedFriend> = emptyList(),
     isFollowConnecting: Boolean = false,
-    onFollowBannerClick: () -> Unit = {},
+    onFollowBannerClick: (clientId: String?) -> Unit = {},
     onStopFollowing: () -> Unit = {},
     // Map slot
     mapContent: @Composable () -> Unit
