@@ -1,6 +1,6 @@
 [versions]
 activityCompose = "1.13.0"
-agp = "9.3.2"
+agp = "9.4.0"
 # Must stay on the same compose train as composeBom. Overrides the androidx material3
 # 1.5.0-alpha22 that composeMaterial3 pulls in on android.
 androidxMaterial3 = "1.5.0-alpha26"
