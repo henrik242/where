@@ -1,9 +1,9 @@
 [versions]
 activityCompose = "1.13.0"
-agp = "9.3.2"
+agp = "9.4.0"
 # Must stay on the same compose train as composeBom. Overrides the androidx material3
 # 1.5.0-alpha22 that composeMaterial3 pulls in on android.
-androidxMaterial3 = "1.5.0-alpha26"
+androidxMaterial3 = "1.5.0-alpha27"
 appcompat = "1.8.0"
 browser = "1.10.0"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
@@ -26,11 +26,11 @@ kotlinxSerializationJson = "1.11.0"
 ksp = "2.3.11"
 ktor = "3.5.2"
 lifecycleRuntimeCompose = "2.11.0"
-maplibre = "13.5.1"
+maplibre = "13.6.0"
 material = "1.14.0"
 mockk = "1.14.11"
 mockkAndroid = "1.14.11"
-navigationCompose = "2.9.8"
+navigationCompose = "2.10.0"
 playServicesLocation = "21.4.0"
 robolectric = "4.16.1"
 room = "2.8.4"
