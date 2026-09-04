@@ -23,6 +23,22 @@ android {
     compileSdk = 37
 
     signingConfigs {
+        getByName("debug") {
+            // CI runners are ephemeral, so AGP would generate a fresh debug keystore every run and
+            // installs over an earlier CI build would fail. Use a fixed keystore when one is provided.
+            val debugStore = System.getenv("DEBUG_STORE_FILE")?.let { rootProject.file(it) }
+            val debugStorePassword = System.getenv("DEBUG_STORE_PASSWORD")
+            val debugKeyAlias = System.getenv("DEBUG_KEY_ALIAS")
+            val debugKeyPassword = System.getenv("DEBUG_KEY_PASSWORD")
+
+            if (debugStore?.exists() == true && !debugStorePassword.isNullOrBlank() && !debugKeyAlias.isNullOrBlank() && !debugKeyPassword.isNullOrBlank()) {
+                storeFile = debugStore
+                storePassword = debugStorePassword
+                keyAlias = debugKeyAlias
+                keyPassword = debugKeyPassword
+            }
+        }
+
         create("release") {
             val localProperties = Properties()
             val localPropertiesFile = rootProject.file("local.properties")
@@ -72,6 +88,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true

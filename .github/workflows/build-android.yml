@@ -65,8 +65,25 @@ jobs:
           echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 -d > app/google-services.json
         fi
 
+    - name: Decode debug keystore
+      if: github.actor != 'dependabot[bot]'
+      env:
+        DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+      run: |
+        if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
+          echo "DEBUG_KEYSTORE_BASE64 not set, falling back to a generated debug keystore."
+          echo "Installs over an earlier CI build will fail until the secret is added."
+          exit 0
+        fi
+        echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > /tmp/debug.jks
+
     - name: Build debug APK
       if: github.actor != 'dependabot[bot]'
+      env:
+        DEBUG_STORE_FILE: /tmp/debug.jks
+        DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_STORE_PASSWORD }}
+        DEBUG_KEY_ALIAS: ${{ secrets.DEBUG_KEY_ALIAS }}
+        DEBUG_KEY_PASSWORD: ${{ secrets.DEBUG_KEY_PASSWORD }}
       run: ./gradlew assembleDebug --stacktrace
 
     - name: Run tests
@@ -88,3 +105,7 @@ jobs:
         name: test-results
         path: app/build/reports/tests/
         retention-days: 14
+
+    - name: Cleanup secrets
+      if: always()
+      run: rm -f /tmp/debug.jks app/google-services.json local.properties

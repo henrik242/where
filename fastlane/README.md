@@ -47,6 +47,13 @@ Both can be triggered from the same commit. The second one adds its artifact to 
 | `SIGNING_KEY_ALIAS` | Key alias (e.g., `where`) | Set when keystore was created |
 | `SIGNING_KEY_PASSWORD` | Key password | Set when keystore was created |
 | `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | Play Console service account key (base64) | See [Play Store setup](#play-store-service-account) |
+| `DEBUG_KEYSTORE_BASE64` | Debug keystore for CI APKs (base64) | `base64 -i ~/.android/debug.keystore \| pbcopy` |
+| `DEBUG_STORE_PASSWORD` | Debug keystore password | `android` for the default keystore |
+| `DEBUG_KEY_ALIAS` | Debug key alias | `androiddebugkey` for the default keystore |
+| `DEBUG_KEY_PASSWORD` | Debug key password | `android` for the default keystore |
+
+Without the debug secrets, CI generates a new debug keystore per run and installing a CI APK over
+an earlier one fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
 
 ### iOS
 
