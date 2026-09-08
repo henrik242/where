@@ -66,7 +66,7 @@ internal fun LiveSharingChip(
     val countdownActive = enabled && untilMillis != null && untilMillis > 0L
     var nowMillis by remember { mutableStateOf(currentTimeMillis()) }
     LaunchedEffect(countdownActive, untilMillis) {
-        if (!countdownActive || untilMillis == null) return@LaunchedEffect
+        if (!countdownActive) return@LaunchedEffect
         while (untilMillis > nowMillis) {
             val remaining = untilMillis - nowMillis
             delay(if (remaining < 60_000L) 1_000L else 30_000L)
@@ -74,7 +74,7 @@ internal fun LiveSharingChip(
         }
     }
     val remainingMillis =
-        if (countdownActive && untilMillis != null) (untilMillis - nowMillis).coerceAtLeast(0L)
+        if (countdownActive) (untilMillis - nowMillis).coerceAtLeast(0L)
         else 0L
 
     val containerColor = if (enabled) {

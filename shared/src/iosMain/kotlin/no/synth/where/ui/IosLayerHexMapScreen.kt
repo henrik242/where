@@ -148,9 +148,10 @@ fun IosLayerHexMapScreen(
     // Refresh the selected hex's tile info once its download finishes, so the panel flips from
     // "downloading" to the downloaded size + Delete instead of a stale "Not downloaded".
     LaunchedEffect(selectedHexDownload?.status) {
-        if (selectedHexDownload?.status == DownloadStatus.COMPLETED && currentHex != null) {
+        val hex = currentHex ?: return@LaunchedEffect
+        if (selectedHexDownload?.status == DownloadStatus.COMPLETED) {
             selectedHexInfo = downloadManager.getRegionTileInfo(
-                HexGrid.hexToRegion(currentHex), layerId, maxZoom = effectiveMaxZoom
+                HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom
             )
         }
     }

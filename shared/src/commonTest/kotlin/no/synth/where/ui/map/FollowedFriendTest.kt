@@ -14,7 +14,7 @@ class FollowedFriendTest {
         val ids = listOf("aaa111", "bbb222", "ccc333", "ddd444", "eee555")
         val friends = followedFriends(ids, emptyList())
         assertEquals(ids, friends.map { it.clientId })
-        assertEquals(ids.size, friends.map { it.color }.toSet().size)
+        assertEquals(ids.size, friends.distinctBy { it.color }.size)
         assertEquals(TrackColors.forIndex(0), friends.first().color)
     }
 
