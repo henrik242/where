@@ -73,7 +73,9 @@ PORT=3000                          # Default: 3000
 
 The same secret must be configured in the Android app build.
 
-**Note:** The client TypeScript (`src/client/app.ts`) is automatically built to `src/client/app.js` by GitHub Actions during deployment. For local development, just run `bun run dev` - the pre-built `app.js` will be used.
+**Note:** The client TypeScript (`src/client/app.ts`) is built to `src/client/app.js`, and maplibre-gl is
+copied from `node_modules` into `src/client/vendor/`. Both are gitignored. `bun run dev` builds them on
+start, but `--hot` only reloads the server, so rerun `bun run build` after editing `src/client/app.ts`.
 
 ## Project layout
 

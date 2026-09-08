@@ -5,9 +5,10 @@
   "main": "src/server/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun --hot src/server/index.ts",
-    "start": "bun --watch src/server/index.ts",
-    "build": "bun build src/client/app.ts --outfile=src/client/app.js --target=browser --minify",
+    "dev": "bun run build && bun --hot src/server/index.ts",
+    "start": "bun run build && bun --watch src/server/index.ts",
+    "build": "bun build src/client/app.ts --outfile=src/client/app.js --target=browser --external maplibre-gl --minify && bun run vendor",
+    "vendor": "mkdir -p src/client/vendor && cp node_modules/maplibre-gl/dist/maplibre-gl.mjs node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs node_modules/maplibre-gl/dist/maplibre-gl.css src/client/vendor/",
     "test": "bun test",
     "test:unit": "bun test tests/store.test.ts tests/track.test.ts tests/platform.test.ts",
     "test:api": "bun test tests/api.test.ts",
@@ -24,7 +25,7 @@
   ],
   "devDependencies": {
     "@types/bun": "latest",
-    "maplibre-gl": "3.6.2",
+    "maplibre-gl": "6.8.0",
     "typescript": "^7.0.2"
   }
 }

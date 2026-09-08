@@ -11,3 +11,4 @@ data/
 # Build artifacts
 src/client/app.js
 src/client/app.js.map
+src/client/vendor/

@@ -1,3 +1,4 @@
+import * as maplibregl from 'maplibre-gl';
 import type {
   Track,
   TrackPoint,
@@ -65,6 +66,7 @@ function initMap(): void {
     maxZoom: 18
   });
 
+  document.getElementById('map-fallback')?.remove();
   map.addControl(new maplibregl.NavigationControl(), 'top-left');
 
   // Try to get user's location (only if no client filters specified in URL)
@@ -283,7 +285,7 @@ function selectTrack(trackId: string): void {
   updateMap();
 
   const track = tracks.get(trackId);
-  if (track && track.points.length > 0) {
+  if (map && track && track.points.length > 0) {
     const only = track.points.length === 1 ? track.points[0] : null;
     if (only) {
       map.flyTo({ center: [only.lon, only.lat], zoom: 15 });
@@ -297,6 +299,7 @@ function selectTrack(trackId: string): void {
 
 // Update map
 function updateMap(): void {
+  if (!map) return;
   if (!map.loaded()) {
     map.once('load', () => updateMap());
     return;
@@ -562,6 +565,7 @@ async function fetchTracks(): Promise<void> {
 
 // Zoom map to show all client tracks
 function zoomToClientTracks(): void {
+  if (!map) return;
   const allPoints: Point[] = [];
 
   tracks.forEach(track => {
@@ -726,7 +730,14 @@ function showPanel(): void {
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
   parseURLParameters(); // Parse URL first so clientFilters is set
-  initMap();
+  try {
+    initMap();
+  } catch (e) {
+    // maplibre 6 requires WebGL2 and throws from the Map constructor without it.
+    const fallback = document.getElementById('map-fallback');
+    if (fallback) fallback.textContent = 'This map needs WebGL2, which this browser does not support.';
+    console.error(e);
+  }
   updateClientTags();
 
   // When arriving via a clientId link, collapse the panel so it doesn't

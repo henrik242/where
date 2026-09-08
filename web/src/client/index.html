@@ -13,11 +13,19 @@
 
     <!-- OG_META -->
 
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css">
+    <!-- maplibre-gl 6 is ESM-only, so app.js imports it and this map resolves the bare
+         specifier. vendor/ is copied from node_modules by `bun run build`, so the version
+         in package.json is the only place it is pinned. -->
+    <script type="importmap">
+    {"imports": {"maplibre-gl": "/vendor/maplibre-gl.mjs"}}
+    </script>
+    <link rel="modulepreload" href="/vendor/maplibre-gl.mjs">
+    <link rel="modulepreload" href="/vendor/maplibre-gl-shared.mjs">
+    <link rel="stylesheet" href="/vendor/maplibre-gl.css">
     <link rel="stylesheet" href="app.css">
 </head>
 <body>
-    <div id="map"></div>
+    <div id="map"><p id="map-fallback" style="padding: 16px; color: #666;">Loading map...</p></div>
     <!-- VERSION_PLACEHOLDER -->
     <div class="menu-wrapper">
         <button class="menu-btn" onclick="this.parentElement.classList.toggle('open')" title="Menu">
@@ -67,8 +75,8 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <script>document.addEventListener('click', e => { if (!e.target.closest('.menu-wrapper')) document.querySelector('.menu-wrapper')?.classList.remove('open'); });</script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"
+            onerror="document.getElementById('map-fallback').textContent = 'Could not load the map.'"></script>
 </body>
 </html>
