@@ -82,30 +82,13 @@ class ScreenHeadingTest {
     }
 
     @Test
-    fun theBreakdownShowsBothReferencesAndTheChoice() {
-        // Upright, back towards north, top edge towards the sky: the reading in use is the back's,
-        // and the screen-up reference is the degenerate one a vertical screen cannot use.
-        val upright = posture(deviceX = east, deviceY = up, deviceZ = south)
-        val breakdown = headingBreakdown(upright, 0)
-        assertEquals(false, breakdown.screenIsFlat)
-        assertEquals(0.0, breakdown.backOfDeviceDegrees, 0.001)
-        assertEquals(breakdown.backOfDeviceDegrees, breakdown.headingDegrees, 0.001)
-
-        // Flat, top edge north: now the screen-up reference is the one in use.
-        val flat = headingBreakdown(posture(deviceX = east, deviceY = north, deviceZ = up), 0)
-        assertEquals(true, flat.screenIsFlat)
-        assertEquals(0.0, flat.screenUpDegrees, 0.001)
-        assertEquals(flat.screenUpDegrees, flat.headingDegrees, 0.001)
-    }
-
-    @Test
     fun theFlatReferenceMatchesTheStandardAzimuth() {
-        // With the screen-up axis, this function reduces to atan2(R[1], R[4]) -- exactly what
-        // SensorManager.getOrientation reports as azimuth. Anything else means a transposed
-        // convention, which these postures alone could not catch.
+        // Flat, so the reading is the screen-up reference, which reduces to atan2(R[1], R[4]) --
+        // exactly what SensorManager.getOrientation reports as azimuth. Anything else means a
+        // transposed convention, which these postures alone could not catch.
         val m = posture(deviceX = south, deviceY = east, deviceZ = up)
         val expected = ((kotlin.math.atan2(m[1].toDouble(), m[4].toDouble()) * 180.0 / kotlin.math.PI) + 360.0) % 360.0
-        assertEquals(expected, headingBreakdown(m, 0).screenUpDegrees, 0.001)
+        assertEquals(expected, heading(m), 0.001)
     }
 
     @Test

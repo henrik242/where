@@ -314,7 +314,6 @@ fun MapLibreMapView(
                     sinceCourse = followedCourseAt?.elapsedNow(),
                 )
                 if (next == HeadingSource.COURSE) followedCourseAt = TimeSource.Monotonic.markNow()
-                HeadingDebug.publishMotion(speedMps, courseDegrees, next)
                 if (next != headingSource) {
                     headingSource = next
                     // Live holders, not the captured parameters: this loop outlives the

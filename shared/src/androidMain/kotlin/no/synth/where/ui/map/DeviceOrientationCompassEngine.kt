@@ -1,7 +1,6 @@
 package no.synth.where.ui.map
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -9,7 +8,7 @@ import android.hardware.SensorManager
 import android.os.SystemClock
 import android.view.Display
 import android.view.Surface
-import no.synth.where.data.geo.headingBreakdown
+import no.synth.where.data.geo.screenHeadingDegrees
 import no.synth.where.util.Logger
 import org.maplibre.android.location.CompassEngine
 import org.maplibre.android.location.CompassListener
@@ -38,10 +37,6 @@ internal class DeviceOrientationCompassEngine(context: Context) : CompassEngine,
     }
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-
-    /** Debuggable builds feed the on-map heading readout; release builds never populate it. */
-    private val publishesDebug =
-        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     /**
      * Held rather than re-resolved so the engine keeps no reference to the activity. A context
@@ -76,14 +71,6 @@ internal class DeviceOrientationCompassEngine(context: Context) : CompassEngine,
     private var lastAccuracyStatus = SensorManager.SENSOR_STATUS_ACCURACY_HIGH
     private var nextUpdateAt = 0L
 
-    init {
-        // The location component drops its compass listener whenever nothing consumes the compass,
-        // which is what following the course over ground does -- so the readout would freeze
-        // exactly when there is finally a second reference to compare it against. Keep the sensors
-        // running for it. Debuggable builds only, so nothing is spent on it in release.
-        if (publishesDebug) registerSensorListeners()
-    }
-
     override fun addCompassListener(listener: CompassListener) {
         if (listeners.isEmpty()) registerSensorListeners()
         listeners.add(listener)
@@ -91,7 +78,7 @@ internal class DeviceOrientationCompassEngine(context: Context) : CompassEngine,
 
     override fun removeCompassListener(listener: CompassListener) {
         listeners.remove(listener)
-        if (listeners.isEmpty() && !publishesDebug) unregisterSensorListeners()
+        if (listeners.isEmpty()) unregisterSensorListeners()
     }
 
     override fun getLastHeading(): Float = lastHeading
@@ -131,9 +118,7 @@ internal class DeviceOrientationCompassEngine(context: Context) : CompassEngine,
         }
 
         nextUpdateAt = now + UPDATE_RATE_MS
-        val breakdown = headingBreakdown(rotationMatrix, displayRotationDegrees())
-        lastHeading = breakdown.headingDegrees.toFloat()
-        if (publishesDebug) HeadingDebug.publishHeading(breakdown, lastAccuracyStatus)
+        lastHeading = screenHeadingDegrees(rotationMatrix, displayRotationDegrees()).toFloat()
         // Snapshot: reacting to a heading can change the camera mode, which adds or removes
         // compass listeners on this very list.
         listeners.toList().forEach { it.onCompassChanged(lastHeading) }
