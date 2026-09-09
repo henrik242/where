@@ -19,6 +19,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -50,6 +52,9 @@ import no.synth.where.util.Logger
  * avoids a network round-trip to protomaps.github.io for every glyph range.
  */
 private const val ANDROID_ASSET_GLYPHS_URL = "asset://fonts/{fontstack}/{range}.pbf"
+
+/** How often the current fix is checked for the speed that picks the heading reference. */
+private const val HEADING_SOURCE_POLL_MS = 2000L
 
 @Composable
 fun MapLibreMapView(
@@ -124,6 +129,12 @@ fun MapLibreMapView(
     val cameraFollowModeState = rememberUpdatedState(cameraFollowMode)
     val northLockedState = rememberUpdatedState(northLocked)
     val onFollowModeDismissedState = rememberUpdatedState(onFollowModeDismissed)
+    // Compass or course over ground; polled from the fix below, and read live so a style reload
+    // restores whichever is in use rather than dropping back to the compass.
+    var headingSource by remember { mutableStateOf(HeadingSource.COMPASS) }
+    val headingSourceState = rememberUpdatedState(headingSource)
+    // When the course was last the reference, so a stop knows how long it may keep pointing that way.
+    var followedCourseAt by remember { mutableStateOf<TimeMark?>(null) }
     // The gesture-dismiss listener is registered exactly once, after the component is first enabled.
     var trackingListenerAdded by remember { mutableStateOf(false) }
 
@@ -142,7 +153,11 @@ fun MapLibreMapView(
             )
             trackingListenerAdded = true
         }
-        mapInstance.applyFollowMode(cameraFollowModeState.value, northLocked = northLockedState.value)
+        mapInstance.applyFollowMode(
+            cameraFollowModeState.value,
+            northLocked = northLockedState.value,
+            headingSource = headingSourceState.value,
+        )
     }
 
     // Single owner of the keep-alive policy: run only while resumed with permission, and never
@@ -271,7 +286,49 @@ fun MapLibreMapView(
 
     // The user cycled the FAB: apply the new mode and snap the zoom in from a far-out view.
     LaunchedEffect(cameraFollowMode, map) {
-        map?.applyFollowMode(cameraFollowMode, snapZoom = true, northLocked = northLocked)
+        map?.applyFollowMode(
+            cameraFollowMode,
+            snapZoom = true,
+            northLocked = northLocked,
+            headingSource = headingSource,
+        )
+    }
+
+    // Follow the fix's own speed to decide whether "heading" means the compass or the course over
+    // ground, and re-apply only on a change so a steady drive never touches the camera mode. The
+    // location component exposes no update callback, so read its last fix on a timer; it is a
+    // field read, and the interval is long enough to be free next to the GPS itself.
+    LaunchedEffect(map, hasLocationPermission) {
+        val mapInstance = map ?: return@LaunchedEffect
+        if (!hasLocationPermission) return@LaunchedEffect
+        while (true) {
+            if (mapInstance.isLocationComponentEnabledSafe) {
+                val fix = mapInstance.locationComponent.lastKnownLocation
+                val speedMps = fix?.takeIf { it.hasSpeed() }?.speed?.toDouble()
+                val courseDegrees = fix?.takeIf { it.hasBearing() }?.bearing?.toDouble()
+                val next = headingSourceFor(
+                    current = headingSource,
+                    speedMps = speedMps,
+                    hasCourse = courseDegrees != null,
+                    // Age of the last course actually followed, which is what the hold expires on.
+                    sinceCourse = followedCourseAt?.elapsedNow(),
+                )
+                if (next == HeadingSource.COURSE) followedCourseAt = TimeSource.Monotonic.markNow()
+                HeadingDebug.publishMotion(speedMps, courseDegrees, next)
+                if (next != headingSource) {
+                    headingSource = next
+                    // Live holders, not the captured parameters: this loop outlives the
+                    // composition it started in, and re-applying a stale mode here would
+                    // re-engage a follow the user has since panned away from.
+                    mapInstance.applyFollowMode(
+                        cameraFollowModeState.value,
+                        northLocked = northLockedState.value,
+                        headingSource = next,
+                    )
+                }
+            }
+            delay(HEADING_SOURCE_POLL_MS)
+        }
     }
 
     // Cold start with no cached location: the component only enables once the first fix lands, and
@@ -415,7 +472,11 @@ fun MapLibreMapView(
         val mapInstance = map ?: return@LaunchedEffect
         mapInstance.uiSettings.isRotateGesturesEnabled = !northLocked
         if (cameraFollowMode != CameraFollowMode.OFF) {
-            mapInstance.applyFollowMode(cameraFollowMode, northLocked = northLocked)
+            mapInstance.applyFollowMode(
+                cameraFollowMode,
+                northLocked = northLocked,
+                headingSource = headingSource,
+            )
         } else if (northLocked && mapInstance.cameraPosition.bearing != 0.0) {
             mapInstance.animateCamera(CameraUpdateFactory.bearingTo(0.0))
         }

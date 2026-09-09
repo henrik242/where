@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Card
@@ -29,6 +30,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -36,6 +38,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +81,7 @@ import no.synth.where.util.formatSpeed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import no.synth.where.BuildInfo
 import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -1019,16 +1023,19 @@ fun BoxScope.MapOverlays(
         exit = fadeOut(),
         modifier = Modifier.align(Alignment.TopStart)
     ) {
-        ZoomControls(
+        Column(
             modifier = Modifier.padding(
                 start = 16.dp,
                 top = if (showFriendBanner) compassTopOffset else TOP_OVERLAY_INSET,
                 end = 16.dp,
                 bottom = 16.dp
             ),
-            onZoomIn = onZoomIn,
-            onZoomOut = onZoomOut
-        )
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ZoomControls(onZoomIn = onZoomIn, onZoomOut = onZoomOut)
+            // Debuggable builds only: nothing publishes into HeadingDebug otherwise.
+            HeadingDebugReadout(mapBearing = mapBearing)
+        }
     }
 
     AnimatedVisibility(
@@ -1278,5 +1285,54 @@ private fun LocatingPill(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+/**
+ * Numbers behind the heading arrow, drawn on the map in debuggable builds so a wrong arrow can be
+ * read off the screen instead of inferred: both candidate references, which posture was picked,
+ * what the magnetometer thinks of its own reference, and the course over ground to compare against.
+ *
+ * Deliberately unlocalized -- it exists to be photographed and reasoned about, not shipped.
+ */
+@Composable
+private fun HeadingDebugReadout(mapBearing: Double) {
+    val snapshot by HeadingDebug.snapshot.collectAsState()
+    val reading = snapshot ?: return
+    val breakdown = reading.breakdown
+    fun deg(value: Double) = "${value.roundToInt()}\u00b0"
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+        modifier = Modifier.widthIn(max = 210.dp),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+            Text(
+                "heading ${deg(breakdown.headingDegrees)} " +
+                    (if (breakdown.screenIsFlat) "(screen up)" else "(back of phone)"),
+                style = MaterialTheme.typography.labelMedium,
+            )
+            Text(
+                "screen up ${deg(breakdown.screenUpDegrees)} / back ${deg(breakdown.backOfDeviceDegrees)}",
+                style = MaterialTheme.typography.labelSmall,
+            )
+            Text(
+                "magnetometer ${sensorAccuracyLabel(reading.sensorAccuracy)}",
+                style = MaterialTheme.typography.labelSmall,
+            )
+            Text(
+                "course " + (reading.courseDegrees?.let { deg(it) } ?: "--") +
+                    "  speed " + (reading.speedMps?.let { "${(it * 3.6).roundToInt()} km/h" } ?: "--"),
+                style = MaterialTheme.typography.labelSmall,
+            )
+            Text(
+                "map ${deg(mapBearing)}  following " +
+                    (reading.source?.name?.lowercase() ?: "--"),
+                style = MaterialTheme.typography.labelSmall,
+            )
+            // The build, so which APK a screenshot came from is never in doubt again.
+            Text("build ${BuildInfo.GIT_SHORT_SHA}", style = MaterialTheme.typography.labelSmall)
+        }
     }
 }

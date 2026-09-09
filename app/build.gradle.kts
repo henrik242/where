@@ -10,12 +10,19 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// CI checks out a pull request as GitHub's own merge commit, so plain HEAD stamps the build with a
+// sha that exists on no branch: `git show` cannot find it, and neither can anyone reading it off a
+// crash report or a screenshot. BUILD_GIT_SHA lets the workflow name the commit that was actually
+// pushed instead. Unset locally, where HEAD is already the right answer.
+val describedGitRef = providers.environmentVariable("BUILD_GIT_SHA")
+    .orNull?.trim()?.takeIf { it.isNotEmpty() } ?: "HEAD"
+
 val gitCommitCount = providers.exec {
-    commandLine("git", "rev-list", "--count", "HEAD")
+    commandLine("git", "rev-list", "--count", describedGitRef)
 }.standardOutput.asText.map { it.trim().ifEmpty { "0" } }.orElse("0")
 
 val gitShortSha = providers.exec {
-    commandLine("git", "rev-parse", "--short", "HEAD")
+    commandLine("git", "rev-parse", "--short", describedGitRef)
 }.standardOutput.asText.map { it.trim().ifEmpty { "unknown" } }.orElse("unknown")
 
 android {
@@ -25,13 +32,27 @@ android {
     signingConfigs {
         getByName("debug") {
             // CI runners are ephemeral, so AGP would generate a fresh debug keystore every run and
-            // installs over an earlier CI build would fail. Use a fixed keystore when one is provided.
+            // installs over an earlier CI build would fail. Use a fixed keystore when one is
+            // provided. Local builds set nothing and keep AGP's own ~/.android/debug.keystore.
             val debugStore = System.getenv("DEBUG_STORE_FILE")?.let { rootProject.file(it) }
             val debugStorePassword = System.getenv("DEBUG_STORE_PASSWORD")
             val debugKeyAlias = System.getenv("DEBUG_KEY_ALIAS")
             val debugKeyPassword = System.getenv("DEBUG_KEY_PASSWORD")
 
-            if (debugStore?.exists() == true && !debugStorePassword.isNullOrBlank() && !debugKeyAlias.isNullOrBlank() && !debugKeyPassword.isNullOrBlank()) {
+            if (debugStore != null) {
+                // Asking for a fixed keystore and not getting one is an error, not a fallback:
+                // silently signing with a generated key produces an APK that looks fine and then
+                // refuses to install over any other build.
+                val missing = buildList {
+                    if (!debugStore.exists()) add("DEBUG_STORE_FILE (${debugStore.path} does not exist)")
+                    if (debugStorePassword.isNullOrBlank()) add("DEBUG_STORE_PASSWORD")
+                    if (debugKeyAlias.isNullOrBlank()) add("DEBUG_KEY_ALIAS")
+                    if (debugKeyPassword.isNullOrBlank()) add("DEBUG_KEY_PASSWORD")
+                }
+                if (missing.isNotEmpty()) {
+                    error("DEBUG_STORE_FILE is set, so debug builds must use that keystore, but " +
+                        "these are missing or empty: ${missing.joinToString(", ")}")
+                }
                 storeFile = debugStore
                 storePassword = debugStorePassword
                 keyAlias = debugKeyAlias

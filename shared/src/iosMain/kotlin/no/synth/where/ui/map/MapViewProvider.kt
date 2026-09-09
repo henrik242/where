@@ -77,7 +77,18 @@ interface MapViewProvider {
     fun clearCoordGrid()
     fun setOnCameraMoveCallback(callback: MapCameraMoveCallback?)
     fun setOnTwoFingerTapCallback(callback: MapTwoFingerTapCallback?)
-    fun setCameraFollowMode(mode: CameraFollowMode)
+    /**
+     * [headingSource] decides what a heading-following camera rotates to: the device compass, the
+     * fix's course over ground, or nothing at all once stopped, where the camera keeps the bearing
+     * it already has. See [HeadingSource].
+     */
+    fun setCameraFollowMode(mode: CameraFollowMode, headingSource: HeadingSource)
+
+    /**
+     * Ground motion from the current fix as [speed in m/s, course in degrees], or null with no
+     * fix. Either entry is negative when the fix does not carry it, following CoreLocation.
+     */
+    fun getUserMotion(): List<Double>?
     fun setOnTrackingModeCallback(callback: MapTrackingModeCallback?)
 
     /** Animates the camera back to north-up. */

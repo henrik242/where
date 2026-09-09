@@ -31,11 +31,17 @@ val MapLibreMap.isLocationComponentEnabledSafe: Boolean
  * [northLocked] follows north-up through the component instead of an external bearing animation,
  * which would drop tracking: LocationComponent resets to [CameraMode.NONE] whenever a developer
  * camera animation starts.
+ *
+ * [headingSource] decides what "heading" means (see [HeadingSource]): the device compass, the
+ * course over ground once moving, or -- once stopped -- neither, in which case the camera keeps the
+ * bearing it already has. [CameraMode.TRACKING] follows the puck without touching the bearing, so
+ * holding the last course needs no bookkeeping of its own. The puck's own look is left alone.
  */
 fun MapLibreMap.applyFollowMode(
     mode: CameraFollowMode,
     snapZoom: Boolean = false,
     northLocked: Boolean = false,
+    headingSource: HeadingSource = HeadingSource.COMPASS,
 ) {
     if (!isLocationComponentEnabledSafe) return
     val lc = locationComponent
@@ -45,7 +51,11 @@ fun MapLibreMap.applyFollowMode(
     lc.cameraMode = when (mode) {
         CameraFollowMode.OFF -> CameraMode.NONE
         CameraFollowMode.FOLLOW -> if (northLocked) CameraMode.TRACKING_GPS_NORTH else CameraMode.TRACKING
-        CameraFollowMode.FOLLOW_HEADING -> CameraMode.TRACKING_COMPASS
+        CameraFollowMode.FOLLOW_HEADING -> when (headingSource) {
+            HeadingSource.COURSE -> CameraMode.TRACKING_GPS
+            HeadingSource.COMPASS -> CameraMode.TRACKING_COMPASS
+            HeadingSource.HELD -> CameraMode.TRACKING
+        }
     }
     if (snapZoom && !wasFollowing && mode != CameraFollowMode.OFF &&
         cameraPosition.zoom < MapZoomLevels.FOLLOW_MIN

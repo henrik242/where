@@ -28,6 +28,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingNavRemainingGeoJson: String?
     private var pendingNavOffCourseGeoJson: String?
     private var pendingRotationEnabled: Bool?
+    /// Last mode asked for, since MLNUserTrackingMode alone cannot say which one it came from.
+    private var requestedFollowMode: CameraFollowMode?
 
     private var longPressCallback: MapLongPressCallback?
     private var mapClickCallback: MapClickCallback?
@@ -520,17 +522,27 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         self.trackingModeCallback = callback
     }
 
-    // Kotlin's CameraFollowMode is a class (not a Swift enum), so match with ==.
-    func setCameraFollowMode(mode: CameraFollowMode) {
+    // Kotlin's CameraFollowMode and HeadingSource are classes (not Swift enums), so match with ==.
+    // A heading camera rotates to the course over ground while travelling, to the device compass on
+    // foot, and to nothing at all once stopped: .follow keeps the bearing already on screen, which
+    // is the course from just before stopping.
+    func setCameraFollowMode(mode: CameraFollowMode, headingSource: HeadingSource) {
         guard let mapView = self.mapView else { return }
         let trackingMode: MLNUserTrackingMode
         if mode == CameraFollowMode.followHeading {
-            trackingMode = .followWithHeading
+            if headingSource == HeadingSource.course {
+                trackingMode = .followWithCourse
+            } else if headingSource == HeadingSource.held {
+                trackingMode = .follow
+            } else {
+                trackingMode = .followWithHeading
+            }
         } else if mode == CameraFollowMode.follow {
             trackingMode = .follow
         } else {
             trackingMode = .none
         }
+        requestedFollowMode = mode
         // Zoom in when engaging follow from a far-out view, but not when a camera that is already
         // following merely changes how it tracks the bearing (parity with Android applyFollowMode;
         // keep the threshold in sync with MapZoomLevels.FOLLOW_MIN).
@@ -567,6 +579,15 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
                 KotlinDouble(value: location.coordinate.longitude)]
     }
 
+    // CoreLocation reports a negative speed or course when the fix does not carry one, which the
+    // shared heading policy reads as "unavailable"; pass them through rather than clamping.
+    func getUserMotion() -> [KotlinDouble]? {
+        guard let mapView = self.mapView,
+              let location = mapView.userLocation?.location else { return nil }
+        return [KotlinDouble(value: location.speed),
+                KotlinDouble(value: location.course)]
+    }
+
     // MARK: - UIGestureRecognizerDelegate
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -584,12 +605,11 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     // Fired when the tracking mode changes, including when a pan/rotate gesture drops it to .none.
     // Report the CameraFollowMode ordinal back so the FAB reflects the real state.
     func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
-        let followMode: CameraFollowMode
-        switch mode {
-        case .followWithHeading: followMode = .followHeading
-        case .follow, .followWithCourse: followMode = .follow
-        default: followMode = .off
-        }
+        // The tracking mode cannot be mapped back to a CameraFollowMode: .follow serves both FOLLOW
+        // and a heading camera holding the last course, and .followWithCourse is a heading camera
+        // too. This callback exists to catch a gesture breaking the camera away, so that is all it
+        // reports -- anything still tracking is whatever was last asked for.
+        let followMode: CameraFollowMode = mode == .none ? .off : (requestedFollowMode ?? .follow)
         trackingModeCallback?.onTrackingModeChanged(mode: followMode)
     }
 
