@@ -74,9 +74,14 @@ fun MapLibreMapView(
     searchResults: List<PlaceSearchClient.SearchResult> = emptyList(),
     highlightedSearchResult: PlaceSearchClient.SearchResult? = null,
     friendTrackGeoJson: String? = null,
+    mySharedPointsGeoJson: String? = null,
+    friendPointsGeoJson: String? = null,
+    mySharedPoints: List<no.synth.where.data.SharedPoint> = emptyList(),
+    friendSharedPoints: List<no.synth.where.data.SharedPoint> = emptyList(),
     onRulerPointAdded: (LatLng) -> Unit = {},
     onLongPress: (LatLng) -> Unit = {},
     onPointClick: (no.synth.where.data.SavedPoint) -> Unit = {},
+    onSharedPointClick: (no.synth.where.data.SharedPoint, Boolean) -> Unit = { _, _ -> },
     onTrackClick: (String) -> Unit = {},
     onMapClickOutsideTrack: () -> Unit = {},
     onTwoFingerMeasure: (TwoFingerMeasurement?) -> Unit = {},
@@ -104,6 +109,10 @@ fun MapLibreMapView(
     val rulerStateState = rememberUpdatedState(rulerState)
     val twoFingerMeasurementState = rememberUpdatedState(twoFingerMeasurement)
     val friendTrackGeoJsonState = rememberUpdatedState(friendTrackGeoJson)
+    val mySharedPointsGeoJsonState = rememberUpdatedState(mySharedPointsGeoJson)
+    val friendPointsGeoJsonState = rememberUpdatedState(friendPointsGeoJson)
+    val mySharedPointsState = rememberUpdatedState(mySharedPoints)
+    val friendSharedPointsState = rememberUpdatedState(friendSharedPoints)
     val coordGridGeoJsonState = rememberUpdatedState(coordGridGeoJson)
     val savedPointsState = rememberUpdatedState(savedPoints)
     val showSavedPointsState = rememberUpdatedState(showSavedPoints)
@@ -157,6 +166,8 @@ fun MapLibreMapView(
         MapRenderUtils.updateRulerOnMap(style, rulerStateState.value)
         MapRenderUtils.updateMeasurementOnMap(style, twoFingerMeasurementState.value)
         MapRenderUtils.updateFriendTrackOnMap(style, friendTrackGeoJsonState.value)
+        MapRenderUtils.updateSharedPointsOnMap(style, friendPointsGeoJsonState.value, "friend-shared-points")
+        MapRenderUtils.updateSharedPointsOnMap(style, mySharedPointsGeoJsonState.value, "my-shared-points")
         if (showSavedPointsState.value && savedPointsState.value.isNotEmpty()) {
             MapRenderUtils.updateSavedPointsOnMap(style, savedPointsState.value)
         }
@@ -314,6 +325,18 @@ fun MapLibreMapView(
         }
     }
 
+    LaunchedEffect(friendPointsGeoJson, map) {
+        map?.style?.let { style ->
+            MapRenderUtils.updateSharedPointsOnMap(style, friendPointsGeoJson, "friend-shared-points")
+        }
+    }
+
+    LaunchedEffect(mySharedPointsGeoJson, map) {
+        map?.style?.let { style ->
+            MapRenderUtils.updateSharedPointsOnMap(style, mySharedPointsGeoJson, "my-shared-points")
+        }
+    }
+
     LaunchedEffect(coordGridGeoJson, map) {
         map?.style?.let { style ->
             MapRenderUtils.updateCoordGridOnMap(style, coordGridGeoJson)
@@ -356,10 +379,13 @@ fun MapLibreMapView(
                         zoom = mapInstance.cameraPosition.zoom,
                         savedPoints = savedPointsState.value,
                         viewingTracks = viewingTracksState.value,
-                        navigationTrack = navigationTrackState.value
+                        navigationTrack = navigationTrackState.value,
+                        mySharedPoints = mySharedPointsState.value,
+                        friendSharedPoints = friendSharedPointsState.value
                     )
                     when (target) {
                         is MapTapTarget.Point -> onPointClick(target.point).let { true }
+                        is MapTapTarget.SharedPoint -> onSharedPointClick(target.point, target.mine).let { true }
                         is MapTapTarget.TrackLine -> onTrackClick(target.trackId).let { true }
                         MapTapTarget.OutsideTracks -> onMapClickOutsideTrack().let { false }
                         MapTapTarget.Nothing -> false

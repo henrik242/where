@@ -547,4 +547,43 @@ describe('TrackStore', () => {
       expect(deleted).toBe(false);
     });
   });
+
+  describe('shared points', () => {
+    beforeEach(() => {
+      (store as any).db.exec('DELETE FROM shared_points');
+    });
+
+    const mk = (id: string, userId: string, over: Record<string, unknown> = {}) => ({
+      id, userId, name: 'P', description: '', lat: 59.9, lon: 10.7,
+      color: '#FF5722', timestamp: Date.now(), ...over,
+    });
+
+    test('save, get, and filter by client ids', () => {
+      store.saveSharedPoint(mk('a', 'u1'));
+      store.saveSharedPoint(mk('b', 'u2'));
+      expect(store.getSharedPoint('a')?.userId).toBe('u1');
+      const forU1 = store.getSharedPointsByClientIds(['u1']);
+      expect(forU1).toHaveLength(1);
+      expect(forU1[0]!.id).toBe('a');
+    });
+
+    test('deleteSharedPointsByUser removes only that users points', () => {
+      store.saveSharedPoint(mk('a', 'u1'));
+      store.saveSharedPoint(mk('b', 'u1'));
+      store.saveSharedPoint(mk('c', 'u2'));
+      const removed = store.deleteSharedPointsByUser('u1');
+      expect(removed.sort()).toEqual(['a', 'b']);
+      expect(store.getSharedPointsByClientIds(['u1'])).toHaveLength(0);
+      expect(store.getSharedPointsByClientIds(['u2'])).toHaveLength(1);
+    });
+
+    test('cleanupOldSharedPoints removes points past the 24h cutoff', () => {
+      const old = Date.now() - 25 * 60 * 60 * 1000;
+      store.saveSharedPoint(mk('stale', 'u1', { timestamp: old }));
+      store.saveSharedPoint(mk('fresh', 'u1'));
+      const removed = store.cleanupOldSharedPoints();
+      expect(removed.map(r => r.id)).toEqual(['stale']);
+      expect(store.getSharedPoint('fresh')).toBeDefined();
+    });
+  });
 });

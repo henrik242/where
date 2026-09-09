@@ -2,7 +2,7 @@ import type { ServerWebSocket, WebSocketHandler } from 'bun';
 import { CONFIG } from './config';
 import { trackStore } from './store';
 import { addSubscribedClient, enrichTrack, removeSubscribedClient } from './tracking';
-import type { Track } from '../shared/types';
+import type { SharedPoint, Track } from '../shared/types';
 
 export interface WsData {
   clients: string[];
@@ -42,17 +42,22 @@ function handleSubscribe(
   addSubscribedClient(ws);
 
   let tracks: Track[];
+  let points: SharedPoint[];
   if (isAdmin) {
     tracks = includeHistorical ? trackStore.getAllTracks() : trackStore.getAllActiveTracks();
+    points = trackStore.getAllSharedPoints();
   } else if (clients.length === 0) {
     tracks = [];
+    points = [];
   } else {
     tracks = trackStore.getTracksByClientIds(clients, includeHistorical);
+    points = trackStore.getSharedPointsByClientIds(clients);
   }
 
   const payload: any = {
     type: 'initial_state',
     tracks: tracks.map(enrichTrack),
+    points,
     admin: isAdmin,
   };
   if (isAdmin) {

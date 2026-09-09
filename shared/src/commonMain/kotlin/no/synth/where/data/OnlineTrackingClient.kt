@@ -1,6 +1,7 @@
 package no.synth.where.data
 
 import io.ktor.client.HttpClient
+import io.ktor.client.request.delete
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -39,6 +40,12 @@ interface TrackingSession {
     fun sendPoint(latLng: LatLng, altitude: Double? = null, accuracy: Float? = null)
     fun stopTrack()
     fun close()
+
+    /** Create or move/rename a shared point on the server (full replace, keyed by its id). */
+    fun shareSharedPoint(point: SharedPoint) {}
+
+    /** Remove a shared point from the server. */
+    fun deleteSharedPoint(pointId: String) {}
 }
 
 class OnlineTrackingClient(
@@ -317,6 +324,53 @@ class OnlineTrackingClient(
                 delay(10_000)
                 queueMutex.withLock { flushScheduled = false }
                 flushQueue()
+            }
+        }
+    }
+
+    override fun shareSharedPoint(point: SharedPoint) {
+        scope.launch {
+            try {
+                val jsonBody = buildJsonObject {
+                    put("userId", clientId)
+                    put("id", point.id)
+                    put("name", point.name)
+                    put("description", point.description)
+                    put("lat", point.latLng.latitude)
+                    put("lon", point.latLng.longitude)
+                    put("color", point.color)
+                }.toString()
+
+                val signature = HmacUtils.generateSignature(jsonBody, trackingHint)
+
+                val response = client.post("$serverUrl/api/points") {
+                    header("X-Client-Id", clientId)
+                    header("X-Signature", signature)
+                    contentType(ContentType.Application.Json)
+                    setBody(jsonBody)
+                }
+                if (response.status.value !in 200..299) {
+                    Logger.e("Failed to share point: %d", response.status.value)
+                }
+            } catch (e: Exception) {
+                Logger.e(e, "Error sharing point")
+            }
+        }
+    }
+
+    override fun deleteSharedPoint(pointId: String) {
+        scope.launch {
+            try {
+                val signature = HmacUtils.generateSignature("", trackingHint)
+                val response = client.delete("$serverUrl/api/points/$pointId") {
+                    header("X-Client-Id", clientId)
+                    header("X-Signature", signature)
+                }
+                if (response.status.value !in 200..299 && response.status.value != 404) {
+                    Logger.e("Failed to delete point: %d", response.status.value)
+                }
+            } catch (e: Exception) {
+                Logger.e(e, "Error deleting point")
             }
         }
     }

@@ -34,8 +34,11 @@ internal class FriendTrackStore(
     }
 
     private var tracks = LinkedHashMap<String, FriendTrack>()
+    private var sharedPoints = LinkedHashMap<String, SharedPoint>()
 
     fun tracks(): List<FriendTrack> = tracks.values.toList()
+
+    fun sharedPoints(): List<SharedPoint> = sharedPoints.values.toList()
 
     /** Apply one server frame; returns true when something changed and the state should be re-emitted. */
     fun accept(msg: JsonObject): Boolean = when (msg.str("type")) {
@@ -44,6 +47,8 @@ internal class FriendTrackStore(
         "track_update" -> trackUpdate(msg)
         "track_stopped" -> setActive(msg.str("trackId"), active = false)
         "track_deleted" -> trackDeleted(msg)
+        "point_shared" -> pointShared(msg)
+        "point_removed" -> pointRemoved(msg)
         else -> false
     }
 
@@ -64,7 +69,41 @@ internal class FriendTrackStore(
             )
         }
         tracks = parsed
+        // Shared points ride the same initial snapshot; rebuild them into a local map too.
+        val parsedPoints = LinkedHashMap<String, SharedPoint>()
+        for (element in msg["points"]?.jsonArray.orEmpty()) {
+            parseSharedPoint(element.jsonObject)?.let { parsedPoints[it.id] = it }
+        }
+        sharedPoints = parsedPoints
         return true
+    }
+
+    private fun pointShared(msg: JsonObject): Boolean {
+        val point = parseSharedPoint(msg["point"]?.jsonObject ?: return false) ?: return false
+        sharedPoints[point.id] = point
+        return true
+    }
+
+    private fun pointRemoved(msg: JsonObject): Boolean {
+        val id = msg.str("id") ?: return false
+        return sharedPoints.remove(id) != null
+    }
+
+    private fun parseSharedPoint(obj: JsonObject): SharedPoint? {
+        val id = obj.str("id") ?: return null
+        val clientId = obj.str("userId")?.takeIf { it in clientIds } ?: return null
+        val lat = obj.str("lat")?.toDoubleOrNull() ?: return null
+        val lon = obj.str("lon")?.toDoubleOrNull() ?: return null
+        if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
+        return SharedPoint(
+            id = id,
+            ownerClientId = clientId,
+            name = obj.str("name") ?: "",
+            description = obj.str("description") ?: "",
+            latLng = LatLng(lat, lon),
+            color = obj.str("color") ?: "#FF5722",
+            timestamp = obj.str("timestamp")?.toLongOrNull() ?: 0L,
+        )
     }
 
     private fun trackStarted(msg: JsonObject): Boolean {
@@ -145,6 +184,29 @@ internal class FriendTrackStore(
             if (!first) sb.append(",")
             first = false
             sb.append("""{"type":"Feature",${props(track)},"geometry":{"type":"Point","coordinates":[${last.longitude},${last.latitude}]}}""")
+        }
+        sb.append("]}")
+        return sb.toString()
+    }
+
+    /**
+     * A Point feature per shared point, each carrying `id`, `name` (quoted user text), `color` and
+     * the owning `clientId`, so one data-driven layer draws them all with the owner's palette color.
+     */
+    fun sharedPointsGeoJson(): String? {
+        if (sharedPoints.isEmpty()) return null
+        val sb = StringBuilder()
+        sb.append("""{"type":"FeatureCollection","features":[""")
+        var first = true
+        for (point in sharedPoints.values) {
+            if (!first) sb.append(",")
+            first = false
+            val name = JsonPrimitive(point.name)
+            // Colored by the owner's palette position, matching their track line, so a follower can
+            // tell whose point it is at a glance (two friends' "Bilen" don't look identical).
+            val color = TrackColors.forIndex(clientIds.indexOf(point.ownerClientId))
+            sb.append("""{"type":"Feature","properties":{"id":${JsonPrimitive(point.id)},"name":$name,"color":"$color","clientId":"${point.ownerClientId}"},""")
+            sb.append(""""geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]}}""")
         }
         sb.append("]}")
         return sb.toString()

@@ -520,6 +520,113 @@ describe('API Integration Tests', () => {
     });
   });
 
+  describe('Shared points', () => {
+    const mkPoint = (over: Record<string, unknown> = {}) => ({
+      id: `pt-${Math.random().toString(36).slice(2, 8)}`,
+      userId: 'sp1',
+      name: 'Meeting spot',
+      description: 'meet here',
+      lat: 59.9,
+      lon: 10.7,
+      color: '#FF5722',
+      ...over,
+    });
+
+    test('POST /api/points creates a shared point', async () => {
+      const body = mkPoint();
+      const response = await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'sp1' },
+        body: JSON.stringify(body),
+      });
+      expect(response.status).toBe(201);
+      const data = await readJson(response);
+      expect(data.id).toBe(body.id);
+      expect(data.name).toBe('Meeting spot');
+      expect(data.timestamp).toBeGreaterThan(0);
+    });
+
+    test('POST /api/points rejects mismatched client id', async () => {
+      const response = await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'attacker' },
+        body: JSON.stringify(mkPoint()),
+      });
+      expect(response.status).toBe(401);
+    });
+
+    test('POST /api/points rejects out-of-range coordinates', async () => {
+      const response = await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'sp1' },
+        body: JSON.stringify(mkPoint({ lat: 999 })),
+      });
+      expect(response.status).toBe(400);
+    });
+
+    test('POST /api/points upserts an existing own point (move keeps the id)', async () => {
+      const body = mkPoint();
+      await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'sp1' },
+        body: JSON.stringify(body),
+      });
+      const response = await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'sp1' },
+        body: JSON.stringify({ ...body, lat: 60.0, lon: 11.0 }),
+      });
+      expect(response.status).toBe(200);
+      const data = await readJson(response);
+      expect(data.id).toBe(body.id);
+      expect(data.lat).toBe(60.0);
+    });
+
+    test('POST /api/points cannot overwrite another users point', async () => {
+      const body = mkPoint();
+      await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'sp1' },
+        body: JSON.stringify(body),
+      });
+      // Attacker knows the id but posts under their own client id.
+      const response = await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'attacker' },
+        body: JSON.stringify({ ...body, userId: 'attacker', name: 'Hijacked' }),
+      });
+      expect(response.status).toBe(401);
+    });
+
+    test('DELETE /api/points/:id removes a point', async () => {
+      const body = mkPoint();
+      await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'sp1' },
+        body: JSON.stringify(body),
+      });
+      const response = await fetch(`${SERVER_URL}/api/points/${body.id}`, {
+        method: 'DELETE',
+        headers: { 'X-Client-Id': 'sp1' },
+      });
+      expect(response.status).toBe(204);
+    });
+
+    test('DELETE /api/points/:id rejects another user', async () => {
+      const body = mkPoint();
+      await fetch(`${SERVER_URL}/api/points`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'sp1' },
+        body: JSON.stringify(body),
+      });
+      const response = await fetch(`${SERVER_URL}/api/points/${body.id}`, {
+        method: 'DELETE',
+        headers: { 'X-Client-Id': 'other' },
+      });
+      expect(response.status).toBe(401);
+    });
+  });
+
   describe('CORS', () => {
     test('should handle OPTIONS request', async () => {
       const response = await fetch(`${SERVER_URL}/api/tracks`, {

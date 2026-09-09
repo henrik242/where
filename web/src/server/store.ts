@@ -1,7 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Track, TrackPoint } from '../shared/types';
+import type { SharedPoint, Track, TrackPoint } from '../shared/types';
 
 const COLORS = [
   '#FF5722', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
@@ -62,6 +62,17 @@ function rowToPoint(row: PointRow): TrackPoint {
   };
 }
 
+interface SharedPointRow {
+  id: string;
+  userId: string;
+  name: string;
+  description: string;
+  lat: number;
+  lon: number;
+  color: string;
+  timestamp: number;
+}
+
 export class TrackStore {
   private db: Database;
   private stmts: ReturnType<TrackStore['prepareStatements']>;
@@ -111,6 +122,19 @@ export class TrackStore {
         count INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (date, platform)
       );
+
+      CREATE TABLE IF NOT EXISTS shared_points (
+        id TEXT PRIMARY KEY,
+        userId TEXT NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        description TEXT NOT NULL DEFAULT '',
+        lat REAL NOT NULL,
+        lon REAL NOT NULL,
+        color TEXT NOT NULL,
+        timestamp INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_shared_points_userId ON shared_points(userId);
     `);
   }
 
@@ -147,6 +171,25 @@ export class TrackStore {
       ),
       deleteOld: this.db.prepare<void, [number]>(
         'DELETE FROM tracks WHERE isActive = 0 AND lastUpdateTime < ?'
+      ),
+      getSharedPoint: this.db.prepare<SharedPointRow, [string]>(
+        'SELECT * FROM shared_points WHERE id = ?'
+      ),
+      insertSharedPoint: this.db.prepare<void, [string, string, string, string, number, number, string, number]>(
+        `INSERT OR REPLACE INTO shared_points (id, userId, name, description, lat, lon, color, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ),
+      deleteSharedPoint: this.db.prepare<void, [string]>(
+        'DELETE FROM shared_points WHERE id = ?'
+      ),
+      getSharedPointsByUser: this.db.prepare<SharedPointRow, [string]>(
+        'SELECT * FROM shared_points WHERE userId = ?'
+      ),
+      cleanupOldSharedPoints: this.db.prepare<SharedPointRow, [number]>(
+        'SELECT * FROM shared_points WHERE timestamp < ?'
+      ),
+      deleteOldSharedPoints: this.db.prepare<void, [number]>(
+        'DELETE FROM shared_points WHERE timestamp < ?'
       ),
     };
   }
@@ -372,6 +415,54 @@ export class TrackStore {
       week: sumByRange(weekAgo),
       month: sumByRange(monthAgo),
     };
+  }
+
+  getSharedPoint(id: string): SharedPoint | undefined {
+    return this.stmts.getSharedPoint.get(id) ?? undefined;
+  }
+
+  saveSharedPoint(point: SharedPoint): void {
+    this.stmts.insertSharedPoint.run(
+      point.id, point.userId, point.name, point.description,
+      point.lat, point.lon, point.color, point.timestamp,
+    );
+  }
+
+  deleteSharedPoint(id: string): boolean {
+    if (!this.stmts.getSharedPoint.get(id)) return false;
+    this.stmts.deleteSharedPoint.run(id);
+    return true;
+  }
+
+  getSharedPointsByClientIds(clientIds: string[]): SharedPoint[] {
+    if (clientIds.length === 0) return [];
+    const placeholders = clientIds.map(() => '?').join(',');
+    return this.db.prepare<SharedPointRow, any[]>(
+      `SELECT * FROM shared_points WHERE userId IN (${placeholders})`
+    ).all(...clientIds);
+  }
+
+  getAllSharedPoints(): SharedPoint[] {
+    return this.db.prepare<SharedPointRow, []>('SELECT * FROM shared_points').all();
+  }
+
+  /** Remove all of a user's shared points (session ended); returns the deleted ids. */
+  deleteSharedPointsByUser(userId: string): string[] {
+    const rows = this.stmts.getSharedPointsByUser.all(userId);
+    if (rows.length > 0) {
+      this.db.prepare('DELETE FROM shared_points WHERE userId = ?').run(userId);
+    }
+    return rows.map(r => r.id);
+  }
+
+  /** Backstop cleanup of points older than the retention cutoff; returns {id,userId} of removed. */
+  cleanupOldSharedPoints(): { id: string; userId: string }[] {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const rows = this.stmts.cleanupOldSharedPoints.all(cutoff);
+    if (rows.length > 0) {
+      this.stmts.deleteOldSharedPoints.run(cutoff);
+    }
+    return rows.map(r => ({ id: r.id, userId: r.userId }));
   }
 
   close(): void {

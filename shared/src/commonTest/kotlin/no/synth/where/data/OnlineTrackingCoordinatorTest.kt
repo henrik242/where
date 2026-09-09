@@ -21,6 +21,8 @@ private class FakeTrackingSession(
     var syncedTrack: Track? = null
     var stopped: Boolean = false
     var closed: Boolean = false
+    val sharedPoints = mutableListOf<SharedPoint>()
+    val deletedPointIds = mutableListOf<String>()
 
     override fun startTrack(trackName: String) {
         startedTrackName = trackName
@@ -40,6 +42,14 @@ private class FakeTrackingSession(
 
     override fun close() {
         closed = true
+    }
+
+    override fun shareSharedPoint(point: SharedPoint) {
+        sharedPoints += point
+    }
+
+    override fun deleteSharedPoint(pointId: String) {
+        deletedPointIds += pointId
     }
 }
 
@@ -280,6 +290,67 @@ class OnlineTrackingCoordinatorTest {
         assertTrue(session.stopped)
         assertTrue(session.closed)
         assertEquals(OnlineTrackingCoordinator.Mode.NONE, coordinator.mode.value)
+    }
+
+    @Test
+    fun addSharedPointWhileLivePublishesAndTracksIt() = runTest(dispatcher) {
+        enterLive()
+        assertTrue(coordinator.canShare.value)
+
+        val point = coordinator.addSharedPoint("Bilen", "parkert", LatLng(60.0, 10.0), "#FF5722")
+
+        assertEquals("Bilen", point?.name)
+        assertEquals(listOf("Bilen"), coordinator.mySharedPoints.value.map { it.name })
+        assertEquals(listOf("Bilen"), createdSessions[0].sharedPoints.map { it.name })
+    }
+
+    @Test
+    fun addSharedPointWhenNotSharingIsNoOp() = runTest(dispatcher) {
+        assertEquals(false, coordinator.canShare.value)
+        val point = coordinator.addSharedPoint("Bilen", "", LatLng(60.0, 10.0), "#FF5722")
+        assertNull(point)
+        assertTrue(coordinator.mySharedPoints.value.isEmpty())
+    }
+
+    @Test
+    fun moveAndRemoveSharedPoint() = runTest(dispatcher) {
+        enterLive()
+        val point = requireNotNull(coordinator.addSharedPoint("Post", "", LatLng(60.0, 10.0), "#FF5722"))
+
+        coordinator.moveSharedPoint(point.id, LatLng(61.0, 11.0))
+        assertEquals(LatLng(61.0, 11.0), coordinator.mySharedPoints.value.first().latLng)
+        assertEquals(61.0, createdSessions[0].sharedPoints.last().latLng.latitude)
+
+        coordinator.removeSharedPoint(point.id)
+        assertTrue(coordinator.mySharedPoints.value.isEmpty())
+        assertEquals(listOf(point.id), createdSessions[0].deletedPointIds)
+    }
+
+    @Test
+    fun sharedPointsAreClearedWhenSharingEnds() = runTest(dispatcher) {
+        enterLive()
+        coordinator.addSharedPoint("Post", "", LatLng(60.0, 10.0), "#FF5722")
+        assertEquals(1, coordinator.mySharedPoints.value.size)
+
+        liveShareUntilMillis.value = 0L // sharing ends
+
+        assertEquals(OnlineTrackingCoordinator.Mode.NONE, coordinator.mode.value)
+        assertTrue(coordinator.mySharedPoints.value.isEmpty())
+        assertEquals(false, coordinator.canShare.value)
+    }
+
+    @Test
+    fun sharedPointsAreRepublishedToTheNextSession() = runTest(dispatcher) {
+        enterLive()
+        coordinator.addSharedPoint("Post", "", LatLng(60.0, 10.0), "#FF5722")
+
+        // Switch LIVE -> RECORDING: the old track stops (server drops its points), a fresh session
+        // must re-publish the points the user still has.
+        enterRecording()
+
+        assertEquals(OnlineTrackingCoordinator.Mode.RECORDING, coordinator.mode.value)
+        assertEquals(listOf("Post"), coordinator.mySharedPoints.value.map { it.name })
+        assertEquals(listOf("Post"), createdSessions[1].sharedPoints.map { it.name })
     }
 
     @Test

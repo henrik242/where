@@ -19,6 +19,8 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 - Real-time location sharing so friends and family can follow your trip live
 - Follow several friends' live tracks on your own map, each in its own colour, with a banner that
   zooms to one friend or all of them, and a local nickname per friend so you see names instead of ids
+- Share named points while live-tracking (meeting spot, parked car, hunting post); followers see
+  them live and can save a copy, and you can move or delete your own
 
 ### Tracks
 

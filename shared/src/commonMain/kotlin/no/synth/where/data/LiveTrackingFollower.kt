@@ -58,6 +58,14 @@ class LiveTrackingFollower(
     private val _friendTrackGeoJson = MutableStateFlow<String?>(null)
     val friendTrackGeoJson: StateFlow<String?> = _friendTrackGeoJson.asStateFlow()
 
+    // Shared points (markers) dropped by followed clients, as a GeoJSON FeatureCollection, plus the
+    // parsed list so a tap can offer "save locally".
+    private val _friendPointsGeoJson = MutableStateFlow<String?>(null)
+    val friendPointsGeoJson: StateFlow<String?> = _friendPointsGeoJson.asStateFlow()
+
+    private val _friendPoints = MutableStateFlow<List<SharedPoint>>(emptyList())
+    val friendPoints: StateFlow<List<SharedPoint>> = _friendPoints.asStateFlow()
+
     private var currentClientIds: List<String> = emptyList()
     private var currentNicknames: Map<String, String> = emptyMap()
     private var connectionJob: Job? = null
@@ -91,6 +99,8 @@ class LiveTrackingFollower(
         currentClientIds = emptyList()
         currentNicknames = emptyMap()
         _friendTrackGeoJson.value = null
+        _friendPointsGeoJson.value = null
+        _friendPoints.value = emptyList()
         _state.value = FollowState.Idle
     }
 
@@ -153,6 +163,8 @@ class LiveTrackingFollower(
             if (store.accept(msg)) {
                 _state.value = FollowState.Following(store.tracks())
                 _friendTrackGeoJson.value = store.geoJson()
+                _friendPointsGeoJson.value = store.sharedPointsGeoJson()
+                _friendPoints.value = store.sharedPoints()
             }
         } catch (e: Exception) {
             Logger.e(e, "Error parsing WebSocket message")

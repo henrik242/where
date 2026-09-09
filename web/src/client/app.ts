@@ -3,6 +3,7 @@ import type {
   Track,
   TrackPoint,
   SessionStats,
+  SharedPoint,
   TracksResponse,
 } from '../shared/types';
 import { calculateTrackDistance } from '../shared/geo';
@@ -10,13 +11,16 @@ import { calculateTrackDistance } from '../shared/geo';
 type Point = TrackPoint;
 
 interface WebSocketMessage {
-  type: 'track_update' | 'track_stopped' | 'track_started' | 'track_deleted' | 'initial_state';
+  type: 'track_update' | 'track_stopped' | 'track_started' | 'track_deleted' | 'initial_state'
+    | 'point_shared' | 'point_removed';
   trackId: string;
   userId: string;
   name?: string;
   point?: Point;
   color?: string;
   tracks?: Track[];
+  points?: SharedPoint[];
+  id?: string;
   admin?: boolean;
   sessionStats?: SessionStats;
 }
@@ -29,6 +33,7 @@ function escapeHtml(str: string): string {
 // Global state
 let map: maplibregl.Map;
 let tracks: Map<string, Track> = new Map();
+let sharedPoints: Map<string, SharedPoint> = new Map();
 let selectedTrackId: string | null = null;
 const renderTypeFor = new Map<string, 'single' | 'line'>();
 let clientFilters: string[] = [];
@@ -355,6 +360,79 @@ function cleanupTrackLayers(trackId: string): void {
   });
 }
 
+const SHARED_POINTS_SOURCE = 'shared-points';
+
+// Redraw all shared points from the sharedPoints map into a single geojson source (view-only).
+// A named marker each follower sees while its owner is live-sharing (issue #99).
+function updateSharedPoints(): void {
+  if (!map) return;
+  if (!map.loaded()) {
+    map.once('load', () => updateSharedPoints());
+    return;
+  }
+
+  const geojson = {
+    type: 'FeatureCollection' as const,
+    features: Array.from(sharedPoints.values()).map(p => ({
+      type: 'Feature' as const,
+      geometry: { type: 'Point' as const, coordinates: [p.lon, p.lat] },
+      properties: { name: p.name, description: p.description || '', color: p.color || '#FF5722' },
+    })),
+  };
+
+  const existing = map.getSource(SHARED_POINTS_SOURCE) as maplibregl.GeoJSONSource | undefined;
+  if (existing) {
+    existing.setData(geojson);
+    return;
+  }
+
+  map.addSource(SHARED_POINTS_SOURCE, { type: 'geojson', data: geojson });
+  map.addLayer({
+    id: 'shared-points-halo',
+    type: 'circle',
+    source: SHARED_POINTS_SOURCE,
+    paint: {
+      'circle-radius': 9,
+      'circle-color': '#ffffff',
+      'circle-stroke-color': ['get', 'color'],
+      'circle-stroke-width': 3,
+    },
+  });
+  map.addLayer({
+    id: 'shared-points-dot',
+    type: 'circle',
+    source: SHARED_POINTS_SOURCE,
+    paint: { 'circle-radius': 4, 'circle-color': ['get', 'color'] },
+  });
+  map.addLayer({
+    id: 'shared-points-label',
+    type: 'symbol',
+    source: SHARED_POINTS_SOURCE,
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-size': 13,
+      'text-offset': [0, 1.2],
+      'text-anchor': 'top',
+      'text-font': ['Open Sans Regular'],
+    },
+    paint: { 'text-color': '#222', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
+  });
+
+  map.on('click', 'shared-points-dot', (e) => {
+    const f = e.features?.[0];
+    if (!f) return;
+    const props = f.properties as { name?: string; description?: string };
+    const coords = (f.geometry as any).coordinates.slice();
+    const desc = props.description ? `<div>${escapeHtml(props.description)}</div>` : '';
+    new maplibregl.Popup()
+      .setLngLat(coords)
+      .setHTML(`<strong>${escapeHtml(props.name || '')}</strong>${desc}`)
+      .addTo(map);
+  });
+  map.on('mouseenter', 'shared-points-dot', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'shared-points-dot', () => { map.getCanvas().style.cursor = ''; });
+}
+
 // Render single point
 function renderSinglePoint(track: Track, sourceId: string, layerId: string): void {
   const point = track.points[0];
@@ -644,10 +722,28 @@ function setupWebSocket(): void {
       });
 
       tracks = newTracks;
+      sharedPoints = new Map((data.points || []).map(p => [p.id, p]));
       updateTracksList();
       updateMap();
+      updateSharedPoints();
 
       if (clientFilters.length > 0) zoomToClientTracks();
+      return;
+    }
+
+    if (data.type === 'point_shared') {
+      const sp = data.point as unknown as SharedPoint | undefined;
+      if (sp?.id) {
+        sharedPoints.set(sp.id, sp);
+        updateSharedPoints();
+      }
+      return;
+    }
+
+    if (data.type === 'point_removed') {
+      if (data.id && sharedPoints.delete(data.id)) {
+        updateSharedPoints();
+      }
       return;
     }
 

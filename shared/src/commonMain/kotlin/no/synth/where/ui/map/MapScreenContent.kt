@@ -112,6 +112,9 @@ fun MapScreenContent(
     isFollowConnecting: Boolean = false,
     onFollowBannerClick: (clientId: String?) -> Unit = {},
     onStopFollowing: () -> Unit = {},
+    // Shared-point move mode
+    isMovingSharedPoint: Boolean = false,
+    onCancelMovePoint: () -> Unit = {},
     // Map slot
     mapContent: @Composable () -> Unit
 ) {
@@ -222,7 +225,9 @@ fun MapScreenContent(
                 followedFriends = followedFriends,
                 isFollowConnecting = isFollowConnecting,
                 onFollowBannerClick = onFollowBannerClick,
-                onStopFollowing = onStopFollowing
+                onStopFollowing = onStopFollowing,
+                isMovingSharedPoint = isMovingSharedPoint,
+                onCancelMovePoint = onCancelMovePoint
             )
 
             // Pinned bottom-left, left of the FAB column, so snackbars sit at the bottom of the

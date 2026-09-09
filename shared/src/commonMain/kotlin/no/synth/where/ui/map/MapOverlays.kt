@@ -715,6 +715,45 @@ fun FollowingFriendBanner(
     }
 }
 
+/** Shown while relocating a shared point: explains the long-press and offers a way to cancel. */
+@Composable
+fun MovePointBanner(
+    modifier: Modifier = Modifier,
+    onCancel: () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                painterResource(Res.drawable.ic_edit),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Text(
+                text = stringResource(Res.string.point_move_hint),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onCancel) {
+                Icon(
+                    painterResource(Res.drawable.ic_close),
+                    contentDescription = stringResource(Res.string.cancel),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun CrosshairOverlay(modifier: Modifier = Modifier) {
     Box(
@@ -891,7 +930,9 @@ fun BoxScope.MapOverlays(
     onFollowBannerClick: (clientId: String?) -> Unit = {},
     onStopFollowing: () -> Unit = {},
     liveShareUntilMillis: Long = 0L,
-    isLiveSharing: Boolean = false
+    isLiveSharing: Boolean = false,
+    isMovingSharedPoint: Boolean = false,
+    onCancelMovePoint: () -> Unit = {}
 ) {
     var confirmStopFollowing by remember { mutableStateOf(false) }
     // The track whose name banner + altitude chart are shown, or null when nothing is focused.
@@ -1153,6 +1194,18 @@ fun BoxScope.MapOverlays(
                 onStopFollowing()
             },
             onDismiss = { confirmStopFollowing = false }
+        )
+    }
+
+    // Persistent while relocating a shared point (drawn last, so it sits above other top banners):
+    // the next long-press moves the point, and this is the only way to see and leave that mode.
+    if (isMovingSharedPoint) {
+        MovePointBanner(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = TOP_OVERLAY_INSET)
+                .padding(horizontal = 16.dp),
+            onCancel = onCancelMovePoint
         )
     }
 

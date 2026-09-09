@@ -62,4 +62,35 @@ class MapTapResolverTest {
         val target = resolveMapTap(tap, zoom, emptyList(), emptyList(), null)
         assertEquals(MapTapTarget.Nothing, target)
     }
+
+    private fun shared(id: String, owner: String) = SharedPoint(
+        id = id, ownerClientId = owner, name = "Møtes", latLng = tap, timestamp = 0L
+    )
+
+    @Test
+    fun ownSharedPointResolvesAsMine() {
+        val target = resolveMapTap(
+            tap, zoom, emptyList(), listOf(line), null,
+            mySharedPoints = listOf(shared("s1", "me0001"))
+        )
+        assertEquals(MapTapTarget.SharedPoint(shared("s1", "me0001"), mine = true), target)
+    }
+
+    @Test
+    fun friendSharedPointResolvesAsNotMine() {
+        val target = resolveMapTap(
+            tap, zoom, emptyList(), emptyList(), null,
+            friendSharedPoints = listOf(shared("s2", "abc123"))
+        )
+        assertEquals(MapTapTarget.SharedPoint(shared("s2", "abc123"), mine = false), target)
+    }
+
+    @Test
+    fun sharedPointWinsOverATrack() {
+        val target = resolveMapTap(
+            tap, zoom, emptyList(), listOf(line), null,
+            friendSharedPoints = listOf(shared("s3", "abc123"))
+        )
+        assertEquals(MapTapTarget.SharedPoint(shared("s3", "abc123"), mine = false), target)
+    }
 }

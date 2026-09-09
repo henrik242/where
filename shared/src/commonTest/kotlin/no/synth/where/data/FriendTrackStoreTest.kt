@@ -178,6 +178,59 @@ class FriendTrackStoreTest {
     }
 
     @Test
+    fun sharedPointsFromInitialStateAreParsedAndFilteredByClient() {
+        val store = FriendTrackStore(listOf("aaa111"))
+        store.accept(
+            msg(
+                """{"type":"initial_state","tracks":[],"points":[
+                  {"id":"p1","userId":"aaa111","name":"Bilen","description":"her","lat":59.0,"lon":10.0,"color":"#2196F3","timestamp":5},
+                  {"id":"p2","userId":"zzz999","name":"Skjult","lat":60.0,"lon":11.0,"color":"#FF0000","timestamp":6}
+                ]}"""
+            )
+        )
+        val points = store.sharedPoints()
+        assertEquals(listOf("p1"), points.map { it.id })
+        assertEquals("Bilen", points.first().name)
+        assertEquals("#2196F3", points.first().color)
+    }
+
+    @Test
+    fun pointSharedAddsAndPointRemovedDeletes() {
+        val store = FriendTrackStore(listOf("aaa111"))
+        assertTrue(store.accept(msg(
+            """{"type":"point_shared","point":{"id":"p1","userId":"aaa111","name":"Post 3","lat":59.0,"lon":10.0,"color":"#FF5722","timestamp":1}}"""
+        )))
+        assertEquals(1, store.sharedPoints().size)
+        assertNotNull(store.sharedPointsGeoJson()?.let { Json.parseToJsonElement(it) })
+
+        assertTrue(store.accept(msg("""{"type":"point_removed","id":"p1","userId":"aaa111"}""")))
+        assertTrue(store.sharedPoints().isEmpty())
+        assertNull(store.sharedPointsGeoJson())
+    }
+
+    @Test
+    fun sharedPointIsColoredByOwnerPalettePosition() {
+        val store = FriendTrackStore(listOf("aaa111", "bbb222"))
+        store.accept(msg(
+            """{"type":"point_shared","point":{"id":"p1","userId":"bbb222","name":"Post","lat":59.0,"lon":10.0,"color":"#000000","timestamp":1}}"""
+        ))
+        val color = Json.parseToJsonElement(store.sharedPointsGeoJson()!!).jsonObject
+            .getValue("features").jsonArray.first().jsonObject
+            .getValue("properties").jsonObject.getValue("color").jsonPrimitive.content
+        // bbb222 is the second followed client, so its points use palette index 1 (not the server color).
+        assertEquals(TrackColors.forIndex(1), color)
+    }
+
+    @Test
+    fun sharedPointNameWithMetacharactersStaysValidJson() {
+        val store = FriendTrackStore(listOf("aaa111"))
+        store.accept(msg(
+            """{"type":"point_shared","point":{"id":"p1","userId":"aaa111","name":"Møtes \"her\"","lat":59.0,"lon":10.0,"color":"#FF5722","timestamp":1}}"""
+        ))
+        assertNotNull(store.sharedPointsGeoJson()?.let { Json.parseToJsonElement(it) })
+    }
+
+    @Test
     fun oldestPointsAreDroppedAtTheCap() {
         val store = FriendTrackStore(listOf("aaa111"), maxPointsPerTrack = 2)
         store.accept(update("aaa111", "t1", 59.0, 10.0))

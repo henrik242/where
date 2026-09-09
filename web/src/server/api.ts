@@ -1,5 +1,5 @@
-import type { Track } from '../shared/types';
-import { validatePoint } from '../shared/validation';
+import type { SharedPoint, Track } from '../shared/types';
+import { validatePoint, validateSharedPointFields } from '../shared/validation';
 import { detectPlatform } from './platform';
 import type { TrackStore } from './store';
 import { enrichTrack, getViewerCount } from './tracking';
@@ -199,11 +199,23 @@ function addPoint(
   return jsonResponse(updatedTrack);
 }
 
+/**
+ * Once the user has no active track left, their live-share session is over: drop their shared
+ * points and tell followers. Followers keep any copies they saved locally.
+ */
+function removeSharedPointsIfIdle({ store, broadcast }: ApiDeps, userId: string): void {
+  if (store.getActiveTracksByUser(userId).length > 0) return;
+  for (const id of store.deleteSharedPointsByUser(userId)) {
+    broadcast({ type: 'point_removed', id, userId }, userId);
+  }
+}
+
 function stopTrack(
-  { store, broadcast, getAdminKey }: ApiDeps,
+  deps: ApiDeps,
   trackId: string,
   req: Request
 ): Response {
+  const { store, broadcast, getAdminKey } = deps;
   const track = store.getTrack(trackId);
   if (!track) return jsonResponse({ error: 'Track not found' }, 404);
 
@@ -217,15 +229,17 @@ function stopTrack(
   });
 
   broadcast({ type: 'track_stopped', trackId, userId: track.userId }, track.userId);
+  removeSharedPointsIfIdle(deps, track.userId);
 
   return jsonResponse(updatedTrack);
 }
 
 function deleteTrack(
-  { store, broadcast, getAdminKey }: ApiDeps,
+  deps: ApiDeps,
   trackId: string,
   req: Request
 ): Response {
+  const { store, broadcast, getAdminKey } = deps;
   const track = store.getTrack(trackId);
   if (!track) return jsonResponse({ error: 'Track not found' }, 404);
 
@@ -236,6 +250,73 @@ function deleteTrack(
   store.deleteTrack(trackId);
 
   broadcast({ type: 'track_deleted', trackId, userId: track.userId }, track.userId);
+  removeSharedPointsIfIdle(deps, track.userId);
+
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
+const DEFAULT_POINT_COLOR = '#FF5722';
+
+// POST is an upsert keyed by the client-supplied id: the same call creates a point and later
+// moves/renames it. Auth requires X-Client-Id === userId, and an id already owned by someone else
+// can't be overwritten, so a guessed id can't hijack another user's point.
+function createSharedPoint(
+  { store, broadcast }: ApiDeps,
+  req: Request,
+  body: any
+): Response {
+  if (!body || typeof body.userId !== 'string' ||
+      typeof body.id !== 'string' || body.id.length < 1 || body.id.length > 64) {
+    return jsonResponse({ error: 'Missing required fields' }, 400);
+  }
+  const clientIdHeader = req.headers.get('X-Client-Id');
+  if (!clientIdHeader || clientIdHeader !== body.userId) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+  if (!validateSharedPointFields(body)) {
+    return jsonResponse({ error: 'Invalid point data' }, 400);
+  }
+
+  const existing = store.getSharedPoint(body.id);
+  if (existing && existing.userId !== body.userId) {
+    return jsonResponse({ error: 'Unauthorized' }, 401);
+  }
+
+  const point: SharedPoint = {
+    id: body.id,
+    userId: body.userId,
+    name: body.name,
+    description: typeof body.description === 'string' ? body.description : '',
+    lat: body.lat,
+    lon: body.lon,
+    color: typeof body.color === 'string' ? body.color : DEFAULT_POINT_COLOR,
+    timestamp: Date.now(),
+  };
+  store.saveSharedPoint(point);
+
+  broadcast({ type: 'point_shared', point }, point.userId);
+
+  return jsonResponse(point, existing ? 200 : 201);
+}
+
+function deleteSharedPoint(
+  { store, broadcast, getAdminKey }: ApiDeps,
+  pointId: string,
+  req: Request
+): Response {
+  const existing = store.getSharedPoint(pointId);
+  if (!existing) return jsonResponse({ error: 'Point not found' }, 404);
+
+  const clientId = req.headers.get('X-Client-Id');
+  const adminKey = req.headers.get('X-Admin-Key');
+  const configuredAdminKey = getAdminKey();
+  const authorized = clientId === existing.userId ||
+    (!!configuredAdminKey && adminKey === configuredAdminKey);
+  if (!authorized) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+  store.deleteSharedPoint(pointId);
+
+  broadcast({ type: 'point_removed', id: pointId, userId: existing.userId }, existing.userId);
 
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
@@ -292,6 +373,12 @@ export function createApiHandler(deps: ApiDeps) {
       }
       if ((m = path.match(/^\/api\/tracks\/([^\/]+)$/)) && req.method === 'DELETE') {
         return deleteTrack(deps, m[1]!, req);
+      }
+      if (path === '/api/points' && req.method === 'POST') {
+        return createSharedPoint(deps, req, parsedBody);
+      }
+      if ((m = path.match(/^\/api\/points\/([^\/]+)$/)) && req.method === 'DELETE') {
+        return deleteSharedPoint(deps, m[1]!, req);
       }
 
       return jsonResponse({ error: 'Not found' }, 404);

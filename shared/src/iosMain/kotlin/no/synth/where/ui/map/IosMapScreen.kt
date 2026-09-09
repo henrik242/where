@@ -34,6 +34,7 @@ import no.synth.where.data.TerrainClient
 import no.synth.where.data.MapTapTarget
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
+import no.synth.where.data.SharedPoint
 import no.synth.where.data.Track
 import no.synth.where.data.resolveMapTap
 import no.synth.where.data.stopFollowingAll
@@ -45,6 +46,8 @@ import no.synth.where.resources.location_permission_required
 import no.synth.where.resources.point_deleted
 import no.synth.where.resources.point_saved
 import no.synth.where.resources.point_updated
+import no.synth.where.resources.point_shared_snackbar
+import no.synth.where.resources.point_saved_locally
 import no.synth.where.resources.recording_snackbar
 import no.synth.where.resources.saved_as_track_name
 import no.synth.where.resources.track_cropped
@@ -143,6 +146,11 @@ fun IosMapScreen(
     val liveTrackingFollower = remember { AppDependencies.liveTrackingFollower }
     val followState by liveTrackingFollower.state.collectAsState()
     val friendTrackGeoJson by liveTrackingFollower.friendTrackGeoJson.collectAsState()
+    // Shared points (issue #99): own ones from the coordinator, friends' from the follower.
+    val mySharedPoints by coordinator.mySharedPoints.collectAsState()
+    val canShare by coordinator.canShare.collectAsState()
+    val friendSharedPoints by liveTrackingFollower.friendPoints.collectAsState()
+    val friendPointsGeoJson by liveTrackingFollower.friendPointsGeoJson.collectAsState()
     val followedClientIds by userPreferences.followedClientIds.collectAsState()
     val clientNicknames by userPreferences.clientNicknames.collectAsState()
     val followedFriends = followedFriends(
@@ -177,6 +185,8 @@ fun IosMapScreen(
     val pointSavedMsg = stringResource(Res.string.point_saved)
     val pointDeletedMsg = stringResource(Res.string.point_deleted)
     val pointUpdatedMsg = stringResource(Res.string.point_updated)
+    val pointSharedMsg = stringResource(Res.string.point_shared_snackbar)
+    val pointSavedLocallyMsg = stringResource(Res.string.point_saved_locally)
     val locationPermissionMsg = stringResource(Res.string.location_permission_required)
     val trackCroppedMsg = stringResource(Res.string.track_cropped)
     val zoomInForPathsMsg = stringResource(Res.string.zoom_in_for_paths)
@@ -221,6 +231,11 @@ fun IosMapScreen(
         savePointName = ""
         savePointDescription = ""
     }
+
+    // Shared points (issue #99): a point being relocated, and the own/friend point dialogs.
+    var movingSharedPointId by remember { mutableStateOf<String?>(null) }
+    var managingSharedPoint by remember { mutableStateOf<SharedPoint?>(null) }
+    var friendPointDialog by remember { mutableStateOf<SharedPoint?>(null) }
 
     // Edit point state (tap)
     var showPointInfoDialog by remember { mutableStateOf(false) }
@@ -451,6 +466,12 @@ fun IosMapScreen(
             override fun onLongPress(latitude: Double, longitude: Double) {
                 if (rulerState.isActive) return
                 val latLng = LatLng(latitude, longitude)
+                val movingId = movingSharedPointId
+                if (movingId != null) {
+                    coordinator.moveSharedPoint(movingId, latLng)
+                    movingSharedPointId = null
+                    return
+                }
                 savePointLatLng = latLng
                 savePointName = ""
                 savePointDescription = ""
@@ -481,12 +502,18 @@ fun IosMapScreen(
                     zoom = cameraZoom,
                     savedPoints = savedPoints,
                     viewingTracks = viewingTracks,
-                    navigationTrack = navChartTrackState.value
+                    navigationTrack = navChartTrackState.value,
+                    mySharedPoints = mySharedPoints,
+                    friendSharedPoints = friendSharedPoints
                 )
                 when (target) {
                     is MapTapTarget.Point -> {
                         clickedPoint = target.point
                         showPointInfoDialog = true
+                    }
+                    is MapTapTarget.SharedPoint -> {
+                        if (target.mine) managingSharedPoint = target.point
+                        else friendPointDialog = target.point
                     }
                     is MapTapTarget.TrackLine -> trackRepository.onTrackTapped(target.trackId)
                     MapTapTarget.OutsideTracks -> trackRepository.onMapTapOutsideTracks()
@@ -555,7 +582,74 @@ fun IosMapScreen(
                 closeSavePointDialog()
                 scope.launch { snackbarHostState.showSnackbar(pointSavedMsg) }
             },
+            canShare = canShare,
+            onShareOnly = {
+                coordinator.addSharedPoint(savePointName, savePointDescription, latLng, PointColors.DEFAULT)
+                closeSavePointDialog()
+                scope.launch { snackbarHostState.showSnackbar(pointSharedMsg) }
+            },
+            onSaveAndShare = {
+                savedPointsRepository.addPoint(
+                    name = savePointName,
+                    latLng = latLng,
+                    description = savePointDescription
+                )
+                coordinator.addSharedPoint(savePointName, savePointDescription, latLng, PointColors.DEFAULT)
+                closeSavePointDialog()
+                scope.launch { snackbarHostState.showSnackbar(pointSharedMsg) }
+            },
             onDismiss = { closeSavePointDialog() }
+        )
+    }
+
+    managingSharedPoint?.let { point ->
+        var editName by remember(point.id) { mutableStateOf(point.name) }
+        var editDescription by remember(point.id) { mutableStateOf(point.description) }
+        var editColor by remember(point.id) { mutableStateOf(point.color) }
+        val colors = PointColors.withSelected(point.color)
+        MapDialogs.ManageSharedPointDialog(
+            pointName = editName,
+            onNameChange = { editName = it },
+            pointDescription = editDescription,
+            onDescriptionChange = { editDescription = it },
+            pointColor = editColor,
+            onColorChange = { editColor = it },
+            availableColors = colors,
+            coordinates = "${point.latLng.latitude.toString().take(10)}, ${point.latLng.longitude.toString().take(10)}",
+            onMove = {
+                movingSharedPointId = point.id
+                managingSharedPoint = null
+            },
+            onDelete = {
+                coordinator.removeSharedPoint(point.id)
+                managingSharedPoint = null
+                scope.launch { snackbarHostState.showSnackbar(pointDeletedMsg) }
+            },
+            onSave = {
+                coordinator.updateSharedPoint(point.id, editName, editDescription, editColor)
+                managingSharedPoint = null
+                scope.launch { snackbarHostState.showSnackbar(pointUpdatedMsg) }
+            },
+            onDismiss = { managingSharedPoint = null }
+        )
+    }
+
+    friendPointDialog?.let { point ->
+        MapDialogs.FriendPointDialog(
+            pointName = point.name,
+            pointDescription = point.description,
+            coordinates = "${point.latLng.latitude.toString().take(10)}, ${point.latLng.longitude.toString().take(10)}",
+            onSaveLocally = {
+                savedPointsRepository.addPoint(
+                    name = point.name,
+                    latLng = point.latLng,
+                    description = point.description,
+                    color = point.color
+                )
+                friendPointDialog = null
+                scope.launch { snackbarHostState.showSnackbar(pointSavedLocallyMsg) }
+            },
+            onDismiss = { friendPointDialog = null }
         )
     }
 
@@ -853,6 +947,8 @@ fun IosMapScreen(
             mapViewProvider.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
         },
         onStopFollowing = { stopFollowingAll(userPreferences, liveTrackingFollower) },
+        isMovingSharedPoint = movingSharedPointId != null,
+        onCancelMovePoint = { movingSharedPointId = null },
         mapContent = {
             UIKitView(
                 factory = { mapViewProvider.createMapView() },
@@ -880,6 +976,19 @@ fun IosMapScreen(
                         mapViewProvider.updateSavedPoints(geoJson)
                     } else {
                         mapViewProvider.clearSavedPoints()
+                    }
+
+                    // Shared points (issue #99): own ones and followed friends'.
+                    if (mySharedPoints.isNotEmpty()) {
+                        mapViewProvider.updateMySharedPoints(buildSharedPointsGeoJson(mySharedPoints))
+                    } else {
+                        mapViewProvider.clearMySharedPoints()
+                    }
+                    val friendPoints = friendPointsGeoJson
+                    if (friendPoints != null) {
+                        mapViewProvider.updateFriendSharedPoints(friendPoints)
+                    } else {
+                        mapViewProvider.clearFriendSharedPoints()
                     }
 
                     // Search results rendering

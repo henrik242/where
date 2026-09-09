@@ -6,6 +6,10 @@ tag dates.
 
 ## Unreleased
 
+- While live-sharing you can drop named points on the map (meeting spot, parked car, hunting post)
+  that everyone following you sees right away; the save-point dialog offers "Save", "Share only" or
+  "Save and share". You can move or delete your shared points, and anyone following can keep a copy
+  on their own device. Shared points disappear when your sharing session ends
 - You can give each followed friend a local nickname, so the map and the follow list show "Per"
   instead of a six-character client id; the nickname stays on your device and the id is still shown
   where you need it

@@ -21,6 +21,8 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private var pendingSearchResultsGeoJson: String?
     private var pendingSearchHighlightGeoJson: String?
     private var pendingFriendTrackGeoJson: String?
+    private var pendingMySharedPointsGeoJson: String?
+    private var pendingFriendSharedPointsGeoJson: String?
     private var pendingCoordGridGeoJson: String?
     private var pendingNavCompletedGeoJson: String?
     private var pendingNavRemainingGeoJson: String?
@@ -64,6 +66,9 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
     private let friendTrackHaloLayerId = "friend-track-halo-layer"
     private let friendTrackPointLayerId = "friend-track-point-layer"
     private let friendTrackLabelLayerId = "friend-track-label-layer"
+    // Shared points (issue #99). Own and friends' points use the same look via a prefix.
+    private let mySharedPointsPrefix = "my-shared-points"
+    private let friendSharedPointsPrefix = "friend-shared-points"
     private let coordGridSourceId = "coord-grid-source"
     private let coordGridLayerId = "coord-grid-line-layer"
     private let coordGridLineCasingLayerId = "coord-grid-line-casing-layer"
@@ -433,6 +438,30 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         removeFriendTrackLine(style: style)
     }
 
+    func updateMySharedPoints(geoJson: String) {
+        pendingMySharedPointsGeoJson = geoJson
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        applySharedPoints(style: style, geoJson: geoJson, prefix: mySharedPointsPrefix)
+    }
+
+    func clearMySharedPoints() {
+        pendingMySharedPointsGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeSharedPoints(style: style, prefix: mySharedPointsPrefix)
+    }
+
+    func updateFriendSharedPoints(geoJson: String) {
+        pendingFriendSharedPointsGeoJson = geoJson
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        applySharedPoints(style: style, geoJson: geoJson, prefix: friendSharedPointsPrefix)
+    }
+
+    func clearFriendSharedPoints() {
+        pendingFriendSharedPointsGeoJson = nil
+        guard let mapView = self.mapView, let style = mapView.style else { return }
+        removeSharedPoints(style: style, prefix: friendSharedPointsPrefix)
+    }
+
     func updateNavigation(completedGeoJson: String, remainingGeoJson: String, offCourseGeoJson: String?) {
         pendingNavCompletedGeoJson = completedGeoJson
         pendingNavRemainingGeoJson = remainingGeoJson
@@ -593,6 +622,12 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         }
         if let geoJson = pendingFriendTrackGeoJson {
             applyFriendTrackLine(style: style, geoJson: geoJson)
+        }
+        if let geoJson = pendingMySharedPointsGeoJson {
+            applySharedPoints(style: style, geoJson: geoJson, prefix: mySharedPointsPrefix)
+        }
+        if let geoJson = pendingFriendSharedPointsGeoJson {
+            applySharedPoints(style: style, geoJson: geoJson, prefix: friendSharedPointsPrefix)
         }
         if let geoJson = pendingCoordGridGeoJson {
             applyCoordGrid(style: style, geoJson: geoJson)
@@ -1173,6 +1208,52 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         if let layer = style.layer(withIdentifier: coordGridLineCasingLayerId) { style.removeLayer(layer) }
         if let layer = style.layer(withIdentifier: coordGridZoneLayerId) { style.removeLayer(layer) }
         if let source = style.source(withIdentifier: coordGridSourceId) { style.removeSource(source) }
+    }
+
+    // A ringed dot with a name label, matching Android's MapRenderUtils.updateSharedPointsOnMap.
+    private func applySharedPoints(style: MLNStyle, geoJson: String, prefix: String) {
+        removeSharedPoints(style: style, prefix: prefix)
+
+        guard let data = geoJson.data(using: .utf8),
+              let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+            print("Failed to parse shared points GeoJSON")
+            return
+        }
+
+        let source = MLNShapeSource(identifier: "\(prefix)-source", shape: shape, options: nil)
+        style.addSource(source)
+
+        let ring = MLNCircleStyleLayer(identifier: "\(prefix)-ring", source: source)
+        ring.circleRadius = NSExpression(forConstantValue: 9)
+        ring.circleColor = NSExpression(forConstantValue: UIColor.white)
+        ring.circleStrokeColor = NSExpression(forKeyPath: "color")
+        ring.circleStrokeWidth = NSExpression(forConstantValue: 3)
+        style.addLayer(ring)
+
+        let dot = MLNCircleStyleLayer(identifier: "\(prefix)-dot", source: source)
+        dot.circleRadius = NSExpression(forConstantValue: 4)
+        dot.circleColor = NSExpression(forKeyPath: "color")
+        style.addLayer(dot)
+
+        let label = MLNSymbolStyleLayer(identifier: "\(prefix)-label", source: source)
+        label.text = NSExpression(forKeyPath: "name")
+        label.textFontNames = glyphFontNames
+        label.textFontSize = NSExpression(forConstantValue: 13)
+        label.textColor = NSExpression(forConstantValue: UIColor(white: 0.13, alpha: 1.0))
+        label.textHaloColor = NSExpression(forConstantValue: UIColor.white)
+        label.textHaloWidth = NSExpression(forConstantValue: 1.5)
+        label.textOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: 1.2)))
+        label.textAnchor = NSExpression(forConstantValue: "top")
+        label.textAllowsOverlap = NSExpression(forConstantValue: false)
+        label.textPadding = NSExpression(forConstantValue: 2)
+        style.addLayer(label)
+    }
+
+    private func removeSharedPoints(style: MLNStyle, prefix: String) {
+        if let layer = style.layer(withIdentifier: "\(prefix)-label") { style.removeLayer(layer) }
+        if let layer = style.layer(withIdentifier: "\(prefix)-dot") { style.removeLayer(layer) }
+        if let layer = style.layer(withIdentifier: "\(prefix)-ring") { style.removeLayer(layer) }
+        if let source = style.source(withIdentifier: "\(prefix)-source") { style.removeSource(source) }
     }
 
     private func removeFriendTrackLine(style: MLNStyle) {

@@ -24,6 +24,21 @@ export interface TrackUpdate {
   point: TrackPoint;
 }
 
+/**
+ * A named marker a live-sharing client drops on the map for its followers. Keyed to the sharer's
+ * client id (userId) and broadcast over the same channel as tracks; expires with the session.
+ */
+export interface SharedPoint {
+  id: string;
+  userId: string;
+  name: string;
+  description: string;
+  lat: number;
+  lon: number;
+  color: string;
+  timestamp: number;
+}
+
 /** A {@link Track} with server-derived metrics; the wire format returned by APIs. */
 export interface EnrichedTrack extends Track {
   distance: number;

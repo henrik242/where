@@ -235,7 +235,11 @@ object MapDialogs {
         coordinates: String,
         onSave: () -> Unit,
         onDismiss: () -> Unit,
-        isLoading: Boolean = false
+        isLoading: Boolean = false,
+        // When live-sharing is active the point can also be shared with followers (issue #99).
+        canShare: Boolean = false,
+        onShareOnly: () -> Unit = {},
+        onSaveAndShare: () -> Unit = {},
     ) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -272,8 +276,24 @@ object MapDialogs {
                 }
             },
             confirmButton = {
-                TextButton(onClick = onSave, enabled = pointName.isNotBlank()) {
-                    Text(stringResource(Res.string.save))
+                val enabled = pointName.isNotBlank()
+                if (canShare) {
+                    // Three choices while live-sharing: keep it private, only share, or both.
+                    Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                        TextButton(onClick = onSaveAndShare, enabled = enabled) {
+                            Text(stringResource(Res.string.save_and_share))
+                        }
+                        TextButton(onClick = onShareOnly, enabled = enabled) {
+                            Text(stringResource(Res.string.share_only))
+                        }
+                        TextButton(onClick = onSave, enabled = enabled) {
+                            Text(stringResource(Res.string.save_only))
+                        }
+                    }
+                } else {
+                    TextButton(onClick = onSave, enabled = enabled) {
+                        Text(stringResource(Res.string.save))
+                    }
                 }
             },
             dismissButton = {
@@ -358,6 +378,122 @@ object MapDialogs {
                     TextButton(onClick = onDismiss) {
                         Text(stringResource(Res.string.cancel))
                     }
+                }
+            }
+        )
+    }
+
+    /** Manage a shared point this client owns: rename/recolor, move (tap-to-relocate), or delete. */
+    @Composable
+    fun ManageSharedPointDialog(
+        pointName: String,
+        onNameChange: (String) -> Unit,
+        pointDescription: String,
+        onDescriptionChange: (String) -> Unit,
+        pointColor: String,
+        onColorChange: (String) -> Unit,
+        availableColors: List<Pair<String, String>>,
+        coordinates: String,
+        onMove: () -> Unit,
+        onDelete: () -> Unit,
+        onSave: () -> Unit,
+        onDismiss: () -> Unit,
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(Res.string.shared_point)) },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = pointName,
+                        onValueChange = onNameChange,
+                        label = { Text(stringResource(Res.string.name_label)) },
+                        singleLine = true,
+                        keyboardOptions = nameKeyboardOptions,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = pointDescription,
+                        onValueChange = onDescriptionChange,
+                        label = { Text(stringResource(Res.string.description_optional)) },
+                        maxLines = DESCRIPTION_MAX_LINES,
+                        keyboardOptions = descriptionKeyboardOptions,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(stringResource(Res.string.color), style = MaterialTheme.typography.labelMedium)
+                    PointColorPicker(
+                        colors = availableColors,
+                        selectedColor = pointColor,
+                        onColorChange = onColorChange
+                    )
+                    TextButton(onClick = onMove) {
+                        Text(stringResource(Res.string.move_point))
+                    }
+                    Text(
+                        text = coordinates,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onSave, enabled = pointName.isNotBlank()) {
+                    Text(stringResource(Res.string.save))
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = onDelete,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text(stringResource(Res.string.delete))
+                    }
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(Res.string.cancel))
+                    }
+                }
+            }
+        )
+    }
+
+    /** A shared point received from a followed friend: read-only, with the option to keep a copy. */
+    @Composable
+    fun FriendPointDialog(
+        pointName: String,
+        pointDescription: String,
+        coordinates: String,
+        onSaveLocally: () -> Unit,
+        onDismiss: () -> Unit,
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(pointName) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (pointDescription.isNotBlank()) {
+                        Text(pointDescription, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Text(
+                        text = coordinates,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onSaveLocally) {
+                    Text(stringResource(Res.string.save_locally))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.close_point_view))
                 }
             }
         )

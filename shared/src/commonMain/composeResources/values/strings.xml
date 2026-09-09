@@ -38,6 +38,12 @@
     <string name="enter_track_name">Enter a name for your track:</string>
     <string name="track_name">Track Name</string>
     <string name="save_location">Save Location</string>
+    <string name="save_only">Save</string>
+    <string name="share_only">Share only</string>
+    <string name="save_and_share">Save and share</string>
+    <string name="shared_point">Shared point</string>
+    <string name="move_point">Move</string>
+    <string name="save_locally">Save locally</string>
     <string name="location_name">Location Name</string>
     <string name="edit_location">Edit Location</string>
     <string name="save_route_as_track">Save as Track</string>
@@ -366,6 +372,9 @@
     <string name="point_saved">Point saved</string>
     <string name="point_deleted">Point deleted</string>
     <string name="point_updated">Point updated</string>
+    <string name="point_shared_snackbar">Point shared</string>
+    <string name="point_move_hint">Long-press the map to move the point</string>
+    <string name="point_saved_locally">Saved locally</string>
     <string name="online_tracking_enabled">Online tracking enabled</string>
     <string name="online_tracking_disabled">Online tracking disabled</string>
     <string name="saved_as_track_name">Saved as track: %1$s</string>

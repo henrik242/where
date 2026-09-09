@@ -435,6 +435,69 @@ object MapRenderUtils {
     }
 
     /**
+     * Draw live shared points (issue #99) as a ringed dot with a name label. Used for both the
+     * points this client owns ([idPrefix] "my-shared-points") and followed friends' points
+     * ("friend-shared-points"), so they get separate sources/layers but the same look. The GeoJSON
+     * carries `name` and `color` (keep in sync with MapViewFactory.applySharedPoints on iOS).
+     */
+    fun updateSharedPointsOnMap(style: Style, geoJson: String?, idPrefix: String) {
+        try {
+            val sourceId = "$idPrefix-source"
+            val ringLayerId = "$idPrefix-ring-layer"
+            val dotLayerId = "$idPrefix-dot-layer"
+            val labelLayerId = "$idPrefix-label-layer"
+
+            val fc = geoJson?.let {
+                try { FeatureCollection.fromJson(it) } catch (e: Exception) {
+                    Logger.e(e, "Failed to parse shared points GeoJSON"); return
+                }
+            } ?: FeatureCollection.fromFeatures(emptyList())
+
+            val existing = style.getSourceAs<GeoJsonSource>(sourceId)
+            if (existing != null && style.getLayer(labelLayerId) != null) {
+                existing.setGeoJson(fc)
+                return
+            }
+            listOf(labelLayerId, dotLayerId, ringLayerId).forEach { style.removeLayer(it) }
+            style.getSource(sourceId)?.let { style.removeSource(it) }
+
+            style.addSource(GeoJsonSource(sourceId, fc))
+            style.addLayer(
+                CircleLayer(ringLayerId, sourceId).withProperties(
+                    PropertyFactory.circlePitchAlignment("viewport"),
+                    PropertyFactory.circleRadius(9f),
+                    PropertyFactory.circleColor("#FFFFFF"),
+                    PropertyFactory.circleStrokeWidth(3f),
+                    PropertyFactory.circleStrokeColor(Expression.get("color"))
+                )
+            )
+            style.addLayer(
+                CircleLayer(dotLayerId, sourceId).withProperties(
+                    PropertyFactory.circlePitchAlignment("viewport"),
+                    PropertyFactory.circleRadius(4f),
+                    PropertyFactory.circleColor(Expression.get("color"))
+                )
+            )
+            style.addLayer(
+                SymbolLayer(labelLayerId, sourceId).withProperties(
+                    PropertyFactory.textField(Expression.get("name")),
+                    PropertyFactory.textFont(GLYPH_FONTS),
+                    PropertyFactory.textSize(13f),
+                    PropertyFactory.textColor("#222222"),
+                    PropertyFactory.textHaloColor("#FFFFFF"),
+                    PropertyFactory.textHaloWidth(1.5f),
+                    PropertyFactory.textOffset(arrayOf(0f, 1.2f)),
+                    PropertyFactory.textAnchor("top"),
+                    PropertyFactory.textAllowOverlap(false),
+                    PropertyFactory.textPadding(2f)
+                )
+            )
+        } catch (e: Exception) {
+            Logger.e(e, "Map render error")
+        }
+    }
+
+    /**
      * Update search results visualization on the map.
      */
     fun updateSearchResultsOnMap(

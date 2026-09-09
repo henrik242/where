@@ -3,6 +3,7 @@ package no.synth.where.ui.map
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.SavedPoint
+import no.synth.where.data.SharedPoint
 import no.synth.where.data.Track
 import no.synth.where.data.TrackCropState
 import no.synth.where.data.TrackPoint
@@ -154,6 +155,18 @@ fun buildSavedPointsGeoJson(points: List<SavedPoint>): String {
         val name = point.name.replace("\"", "\\\"")
         val color = point.color ?: PointColors.DEFAULT
         """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"name":"$name","color":"$color"}}"""
+    }
+    return """{"type":"FeatureCollection","features":[$features]}"""
+}
+
+/**
+ * The live shared points this client owns, as Point features carrying `id`, `name` and `color`.
+ * Rendered on the sharer's own map (followers get theirs from the WebSocket via FriendTrackStore).
+ */
+fun buildSharedPointsGeoJson(points: List<SharedPoint>): String {
+    val features = points.joinToString(",") { point ->
+        val name = point.name.replace("\\", "\\\\").replace("\"", "\\\"")
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"id":"${point.id}","name":"$name","color":"${point.color}"}}"""
     }
     return """{"type":"FeatureCollection","features":[$features]}"""
 }

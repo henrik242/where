@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.concurrent.Volatile
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.formatDateTime
@@ -85,7 +87,18 @@ class OnlineTrackingCoordinator(
     private val _isLiveSharing = MutableStateFlow(false)
     val isLiveSharing: StateFlow<Boolean> = _isLiveSharing.asStateFlow()
 
+    // True whenever there is an active online session (LIVE or online RECORDING) that can carry
+    // shared points. The map's "Del punkt" actions are offered only while this is true.
+    private val _canShare = MutableStateFlow(false)
+    val canShare: StateFlow<Boolean> = _canShare.asStateFlow()
+
+    // The points this client has shared this session. The source of truth: re-sent to the server
+    // whenever a fresh session starts (reconnect, mode switch) and cleared when sharing ends.
+    private val _mySharedPoints = MutableStateFlow<List<SharedPoint>>(emptyList())
+    val mySharedPoints: StateFlow<List<SharedPoint>> = _mySharedPoints.asStateFlow()
+
     @Volatile private var currentClient: TrackingSession? = null
+    @Volatile private var currentClientId: String? = null
     @Volatile private var observerJob: Job? = null
 
     private data class Desired(
@@ -126,9 +139,12 @@ class OnlineTrackingCoordinator(
             c.close()
         }
         currentClient = null
+        currentClientId = null
         _mode.value = Mode.NONE
         _shouldTrackLocation.value = false
         _isLiveSharing.value = false
+        _canShare.value = false
+        _mySharedPoints.value = emptyList()
     }
 
     private suspend fun applyDesired(desired: Desired) {
@@ -136,7 +152,12 @@ class OnlineTrackingCoordinator(
         if (desired.mode == _mode.value) return
 
         tearDown()
-        if (desired.mode == Mode.NONE) return
+        if (desired.mode == Mode.NONE) {
+            // Sharing fully ended; drop the shared points (the server clears them when the
+            // track stops, and followers keep any local copies they saved).
+            _mySharedPoints.value = emptyList()
+            return
+        }
 
         // Suspending part — cancellation here is fine, we have nothing to clean up.
         val cid = getClientId()
@@ -156,8 +177,10 @@ class OnlineTrackingCoordinator(
                 old.close()
                 currentClient = null
             }
+            currentClientId = null
             _mode.value = Mode.NONE
             _isLiveSharing.value = false
+            _canShare.value = false
         }
     }
 
@@ -191,8 +214,15 @@ class OnlineTrackingCoordinator(
                 }
                 Mode.NONE -> {}
             }
+            currentClientId = cid
             _mode.value = mode
             _isLiveSharing.value = mode == Mode.LIVE
+            _canShare.value = true
+            // Re-publish points from a previous session generation (reconnect / mode switch) so
+            // followers get them back after the server dropped them when the old track stopped.
+            for (point in _mySharedPoints.value) {
+                session.shareSharedPoint(point.copy(ownerClientId = cid))
+            }
         }
     }
 
@@ -205,5 +235,53 @@ class OnlineTrackingCoordinator(
         if (_mode.value == Mode.NONE) return
         if (!sources.isRecording.value && sources.liveShareUntilMillis.value <= clock()) return
         currentClient?.sendPoint(latLng, altitude, accuracy)
+    }
+
+    /**
+     * Drop a shared point at [latLng] and push it to followers. No-op when no session is active
+     * (nothing to attach it to). Returns the created point, or null when not sharing.
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    fun addSharedPoint(
+        name: String,
+        description: String,
+        latLng: LatLng,
+        color: String,
+    ): SharedPoint? {
+        val cid = currentClientId ?: return null
+        val point = SharedPoint(
+            id = Uuid.random().toString(),
+            ownerClientId = cid,
+            name = name,
+            description = description,
+            latLng = latLng,
+            color = color,
+            timestamp = clock(),
+        )
+        _mySharedPoints.value = _mySharedPoints.value + point
+        currentClient?.shareSharedPoint(point)
+        return point
+    }
+
+    /** Move an existing shared point, keeping its id, and re-broadcast it. */
+    fun moveSharedPoint(pointId: String, latLng: LatLng) {
+        updateAndShare(pointId) { it.copy(latLng = latLng) }
+    }
+
+    /** Rename / redescribe / recolor a shared point and re-broadcast it. */
+    fun updateSharedPoint(pointId: String, name: String, description: String, color: String) {
+        updateAndShare(pointId) { it.copy(name = name, description = description, color = color) }
+    }
+
+    private fun updateAndShare(pointId: String, transform: (SharedPoint) -> SharedPoint) {
+        val updated = _mySharedPoints.value.map { if (it.id == pointId) transform(it) else it }
+        _mySharedPoints.value = updated
+        updated.firstOrNull { it.id == pointId }?.let { currentClient?.shareSharedPoint(it) }
+    }
+
+    /** Delete a shared point locally and on the server. */
+    fun removeSharedPoint(pointId: String) {
+        _mySharedPoints.value = _mySharedPoints.value.filterNot { it.id == pointId }
+        currentClient?.deleteSharedPoint(pointId)
     }
 }

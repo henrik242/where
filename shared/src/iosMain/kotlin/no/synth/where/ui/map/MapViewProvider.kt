@@ -63,6 +63,12 @@ interface MapViewProvider {
     fun clearHighlightedSearchResult()
     fun updateFriendTrackLine(geoJson: String)
     fun clearFriendTrackLine()
+    /** Shared points this client owns (issue #99); an empty FeatureCollection clears them. */
+    fun updateMySharedPoints(geoJson: String)
+    fun clearMySharedPoints()
+    /** Shared points from followed friends; an empty FeatureCollection clears them. */
+    fun updateFriendSharedPoints(geoJson: String)
+    fun clearFriendSharedPoints()
     fun updateNavigation(completedGeoJson: String, remainingGeoJson: String, offCourseGeoJson: String?)
     fun clearNavigation()
     fun setConnected(connected: Boolean)

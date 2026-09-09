@@ -46,6 +46,17 @@ export function getViewerCount(userId: string): number {
   return count;
 }
 
+/**
+ * Delete a user's shared points and tell their followers, once the user has no active track left
+ * (their live-share session has ended). Followers keep any copies they saved locally.
+ */
+export function removeUserSharedPointsIfIdle(userId: string) {
+  if (trackStore.getActiveTracksByUser(userId).length > 0) return;
+  for (const id of trackStore.deleteSharedPointsByUser(userId)) {
+    broadcastToAll({ type: 'point_removed', id, userId }, userId);
+  }
+}
+
 export function checkStaleTracks() {
   const cutoffTime = Date.now() - CONFIG.STALE_TRACK_TIMEOUT;
   const activeTracks = trackStore.getAllActiveTracks();
@@ -89,6 +100,8 @@ export function checkStaleTracks() {
           trackId: track.id,
           userId: track.userId,
         }, track.userId);
+
+        removeUserSharedPointsIfIdle(track.userId);
       }
     }
   });
@@ -109,6 +122,14 @@ export function cleanupOldTracks() {
   }
   if (deleted.length > 0) {
     console.log(`Cleaned up ${deleted.length} old track(s)`);
+  }
+
+  const deletedPoints = trackStore.cleanupOldSharedPoints();
+  for (const { id, userId } of deletedPoints) {
+    broadcastToAll({ type: 'point_removed', id, userId }, userId);
+  }
+  if (deletedPoints.length > 0) {
+    console.log(`Cleaned up ${deletedPoints.length} old shared point(s)`);
   }
 }
 
