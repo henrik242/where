@@ -893,6 +893,7 @@ fun BoxScope.MapOverlays(
     liveShareUntilMillis: Long = 0L,
     isLiveSharing: Boolean = false
 ) {
+    var confirmStopFollowing by remember { mutableStateOf(false) }
     // The track whose name banner + altitude chart are shown, or null when nothing is focused.
     val focusedTrack = viewingTracks.firstOrNull { it.id == focusedTrackId }
     // Non-null only while the focused track is being cropped; the header + crop chart then replace
@@ -1139,7 +1140,19 @@ fun BoxScope.MapOverlays(
             isConnecting = isFollowConnecting,
             onClick = { onFollowBannerClick(null) },
             onFriendClick = { onFollowBannerClick(it) },
-            onClose = onStopFollowing
+            // Confirm before clearing 2+ friends, so an accidental tap doesn't wipe the whole
+            // list. A single friend is unambiguous, so drop it directly.
+            onClose = { if (followedFriends.size >= 2) confirmStopFollowing = true else onStopFollowing() }
+        )
+    }
+    if (confirmStopFollowing) {
+        MapDialogs.ConfirmStopFollowingAllDialog(
+            count = followedFriends.size,
+            onConfirm = {
+                confirmStopFollowing = false
+                onStopFollowing()
+            },
+            onDismiss = { confirmStopFollowing = false }
         )
     }
 

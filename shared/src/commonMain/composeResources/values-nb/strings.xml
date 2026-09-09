@@ -87,6 +87,8 @@
     <string name="close_track">Lukk spor</string>
     <string name="close_track_confirm_title">Lukke sporet?</string>
     <string name="close_track_confirm_message">Dette fjerner det fra kartet.</string>
+    <string name="stop_following_all_confirm_title">Slutte å følge alle?</string>
+    <string name="stop_following_all_confirm_message">Du følger %1$d personer. Er du sikker på at du vil slutte å følge alle?</string>
     <string name="close_details">Lukk detaljer</string>
     <string name="track_actions">Sporhandlinger</string>
     <string name="start_navigation">Start navigasjon</string>

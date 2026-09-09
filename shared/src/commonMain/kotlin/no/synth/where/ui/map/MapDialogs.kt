@@ -105,6 +105,29 @@ object MapDialogs {
     }
 
     @Composable
+    fun ConfirmStopFollowingAllDialog(
+        count: Int,
+        onConfirm: () -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(Res.string.stop_following_all_confirm_title)) },
+            text = { Text(stringResource(Res.string.stop_following_all_confirm_message, count)) },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text(stringResource(Res.string.stop_following_all))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
+    @Composable
     fun BackgroundLocationDisclosureDialog(
         onAllow: () -> Unit,
         onDeny: () -> Unit

@@ -87,6 +87,8 @@
     <string name="close_track">Close track</string>
     <string name="close_track_confirm_title">Close track?</string>
     <string name="close_track_confirm_message">This removes it from the map.</string>
+    <string name="stop_following_all_confirm_title">Stop following everyone?</string>
+    <string name="stop_following_all_confirm_message">You are following %1$d people. Are you sure you want to stop following all of them?</string>
     <string name="close_details">Close details</string>
     <string name="track_actions">Track actions</string>
     <string name="start_navigation">Start navigation</string>
