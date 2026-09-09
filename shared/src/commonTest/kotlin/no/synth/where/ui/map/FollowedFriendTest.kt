@@ -19,6 +19,14 @@ class FollowedFriendTest {
     }
 
     @Test
+    fun nicknameDrivesDisplayNameAndFallsBackToTheId() {
+        val ids = listOf("aaa111", "bbb222")
+        val friends = followedFriends(ids, emptyList(), nicknames = mapOf("aaa111" to "Per"))
+        assertEquals("Per", friends[0].displayName)
+        assertEquals("bbb222", friends[1].displayName)
+    }
+
+    @Test
     fun marksWhoIsSending() {
         val ids = listOf("aaa111", "bbb222")
         val tracks = listOf(

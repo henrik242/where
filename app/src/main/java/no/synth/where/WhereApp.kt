@@ -70,7 +70,7 @@ fun WhereApp(
         if (pendingFollowClientIds.isNotEmpty()) {
             val self = app.clientIdManager.getClientId()
             app.userPreferences.setFollowedClientIds(pendingFollowClientIds.filter { it != self })
-            app.liveTrackingFollower.follow(app.userPreferences.followedClientIds.value)
+            app.liveTrackingFollower.follow(app.userPreferences.followedClientIds.value, app.userPreferences.clientNicknames.value)
             onFollowHandled()
         }
     }

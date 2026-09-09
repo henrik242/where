@@ -160,6 +160,10 @@
     <string name="unfollow_friend">Stop following %1$s</string>
     <string name="following_friend">Following %1$s</string>
     <string name="following_friends">Following %1$d friends</string>
+    <string name="set_nickname">Set nickname</string>
+    <string name="nickname">Nickname</string>
+    <string name="edit_nickname">Edit nickname for %1$s</string>
+    <string name="remove_nickname">Remove nickname</string>
     <string name="following_live">Live</string>
     <string name="following_no_tracks">No active tracks</string>
     <string name="following_connecting">Connecting…</string>

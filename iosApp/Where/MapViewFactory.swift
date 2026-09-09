@@ -1079,7 +1079,7 @@ class MapViewFactory: NSObject, MapViewProvider, MLNMapViewDelegate, MLNNetworkC
         style.addLayer(pointLayer)
 
         let labelLayer = MLNSymbolStyleLayer(identifier: friendTrackLabelLayerId, source: pointSource)
-        labelLayer.text = NSExpression(forKeyPath: "clientId")
+        labelLayer.text = NSExpression(forKeyPath: "label")
         labelLayer.textFontNames = glyphFontNames
         labelLayer.textFontSize = NSExpression(forConstantValue: 12)
         labelLayer.textColor = NSExpression(forKeyPath: "color")

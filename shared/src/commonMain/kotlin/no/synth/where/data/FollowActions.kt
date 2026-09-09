@@ -15,13 +15,24 @@ fun startFollowing(
     if (clientId == selfClientId) return false
     if (!userPreferences.addFollowedClientId(clientId)) return false
     userPreferences.addFollowHistoryEntry(clientId)
-    follower.follow(userPreferences.followedClientIds.value)
+    follower.follow(userPreferences.followedClientIds.value, userPreferences.clientNicknames.value)
     return true
 }
 
 fun unfollow(userPreferences: UserPreferences, follower: LiveTrackingFollower, clientId: String) {
     userPreferences.removeFollowedClientId(clientId)
-    follower.follow(userPreferences.followedClientIds.value)
+    follower.follow(userPreferences.followedClientIds.value, userPreferences.clientNicknames.value)
+}
+
+/** Sets (or clears, when [nickname] is blank) a followed client's local nickname and relabels the map. */
+fun setNickname(
+    userPreferences: UserPreferences,
+    follower: LiveTrackingFollower,
+    clientId: String,
+    nickname: String
+) {
+    userPreferences.setClientNickname(clientId, nickname)
+    follower.follow(userPreferences.followedClientIds.value, userPreferences.clientNicknames.value)
 }
 
 fun stopFollowingAll(userPreferences: UserPreferences, follower: LiveTrackingFollower) {

@@ -59,30 +59,37 @@ class LiveTrackingFollower(
     val friendTrackGeoJson: StateFlow<String?> = _friendTrackGeoJson.asStateFlow()
 
     private var currentClientIds: List<String> = emptyList()
+    private var currentNicknames: Map<String, String> = emptyMap()
     private var connectionJob: Job? = null
 
     /**
-     * Follow exactly [clientIds]. Changing the set reconnects and the server replies with a fresh
-     * snapshot; the overlay keeps the previous tracks until it arrives so the map doesn't blink.
+     * Follow exactly [clientIds], labelling each with [nicknames]. Changing the set (or a label)
+     * reconnects and the server replies with a fresh snapshot; the overlay keeps the previous
+     * tracks until it arrives so the map doesn't blink. A label edit is rare, so reconnecting to
+     * relabel keeps the store single-threaded rather than mutating it across coroutines.
      */
-    fun follow(clientIds: List<String>) {
+    fun follow(clientIds: List<String>, nicknames: Map<String, String> = emptyMap()) {
         val ids = sanitize(clientIds)
         if (ids.isEmpty()) {
             stopFollowing()
             return
         }
-        if (ids == currentClientIds && connectionJob?.isActive == true) return
+        // Only the labels of followed ids matter; ignore names for ids we don't follow.
+        val relevant = nicknames.filterKeys { it in ids }
+        if (ids == currentClientIds && relevant == currentNicknames && connectionJob?.isActive == true) return
         connectionJob?.cancel()
         currentClientIds = ids
+        currentNicknames = relevant
         _state.value = FollowState.Connecting
         // A store per connection generation: a cancelled connection cannot write into the new set.
-        connectionJob = scope.launch { connectWithRetry(ids, FriendTrackStore(ids)) }
+        connectionJob = scope.launch { connectWithRetry(ids, FriendTrackStore(ids, relevant)) }
     }
 
     fun stopFollowing() {
         connectionJob?.cancel()
         connectionJob = null
         currentClientIds = emptyList()
+        currentNicknames = emptyMap()
         _friendTrackGeoJson.value = null
         _state.value = FollowState.Idle
     }

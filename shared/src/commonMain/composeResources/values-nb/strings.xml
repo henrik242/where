@@ -160,6 +160,10 @@
     <string name="unfollow_friend">Slutt å følge %1$s</string>
     <string name="following_friend">Følger %1$s</string>
     <string name="following_friends">Følger %1$d venner</string>
+    <string name="set_nickname">Sett kallenavn</string>
+    <string name="nickname">Kallenavn</string>
+    <string name="edit_nickname">Rediger kallenavn for %1$s</string>
+    <string name="remove_nickname">Fjern kallenavn</string>
     <string name="following_live">Direkte</string>
     <string name="following_no_tracks">Ingen aktive spor</string>
     <string name="following_connecting">Kobler til…</string>

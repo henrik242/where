@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.UserPreferences
+import no.synth.where.data.setNickname
 import no.synth.where.data.startFollowing
 import no.synth.where.data.stopFollowingAll
 import no.synth.where.data.unfollow
@@ -25,6 +26,7 @@ class OnlineTrackingScreenViewModel(
     val viewerCount = userPreferences.viewerCount
     val followedClientIds = userPreferences.followedClientIds
     val followHistory = userPreferences.followHistory
+    val clientNicknames = userPreferences.clientNicknames
     val followState = liveTrackingFollower.state
     val liveShareUntilMillis = userPreferences.liveShareUntilMillis
     val offlineModeEnabled = userPreferences.offlineModeEnabled
@@ -82,6 +84,9 @@ class OnlineTrackingScreenViewModel(
     }
 
     fun unfollow(clientId: String) = unfollow(userPreferences, liveTrackingFollower, clientId)
+
+    fun setNickname(clientId: String, nickname: String) =
+        setNickname(userPreferences, liveTrackingFollower, clientId, nickname)
 
     fun stopFollowing() = stopFollowingAll(userPreferences, liveTrackingFollower)
 }

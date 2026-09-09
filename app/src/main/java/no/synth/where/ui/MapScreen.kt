@@ -146,16 +146,19 @@ fun MapScreen(
     val followState by liveTrackingFollower.state.collectAsState()
     val friendTrackGeoJson by liveTrackingFollower.friendTrackGeoJson.collectAsState()
     val followedClientIds by viewModel.userPreferences.followedClientIds.collectAsState()
-    val followedFriends = remember(followedClientIds, followState) {
+    val clientNicknames by viewModel.userPreferences.clientNicknames.collectAsState()
+    val followedFriends = remember(followedClientIds, followState, clientNicknames) {
         followedFriends(
             followedClientIds,
-            (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList()
+            (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList(),
+            clientNicknames
         )
     }
 
-    // Prefs are the source of truth for who is followed; follow() is a no-op for an unchanged set.
-    LaunchedEffect(followedClientIds) {
-        liveTrackingFollower.follow(followedClientIds)
+    // Prefs are the source of truth for who is followed; follow() is a no-op for an unchanged set
+    // and set of labels.
+    LaunchedEffect(followedClientIds, clientNicknames) {
+        liveTrackingFollower.follow(followedClientIds, clientNicknames)
     }
 
     var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }

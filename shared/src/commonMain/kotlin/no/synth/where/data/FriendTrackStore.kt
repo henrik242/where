@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -23,6 +24,7 @@ data class FriendTrack(
  */
 internal class FriendTrackStore(
     private val clientIds: List<String>,
+    private val nicknames: Map<String, String> = emptyMap(),
     private val maxTracksPerClient: Int = MAX_TRACKS_PER_CLIENT,
     private val maxPointsPerTrack: Int = MAX_POINTS_PER_TRACK,
 ) {
@@ -155,7 +157,10 @@ internal class FriendTrackStore(
 
     private fun props(track: FriendTrack): String {
         val color = TrackColors.forIndex(clientIds.indexOf(track.clientId))
-        return """"properties":{"clientId":"${track.clientId}","color":"$color","active":${track.isActive}}"""
+        // `label` is what the map draws: the local nickname when set, else the client id. User text,
+        // so quote it via JsonPrimitive (it adds the quotes) or a stray char breaks the collection.
+        val label = JsonPrimitive(nicknames[track.clientId] ?: track.clientId)
+        return """"properties":{"clientId":"${track.clientId}","label":$label,"color":"$color","active":${track.isActive}}"""
     }
 
     private fun parsePoints(array: JsonArray?): List<LatLng> =

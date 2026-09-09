@@ -89,9 +89,12 @@ fun OnlineTrackingScreenContent(
     onFollowClientIdChange: (String) -> Unit = {},
     onStartFollowing: () -> Unit = {},
     onUnfollow: (String) -> Unit = {},
+    onSetNickname: (clientId: String, nickname: String) -> Unit = { _, _ -> },
     onStopFollowing: () -> Unit = {}
 ) {
     var showDurationDialog by remember { mutableStateOf(false) }
+    // The friend whose nickname is being edited, or null when the rename dialog is closed.
+    var nicknameEditFriend by remember { mutableStateOf<FollowedFriend?>(null) }
     var nowMillis by remember { mutableStateOf(currentTimeMillis()) }
     LaunchedEffect(liveShareUntilMillis) {
         while (liveShareUntilMillis > nowMillis) {
@@ -366,12 +369,22 @@ fun OnlineTrackingScreenContent(
                                     .size(12.dp)
                                     .background(parseHexColor(friend.color), CircleShape)
                             )
-                            Text(
-                                text = friend.clientId,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = friend.displayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                // Keep the id visible when a nickname hides it, so the user can still
+                                // read off the code to share or compare.
+                                if (friend.nickname != null) {
+                                    Text(
+                                        text = friend.clientId,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                             Text(
                                 text = if (friend.isActive) {
                                     stringResource(Res.string.following_live)
@@ -381,6 +394,12 @@ fun OnlineTrackingScreenContent(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            IconButton(onClick = { nicknameEditFriend = friend }) {
+                                Icon(
+                                    painterResource(Res.drawable.ic_edit),
+                                    contentDescription = stringResource(Res.string.edit_nickname, friend.clientId)
+                                )
+                            }
                             IconButton(onClick = { onUnfollow(friend.clientId) }) {
                                 Icon(
                                     painterResource(Res.drawable.ic_close),
@@ -523,6 +542,53 @@ fun OnlineTrackingScreenContent(
             dismissButton = {
                 TextButton(onClick = { showDurationDialog = false }) {
                     Text(stringResource(Res.string.cancel))
+                }
+            }
+        )
+    }
+
+    nicknameEditFriend?.let { friend ->
+        var nameInput by remember(friend.clientId) { mutableStateOf(friend.nickname ?: "") }
+        AlertDialog(
+            onDismissRequest = { nicknameEditFriend = null },
+            title = { Text(stringResource(Res.string.set_nickname)) },
+            text = {
+                Column {
+                    Text(
+                        text = friend.clientId,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = nameInput,
+                        onValueChange = { nameInput = it },
+                        label = { Text(stringResource(Res.string.nickname)) },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSetNickname(friend.clientId, nameInput)
+                    nicknameEditFriend = null
+                }) {
+                    Text(stringResource(Res.string.save))
+                }
+            },
+            dismissButton = {
+                // Clearing is the dismiss slot only when there is a name to clear; otherwise Cancel.
+                if (friend.nickname != null) {
+                    TextButton(onClick = {
+                        onSetNickname(friend.clientId, "")
+                        nicknameEditFriend = null
+                    }) {
+                        Text(stringResource(Res.string.remove_nickname))
+                    }
+                } else {
+                    TextButton(onClick = { nicknameEditFriend = null }) {
+                        Text(stringResource(Res.string.cancel))
+                    }
                 }
             }
         )

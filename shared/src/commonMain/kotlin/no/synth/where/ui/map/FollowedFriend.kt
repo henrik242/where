@@ -4,23 +4,32 @@ import no.synth.where.data.FriendTrack
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.data.geo.bounds
 
-/** A followed client as the UI needs it: its map color and whether it is currently sending. */
+/** A followed client as the UI needs it: its map color, whether it is sending, and local nickname. */
 data class FollowedFriend(
     val clientId: String,
     val color: String,
-    val isActive: Boolean
-)
+    val isActive: Boolean,
+    val nickname: String? = null
+) {
+    /** Nickname when set, otherwise the raw client id. */
+    val displayName: String get() = nickname ?: clientId
+}
 
 /**
  * Colors each followed client by its position in the followed list, which is also how
  * [no.synth.where.data.FriendTrackStore] paints their track, so the two always agree.
  */
-fun followedFriends(clientIds: List<String>, tracks: List<FriendTrack>): List<FollowedFriend> =
+fun followedFriends(
+    clientIds: List<String>,
+    tracks: List<FriendTrack>,
+    nicknames: Map<String, String> = emptyMap()
+): List<FollowedFriend> =
     clientIds.mapIndexed { index, clientId ->
         FollowedFriend(
             clientId = clientId,
             color = TrackColors.forIndex(index),
-            isActive = tracks.any { it.clientId == clientId && it.isActive }
+            isActive = tracks.any { it.clientId == clientId && it.isActive },
+            nickname = nicknames[clientId]
         )
     }
 

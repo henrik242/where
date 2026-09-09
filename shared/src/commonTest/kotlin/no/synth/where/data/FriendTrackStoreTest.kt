@@ -16,7 +16,7 @@ class FriendTrackStoreTest {
 
     private fun msg(json: String) = Json.parseToJsonElement(json).jsonObject
 
-    private data class RenderedFeature(val clientId: String, val color: String, val geometry: String)
+    private data class RenderedFeature(val clientId: String, val label: String, val color: String, val geometry: String)
 
     private fun features(store: FriendTrackStore): List<RenderedFeature> {
         val geoJson = store.geoJson() ?: return emptyList()
@@ -26,6 +26,7 @@ class FriendTrackStoreTest {
                 val props = feature.getValue("properties").jsonObject
                 RenderedFeature(
                     clientId = props.getValue("clientId").jsonPrimitive.content,
+                    label = props.getValue("label").jsonPrimitive.content,
                     color = props.getValue("color").jsonPrimitive.content,
                     geometry = feature.getValue("geometry").jsonObject.getValue("type").jsonPrimitive.content
                 )
@@ -71,6 +72,26 @@ class FriendTrackStoreTest {
         // Two points for aaa111 means a line plus its endpoint; bbb222 only has the endpoint.
         assertEquals(1, features.count { it.geometry == "LineString" })
         assertEquals(2, features.count { it.geometry == "Point" })
+    }
+
+    @Test
+    fun labelIsTheNicknameWhenSetOtherwiseTheClientId() {
+        val store = FriendTrackStore(listOf("aaa111", "bbb222"), nicknames = mapOf("aaa111" to "Per"))
+        store.accept(update("aaa111", "t1", 59.0, 10.0))
+        store.accept(update("bbb222", "t2", 60.0, 11.0))
+        assertEquals(
+            mapOf("aaa111" to "Per", "bbb222" to "bbb222"),
+            features(store).associate { it.clientId to it.label }
+        )
+    }
+
+    @Test
+    fun nicknameWithJsonMetacharactersStaysValidJson() {
+        val store = FriendTrackStore(listOf("aaa111"), nicknames = mapOf("aaa111" to """Per "the ål" \n"""))
+        store.accept(update("aaa111", "t1", 59.0, 10.0))
+        // A stray quote or backslash would break the whole FeatureCollection.
+        assertNotNull(store.geoJson()?.let { Json.parseToJsonElement(it) })
+        assertEquals("""Per "the ål" \n""", features(store).first().label)
     }
 
     @Test

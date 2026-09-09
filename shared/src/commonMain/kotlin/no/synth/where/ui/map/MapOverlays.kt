@@ -640,7 +640,7 @@ fun FollowingFriendBanner(
             ) {
                 Text(
                     text = if (friends.size == 1) {
-                        stringResource(Res.string.following_friend, friends.first().clientId)
+                        stringResource(Res.string.following_friend, friends.first().displayName)
                     } else {
                         stringResource(Res.string.following_friends, friends.size)
                     },
@@ -691,7 +691,7 @@ fun FollowingFriendBanner(
                                         )
                                 )
                                 Text(
-                                    text = friend.clientId,
+                                    text = friend.displayName,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )

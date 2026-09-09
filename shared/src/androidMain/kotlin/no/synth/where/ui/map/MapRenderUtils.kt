@@ -214,7 +214,7 @@ object MapRenderUtils {
             )
             style.addLayer(
                 SymbolLayer(labelLayerId, pointSourceId).withProperties(
-                    PropertyFactory.textField(Expression.get("clientId")),
+                    PropertyFactory.textField(Expression.get("label")),
                     PropertyFactory.textFont(GLYPH_FONTS),
                     PropertyFactory.textSize(12f),
                     PropertyFactory.textColor(Expression.get("color")),

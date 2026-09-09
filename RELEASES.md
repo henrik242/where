@@ -6,6 +6,9 @@ tag dates.
 
 ## Unreleased
 
+- You can give each followed friend a local nickname, so the map and the follow list show "Per"
+  instead of a six-character client id; the nickname stays on your device and the id is still shown
+  where you need it
 - A single bad GPS fix that jumps kilometres away and back no longer corrupts the recorded track or
   what your followers see: fixes implying an impossible speed since the last good point are dropped,
   keeping distance and average speed reliable

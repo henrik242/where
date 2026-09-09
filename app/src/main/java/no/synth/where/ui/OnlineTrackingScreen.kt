@@ -34,8 +34,13 @@ fun OnlineTrackingScreen(
     val trackingServerUrl by viewModel.trackingServerUrl.collectAsState()
     val followedClientIds by viewModel.followedClientIds.collectAsState()
     val followState by viewModel.followState.collectAsState()
-    val followedFriends = remember(followedClientIds, followState) {
-        followedFriends(followedClientIds, (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList())
+    val clientNicknames by viewModel.clientNicknames.collectAsState()
+    val followedFriends = remember(followedClientIds, followState, clientNicknames) {
+        followedFriends(
+            followedClientIds,
+            (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList(),
+            clientNicknames
+        )
     }
     val followClientIdInput by viewModel.followClientIdInput.collectAsState()
     val followHistory by viewModel.followHistory.collectAsState()
@@ -103,6 +108,7 @@ fun OnlineTrackingScreen(
             if (viewModel.startFollowing()) onNavigateToMap()
         },
         onUnfollow = { viewModel.unfollow(it) },
+        onSetNickname = { id, nickname -> viewModel.setNickname(id, nickname) },
         onStopFollowing = { viewModel.stopFollowing() }
     )
 }

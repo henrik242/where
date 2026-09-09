@@ -144,14 +144,17 @@ fun IosMapScreen(
     val followState by liveTrackingFollower.state.collectAsState()
     val friendTrackGeoJson by liveTrackingFollower.friendTrackGeoJson.collectAsState()
     val followedClientIds by userPreferences.followedClientIds.collectAsState()
+    val clientNicknames by userPreferences.clientNicknames.collectAsState()
     val followedFriends = followedFriends(
         followedClientIds,
-        (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList()
+        (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList(),
+        clientNicknames
     )
 
-    // Prefs are the source of truth for who is followed; follow() is a no-op for an unchanged set.
-    LaunchedEffect(followedClientIds) {
-        liveTrackingFollower.follow(followedClientIds)
+    // Prefs are the source of truth for who is followed; follow() is a no-op for an unchanged set
+    // and set of labels.
+    LaunchedEffect(followedClientIds, clientNicknames) {
+        liveTrackingFollower.follow(followedClientIds, clientNicknames)
     }
 
     // Zoom to friend track when first data arrives

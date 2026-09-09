@@ -18,6 +18,7 @@ import no.synth.where.data.isBulkImport
 import no.synth.where.data.outcome
 import no.synth.where.data.suggestedImportFolder
 import no.synth.where.data.LiveTrackingFollower
+import no.synth.where.data.setNickname
 import no.synth.where.data.startFollowing
 import no.synth.where.data.stopFollowingAll
 import no.synth.where.data.unfollow
@@ -595,6 +596,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 val followedClientIdsVal by userPreferences.followedClientIds.collectAsState()
                 val followState by AppDependencies.liveTrackingFollower.state.collectAsState()
                 val followHistoryVal by userPreferences.followHistory.collectAsState()
+                val clientNicknamesVal by userPreferences.clientNicknames.collectAsState()
                 var followClientIdInput by remember { mutableStateOf("") }
                 val liveTrackingFollower = remember { AppDependencies.liveTrackingFollower }
 
@@ -655,7 +657,8 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                     },
                     followedFriends = followedFriends(
                         followedClientIdsVal,
-                        (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList()
+                        (followState as? LiveTrackingFollower.FollowState.Following)?.tracks ?: emptyList(),
+                        clientNicknamesVal
                     ),
                     followClientIdInput = followClientIdInput,
                     followHistory = followHistoryVal,
@@ -667,6 +670,7 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                         }
                     },
                     onUnfollow = { id -> unfollow(userPreferences, liveTrackingFollower, id) },
+                    onSetNickname = { id, nickname -> setNickname(userPreferences, liveTrackingFollower, id, nickname) },
                     onStopFollowing = { stopFollowingAll(userPreferences, liveTrackingFollower) }
                 )
             }

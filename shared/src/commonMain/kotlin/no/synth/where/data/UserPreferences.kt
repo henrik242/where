@@ -112,6 +112,10 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     private val _followHistory = MutableStateFlow<List<String>>(emptyList())
     val followHistory: StateFlow<List<String>> = _followHistory.asStateFlow()
 
+    // Local, per-device nicknames for followed client ids (clientId -> name). Never sent anywhere.
+    private val _clientNicknames = MutableStateFlow<Map<String, String>>(emptyMap())
+    val clientNicknames: StateFlow<Map<String, String>> = _clientNicknames.asStateFlow()
+
     // Strava (BYO credentials): the user creates their own Strava API app and enters its
     // client id + secret; OAuth token exchange happens on-device. clientId is exposed so the UI
     // can tell whether credentials are set; the secret and refresh token stay internal.
@@ -171,6 +175,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                     prefs[FOLLOWED_CLIENT_ID]?.split(",") ?: emptyList()
                 )
                 _followHistory.value = prefs[FOLLOW_HISTORY]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+                _clientNicknames.value = deserializeNicknames(prefs[CLIENT_NICKNAMES])
                 _stravaClientId.value = prefs[STRAVA_CLIENT_ID]
                 _stravaClientSecret.value = prefs[STRAVA_CLIENT_SECRET]
                 _stravaRefreshToken.value = prefs[STRAVA_REFRESH_TOKEN]
@@ -441,6 +446,33 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    /** Sets or (when [nickname] is blank) clears the local nickname for [clientId]. */
+    fun setClientNickname(clientId: String, nickname: String) {
+        val trimmed = nickname.trim()
+        val current = _clientNicknames.value
+        val updated = if (trimmed.isEmpty()) current - clientId else current + (clientId to trimmed)
+        if (updated == current) return
+        _clientNicknames.value = updated
+        scope.launch {
+            dataStore.edit {
+                if (updated.isEmpty()) it.remove(CLIENT_NICKNAMES)
+                else it[CLIENT_NICKNAMES] = serializeNicknames(updated)
+            }
+        }
+    }
+
+    private fun serializeNicknames(map: Map<String, String>): String =
+        buildJsonObject { for ((k, v) in map) put(k, v) }.toString()
+
+    private fun deserializeNicknames(json: String?): Map<String, String> {
+        if (json.isNullOrBlank()) return emptyMap()
+        return try {
+            Json.parseToJsonElement(json).jsonObject.mapValues { it.value.jsonPrimitive.content }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
     fun addFollowHistoryEntry(clientId: String) {
         val current = _followHistory.value.toMutableList()
         current.remove(clientId)
@@ -527,6 +559,8 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         // Comma-joined; the key predates following more than one client at a time.
         private val FOLLOWED_CLIENT_ID = stringPreferencesKey("followed_client_id")
         private val FOLLOW_HISTORY = stringPreferencesKey("follow_history")
+        // JSON object of clientId -> nickname.
+        private val CLIENT_NICKNAMES = stringPreferencesKey("client_nicknames")
         private val STRAVA_CLIENT_ID = stringPreferencesKey("strava_client_id")
         private val STRAVA_CLIENT_SECRET = stringPreferencesKey("strava_client_secret")
         private val STRAVA_REFRESH_TOKEN = stringPreferencesKey("strava_refresh_token")
