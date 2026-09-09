@@ -107,12 +107,13 @@ class IosLocationTracker(
         if (location.horizontalAccuracy < 0 ||
             location.horizontalAccuracy > MAX_ACCEPTABLE_ACCURACY_M
         ) return
-        _lastLocation = location
-
-        val altitude = if (location.verticalAccuracy >= 0) location.altitude else null
         val coordinate = location.coordinate.useContents {
             LatLng(latitude, longitude)
         }
+        if (!trackRepository.acceptFix(coordinate)) return
+        _lastLocation = location
+
+        val altitude = if (location.verticalAccuracy >= 0) location.altitude else null
         val accuracy = location.horizontalAccuracy.toFloat()
 
         if (trackRepository.isRecording.value) {

@@ -49,6 +49,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
     private val tracksFile = filesDir.resolve("tracks.json")
     private val migratedFile = filesDir.resolve("tracks.json.migrated")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val jumpFilter = GpsJumpFilter()
 
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())
     val tracks: StateFlow<List<Track>> = _tracks.asStateFlow()
@@ -231,6 +232,12 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         _currentTrack.value = track
         _isRecording.value = true
     }
+
+    /**
+     * Gate a raw fix against the shared [GpsJumpFilter]. Platform callbacks call this once per fix,
+     * before both [addTrackPoint] and the live-share coordinator, so a teleport is dropped from both.
+     */
+    fun acceptFix(latLng: LatLng): Boolean = jumpFilter.accept(latLng, currentTimeMillis())
 
     fun addTrackPoint(latLng: LatLng, altitude: Double? = null, accuracy: Float? = null) {
         val current = _currentTrack.value ?: return

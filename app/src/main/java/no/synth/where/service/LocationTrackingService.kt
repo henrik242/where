@@ -93,6 +93,8 @@ class LocationTrackingService : Service() {
                 if (!location.hasAccuracy() || location.accuracy > MAX_ACCEPTABLE_ACCURACY_M) return@let
 
                 val latLng = LatLng(location.latitude, location.longitude)
+                if (!trackRepository.acceptFix(latLng)) return@let
+
                 val altitude = if (location.hasAltitude()) location.altitude else null
                 val accuracy = location.accuracy
 

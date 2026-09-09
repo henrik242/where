@@ -6,6 +6,9 @@ tag dates.
 
 ## Unreleased
 
+- A single bad GPS fix that jumps kilometres away and back no longer corrupts the recorded track or
+  what your followers see: fixes implying an impossible speed since the last good point are dropped,
+  keeping distance and average speed reliable
 - Followed friends are easier to spot when zoomed out: their marker gets a halo in their own colour
   with a white ring around it, growing as you zoom out so it reads over the topo colours
 - Fixed a followed friend's name never drawing, and on iOS the marker and halo disappearing with
