@@ -39,36 +39,17 @@ private val BACK_OF_DEVICE = floatArrayOf(0f, 0f, -1f)
  * every turn correctly. Reading the posture straight off the matrix's gravity row removes that
  * failure mode: the choice no longer depends on the display rotation at all.
  */
-fun screenHeadingDegrees(rotationMatrix: FloatArray, displayRotationDegrees: Int): Double =
-    headingBreakdown(rotationMatrix, displayRotationDegrees).headingDegrees
-
-/**
- * Both candidate references and which one [screenHeadingDegrees] picked. Same computation, all of
- * it visible: a heading that disagrees with the world can then be pinned on the posture choice,
- * on the sensor's own magnetic reference, or on neither.
- */
-data class HeadingBreakdown(
-    /** Bearing of the top edge of the rendered UI, and the reading a flat phone uses. */
-    val screenUpDegrees: Double,
-    /** Bearing of the back of the phone, and the reading an upright phone uses. */
-    val backOfDeviceDegrees: Double,
-    /** Whether the screen is level enough to read as lying flat. */
-    val screenIsFlat: Boolean,
-) {
-    val headingDegrees: Double get() = if (screenIsFlat) screenUpDegrees else backOfDeviceDegrees
-}
-
-/** [screenHeadingDegrees] with its working shown; see [HeadingBreakdown]. */
-fun headingBreakdown(rotationMatrix: FloatArray, displayRotationDegrees: Int): HeadingBreakdown {
+fun screenHeadingDegrees(rotationMatrix: FloatArray, displayRotationDegrees: Int): Double {
     require(rotationMatrix.size >= 9) { "rotation matrix must hold 9 elements" }
     // The bottom row holds the up components of the device axes, so its last element is how much
     // of "up" lies along the screen normal: +-1 with the screen level, 0 with the screen vertical.
     val screenNormalTowardsUp = rotationMatrix[8]
-    return HeadingBreakdown(
-        screenUpDegrees = bearingOf(rotationMatrix, screenUpAxis(displayRotationDegrees)),
-        backOfDeviceDegrees = bearingOf(rotationMatrix, BACK_OF_DEVICE),
-        screenIsFlat = abs(screenNormalTowardsUp) > FLAT_SCREEN_COS,
-    )
+    val reference = if (abs(screenNormalTowardsUp) > FLAT_SCREEN_COS) {
+        screenUpAxis(displayRotationDegrees)
+    } else {
+        BACK_OF_DEVICE
+    }
+    return bearingOf(rotationMatrix, reference)
 }
 
 /** Compass bearing of a device-space [reference] direction, in degrees clockwise from north. */
