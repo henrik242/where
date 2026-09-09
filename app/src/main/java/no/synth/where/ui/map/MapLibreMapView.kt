@@ -302,7 +302,12 @@ fun MapLibreMapView(
         val mapInstance = map ?: return@LaunchedEffect
         if (!hasLocationPermission) return@LaunchedEffect
         while (true) {
-            if (mapInstance.isLocationComponentEnabledSafe) {
+            // Only a heading-following camera consumes the source. Advancing it in any other mode
+            // would let a drive leave the state on HELD, so engaging heading-follow while stopped
+            // would preserve whatever bearing is on screen instead of the honest compass.
+            if (mapInstance.isLocationComponentEnabledSafe &&
+                cameraFollowModeState.value == CameraFollowMode.FOLLOW_HEADING
+            ) {
                 val fix = mapInstance.locationComponent.lastKnownLocation
                 val speedMps = fix?.takeIf { it.hasSpeed() }?.speed?.toDouble()
                 val courseDegrees = fix?.takeIf { it.hasBearing() }?.bearing?.toDouble()
@@ -325,6 +330,10 @@ fun MapLibreMapView(
                         headingSource = next,
                     )
                 }
+            } else {
+                // Left heading-follow: forget the held course so the next engage starts fresh.
+                headingSource = HeadingSource.COMPASS
+                followedCourseAt = null
             }
             delay(HEADING_SOURCE_POLL_MS)
         }
