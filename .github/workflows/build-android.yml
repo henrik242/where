@@ -89,12 +89,19 @@ jobs:
     - name: Run tests
       run: ./gradlew testDebugUnitTest --stacktrace
 
+    - name: Rename debug APK with short SHA
+      if: github.actor != 'dependabot[bot]'
+      run: |
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        mv app/build/outputs/apk/debug/app-debug.apk \
+           app/build/outputs/apk/debug/app-debug-$SHORT_SHA.apk
+
     - name: Upload debug APK
       if: github.actor != 'dependabot[bot]'
       uses: actions/upload-artifact@v7
       with:
         name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: app/build/outputs/apk/debug/app-debug-*.apk
         retention-days: 30
         archive: false
 
