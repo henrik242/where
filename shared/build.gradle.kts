@@ -18,6 +18,14 @@ abstract class GenerateBuildInfoTask : DefaultTask() {
     @get:Input
     abstract val trackingHint: Property<String>
 
+    /**
+     * Commit to stamp into the build. CI checks out a pull request as GitHub's own merge commit,
+     * which exists on no branch, so the workflow passes the pushed commit instead; locally this is
+     * just HEAD.
+     */
+    @get:Input
+    abstract val describedRef: Property<String>
+
     private fun execGit(vararg args: String): String {
         return try {
             val process = ProcessBuilder(*args)
@@ -34,8 +42,9 @@ abstract class GenerateBuildInfoTask : DefaultTask() {
 
     @TaskAction
     fun generate() {
-        val gitCommitCount = execGit("git", "rev-list", "--count", "HEAD").ifEmpty { "0" }
-        val gitShortSha = execGit("git", "rev-parse", "--short", "HEAD").ifEmpty { "unknown" }
+        val ref = describedRef.get()
+        val gitCommitCount = execGit("git", "rev-list", "--count", ref).ifEmpty { "0" }
+        val gitShortSha = execGit("git", "rev-parse", "--short", ref).ifEmpty { "unknown" }
         val buildDate = LocalDate.now().toString()
 
         val dir = outputDir.get().asFile.resolve("no/synth/where")
@@ -75,6 +84,10 @@ val trackingSecret = providers.environmentVariable("TRACKING_HINT").orElse(
 val generateBuildInfo = tasks.register<GenerateBuildInfoTask>("generateBuildInfo") {
     outputDir.set(layout.buildDirectory.dir("generated/buildinfo"))
     trackingHint.set(trackingSecret)
+    describedRef.set(
+        providers.environmentVariable("BUILD_GIT_SHA")
+            .orNull?.trim()?.takeIf { it.isNotEmpty() } ?: "HEAD"
+    )
     outputs.upToDateWhen { false }
 }
 
@@ -151,6 +164,15 @@ kotlin {
             implementation(libs.ktor.client.darwin)
             implementation(libs.sqlite.bundled)
         }
+    }
+}
+
+// The shared suite is the only place the navigation, geometry and heading logic is tested, so make
+// its results legible in a CI log rather than a silent pass whose test count nobody can see.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        showStandardStreams = true
+        events("passed", "failed", "skipped")
     }
 }
 

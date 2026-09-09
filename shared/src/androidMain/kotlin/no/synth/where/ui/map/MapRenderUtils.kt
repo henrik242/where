@@ -718,6 +718,16 @@ object MapRenderUtils {
                     .build()
             )
 
+            // MapLibre's stock compass engine picks its sensor-axis remap from the display
+            // rotation, so a phone whose physical orientation disagrees with it (held on its side,
+            // resting in a lap, rotation locked) reports a heading 90 degrees out -- rotating
+            // correctly, just against the wrong reference. Ours reads the posture from gravity.
+            // activateLocationComponent only builds the default engine on first initialization,
+            // so swap it whenever it isn't already ours.
+            if (locationComponent.compassEngine !is DeviceOrientationCompassEngine) {
+                locationComponent.compassEngine = DeviceOrientationCompassEngine(context)
+            }
+
             if (!hasLocationFix && DeviceUtils.isEmulator()) {
                 forceLocationOnEmulator(locationComponent)
             }

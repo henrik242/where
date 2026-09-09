@@ -60,6 +60,11 @@ import org.jetbrains.compose.resources.stringResource
 import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
+
+/** How often the current fix is checked for the speed that picks the heading reference. */
+private val HEADING_SOURCE_POLL = 2000.milliseconds
 
 /**
  * URL template for MapLibre `glyphs:` pointing at PBF files inside the iOS
@@ -262,6 +267,10 @@ fun IosMapScreen(
     val northLocked by userPreferences.northLocked.collectAsState()
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var hasFix by remember { mutableStateOf(false) }
+    // Compass, course over ground, or holding the last course; decided by the fix's own speed.
+    var headingSource by remember { mutableStateOf(HeadingSource.COMPASS) }
+    // When the course was last the reference, so a stop knows how long it may keep pointing that way.
+    var followedCourseAt by remember { mutableStateOf<TimeMark?>(null) }
     val isLocating = locationTracker.hasPermission && !hasFix
     var twoFingerMeasurement by rememberAutoDismissingTwoFingerMeasurement()
 
@@ -296,6 +305,30 @@ fun IosMapScreen(
         while (!hasFix) {
             if (locationTracker.lastLocation != null) hasFix = true
             else delay(1000.milliseconds)
+        }
+    }
+
+    // Follow the fix's own speed to decide whether "heading" means the compass or the course over
+    // ground, and re-apply only on a change so a steady drive never touches the tracking mode.
+    LaunchedEffect(Unit) {
+        while (true) {
+            val motion = mapViewProvider.getUserMotion()
+            val next = headingSourceFor(
+                current = headingSource,
+                speedMps = motion?.getOrNull(0)?.takeIf { it >= 0.0 },
+                hasCourse = (motion?.getOrNull(1) ?: -1.0) >= 0.0,
+                sinceCourse = followedCourseAt?.elapsedNow(),
+            )
+            if (next == HeadingSource.COURSE) followedCourseAt = TimeSource.Monotonic.markNow()
+            if (next != headingSource) {
+                headingSource = next
+                // Only the heading camera reads the source, so leave the other modes alone rather
+                // than re-setting a tracking mode that would not change.
+                if (cameraFollowMode == CameraFollowMode.FOLLOW_HEADING) {
+                    mapViewProvider.setCameraFollowMode(cameraFollowMode, next)
+                }
+            }
+            delay(HEADING_SOURCE_POLL)
         }
     }
 
@@ -759,7 +792,7 @@ fun IosMapScreen(
                 val next = cameraFollowMode.withoutHeading()
                 if (next != cameraFollowMode) {
                     cameraFollowMode = next
-                    mapViewProvider.setCameraFollowMode(next)
+                    mapViewProvider.setCameraFollowMode(next, headingSource)
                 }
             }
             userPreferences.updateNorthLocked(!northLocked)
@@ -844,7 +877,7 @@ fun IosMapScreen(
             // user tracking mode. Panning by hand reports back through the tracking-mode callback.
             val next = cameraFollowMode.next(northLocked)
             cameraFollowMode = next
-            mapViewProvider.setCameraFollowMode(next)
+            mapViewProvider.setCameraFollowMode(next, headingSource)
         },
         onRulerToggle = {
             val measurement = twoFingerMeasurement

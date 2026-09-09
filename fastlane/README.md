@@ -52,8 +52,17 @@ Both can be triggered from the same commit. The second one adds its artifact to 
 | `DEBUG_KEY_ALIAS` | Debug key alias | `androiddebugkey` for the default keystore |
 | `DEBUG_KEY_PASSWORD` | Debug key password | `android` for the default keystore |
 
-Without the debug secrets, CI generates a new debug keystore per run and installing a CI APK over
-an earlier one fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
+The four debug secrets are required: without them the Build Android workflow fails outright rather
+than falling back to a generated keystore, because a fresh certificate per run makes each CI APK
+refuse to install over the last with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
+
+Every run prints the APK's signer as `Debug signing certificate SHA-256: ...`. Set that value as the
+`DEBUG_SIGNING_SHA256` repository *variable* (Settings -> Variables, not Secrets) to pin it, and any
+run that somehow signs with a different certificate fails the build instead of publishing an APK
+nobody can install over their current one. Leaving it unset only skips the comparison.
+
+Debug APKs are uploaded as `app-debug-<short sha>.apk`, so several downloaded builds stay tellable
+apart.
 
 ### iOS
 
