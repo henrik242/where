@@ -312,21 +312,26 @@ fun IosMapScreen(
     // ground, and re-apply only on a change so a steady drive never touches the tracking mode.
     LaunchedEffect(Unit) {
         while (true) {
-            val motion = mapViewProvider.getUserMotion()
-            val next = headingSourceFor(
-                current = headingSource,
-                speedMps = motion?.getOrNull(0)?.takeIf { it >= 0.0 },
-                hasCourse = (motion?.getOrNull(1) ?: -1.0) >= 0.0,
-                sinceCourse = followedCourseAt?.elapsedNow(),
-            )
-            if (next == HeadingSource.COURSE) followedCourseAt = TimeSource.Monotonic.markNow()
-            if (next != headingSource) {
-                headingSource = next
-                // Only the heading camera reads the source, so leave the other modes alone rather
-                // than re-setting a tracking mode that would not change.
-                if (cameraFollowMode == CameraFollowMode.FOLLOW_HEADING) {
+            // Only a heading-following camera consumes the source. Advancing it in any other mode
+            // would let a drive leave the state on HELD, so engaging heading-follow while stopped
+            // would preserve whatever bearing is on screen instead of the honest compass.
+            if (cameraFollowMode == CameraFollowMode.FOLLOW_HEADING) {
+                val motion = mapViewProvider.getUserMotion()
+                val next = headingSourceFor(
+                    current = headingSource,
+                    speedMps = motion?.getOrNull(0)?.takeIf { it >= 0.0 },
+                    hasCourse = (motion?.getOrNull(1) ?: -1.0) >= 0.0,
+                    sinceCourse = followedCourseAt?.elapsedNow(),
+                )
+                if (next == HeadingSource.COURSE) followedCourseAt = TimeSource.Monotonic.markNow()
+                if (next != headingSource) {
+                    headingSource = next
                     mapViewProvider.setCameraFollowMode(cameraFollowMode, next)
                 }
+            } else {
+                // Left heading-follow: forget the held course so the next engage starts fresh.
+                headingSource = HeadingSource.COMPASS
+                followedCourseAt = null
             }
             delay(HEADING_SOURCE_POLL)
         }
