@@ -63,7 +63,7 @@ jobs:
         bun run test
 
     - name: Deploy to web
-      uses: easingthemes/ssh-deploy@v5.1.0
+      uses: easingthemes/ssh-deploy@v6.0.1
       with:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         REMOTE_HOST: ${{ secrets.REMOTE_HOST }}

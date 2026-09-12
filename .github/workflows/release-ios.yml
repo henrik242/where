@@ -70,13 +70,13 @@ jobs:
         $v email ASC_CONTACT_EMAIL
 
     - name: Set up Ruby and fastlane
-      uses: ruby/setup-ruby@v1
+      uses: ruby/setup-ruby@v1.321.0
       with:
         ruby-version: '3.4'
         bundler-cache: true
 
     - name: Set up JDK 21
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@v6
       with:
         java-version: '21'
         distribution: 'temurin'
