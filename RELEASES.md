@@ -6,93 +6,94 @@ tag dates.
 
 ## Unreleased
 
-- While live-sharing you can drop named points on the map (meeting spot, parked car, hunting post)
-  that everyone following you sees right away; the save-point dialog offers "Save", "Share only" or
-  "Save and share". You can move or delete your shared points, and anyone following can keep a copy
-  on their own device. Shared points disappear when your sharing session ends
-- You can give each followed friend a local nickname, so the map and the follow list show "Per"
-  instead of a six-character client id; the nickname stays on your device and the id is still shown
-  where you need it
-- A single bad GPS fix that jumps kilometres away and back no longer corrupts the recorded track or
-  what your followers see: fixes implying an impossible speed since the last good point are dropped,
-  keeping distance and average speed reliable
-- Followed friends are easier to spot when zoomed out: their marker gets a halo in their own colour
-  with a white ring around it, growing as you zoom out so it reads over the topo colours
-- Fixed a followed friend's name never drawing, and on iOS the marker and halo disappearing with
-  it, leaving only the dashed track line
-- A followed friend now gets one marker instead of one per track, so a friend who stops and
-  restarts recording no longer piles up dots and names on top of each other
-- A friend who has stopped sharing is dimmed on the map, like their chip in the follow banner, so
-  an old position no longer looks live
-- Friend names are hidden when zoomed out past the point where they are readable
-- Tapping a friend in the follow banner zooms to that friend, which the banner itself could not do
-  when the friends you follow are in different parts of the country
-- The zoom buttons stay usable while you follow someone: they move below the follow banner instead
-  of hiding for the whole trip
-- Fixed live sharing on iOS stopping as soon as you left the map screen: the location stream now
-  runs for the whole app, so a share keeps sending from the tracking and settings screens
-- Fixed an Android live share going silent after the app was force-stopped, killed or the phone
-  rebooted: the sharing service is restarted next time you open the app, as long as the share is
-  still running
-- Fixed a live share never sending anything on iOS when location permission was granted from the
-  share prompt itself, and holding the GPS on while offline mode blocked every upload
-- Sharing on iOS with location access set to "While Using the App" now warns that the share stops
-  when you leave the app, with a button straight to Settings
-- Fixed backslashes showing up around the quoted setting name under "How it works"
-- Sharing while offline mode is on now says so on the tracking screen, with a button to turn
-  offline mode off, instead of counting down a share that reaches nobody
+n/a
+
+## v573 (2026-09-09)
+
+- Drop named points on the map while live-sharing; followers see them and can keep a
+  copy, and they clear when the sharing session ends
+- Give each followed friend a local nickname, shown instead of the client id
+- A single GPS fix that teleports away and back no longer corrupts the track or your
+  followers' view
+- Closing the follow banner with two or more friends asks first, instead of wiping the
+  whole follow list
+- The map follows your course over ground while moving, not the compass
+
+## v560 (2026-08-31)
+
+- Fixed a followed friend's name never drawing, which on iOS also hid the marker and halo
+- One marker per friend instead of one per track; stopped friends are dimmed, the halo
+  gets a white ring, names hide when zoomed out, and tapping a friend in the banner zooms
+  to them
+- Zoom buttons move below the follow banner instead of hiding for the whole trip
+
+## v558 (2026-08-29)
+
+- Followed friends' markers grow with a halo when zoomed out, so they read over the topo
+  colours
+- Fixed live sharing going silent while the countdown kept running: iOS leaving the map
+  screen, Android after a force-stop or reboot, and a share started from the permission
+  prompt
+- Sharing while offline, or on iOS with "While Using the App", now warns with a one-tap
+  fix instead of counting down a share that reaches nobody
+- Fixed backslashes showing around the quoted setting name under "How it works"
 
 ## v552 (2026-08-27)
 
-- Follow several friends at once: add up to five client IDs and each live track draws in its own
-  colour, labelled with the client ID, with a banner listing who you follow
+- Follow up to five friends at once, each track in its own colour and labelled with its
+  client ID, with a banner listing who you follow
 - Fixed a followed track losing its points when it went stale and resumed
-- Fixed followed tracks on iOS drawing without their colour and client-ID label
-- The Strava route picker marks starred routes with a star icon instead of the word "Starred"
+- Fixed followed tracks on iOS drawing without their colour and label
+- Strava route picker marks starred routes with a star icon instead of the word "Starred"
+
+## v545 (2026-08-24)
+
+- Internal: iOS App Review contact info set on submit; no user-facing changes
 
 ## v544 (2026-08-24)
 
-- Saved points take a description when you create them, not just when editing one afterwards
-- Fixed a saved point's description, name and colour reverting when edited from the map: tapping
-  the point again handed out its pre-edit values, and saving that dialog wrote them back
-- The point colour picker shows which colour is selected, wraps so every colour stays reachable on
-  narrow screens, and reads out its colour names
-- Save is disabled until a point has a name, instead of closing the dialog and dropping what you
-  typed, and a slow place-name lookup no longer overwrites a name you typed yourself
-- Delete moved away from Save in the point dialog, and long descriptions scroll instead of pushing
-  the buttons out of reach
+- Saved points take a description when created, not only when edited afterwards
+- Fixed a point's description, name and colour reverting when edited from the map
+- Point colour picker shows the selection, wraps on narrow screens, and reads out colour
+  names
+- Save is disabled until a point has a name, and a slow place-name lookup no longer
+  overwrites a name you typed
+- Delete moved away from Save, and long descriptions scroll instead of pushing the buttons
+  off-screen
 - Fixed the navigated route not being tappable on iOS after starting or stopping navigation
--  Fixed a setting snapping back to its previous value when toggled twice in quick succession
+- Fixed a setting snapping back when toggled twice quickly
 
 ## v534 (2026-08-20)
 
-- Fixed a crash that could close the app when opening a screen with a text field, such as
-  the map search or the rename dialogs
+- Fixed a crash when opening a screen with a text field, such as map search or a rename
+  dialog
 
-## v532 (2026-08-19)
+## v532 (2026-08-18)
 
-- Saved points can be imported from GPX files: the Saved Points screen got an import
-  button that reads the waypoints out of one or more files, or a whole zip, then lets you
-  tick off which of them to keep
-- Fixed ut.no import, which broke when the API it used was taken down. It now downloads
-  the same GPX file the ut.no page links to, and also accepts that GPX link directly
-- Place names resolve more often: lookups fall back to other OpenStreetMap servers when the
-  main one is busy, and a point on a building now gets the building name instead of the
-  nearest road
+- Import saved points from GPX files or a zip, then tick which waypoints to keep
+- Fixed ut.no import after its API was taken down; it now downloads the linked GPX file
+  and accepts a GPX link directly
+- Place names resolve more often, falling back to other OpenStreetMap servers, and a point
+  on a building gets the building name instead of the nearest road
+
+## v527 (2026-08-10)
+
+- OSM paths overlay draws paved ways solid and the rest dashed
 
 ## v525 (2026-08-10)
-- 
-- New "Paths (OSM)" overlay with paths and tractor roads from OpenStreetMap, drawn like
-  MapAnt's own path overlay, on top of any base map. Paved ways are solid and the rest dashed.
-  Zoomed out it shows the main paths and fills in the rest as you zoom in, and it downloads
-  for offline use like the other overlays
-- New "Steepness (NVE)" overlay with slope steepness only; the existing NVE overlay is
-  renamed "Steepness + Runout (NVE)" and the two replace each other when toggled
-- Both NVE overlays now scale up past zoom 16 instead of going blank, since NVE's tile
-  cache ends there
+
+- New "Paths (OSM)" overlay with paths and tractor roads from OpenStreetMap, over any base
+  map; fills in detail as you zoom in and downloads for offline use
+- New "Steepness (NVE)" overlay with slope only; the existing NVE overlay becomes
+  "Steepness + Runout (NVE)" and the two replace each other when toggled
+- Both NVE overlays scale past zoom 16 instead of going blank
 - Layer menu stays open when toggling an overlay, so you can flip several at once
-- Removed the hillshade overlay and its downloadable terrain layer. Elevation and slope
-  readouts are unaffected; they use a different tile set
+- Removed the hillshade overlay and its terrain layer; elevation and slope readouts are
+  unaffected
+
+## v519 (2026-08-09)
+
+- Tightened saved-track row spacing
 
 ## v516 (2026-08-09)
 
