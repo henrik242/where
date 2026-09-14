@@ -18,6 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -241,6 +246,15 @@ object MapDialogs {
         onShareOnly: () -> Unit = {},
         onSaveAndShare: () -> Unit = {},
     ) {
+        // The Android caller round-trips text through a StateFlow; a field bound to the hoisted
+        // String lags its own keystrokes and scrambles them ("Jobb" -> "Jbbo"). Keep text local and
+        // synchronous, and accept the async reverse-geocoded name only until the user starts typing.
+        var name by remember { mutableStateOf(pointName) }
+        var description by remember { mutableStateOf(pointDescription) }
+        var edited by remember { mutableStateOf(false) }
+        LaunchedEffect(pointName) {
+            if (!edited) name = pointName
+        }
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(stringResource(Res.string.save_location)) },
@@ -250,8 +264,12 @@ object MapDialogs {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedTextField(
-                        value = pointName,
-                        onValueChange = onPointNameChange,
+                        value = name,
+                        onValueChange = {
+                            name = it
+                            edited = true
+                            onPointNameChange(it)
+                        },
                         label = { Text(stringResource(Res.string.location_name)) },
                         singleLine = true,
                         keyboardOptions = nameKeyboardOptions,
@@ -261,8 +279,11 @@ object MapDialogs {
                         } else null
                     )
                     OutlinedTextField(
-                        value = pointDescription,
-                        onValueChange = onPointDescriptionChange,
+                        value = description,
+                        onValueChange = {
+                            description = it
+                            onPointDescriptionChange(it)
+                        },
                         label = { Text(stringResource(Res.string.description_optional)) },
                         maxLines = DESCRIPTION_MAX_LINES,
                         keyboardOptions = descriptionKeyboardOptions,
@@ -276,7 +297,7 @@ object MapDialogs {
                 }
             },
             confirmButton = {
-                val enabled = pointName.isNotBlank()
+                val enabled = name.isNotBlank()
                 if (canShare) {
                     // Three choices while live-sharing: keep it private, only share, or both.
                     Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
