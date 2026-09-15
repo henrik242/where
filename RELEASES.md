@@ -6,9 +6,15 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v573...main)
+[diff](https://github.com/henrik242/where/compare/v579...main)
 
 n/a
+
+## v579 (2026-09-15)
+
+[diff](https://github.com/henrik242/where/compare/v573...v579)
+
+- Fixed the save-point name field scrambling fast keystrokes (e.g. "Jobb" becoming "Jbbo")
 
 ## v573 (2026-09-09)
 
