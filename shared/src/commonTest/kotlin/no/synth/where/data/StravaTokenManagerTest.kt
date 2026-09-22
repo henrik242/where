@@ -49,6 +49,35 @@ class StravaTokenManagerTest {
         assertFalse(StravaTokenManager.isTokenFresh(expirySeconds = 1000, nowSeconds = 1000)) // expired
     }
 
+    // --- isGrantRejected ---
+
+    private val deadRefreshToken = """
+        {"message":"Bad Request","errors":[{"resource":"RefreshToken","field":"refresh_token","code":"invalid"}]}
+    """.trimIndent()
+
+    private val badCredentials = """
+        {"message":"Bad Request","errors":[{"resource":"Application","field":"client_secret","code":"invalid"}]}
+    """.trimIndent()
+
+    @Test
+    fun isGrantRejected_onlyWhenStravaNamesTheToken() {
+        assertTrue(StravaTokenManager.isGrantRejected(400, deadRefreshToken))
+        assertTrue(
+            StravaTokenManager.isGrantRejected(
+                400,
+                """{"errors":[{"resource":"AuthorizationCode","field":"code","code":"invalid"}]}"""
+            )
+        )
+        // A mistyped client secret is a 400 too, but the refresh token is still good and the user
+        // can fix the secret — deleting the session over it is the bug this guards against.
+        assertFalse(StravaTokenManager.isGrantRejected(400, badCredentials))
+        // Nothing else says anything about the session, so it must not cost the user their login.
+        assertFalse(StravaTokenManager.isGrantRejected(401, deadRefreshToken))
+        assertFalse(StravaTokenManager.isGrantRejected(429, ""))
+        assertFalse(StravaTokenManager.isGrantRejected(500, ""))
+        assertFalse(StravaTokenManager.isGrantRejected(502, "<html>gateway</html>"))
+    }
+
     // --- isCallbackValid ---
 
     @Test

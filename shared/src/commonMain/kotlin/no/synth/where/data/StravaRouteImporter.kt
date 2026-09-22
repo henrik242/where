@@ -11,8 +11,16 @@ sealed interface RouteListResult {
     data object Failed : RouteListResult
 }
 
+/** Why an import produced nothing, when it wasn't simply an empty selection. */
+enum class ImportFailure { NOT_AUTHORIZED, FAILED }
+
 /** Outcome of importing selected routes. [rateLimited] means the run stopped early on a 429. */
-data class RouteImportResult(val imported: Int, val total: Int, val rateLimited: Boolean)
+data class RouteImportResult(
+    val imported: Int,
+    val total: Int,
+    val rateLimited: Boolean,
+    val failure: ImportFailure? = null,
+)
 
 /**
  * Coordinates listing and importing a user's planned Strava routes: fetches an access token from
@@ -24,28 +32,51 @@ class StravaRouteImporter(
     private val tokenManager: StravaTokenManager,
     private val repository: TrackRepository,
 ) {
+    /**
+     * Strava can retire an access token before its stated expiry, so a 401 buys one retry with a
+     * freshly minted token. Bounded by the loop: recursion here is one typo from never ending.
+     */
     suspend fun listRoutes(): RouteListResult {
-        val token = tokenManager.getAccessToken() ?: return RouteListResult.NotAuthorized
-        val athleteId = tokenManager.currentAthleteId()
-        if (athleteId <= 0L) return RouteListResult.NotAuthorized
-        return try {
-            RouteListResult.Success(api.listRoutes(token, athleteId))
-        } catch (e: StravaApiException) {
-            when {
-                e.isAuthError -> RouteListResult.NotAuthorized
-                e.isRateLimited -> RouteListResult.RateLimited
-                else -> { Logger.e(e, "Failed to list Strava routes"); RouteListResult.Failed }
+        var rejectedToken: String? = null
+        repeat(2) {
+            val token = when (val result = tokenManager.getAccessToken(rejectedToken)) {
+                is TokenResult.Valid -> result.accessToken
+                // Only a dead grant is worth a reconnect. Offline or a Strava outage is not.
+                TokenResult.NoSession, TokenResult.Revoked -> return RouteListResult.NotAuthorized
+                TokenResult.TransientFailure -> return RouteListResult.Failed
             }
-        } catch (e: Exception) {
-            Logger.e(e, "Failed to list Strava routes")
-            RouteListResult.Failed
+            val athleteId = tokenManager.currentAthleteId()
+            if (athleteId <= 0L) {
+                Logger.e("Strava athlete id missing; reconnect needed")
+                return RouteListResult.NotAuthorized
+            }
+            try {
+                return RouteListResult.Success(api.listRoutes(token, athleteId))
+            } catch (e: StravaApiException) {
+                when {
+                    e.statusCode == 401 -> rejectedToken = token
+                    e.isRateLimited -> return RouteListResult.RateLimited
+                    // A 403 is a scope problem. A fresh token can't fix it and the session is fine.
+                    else -> { Logger.e(e, "Failed to list Strava routes"); return RouteListResult.Failed }
+                }
+            } catch (e: Exception) {
+                Logger.e(e, "Failed to list Strava routes")
+                return RouteListResult.Failed
+            }
         }
+        return RouteListResult.NotAuthorized   // both attempts rejected
     }
 
     /** Import [routes] into [folder]. Stops early (rateLimited=true) if Strava returns 429. */
     suspend fun importRoutes(routes: List<StravaRoute>, folder: String = DEFAULT_FOLDER): RouteImportResult {
-        val token = tokenManager.getAccessToken()
-            ?: return RouteImportResult(0, routes.size, rateLimited = false)
+        val token = when (val result = tokenManager.getAccessToken()) {
+            is TokenResult.Valid -> result.accessToken
+            // Same rule as listRoutes: only a dead grant is worth a reconnect.
+            TokenResult.NoSession, TokenResult.Revoked ->
+                return RouteImportResult(0, routes.size, false, ImportFailure.NOT_AUTHORIZED)
+            TokenResult.TransientFailure ->
+                return RouteImportResult(0, routes.size, false, ImportFailure.FAILED)
+        }
         var imported = 0
         var rateLimited = false
         for (route in routes) {

@@ -8,7 +8,9 @@ tag dates.
 
 [diff](https://github.com/henrik242/where/compare/v579...main)
 
-n/a
+- Strava stays connected through a flaky network, a timeout or a Strava outage. Only Strava
+  actually rejecting your login asks you to reconnect.
+- Fixed being asked to reconnect Strava after an app upgrade
 
 ## v579 (2026-09-15)
 

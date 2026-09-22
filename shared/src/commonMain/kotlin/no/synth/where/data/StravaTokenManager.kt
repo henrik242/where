@@ -24,6 +24,20 @@ import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.secureRandomHex
 
+/** Why a caller did or didn't get an access token. Only [Revoked]/[NoSession] mean "reconnect". */
+sealed interface TokenResult {
+    data class Valid(val accessToken: String) : TokenResult
+
+    /** Nothing is connected: no credentials, or no refresh token. */
+    data object NoSession : TokenResult
+
+    /** Strava rejected the refresh token. Only reconnecting fixes it. */
+    data object Revoked : TokenResult
+
+    /** Network error, timeout, 5xx or rate limit. The session is still good. */
+    data object TransientFailure : TokenResult
+}
+
 /**
  * On-device Strava OAuth using the user's own API app credentials (BYO). The client id + secret are
  * entered in the app and stored in [UserPreferences]; token exchange and refresh talk directly to
@@ -83,67 +97,80 @@ class StravaTokenManager(
         }
         val clientId = prefs.readStravaClientId() ?: return false
         val clientSecret = prefs.readStravaClientSecret() ?: return false
-        val tokens = postTokens(
+        return mintTokens(
             parameters {
                 append("client_id", clientId)
                 append("client_secret", clientSecret)
                 append("code", code!!)
                 append("grant_type", "authorization_code")
             }
-        ) ?: return false
-        prefs.cacheStravaTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAt, tokens.athleteId)
-        return true
+        ) is TokenResult.Valid
     }
 
-    /** Return a valid access token, refreshing on-device (single-flight) when the cached one is stale. */
-    suspend fun getAccessToken(): String? {
-        val nowSec = currentTimeMillis() / 1000
-        prefs.stravaAccessToken.value?.let { if (isTokenFresh(prefs.stravaTokenExpiry.value, nowSec)) return it }
+    /**
+     * A valid access token, refreshing on-device (single-flight) when the stored one is stale.
+     * Only [TokenResult.Revoked] and [TokenResult.NoSession] mean the session is worthless.
+     * [rejectedToken] forces a refresh past a token Strava just rejected.
+     */
+    suspend fun getAccessToken(rejectedToken: String? = null): TokenResult {
+        freshToken(rejectedToken)?.let { return TokenResult.Valid(it) }
         return refreshMutex.withLock {
             // Re-check inside the lock: a concurrent caller may have refreshed already.
-            val now = currentTimeMillis() / 1000
-            prefs.stravaAccessToken.value?.let { if (isTokenFresh(prefs.stravaTokenExpiry.value, now)) return@withLock it }
+            freshToken(rejectedToken)?.let { return@withLock TokenResult.Valid(it) }
             refreshAccessToken()
         }
     }
 
-    private suspend fun refreshAccessToken(): String? {
-        val refresh = prefs.readStravaRefreshToken() ?: return null
-        val clientId = prefs.readStravaClientId() ?: return null
-        val clientSecret = prefs.readStravaClientSecret() ?: return null
-        val tokens = postTokens(
+    /**
+     * The stored access token, unless it is near expiry or the one Strava just rejected. Read from
+     * disk: the in-memory cache is empty until the DataStore collector runs, i.e. every cold start.
+     */
+    private suspend fun freshToken(rejectedToken: String?): String? {
+        val (token, expiry) = prefs.readStravaTokens()
+        if (token == null || token == rejectedToken) return null
+        return token.takeIf { isTokenFresh(expiry, currentTimeMillis() / 1000) }
+    }
+
+    private suspend fun refreshAccessToken(): TokenResult {
+        val refresh = prefs.readStravaRefreshToken() ?: return TokenResult.NoSession
+        val clientId = prefs.readStravaClientId() ?: return TokenResult.NoSession
+        val clientSecret = prefs.readStravaClientSecret() ?: return TokenResult.NoSession
+        return mintTokens(
             parameters {
                 append("client_id", clientId)
                 append("client_secret", clientSecret)
                 append("grant_type", "refresh_token")
                 append("refresh_token", refresh)
             }
-        ) ?: return null
-        prefs.cacheStravaTokens(
-            tokens.accessToken,
-            tokens.refreshToken,
-            tokens.expiresAt,
-            if (tokens.athleteId > 0L) tokens.athleteId else prefs.stravaAthleteId.value,
         )
-        return tokens.accessToken
     }
 
-    private suspend fun postTokens(form: io.ktor.http.Parameters): TokenResponse? {
+    /**
+     * POST to Strava's token endpoint and persist what it mints. Strava invalidates the old refresh
+     * token as it issues the new one, so the new one must be on disk before the caller uses the
+     * access token: a process death in between (an app upgrade) would strand the session.
+     */
+    private suspend fun mintTokens(form: io.ktor.http.Parameters): TokenResult {
         return try {
             val resp = client.submitForm(TOKEN_URL, formParameters = form)
+            val body = resp.bodyAsText()
             if (!resp.status.isSuccess()) {
                 Logger.e("Strava token request failed: %d", resp.status.value)
-                return null
+                return if (isGrantRejected(resp.status.value, body)) TokenResult.Revoked
+                else TokenResult.TransientFailure
             }
-            parseTokenResponse(resp.bodyAsText())
+            val tokens = parseTokenResponse(body)
+                ?: return TokenResult.TransientFailure.also { Logger.e("Strava token response unparseable") }
+            prefs.cacheStravaTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresAt, tokens.athleteId)
+            TokenResult.Valid(tokens.accessToken)
         } catch (e: Exception) {
             Logger.e(e, "Strava token request error")
-            null
+            TokenResult.TransientFailure
         }
     }
 
     /** The connected athlete's id (needed for the routes endpoint); 0 when unknown. */
-    fun currentAthleteId(): Long = prefs.stravaAthleteId.value
+    suspend fun currentAthleteId(): Long = prefs.readStravaAthleteId()
 
     /** Drop the connected session (e.g. after Strava reports the token is no longer valid). */
     fun clearSession() = prefs.clearStravaTokens()
@@ -156,7 +183,7 @@ class StravaTokenManager(
 
     /** Revoke the grant with Strava and forget the session (credentials are kept for reconnect). */
     suspend fun disconnect() {
-        val access = prefs.stravaAccessToken.value ?: getAccessToken()
+        val access = (getAccessToken() as? TokenResult.Valid)?.accessToken
         if (access != null) {
             try {
                 client.submitForm(DEAUTH_URL, formParameters = parameters { append("access_token", access) })
@@ -184,6 +211,8 @@ class StravaTokenManager(
         private const val TOKEN_URL = "https://www.strava.com/api/v3/oauth/token"
         private const val DEAUTH_URL = "https://www.strava.com/oauth/deauthorize"
         private const val EXPIRY_BUFFER_SECONDS = 300L
+        // `errors[].resource` values meaning the grant is gone. "Application" means bad credentials.
+        private val REJECTED_RESOURCES = listOf("RefreshToken", "AuthorizationCode")
         private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
         fun authorizeUrl(clientId: String, state: String): String =
@@ -197,6 +226,14 @@ class StravaTokenManager(
 
         fun isCallbackValid(code: String?, state: String?, expected: String?): Boolean =
             !code.isNullOrBlank() && !state.isNullOrBlank() && !expected.isNullOrBlank() && state == expected
+
+        /**
+         * True only when Strava says the grant is dead, the one case worth deleting the session
+         * over. A dead refresh token and a wrong client id/secret both return 400, distinguished
+         * by `errors[].resource`: a mistyped secret is fixable, so it must not cost the session.
+         */
+        fun isGrantRejected(statusCode: Int, body: String): Boolean =
+            statusCode == 400 && REJECTED_RESOURCES.any { it in body }
 
         fun isTokenFresh(expirySeconds: Long, nowSeconds: Long, bufferSeconds: Long = EXPIRY_BUFFER_SECONDS): Boolean =
             expirySeconds - nowSeconds > bufferSeconds

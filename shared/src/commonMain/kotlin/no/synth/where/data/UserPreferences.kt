@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +35,12 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.NveOverlay
 
-class UserPreferences(private val dataStore: DataStore<Preferences>) {
+class UserPreferences(
+    private val dataStore: DataStore<Preferences>,
+    // Tests set this false to keep the in-memory cache empty, as it is on a cold start until the
+    // collector below runs. Production always hydrates.
+    hydrateFromDisk: Boolean = true,
+) {
     // Parallelism 1 so the persist coroutines run in call order. On a multi-threaded dispatcher a
     // rapid toggle can write the older value last, and the init collector then reads that stale
     // value back over the newer in-memory state.
@@ -139,7 +145,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     val stravaTokenExpiry: StateFlow<Long> = _stravaTokenExpiry.asStateFlow()
 
     init {
-        scope.launch {
+        if (hydrateFromDisk) scope.launch {
             dataStore.data.collect { prefs ->
                 _showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
                 _showOsmPaths.value = prefs[SHOW_OSM_PATHS] ?: false
@@ -201,6 +207,10 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
     suspend fun readStravaClientSecret(): String? = dataStore.data.map { it[STRAVA_CLIENT_SECRET] }.first()
     suspend fun readStravaRefreshToken(): String? = dataStore.data.map { it[STRAVA_REFRESH_TOKEN] }.first()
     suspend fun readStravaOAuthState(): String? = dataStore.data.map { it[STRAVA_OAUTH_STATE] }.first()
+    /** Access token and its expiry in one snapshot, so a refresh can't tear the pair apart. */
+    suspend fun readStravaTokens(): Pair<String?, Long> =
+        dataStore.data.map { it[STRAVA_ACCESS_TOKEN] to (it[STRAVA_TOKEN_EXPIRY] ?: 0L) }.first()
+    suspend fun readStravaAthleteId(): Long = dataStore.data.map { it[STRAVA_ATHLETE_ID] ?: 0L }.first()
 
     fun setStravaCredentials(clientId: String, clientSecret: String) {
         _stravaClientId.value = clientId
@@ -223,14 +233,19 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
         }
     }
 
-    /** Cache freshly minted tokens and mark the account connected. */
-    fun cacheStravaTokens(accessToken: String, refreshToken: String, expirySeconds: Long, athleteId: Long) {
+    /**
+     * Cache freshly minted tokens and mark the account connected. Posted to [scope] like every
+     * other persist here so it stays ordered, and awaited so a failed write throws instead of
+     * handing back a token whose rotated refresh token never reached disk. [scope] also keeps the
+     * write alive when the caller (a closed screen) is cancelled.
+     */
+    suspend fun cacheStravaTokens(accessToken: String, refreshToken: String, expirySeconds: Long, athleteId: Long) {
         _stravaAccessToken.value = accessToken
         _stravaRefreshToken.value = refreshToken
         _stravaTokenExpiry.value = expirySeconds
         _stravaConnected.value = true
         if (athleteId > 0L) _stravaAthleteId.value = athleteId
-        scope.launch {
+        scope.async {
             dataStore.edit {
                 it[STRAVA_ACCESS_TOKEN] = accessToken
                 it[STRAVA_REFRESH_TOKEN] = refreshToken
@@ -238,7 +253,7 @@ class UserPreferences(private val dataStore: DataStore<Preferences>) {
                 it[STRAVA_CONNECTED] = true
                 if (athleteId > 0L) it[STRAVA_ATHLETE_ID] = athleteId
             }
-        }
+        }.await()
     }
 
     /** Forget the user's stored Strava app credentials (client id + secret). */
