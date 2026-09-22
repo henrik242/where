@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import no.synth.where.data.BulkImportResult
+import no.synth.where.data.ImportFailure
 import no.synth.where.data.RouteImportResult
 import no.synth.where.data.RouteListResult
 import no.synth.where.data.StravaRoute
@@ -187,6 +188,7 @@ class TracksScreenViewModel(
             try {
                 val result = stravaRouteImporter.importRoutes(routes)
                 _stravaRoutes.value = null
+                if (result.failure == ImportFailure.NOT_AUTHORIZED) stravaTokenManager.clearSession()
                 onDone(result)
             } finally {
                 _stravaImporting.value = false
