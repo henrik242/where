@@ -39,3 +39,10 @@ map rendering and live-location polling are per-platform. Concretely:
 - Dependencies are wired in `WhereApplication` (lazy properties); access via `applicationContext as WhereApplication`
 - ViewModels are created with `viewModel { MyViewModel(app.dep1, app.dep2) }` in Composables
 - Use Timber for logging, never `println` or `Log.*`
+
+## Writing Style (commits, comments, docs)
+
+- Keep commit messages and code comments brief and to the point. No essays.
+- No Co-Authored-By trailers or other AI attribution in commits or PRs.
+- No long dashes, no emojis.
+- Never reply to or resolve PR comments unless explicitly asked to.

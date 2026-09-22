@@ -25,6 +25,7 @@ import no.synth.where.data.BulkImportOutcome
 import no.synth.where.data.BulkImportResult
 import no.synth.where.data.PendingBulkImport
 import no.synth.where.data.PickedFile
+import no.synth.where.data.ImportFailure
 import no.synth.where.data.RouteListResult
 import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.Track
@@ -139,8 +140,12 @@ fun TracksScreen(
         onDismissRoutes = { viewModel.dismissStravaRoutes() },
         onImport = { routes ->
             viewModel.importStravaRoutes(routes) { result ->
-                stravaMessage = if (result.rateLimited) stravaRateLimitedStr
-                    else String.format(stravaImportedFmt, result.imported, result.total)
+                stravaMessage = when {
+                    result.failure == ImportFailure.NOT_AUTHORIZED -> stravaSessionExpiredStr
+                    result.failure == ImportFailure.FAILED -> stravaLoadFailedStr
+                    result.rateLimited -> stravaRateLimitedStr
+                    else -> String.format(stravaImportedFmt, result.imported, result.total)
+                }
             }
         },
         onDisconnect = { viewModel.disconnectStrava() },

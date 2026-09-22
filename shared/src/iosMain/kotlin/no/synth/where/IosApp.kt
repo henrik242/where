@@ -26,6 +26,7 @@ import no.synth.where.data.DownloadStatus
 import no.synth.where.data.summary
 import no.synth.where.data.IosMapDownloadManager
 import no.synth.where.data.OfflineMapManager
+import no.synth.where.data.ImportFailure
 import no.synth.where.data.RouteListResult
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.StravaRoute
@@ -289,8 +290,15 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                             try {
                                 val result = stravaRouteImporter.importRoutes(routes)
                                 stravaRoutes = null
-                                stravaMessage = if (result.rateLimited) stravaRateLimitedMsg
-                                    else getString(Res.string.strava_imported_count, result.imported, result.total)
+                                if (result.failure == ImportFailure.NOT_AUTHORIZED) {
+                                    stravaTokenManager.clearSession()
+                                }
+                                stravaMessage = when {
+                                    result.failure == ImportFailure.NOT_AUTHORIZED -> stravaSessionExpiredMsg
+                                    result.failure == ImportFailure.FAILED -> stravaLoadFailedMsg
+                                    result.rateLimited -> stravaRateLimitedMsg
+                                    else -> getString(Res.string.strava_imported_count, result.imported, result.total)
+                                }
                             } finally {
                                 stravaImporting = false
                             }
