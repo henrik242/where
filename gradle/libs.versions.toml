@@ -11,7 +11,7 @@ composeMultiplatform = "1.12.1"
 composeMaterial3 = "1.12.0-alpha03" # see release notes for matching version
 composeBom = "2026.09.00"
 core = "1.7.0"
-coreKtx = "1.19.0"
+coreKtx = "1.19.1"
 crashlyticsPlugin = "3.0.8"
 datastorePreferences = "1.2.1"
 espressoCore = "3.7.0"
@@ -23,18 +23,16 @@ kmpZip = "1.0.0"
 kotlin = "2.4.20"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerializationJson = "1.11.0"
-ksp = "2.3.12"
 ktor = "3.6.0"
 lifecycleRuntimeCompose = "2.11.0"
 maplibre = "13.6.1"
 material = "1.14.0"
 mockk = "1.14.11"
 mockkAndroid = "1.14.11"
-navigationCompose = "2.10.1"
+navigationCompose = "2.10.2"
 playServicesLocation = "21.4.0"
 robolectric = "4.17"
-room = "2.8.5"
-sqlite = "2.7.1"
+sqldelight = "2.4.0"
 timber = "5.0.1"
 
 [libraries]
@@ -74,10 +72,10 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockkAndroid" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
+sqldelight-native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "sqldelight" }
+sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+sqldelight-coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMaterial3" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
@@ -86,10 +84,9 @@ compose-components-resources = { module = "org.jetbrains.compose.components:comp
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-room = { id = "androidx.room", version.ref = "room" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlyticsPlugin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServicesPlugin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

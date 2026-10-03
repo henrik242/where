@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import no.synth.where.data.db.SavedPointDao
 import no.synth.where.data.db.SavedPointEntity
+import no.synth.where.data.db.SqlDelightSavedPointDao
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -56,4 +57,8 @@ abstract class SavedPointDaoContract {
 
 class InMemorySavedPointDaoContractTest : SavedPointDaoContract() {
     override fun newDao() = InMemorySavedPointDao()
+}
+
+class SqlDelightSavedPointDaoContractTest : SavedPointDaoContract() {
+    override fun newDao() = SqlDelightSavedPointDao(freshSqlDelightDb(), kotlinx.coroutines.Dispatchers.Unconfined)
 }
