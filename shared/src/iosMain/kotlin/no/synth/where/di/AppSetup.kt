@@ -55,7 +55,10 @@ fun startApp() {
         schema = WhereDatabase.Schema,
         name = "where_database",
         onConfiguration = { config ->
-            config.copy(extendedConfig = config.extendedConfig.copy(basePath = documentsDir))
+            config.copy(
+                // foreignKeyConstraints on for Room parity (the cascade/REPLACE behavior).
+                extendedConfig = config.extendedConfig.copy(basePath = documentsDir, foreignKeyConstraints = true),
+            )
         },
     )
     val database = WhereDatabase(driver)

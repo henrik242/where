@@ -2,6 +2,7 @@ package no.synth.where
 
 import android.app.Application
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.sqlite.db.SupportSQLiteDatabase
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,8 +40,20 @@ private val Application.clientPrefsDataStore by preferencesDataStore(name = "cli
 class WhereApplication : Application() {
     // Same db name as the former Room database so existing installs (user_version 4) are adopted
     // in place; SQLDelight's schema version is also 4, so no migration runs for current users.
+    // Foreign keys enabled for Room parity (cascade/REPLACE behavior).
     private val database by lazy {
-        WhereDatabase(AndroidSqliteDriver(WhereDatabase.Schema, this, "where_database"))
+        val driver = AndroidSqliteDriver(
+            schema = WhereDatabase.Schema,
+            context = this,
+            name = "where_database",
+            callback = object : AndroidSqliteDriver.Callback(WhereDatabase.Schema) {
+                override fun onConfigure(db: SupportSQLiteDatabase) {
+                    super.onConfigure(db)
+                    db.setForeignKeyConstraintsEnabled(true)
+                }
+            },
+        )
+        WhereDatabase(driver)
     }
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
