@@ -1,0 +1,23 @@
+CREATE TABLE track_points (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trackId TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    timestamp INTEGER NOT NULL,
+    altitude REAL,
+    accuracy REAL,
+    orderIndex INTEGER NOT NULL,
+    FOREIGN KEY (trackId) REFERENCES tracks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX track_points_trackId ON track_points(trackId);
+
+getPointsForTrack:
+SELECT * FROM track_points WHERE trackId = ? ORDER BY orderIndex;
+
+insertTrackPoint:
+INSERT INTO track_points(trackId, latitude, longitude, timestamp, altitude, accuracy, orderIndex)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deletePointsForTrack:
+DELETE FROM track_points WHERE trackId = ?;
