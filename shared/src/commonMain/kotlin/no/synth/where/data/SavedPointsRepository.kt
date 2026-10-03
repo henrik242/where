@@ -32,12 +32,12 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
 
     init {
         scope.launch {
-            migrateJsonToRoom()
+            migrateJsonToDb()
             collectPoints()
         }
     }
 
-    private suspend fun migrateJsonToRoom() {
+    private suspend fun migrateJsonToDb() {
         if (pointsFile.exists() && !migratedFile.exists()) {
             try {
                 val text = pointsFile.readText()
@@ -46,9 +46,9 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
                     savedPointDao.insertPoint(point.toEntity())
                 }
                 pointsFile.renameTo(migratedFile)
-                Logger.d("Migrated ${points.size} saved points from JSON to Room")
+                Logger.d("Migrated ${points.size} saved points from JSON to database")
             } catch (e: Exception) {
-                Logger.e(e, "Saved points JSON to Room migration error")
+                Logger.e(e, "Saved points JSON to database migration error")
             }
         }
     }
