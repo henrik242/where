@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import no.synth.where.data.db.SavedPointDao
 import no.synth.where.data.db.SavedPointEntity
 
@@ -17,7 +18,9 @@ class InMemorySavedPointDao : SavedPointDao {
 
     fun all(): List<SavedPointEntity> = synchronized(lock) { points.values.toList() }
 
-    override fun getAllPoints(): Flow<List<SavedPointEntity>> = allPoints
+    // Mirror "ORDER BY timestamp DESC" so the fake matches the real query.
+    override fun getAllPoints(): Flow<List<SavedPointEntity>> =
+        allPoints.map { list -> list.sortedByDescending { it.timestamp } }
 
     override suspend fun insertPoint(point: SavedPointEntity) = synchronized(lock) {
         points[point.id] = point
