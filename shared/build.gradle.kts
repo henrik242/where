@@ -96,7 +96,7 @@ val generateBuildInfo = tasks.register<GenerateBuildInfoTask>("generateBuildInfo
 tasks.matching {
     it.name.startsWith("lintAnalyze") || (it.name.startsWith("generate") && it.name.endsWith("LintModel"))
 }.configureEach {
-    dependsOn(tasks.matching { it.name.endsWith("WhereDatabaseInterface") })
+    dependsOn(tasks.matching { it.name.startsWith("generate") && it.name.contains("WhereDatabase") })
 }
 
 kotlin {
