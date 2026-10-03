@@ -10,10 +10,12 @@ CREATE TABLE tracks (
 );
 
 getAllTracks:
-SELECT * FROM tracks WHERE isRecording = 0 ORDER BY startTime DESC;
+SELECT id, name, startTime, endTime, isRecording, folder, sourceId, color
+FROM tracks WHERE isRecording = 0 ORDER BY startTime DESC;
 
 getAllTracksOnce:
-SELECT * FROM tracks ORDER BY startTime DESC;
+SELECT id, name, startTime, endTime, isRecording, folder, sourceId, color
+FROM tracks ORDER BY startTime DESC;
 
 insertTrack:
 INSERT OR REPLACE INTO tracks(id, name, startTime, endTime, isRecording, folder, sourceId, color)
