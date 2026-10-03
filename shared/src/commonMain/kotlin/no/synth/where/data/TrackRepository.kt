@@ -107,12 +107,12 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     init {
         scope.launch {
-            migrateJsonToRoom()
+            migrateJsonToDb()
             collectTracks()
         }
     }
 
-    private suspend fun migrateJsonToRoom() {
+    private suspend fun migrateJsonToDb() {
         if (tracksFile.exists() && !migratedFile.exists()) {
             try {
                 val text = tracksFile.readText()
@@ -140,9 +140,9 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
                     trackDao.insertTrackWithPoints(entity, pointEntities)
                 }
                 tracksFile.renameTo(migratedFile)
-                Logger.d("Migrated ${tracksToMigrate.size} tracks from JSON to Room")
+                Logger.d("Migrated ${tracksToMigrate.size} tracks from JSON to database")
             } catch (e: Exception) {
-                Logger.e(e, "Track JSON to Room migration error")
+                Logger.e(e, "Track JSON to database migration error")
             }
         }
     }
