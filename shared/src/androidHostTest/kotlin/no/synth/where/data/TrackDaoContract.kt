@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import no.synth.where.data.db.SqlDelightTrackDao
 import no.synth.where.data.db.TrackDao
 import no.synth.where.data.db.TrackEntity
 import no.synth.where.data.db.TrackPointEntity
@@ -133,4 +134,8 @@ abstract class TrackDaoContract {
 
 class InMemoryTrackDaoContractTest : TrackDaoContract() {
     override fun newDao() = InMemoryTrackDao()
+}
+
+class SqlDelightTrackDaoContractTest : TrackDaoContract() {
+    override fun newDao() = SqlDelightTrackDao(freshSqlDelightDb(), kotlinx.coroutines.Dispatchers.Unconfined)
 }

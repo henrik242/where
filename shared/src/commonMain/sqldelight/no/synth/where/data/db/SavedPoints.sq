@@ -1,0 +1,22 @@
+CREATE TABLE saved_points (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    description TEXT DEFAULT '',
+    timestamp INTEGER NOT NULL,
+    color TEXT DEFAULT '#FF5722'
+);
+
+getAllPoints:
+SELECT * FROM saved_points ORDER BY timestamp DESC;
+
+insertPoint:
+INSERT OR REPLACE INTO saved_points(id, name, latitude, longitude, description, timestamp, color)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deletePointById:
+DELETE FROM saved_points WHERE id = ?;
+
+updatePoint:
+UPDATE saved_points SET name = ?, description = ?, color = ? WHERE id = ?;

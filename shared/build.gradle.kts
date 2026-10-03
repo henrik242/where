@@ -6,9 +6,8 @@ plugins {
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.room)
+    alias(libs.plugins.sqldelight)
 }
 
 abstract class GenerateBuildInfoTask : DefaultTask() {
@@ -91,13 +90,13 @@ val generateBuildInfo = tasks.register<GenerateBuildInfoTask>("generateBuildInfo
     outputs.upToDateWhen { false }
 }
 
-// Gradle 9.7 turns "task consumes KSP-generated output without declaring a dependency" into a build
-// failure. The Android lint model/analysis tasks read KSP-generated sources; wire them after KSP so
-// `./gradlew build` (which runs lint) passes. Over-declaring across ksp tasks is safe (ordering only).
+// Gradle 9.7 turns "task consumes generated output without declaring a dependency" into a build
+// failure. The Android lint model/analysis tasks read SQLDelight-generated sources; wire them after
+// the generators so `./gradlew build` (which runs lint) passes. Over-declaring is safe (ordering only).
 tasks.matching {
     it.name.startsWith("lintAnalyze") || (it.name.startsWith("generate") && it.name.endsWith("LintModel"))
 }.configureEach {
-    dependsOn(tasks.matching { it.name.startsWith("ksp") })
+    dependsOn(tasks.matching { it.name.endsWith("WhereDatabaseInterface") })
 }
 
 kotlin {
@@ -138,7 +137,7 @@ kotlin {
             api(libs.kotlinx.serialization.json)
             api(libs.ktor.client.core)
             api(libs.ktor.client.websockets)
-            api(libs.room.runtime)
+            implementation(libs.sqldelight.coroutines.extensions)
             api(libs.androidx.datastore.preferences)
             implementation(libs.compose.material3)
             implementation(libs.kmp.zip)
@@ -148,6 +147,10 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
+        }
+        getByName("androidHostTest").dependencies {
+            // Real SQLite on the JVM host so the DAO contract/migration guards exercise actual SQL.
+            implementation(libs.sqldelight.sqlite.driver)
         }
         androidMain.dependencies {
             // compose.material3 redirects android to an androidx material3 built against an older
@@ -159,10 +162,11 @@ kotlin {
             implementation(libs.play.services.location)
             api(project.dependencies.platform(libs.firebase.bom))
             api(libs.firebase.crashlytics)
+            implementation(libs.sqldelight.android.driver)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
-            implementation(libs.sqlite.bundled)
+            implementation(libs.sqldelight.native.driver)
         }
     }
 }
@@ -181,12 +185,13 @@ compose.resources {
     packageOfResClass = "no.synth.where.resources"
 }
 
-room {
-    schemaDirectory("$projectDir/schemas")
-}
-
-dependencies {
-    add("kspAndroid", libs.room.compiler)
-    add("kspIosArm64", libs.room.compiler)
-    add("kspIosSimulatorArm64", libs.room.compiler)
+sqldelight {
+    databases {
+        create("WhereDatabase") {
+            packageName.set("no.synth.where.data.db")
+            // Adopts an existing Room database, so the migration path (v1->v4, matching the old
+            // Room ALTER TABLEs) is checked by explicit tests rather than SQLDelight .db snapshots.
+            verifyMigrations.set(false)
+        }
+    }
 }

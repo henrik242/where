@@ -1,0 +1,41 @@
+CREATE TABLE tracks (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    startTime INTEGER NOT NULL,
+    endTime INTEGER,
+    isRecording INTEGER NOT NULL DEFAULT 0,
+    folder TEXT,
+    sourceId TEXT,
+    color TEXT
+);
+
+getAllTracks:
+SELECT * FROM tracks WHERE isRecording = 0 ORDER BY startTime DESC;
+
+getAllTracksOnce:
+SELECT * FROM tracks ORDER BY startTime DESC;
+
+insertTrack:
+INSERT OR REPLACE INTO tracks(id, name, startTime, endTime, isRecording, folder, sourceId, color)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteTrack:
+DELETE FROM tracks WHERE id = ?;
+
+renameTrack:
+UPDATE tracks SET name = ? WHERE id = ?;
+
+updateColor:
+UPDATE tracks SET color = ? WHERE id = ?;
+
+updateFolderForTracks:
+UPDATE tracks SET folder = ? WHERE id IN ?;
+
+renameFolder:
+UPDATE tracks SET folder = ? WHERE folder = ?;
+
+clearFolder:
+UPDATE tracks SET folder = NULL WHERE folder = ?;
+
+findTrackIdBySourceId:
+SELECT id FROM tracks WHERE sourceId = ? LIMIT 1;

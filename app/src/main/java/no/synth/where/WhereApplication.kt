@@ -2,7 +2,7 @@ package no.synth.where
 
 import android.app.Application
 import androidx.datastore.preferences.preferencesDataStore
-import androidx.room.Room
+import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -22,9 +22,8 @@ import no.synth.where.data.StravaRouteImporter
 import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
-import no.synth.where.data.db.MIGRATION_1_2
-import no.synth.where.data.db.MIGRATION_2_3
-import no.synth.where.data.db.MIGRATION_3_4
+import no.synth.where.data.db.SqlDelightSavedPointDao
+import no.synth.where.data.db.SqlDelightTrackDao
 import no.synth.where.data.db.WhereDatabase
 import no.synth.where.util.CrashReporter
 import org.maplibre.android.MapLibre
@@ -38,15 +37,15 @@ private val Application.userPrefsDataStore by preferencesDataStore(name = "user_
 private val Application.clientPrefsDataStore by preferencesDataStore(name = "client_prefs")
 
 class WhereApplication : Application() {
+    // Same db name as the former Room database so existing installs (user_version 4) are adopted
+    // in place; SQLDelight's schema version is also 4, so no migration runs for current users.
     private val database by lazy {
-        Room.databaseBuilder(this, WhereDatabase::class.java, "where_database")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
-            .build()
+        WhereDatabase(AndroidSqliteDriver(WhereDatabase.Schema, this, "where_database"))
     }
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    val trackRepository by lazy { TrackRepository(PlatformFile(filesDir), database.trackDao()) }
-    val savedPointsRepository by lazy { SavedPointsRepository(PlatformFile(filesDir), database.savedPointDao()) }
+    val trackRepository by lazy { TrackRepository(PlatformFile(filesDir), SqlDelightTrackDao(database)) }
+    val savedPointsRepository by lazy { SavedPointsRepository(PlatformFile(filesDir), SqlDelightSavedPointDao(database)) }
     val userPreferences by lazy { UserPreferences(userPrefsDataStore) }
     val clientIdManager by lazy { ClientIdManager(clientPrefsDataStore) }
     private val stravaHttpClient by lazy { createDefaultHttpClient() }

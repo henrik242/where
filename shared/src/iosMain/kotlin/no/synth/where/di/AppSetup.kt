@@ -16,9 +16,12 @@ import no.synth.where.data.StravaRouteImporter
 import no.synth.where.data.StravaTokenManager
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
+import app.cash.sqldelight.driver.native.NativeSqliteDriver
 import no.synth.where.data.createDataStore
 import no.synth.where.data.createDefaultHttpClient
-import no.synth.where.data.db.getDatabaseBuilder
+import no.synth.where.data.db.SqlDelightSavedPointDao
+import no.synth.where.data.db.SqlDelightTrackDao
+import no.synth.where.data.db.WhereDatabase
 import no.synth.where.location.IosLocationTracker
 import no.synth.where.util.CrashReporter
 import platform.CoreLocation.CLLocationManager
@@ -42,13 +45,23 @@ object AppDependencies {
 }
 
 fun startApp() {
-    val database = getDatabaseBuilder().build()
-
     val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
     val documentsDir = requireNotNull((paths.first() as NSURL).path) { "Documents directory not found" }
 
-    AppDependencies.trackRepository = TrackRepository(PlatformFile(documentsDir), database.trackDao())
-    AppDependencies.savedPointsRepository = SavedPointsRepository(PlatformFile(documentsDir), database.savedPointDao())
+    // Open the same file the former Room database used ($documentsDir/where_database) so existing
+    // installs are adopted in place. basePath pins the directory; the schema version (4) matches
+    // the Room user_version, so no migration runs for current users.
+    val driver = NativeSqliteDriver(
+        schema = WhereDatabase.Schema,
+        name = "where_database",
+        onConfiguration = { config ->
+            config.copy(extendedConfig = config.extendedConfig.copy(basePath = documentsDir))
+        },
+    )
+    val database = WhereDatabase(driver)
+
+    AppDependencies.trackRepository = TrackRepository(PlatformFile(documentsDir), SqlDelightTrackDao(database))
+    AppDependencies.savedPointsRepository = SavedPointsRepository(PlatformFile(documentsDir), SqlDelightSavedPointDao(database))
     AppDependencies.userPreferences = UserPreferences(createDataStore("user_prefs"))
     AppDependencies.clientIdManager = ClientIdManager(createDataStore("client_prefs"))
     AppDependencies.liveTrackingFollower = LiveTrackingFollower(AppDependencies.userPreferences.trackingServerUrl.value)
