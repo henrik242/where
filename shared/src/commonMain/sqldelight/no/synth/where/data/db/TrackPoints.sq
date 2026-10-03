@@ -13,7 +13,8 @@ CREATE TABLE track_points (
 CREATE INDEX track_points_trackId ON track_points(trackId);
 
 getPointsForTrack:
-SELECT * FROM track_points WHERE trackId = ? ORDER BY orderIndex;
+SELECT id, trackId, latitude, longitude, timestamp, altitude, accuracy, orderIndex
+FROM track_points WHERE trackId = ? ORDER BY orderIndex;
 
 insertTrackPoint:
 INSERT INTO track_points(trackId, latitude, longitude, timestamp, altitude, accuracy, orderIndex)

@@ -9,7 +9,8 @@ CREATE TABLE saved_points (
 );
 
 getAllPoints:
-SELECT * FROM saved_points ORDER BY timestamp DESC;
+SELECT id, name, latitude, longitude, description, timestamp, color
+FROM saved_points ORDER BY timestamp DESC;
 
 insertPoint:
 INSERT OR REPLACE INTO saved_points(id, name, latitude, longitude, description, timestamp, color)
