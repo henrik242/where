@@ -43,7 +43,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 
 ## Built with
 
-Kotlin Multiplatform sharing navigation, geometry, storage, and Compose Multiplatform UI between Android and iOS. Maps render with MapLibre, and tracks and points are stored locally with Room. The optional live-tracking backend under [`web/`](web/) runs on Bun.
+Kotlin Multiplatform sharing navigation, geometry, storage, and Compose Multiplatform UI between Android and iOS. Maps render with MapLibre, and tracks and points are stored locally with SQLDelight. The optional live-tracking backend under [`web/`](web/) runs on Bun.
 
 ## Building
 

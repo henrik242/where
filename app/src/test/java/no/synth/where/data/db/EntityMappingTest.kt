@@ -8,7 +8,7 @@ import org.junit.Assert.*
 import no.synth.where.data.geo.LatLng
 
 /**
- * Tests for the mapping logic between Room entities and domain models,
+ * Tests for the mapping logic between database entities and domain models,
  * as used by TrackRepository and SavedPointsRepository.
  */
 class EntityMappingTest {

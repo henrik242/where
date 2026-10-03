@@ -42,7 +42,7 @@ private val libraries = listOf(
     Attribution("MapLibre", "Map rendering engine", "BSD 3-Clause"),
     Attribution("Jetpack Compose", "UI framework", "Apache 2.0"),
     Attribution("Ktor", "HTTP client", "Apache 2.0"),
-    Attribution("Room", "Local database", "Apache 2.0"),
+    Attribution("SQLDelight", "Local database", "Apache 2.0"),
     Attribution("kotlinx-serialization", "JSON parsing", "Apache 2.0"),
     Attribution("Firebase Crashlytics", "Crash reporting", "Apache 2.0"),
     Attribution("Timber", "Logging", "Apache 2.0"),
