@@ -7,6 +7,7 @@ import no.synth.where.data.db.SavedPointEntity
 import no.synth.where.data.db.SqlDelightSavedPointDao
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -42,6 +43,14 @@ abstract class SavedPointDaoContract {
         dao.deletePointById("a")
         val ids = dao.getAllPoints().first().map { it.id }
         assertTrue("a" !in ids && "b" in ids)
+    }
+
+    @Test fun insertPointPreservesNullDescriptionAndColor() = runBlocking {
+        val dao = newDao()
+        dao.insertPoint(SavedPointEntity(id = "a", name = "p", latitude = 60.0, longitude = 10.0, description = null, timestamp = 1, color = null))
+        val stored = dao.getAllPoints().first().single()
+        assertNull(stored.description)
+        assertNull(stored.color)
     }
 
     @Test fun updatePointSetsNameDescriptionColor() = runBlocking {
