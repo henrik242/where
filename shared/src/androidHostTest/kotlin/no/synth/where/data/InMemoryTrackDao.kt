@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import no.synth.where.data.db.TrackDao
 import no.synth.where.data.db.TrackEntity
 import no.synth.where.data.db.TrackPointEntity
@@ -27,7 +28,9 @@ class InMemoryTrackDao : TrackDao {
     fun trackCount(): Int = synchronized(lock) { tracks.size }
     fun entity(trackId: String): TrackEntity? = synchronized(lock) { tracks[trackId] }
 
-    override fun getAllTracks(): Flow<List<TrackEntity>> = allTracks
+    // Mirror "WHERE isRecording = 0 ORDER BY startTime DESC" so the fake matches the real query.
+    override fun getAllTracks(): Flow<List<TrackEntity>> =
+        allTracks.map { list -> list.filter { !it.isRecording }.sortedByDescending { it.startTime } }
 
     override suspend fun getPointsForTrack(trackId: String): List<TrackPointEntity> =
         synchronized(lock) { rows.filter { it.trackId == trackId }.sortedBy { it.orderIndex } }
@@ -78,7 +81,8 @@ class InMemoryTrackDao : TrackDao {
         allTracks.value = tracks.values.toList()
     }
 
-    override suspend fun getAllTracksOnce(): List<TrackEntity> = synchronized(lock) { tracks.values.toList() }
+    override suspend fun getAllTracksOnce(): List<TrackEntity> =
+        synchronized(lock) { tracks.values.sortedByDescending { it.startTime } }
 
     override suspend fun findTrackIdBySourceId(sourceId: String): String? =
         synchronized(lock) { tracks.values.firstOrNull { it.sourceId == sourceId }?.id }
