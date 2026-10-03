@@ -19,6 +19,8 @@ private class NoopTrackDao : TrackDao {
     override suspend fun getPointsForTrack(trackId: String): List<TrackPointEntity> = emptyList()
     override suspend fun insertTrack(track: TrackEntity) {}
     override suspend fun insertTrackPoints(points: List<TrackPointEntity>) {}
+    override suspend fun insertTrackWithPoints(track: TrackEntity, points: List<TrackPointEntity>) {}
+    override suspend fun replaceTrackWithPoints(track: TrackEntity, points: List<TrackPointEntity>) {}
     override suspend fun deleteTrack(trackId: String) {}
     override suspend fun deletePointsForTrack(trackId: String) {}
     override suspend fun renameTrack(trackId: String, name: String) {}
