@@ -12,10 +12,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * SQL-contract guard for [TrackDao]: the behavior every backend must honor, taken from the Room
- * @Query definitions. Subclassed per implementation (in-memory fake today, SQLDelight after the
- * migration) so the swap is proven against one spec. Add a SQLDelight subclass that returns a
- * real-driver DAO to get actual-SQL coverage.
+ * SQL-contract guard for [TrackDao]: the behavior every backend must honor. Subclassed for both
+ * backends - the in-memory fake ([InMemoryTrackDaoContractTest]) and the real SQLDelight DAO on an
+ * in-memory SQLite driver ([SqlDelightTrackDaoContractTest]) - so the two are held to one spec.
  */
 abstract class TrackDaoContract {
     abstract fun newDao(): TrackDao
