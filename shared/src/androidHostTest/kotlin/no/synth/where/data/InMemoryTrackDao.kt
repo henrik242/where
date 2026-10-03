@@ -36,12 +36,25 @@ class InMemoryTrackDao : TrackDao {
         synchronized(lock) { rows.filter { it.trackId == trackId }.sortedBy { it.orderIndex } }
 
     override suspend fun insertTrack(track: TrackEntity) = synchronized(lock) {
+        // INSERT OR REPLACE on an existing id deletes the old row, which (FK on) cascades to points.
+        if (tracks.containsKey(track.id)) rows.removeAll { it.trackId == track.id }
         tracks[track.id] = track
         allTracks.value = tracks.values.toList()
     }
 
     override suspend fun insertTrackPoints(points: List<TrackPointEntity>) = synchronized(lock) {
         points.forEach { rows.add(it.copy(id = nextId++)) }
+    }
+
+    override suspend fun insertTrackWithPoints(track: TrackEntity, points: List<TrackPointEntity>) {
+        insertTrack(track)
+        insertTrackPoints(points)
+    }
+
+    override suspend fun replaceTrackWithPoints(track: TrackEntity, points: List<TrackPointEntity>) {
+        deletePointsForTrack(track.id)
+        insertTrack(track)
+        insertTrackPoints(points)
     }
 
     override suspend fun deleteTrack(trackId: String) = synchronized(lock) {
