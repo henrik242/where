@@ -33,6 +33,7 @@ class GeocodingIntegrationTest {
         runBlocking { GeocodingHelper.clearCaches() }
         originalClient = GeocodingHelper.client
         GeocodingHelper.client = HttpClient(OkHttp) {
+            install(io.ktor.client.plugins.HttpTimeout) // GeocodingHelper sets a per-request Overpass timeout
             engine {
                 config {
                     connectTimeout(15, TimeUnit.SECONDS)

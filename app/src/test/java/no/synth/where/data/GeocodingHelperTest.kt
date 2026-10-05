@@ -29,7 +29,9 @@ class GeocodingHelperTest {
 
     private fun mockClient(handler: (io.ktor.client.engine.mock.MockRequestHandleScope.(io.ktor.http.Url) -> io.ktor.client.request.HttpResponseData)): HttpClient {
         originalClient = GeocodingHelper.client
-        return HttpClient(MockEngine { request -> handler(request.url) }).also {
+        return HttpClient(MockEngine { request -> handler(request.url) }) {
+            install(io.ktor.client.plugins.HttpTimeout) // GeocodingHelper sets a per-request Overpass timeout
+        }.also {
             GeocodingHelper.client = it
         }
     }
