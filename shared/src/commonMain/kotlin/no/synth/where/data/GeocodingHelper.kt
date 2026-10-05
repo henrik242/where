@@ -1,6 +1,7 @@
 package no.synth.where.data
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -10,6 +11,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -29,6 +31,12 @@ private val OVERPASS_MIRRORS = listOf(
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter"
 )
+
+// Per-attempt cap so a down mirror fails over fast instead of hanging on the 30s default; the
+// lookups are small (around:50m), well under the server-side [timeout:10] safety cap. The total
+// budget bounds the whole sequential mirror rotation so a reverse-geocode never blocks longer.
+private const val OVERPASS_TIMEOUT_MS = 5_000L
+private const val OVERPASS_TOTAL_TIMEOUT_MS = 6_000L
 
 object GeocodingHelper {
     var client: HttpClient = createDefaultHttpClient()
@@ -52,26 +60,29 @@ object GeocodingHelper {
     @Volatile
     private var preferredMirror = 0
 
-    private suspend fun overpassQuery(query: String): List<JsonObject> {
-        val start = preferredMirror
-        for (offset in OVERPASS_MIRRORS.indices) {
-            val index = (start + offset) % OVERPASS_MIRRORS.size
-            val result = overpassAttempt(OVERPASS_MIRRORS[index], query)
-            if (result.success) {
-                preferredMirror = index
-                return result.elements
+    private suspend fun overpassQuery(query: String): List<JsonObject> =
+        withTimeoutOrNull(OVERPASS_TOTAL_TIMEOUT_MS) {
+            val start = preferredMirror
+            for (offset in OVERPASS_MIRRORS.indices) {
+                val index = (start + offset) % OVERPASS_MIRRORS.size
+                val result = overpassAttempt(OVERPASS_MIRRORS[index], query)
+                if (result.success) {
+                    preferredMirror = index
+                    return@withTimeoutOrNull result.elements
+                }
+                // A rejected query fails the same way everywhere; only load problems are worth a mirror hop.
+                if (!result.retryable) return@withTimeoutOrNull emptyList()
             }
-            // A rejected query fails the same way everywhere; only load problems are worth a mirror hop.
-            if (!result.retryable) return emptyList()
-        }
-        return emptyList()
-    }
+            emptyList()
+        } ?: emptyList()
 
     private data class OverpassResult(val success: Boolean, val retryable: Boolean, val elements: List<JsonObject>)
 
     private suspend fun overpassAttempt(endpoint: String, query: String): OverpassResult {
         val response = try {
-            client.submitForm(endpoint, parameters { append("data", query) })
+            client.submitForm(endpoint, parameters { append("data", query) }) {
+                timeout { requestTimeoutMillis = OVERPASS_TIMEOUT_MS }
+            }
         } catch (e: Exception) {
             Logger.d("overpass call to $endpoint failed: ${e.message}")
             return OverpassResult(success = false, retryable = true, elements = emptyList())

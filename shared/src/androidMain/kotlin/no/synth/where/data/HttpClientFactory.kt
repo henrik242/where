@@ -2,12 +2,15 @@ package no.synth.where.data
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
 import no.synth.where.BuildInfo
 
 actual fun createDefaultHttpClient(): HttpClient = HttpClient(OkHttp) {
+    // No global defaults: only requests that opt in (e.g. Overpass) get a per-request timeout.
+    install(HttpTimeout)
     engine {
         config {
             connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
