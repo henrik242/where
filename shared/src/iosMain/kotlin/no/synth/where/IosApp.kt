@@ -25,7 +25,6 @@ import no.synth.where.data.unfollow
 import no.synth.where.data.DownloadStatus
 import no.synth.where.data.summary
 import no.synth.where.data.IosMapDownloadManager
-import no.synth.where.data.OfflineMapManager
 import no.synth.where.data.ImportFailure
 import no.synth.where.data.RouteListResult
 import no.synth.where.data.SavedPoint
@@ -46,7 +45,6 @@ import no.synth.where.ui.StravaImportHandlers
 import no.synth.where.ui.TracksScreenContent
 import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.followedFriends
-import no.synth.where.ui.map.MapViewProvider
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.data.HexGrid
@@ -91,12 +89,12 @@ private fun iosFreeStorageBytes(): Long =
     }
 
 @Composable
-fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManager, hexMapViewProvider: MapViewProvider) {
+fun IosApp() {
     val userPreferences = remember { AppDependencies.userPreferences }
     val trackRepository = remember { AppDependencies.trackRepository }
     val savedPointsRepository = remember { AppDependencies.savedPointsRepository }
     val clientIdManager = remember { AppDependencies.clientIdManager }
-    val downloadManager = remember { IosMapDownloadManager(offlineMapManager) }
+    val downloadManager = remember { IosMapDownloadManager() }
 
     val themeMode by userPreferences.themeMode.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
@@ -156,7 +154,6 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
         when (currentScreen) {
             Screen.MAP -> {
                 IosMapScreen(
-                    mapViewProvider = mapViewProvider,
                     viewingPoint = viewingPoint,
                     onClearViewingPoint = { viewingPoint = null },
                     onSettingsClick = { navigateTo(Screen.SETTINGS) },
@@ -577,7 +574,6 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 IosLayerHexMapScreen(
                     layerId = selectedLayerId,
                     onBackClick = { navigateBack() },
-                    hexMapViewProvider = hexMapViewProvider,
                     downloadManager = downloadManager,
                     downloadElevationData = downloadElevationData,
                     downloadMaxZoom = downloadMaxZoom,
@@ -683,5 +679,19 @@ fun IosApp(mapViewProvider: MapViewProvider, offlineMapManager: OfflineMapManage
                 )
             }
         }
+    }
+
+    // One-time notice to upgraders: the engine switch orphaned any old offline downloads.
+    val migrationNoticeShown by userPreferences.offlineMigrationNoticeShown.collectAsState()
+    var showMigrationNotice by remember { mutableStateOf(false) }
+    LaunchedEffect(migrationNoticeShown) {
+        if (!migrationNoticeShown && no.synth.where.data.LegacyOfflineCache.exists()) showMigrationNotice = true
+    }
+    if (showMigrationNotice) {
+        no.synth.where.ui.map.MapDialogs.OfflineMigrationDialog(onDismiss = {
+            showMigrationNotice = false
+            userPreferences.markOfflineMigrationNoticeShown()
+            no.synth.where.data.LegacyOfflineCache.deleteAll()
+        })
     }
 }
