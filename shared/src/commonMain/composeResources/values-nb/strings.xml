@@ -409,4 +409,7 @@
         <item quantity="one">%1$d fil hadde ingen punkter</item>
         <item quantity="other">%1$d filer hadde ingen punkter</item>
     </plurals>
+    <string name="offline_migration_title">Offline-kart må lastes ned på nytt</string>
+    <string name="offline_migration_message">Denne oppdateringen byttet til en ny kartmotor, så tidligere nedlastede offline-områder kan ikke lenger leses og er fjernet. Åpne nedlastingsskjermen for å laste ned områdene du trenger på nytt.</string>
+    <string name="offline_migration_ok">Greit</string>
 </resources>

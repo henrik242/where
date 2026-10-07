@@ -52,6 +52,9 @@ class UserPreferences(
     private val _hasSeenTrackingInfo = MutableStateFlow(false)
     val hasSeenTrackingInfo: StateFlow<Boolean> = _hasSeenTrackingInfo.asStateFlow()
 
+    private val _offlineMigrationNoticeShown = MutableStateFlow(false)
+    val offlineMigrationNoticeShown: StateFlow<Boolean> = _offlineMigrationNoticeShown.asStateFlow()
+
     private val _onlineTrackingEnabled = MutableStateFlow(false)
     val onlineTrackingEnabled: StateFlow<Boolean> = _onlineTrackingEnabled.asStateFlow()
 
@@ -163,6 +166,7 @@ class UserPreferences(
                 _selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _hasSeenTrackingInfo.value = prefs[HAS_SEEN_TRACKING_INFO] ?: false
+                _offlineMigrationNoticeShown.value = prefs[OFFLINE_MIGRATION_NOTICE_SHOWN] ?: false
                 _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
                 val rawUntil = prefs[LIVE_SHARE_UNTIL] ?: 0L
                 val effectiveUntil = if (rawUntil > currentTimeMillis()) rawUntil else 0L
@@ -344,6 +348,11 @@ class UserPreferences(
     fun markTrackingInfoSeen() {
         _hasSeenTrackingInfo.value = true
         scope.launch { dataStore.edit { it[HAS_SEEN_TRACKING_INFO] = true } }
+    }
+
+    fun markOfflineMigrationNoticeShown() {
+        _offlineMigrationNoticeShown.value = true
+        scope.launch { dataStore.edit { it[OFFLINE_MIGRATION_NOTICE_SHOWN] = true } }
     }
 
     fun confirmTrackingInfoAndEnable() {
@@ -560,6 +569,7 @@ class UserPreferences(
         private val NORTH_LOCKED = booleanPreferencesKey("north_locked")
         private val SELECTED_MAP_LAYER = stringPreferencesKey("selected_map_layer")
         private val HAS_SEEN_TRACKING_INFO = booleanPreferencesKey("has_seen_tracking_info")
+        private val OFFLINE_MIGRATION_NOTICE_SHOWN = booleanPreferencesKey("offline_migration_notice_shown")
         private val ONLINE_TRACKING_ENABLED = booleanPreferencesKey("online_tracking_enabled")
         // DataStore key string left as "always_share_until_millis" so existing
         // installs don't lose state on upgrade.

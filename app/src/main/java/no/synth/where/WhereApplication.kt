@@ -8,7 +8,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import no.synth.where.data.AndroidDownloadEngine
+import no.synth.where.data.MaplibreComposeDownloadEngine
+import no.synth.where.data.OfflineCoverage
+import no.synth.where.data.LegacyOfflineCache
+import no.synth.where.data.MapCacheLogWatcher
+import no.synth.where.data.OfflineMapGate
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.DownloadQueueManager
 import no.synth.where.data.LiveTrackingFollower
@@ -27,10 +31,6 @@ import no.synth.where.data.db.SqlDelightSavedPointDao
 import no.synth.where.data.db.SqlDelightTrackDao
 import no.synth.where.data.db.WhereDatabase
 import no.synth.where.util.CrashReporter
-import org.maplibre.android.MapLibre
-import org.maplibre.android.log.Logger
-import org.maplibre.android.offline.OfflineManager
-import org.maplibre.android.storage.FileSource
 import timber.log.Timber
 import java.io.File
 
@@ -73,7 +73,7 @@ class WhereApplication : Application() {
     }
     val downloadQueueManager by lazy {
         DownloadQueueManager(
-            engine = AndroidDownloadEngine(this),
+            engine = MaplibreComposeDownloadEngine(PlatformFile(cacheDir)),
             // Main.immediate so onActive() (startForegroundService) runs synchronously inside the
             // foreground enqueue click, satisfying the FGS start-from-foreground requirement.
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
@@ -111,31 +111,23 @@ class WhereApplication : Application() {
 
         CrashReporter.setEnabled(userPreferences.crashReportingEnabled.value)
 
-        Logger.setLoggerDefinition(MapLibreLogWatcher)
-        MapLibre.getInstance(this)
         OfflineTileReader.init(PlatformFile(cacheDir))
+        OfflineCoverage.cacheDir = PlatformFile(cacheDir)
+        LegacyOfflineCache.appContext = this
+        OfflineMapGate.configure()
         appScope.launch {
-            userPreferences.offlineModeEnabled.collect { OfflineTileReader.offlineOnly = it }
+            userPreferences.offlineModeEnabled.collect {
+                OfflineTileReader.offlineOnly = it
+                OfflineMapGate.enabled = it
+            }
         }
         onlineTrackingCoordinator.start()
 
-        val tilesDir = File(getExternalFilesDir(null), "maplibre-tiles")
-        if (!tilesDir.exists()) {
-            tilesDir.mkdirs()
+        // Give the maplibre-compose ambient cache far more room than the ~50 MB default so areas the
+        // user has panned over stay available offline.
+        appScope.launch {
+            runCatching { OfflineCoverage.setMaxAmbientCacheSize(MapCacheConfig.ambientCacheSizeBytes) }
         }
-
-        FileSource.setResourcesCachePath(tilesDir.absolutePath, object : FileSource.ResourcesCachePathChangeCallback {
-            override fun onSuccess(path: String) {
-                // Give the ambient cache (tiles auto-saved while browsing) far more room than
-                // MapLibre's 50 MB default, so areas the user has panned over stay available
-                // offline instead of being evicted after ~50 MB of browsing.
-                OfflineManager.getInstance(this@WhereApplication)
-                    .setMaximumAmbientCacheSize(MapCacheConfig.ambientCacheSizeBytes, object : OfflineManager.FileSourceCallback {
-                        override fun onSuccess() {}
-                        override fun onError(message: String) {}
-                    })
-            }
-            override fun onError(message: String) {}
-        })
+        MapCacheLogWatcher.install()
     }
 }
