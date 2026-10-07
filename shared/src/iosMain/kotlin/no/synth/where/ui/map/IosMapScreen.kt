@@ -17,7 +17,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.UIKitView
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -55,23 +56,25 @@ import no.synth.where.resources.track_discarded
 import no.synth.where.resources.track_saved
 import no.synth.where.resources.undo
 import no.synth.where.resources.zoom_in_for_paths
+import no.synth.where.ui.map.compose.WhereComposeMap
+import no.synth.where.ui.map.compose.WhereMapCallbacks
+import no.synth.where.ui.map.compose.WhereMapController
+import no.synth.where.ui.map.compose.WhereMapRenderData
 import no.synth.where.util.NamingUtils
+import org.maplibre.compose.location.IosHeadingProvider
+import org.maplibre.spatialk.units.Bearing
+import org.maplibre.spatialk.units.extensions.inDegrees
 import org.jetbrains.compose.resources.stringResource
+import platform.CoreLocation.CLLocation
 import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
-/** How often the current fix is checked for the speed that picks the heading reference. */
-private val HEADING_SOURCE_POLL = 2000.milliseconds
-
 /**
- * URL template for MapLibre `glyphs:` pointing at PBF files inside the iOS
- * app bundle's Fonts/ folder. The font stack name (no spaces) substitutes
- * directly into the path so no percent-decoding is needed by MapLibre's
- * file source. Built from `NSURL` so any spaces in the bundle path are
- * percent-encoded correctly.
+ * URL template for MapLibre `glyphs:` pointing at PBF files inside the iOS app bundle's Fonts/
+ * folder. Built from `NSURL` so spaces in the bundle path are percent-encoded correctly.
  */
 private fun iosBundleGlyphsUrl(): String {
     val fontsRoot = NSURL.fileURLWithPath("${NSBundle.mainBundle.bundlePath}/Fonts").absoluteString
@@ -80,10 +83,13 @@ private fun iosBundleGlyphsUrl(): String {
     return "$trimmed/{fontstack}/{range}.pbf"
 }
 
+@OptIn(ExperimentalForeignApi::class)
+private fun CLLocation.toLatLng(): LatLng = coordinate.useContents { LatLng(latitude, longitude) }
+
+/** The main map screen, running on the shared maplibre-compose map ([WhereComposeMap]). */
 @OptIn(FlowPreview::class)
 @Composable
 fun IosMapScreen(
-    mapViewProvider: MapViewProvider,
     viewingPoint: SavedPoint? = null,
     onClearViewingPoint: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
@@ -95,6 +101,8 @@ fun IosMapScreen(
     val userPreferences = remember { AppDependencies.userPreferences }
     val coordinator = remember { AppDependencies.onlineTrackingCoordinator }
     val locationTracker = remember { AppDependencies.locationTracker }
+    val controller = remember { WhereMapController() }
+    val headingProvider = remember { IosHeadingProvider() }
 
     var showLayerMenu by remember { mutableStateOf(false) }
     val currentLayer by userPreferences.selectedMapLayer.collectAsState()
@@ -112,35 +120,27 @@ fun IosMapScreen(
     val focusedTrackId by trackRepository.focusedTrackId.collectAsState()
     val navigation by trackRepository.navigation.collectAsState()
     val navigationChartVisible by trackRepository.navigationChartVisible.collectAsState()
-    // The navigated route in travel order (reversed when navigating in reverse) — feeds the altitude
-    // chart, its scrub marker, and the route tap-target. Keeps the session track's id, so tap
-    // routing still matches; only the point order flips so the chart reads left-to-right as "ahead".
     val navChartTrack = remember(navigation?.track?.id, navigation?.reversed) {
         navigation?.let { if (it.reversed) it.track.copy(points = it.track.points.reversed()) else it.track }
     }
-    // Read live: the tap callback below outlives its registration, and starting or stopping
-    // navigation changes neither remember key.
     val navChartTrackState = rememberUpdatedState(navChartTrack)
     val cropState by trackRepository.cropState.collectAsState()
     val cropUndo by trackRepository.cropUndo.collectAsState()
     val elevationMarker by trackRepository.elevationMarker.collectAsState()
-    // iOS has no background producer yet (see the Live Activity follow-up), so a foreground
-    // poller feeds the shared progress flow that the observer below and the banner read.
+
+    // The navigation line layers, produced by the shared progress observer and rendered reactively.
+    var navLayers by remember { mutableStateOf<NavigationLayers?>(null) }
+
     NavigationProgressPoller(
         session = navigation,
-        location = {
-            val loc = mapViewProvider.getUserLocation()
-            if (loc != null && loc.size >= 2) LatLng(loc[0], loc[1]) else null
-        },
+        location = { locationTracker.lastLocation?.toLatLng() },
         updateProgress = trackRepository::updateNavigationProgress,
     )
     val navigationProgress = rememberNavigationProgress(
         session = navigation,
         progress = trackRepository.navigationProgress,
-        onRenderLayers = { layers ->
-            mapViewProvider.updateNavigation(layers.completed, layers.remaining, layers.offCourse)
-        },
-        onClearLayers = { mapViewProvider.clearNavigation() },
+        onRenderLayers = { layers -> navLayers = layers },
+        onClearLayers = { navLayers = null },
     )
     val savedPoints by savedPointsRepository.savedPoints.collectAsState()
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
@@ -151,7 +151,6 @@ fun IosMapScreen(
     val liveTrackingFollower = remember { AppDependencies.liveTrackingFollower }
     val followState by liveTrackingFollower.state.collectAsState()
     val friendTrackGeoJson by liveTrackingFollower.friendTrackGeoJson.collectAsState()
-    // Shared points (issue #99): own ones from the coordinator, friends' from the follower.
     val mySharedPoints by coordinator.mySharedPoints.collectAsState()
     val canShare by coordinator.canShare.collectAsState()
     val friendSharedPoints by liveTrackingFollower.friendPoints.collectAsState()
@@ -164,8 +163,6 @@ fun IosMapScreen(
         clientNicknames
     )
 
-    // Prefs are the source of truth for who is followed; follow() is a no-op for an unchanged set
-    // and set of labels.
     LaunchedEffect(followedClientIds, clientNicknames) {
         liveTrackingFollower.follow(followedClientIds, clientNicknames)
     }
@@ -180,7 +177,7 @@ fun IosMapScreen(
         if (hasZoomedToFriend) return@LaunchedEffect
         val bounds = following.tracks.friendBounds() ?: return@LaunchedEffect
         hasZoomedToFriend = true
-        mapViewProvider.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
+        controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX.toDouble())
     }
 
     // Hoisted string resources for use in lambdas
@@ -197,7 +194,6 @@ fun IosMapScreen(
     val zoomInForPathsMsg = stringResource(Res.string.zoom_in_for_paths)
     val undoLabel = stringResource(Res.string.undo)
 
-    // After a crop overwrites the track, offer a one-tap undo of the (otherwise irreversible) change.
     LaunchedEffect(cropUndo) {
         if (cropUndo == null) return@LaunchedEffect
         val result = snackbarHostState.showSnackbar(
@@ -212,7 +208,6 @@ fun IosMapScreen(
     var trackNameInput by remember { mutableStateOf("") }
     var isResolvingTrackName by remember { mutableStateOf(false) }
 
-    // Stopping navigation is confirmed first so an active route isn't ended by an accidental tap.
     val stopNavConfirm = rememberStopNavigationConfirmState()
 
     // Search state
@@ -237,7 +232,6 @@ fun IosMapScreen(
         savePointDescription = ""
     }
 
-    // Shared points (issue #99): a point being relocated, and the own/friend point dialogs.
     var movingSharedPointId by remember { mutableStateOf<String?>(null) }
     var managingSharedPoint by remember { mutableStateOf<SharedPoint?>(null) }
     var friendPointDialog by remember { mutableStateOf<SharedPoint?>(null) }
@@ -246,10 +240,6 @@ fun IosMapScreen(
     var showPointInfoDialog by remember { mutableStateOf(false) }
     var clickedPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
-    // Track view state
-    // All visible track lines (viewing set + recording) as one data-driven FeatureCollection.
-    // The navigated track is excluded from the viewing set (it shows as the grey/blue split line),
-    // so any tracks here are the "other" tracks kept visible alongside it while navigating.
     val tracksGeoJson = remember(viewingTracks, focusedTrackId, currentTrack, cropState, navigation != null) {
         buildTracksGeoJson(
             renderableTracks(viewingTracks, focusedTrackId, currentTrack, cropState, navigating = navigation != null)
@@ -267,10 +257,6 @@ fun IosMapScreen(
     val northLocked by userPreferences.northLocked.collectAsState()
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var hasFix by remember { mutableStateOf(false) }
-    // Compass, course over ground, or holding the last course; decided by the fix's own speed.
-    var headingSource by remember { mutableStateOf(HeadingSource.COMPASS) }
-    // When the course was last the reference, so a stop knows how long it may keep pointing that way.
-    var followedCourseAt by remember { mutableStateOf<TimeMark?>(null) }
     val isLocating = locationTracker.hasPermission && !hasFix
     var twoFingerMeasurement by rememberAutoDismissingTwoFingerMeasurement()
 
@@ -290,6 +276,9 @@ fun IosMapScreen(
         )
     }
 
+    // Coordinate grid geojson, recomputed as the camera settles.
+    var coordGridGeoJson by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
         if (!locationTracker.hasPermission) {
             locationTracker.requestPermission()
@@ -301,53 +290,61 @@ fun IosMapScreen(
         onDispose { locationTracker.stopKeepAlive() }
     }
 
+    // Poll the current fix for the puck and location-dependent UI.
     LaunchedEffect(locationTracker) {
-        while (!hasFix) {
-            if (locationTracker.lastLocation != null) hasFix = true
-            else delay(1000.milliseconds)
-        }
-    }
-
-    // Follow the fix's own speed to decide whether "heading" means the compass or the course over
-    // ground, and re-apply only on a change so a steady drive never touches the tracking mode.
-    LaunchedEffect(Unit) {
         while (true) {
-            // Only a heading-following camera consumes the source. Advancing it in any other mode
-            // would let a drive leave the state on HELD, so engaging heading-follow while stopped
-            // would preserve whatever bearing is on screen instead of the honest compass.
-            if (cameraFollowMode == CameraFollowMode.FOLLOW_HEADING) {
-                val motion = mapViewProvider.getUserMotion()
-                val next = headingSourceFor(
-                    current = headingSource,
-                    speedMps = motion?.getOrNull(0)?.takeIf { it >= 0.0 },
-                    hasCourse = (motion?.getOrNull(1) ?: -1.0) >= 0.0,
-                    sinceCourse = followedCourseAt?.elapsedNow(),
-                )
-                if (next == HeadingSource.COURSE) followedCourseAt = TimeSource.Monotonic.markNow()
-                if (next != headingSource) {
-                    headingSource = next
-                    mapViewProvider.setCameraFollowMode(cameraFollowMode, next)
-                }
-            } else {
-                // Left heading-follow: forget the held course so the next engage starts fresh.
-                headingSource = HeadingSource.COMPASS
-                followedCourseAt = null
+            val loc = locationTracker.lastLocation
+            if (loc != null) {
+                hasFix = true
+                userLocation = loc.toLatLng()
             }
-            delay(HEADING_SOURCE_POLL)
+            delay(1000.milliseconds)
         }
     }
 
-    LaunchedEffect(offlineModeEnabled) {
-        mapViewProvider.setConnected(!offlineModeEnabled)
+    // FOLLOW: keep the puck centered, north up.
+    LaunchedEffect(cameraFollowMode, userLocation) {
+        if (cameraFollowMode != CameraFollowMode.FOLLOW) return@LaunchedEffect
+        val loc = userLocation ?: return@LaunchedEffect
+        controller.follow(loc.latitude, loc.longitude, 0.0)
     }
 
-    // North lock: block the rotate gesture and straighten a map already turned off north.
-    LaunchedEffect(northLocked) {
-        mapViewProvider.setRotationEnabled(!northLocked)
+    // FOLLOW_HEADING: center on the puck and rotate the map. The bearing follows the device compass
+    // when on foot/stationary, but switches to the fix's course over ground while travelling (a
+    // vehicle's magnetization throws the compass off by tens of degrees); a brief stop HELDs the
+    // last course. See headingSourceFor / HeadingSource.
+    val latestLoc = rememberUpdatedState(userLocation)
+    var compassBearing by remember { mutableStateOf<Double?>(null) }
+    var headingSource by remember { mutableStateOf(HeadingSource.COMPASS) }
+    var followedCourseAt by remember { mutableStateOf<TimeMark?>(null) }
+    LaunchedEffect(cameraFollowMode) {
+        if (cameraFollowMode != CameraFollowMode.FOLLOW_HEADING) return@LaunchedEffect
+        headingProvider.updates().collect { compassBearing = (it.bearing - Bearing.North).inDegrees }
     }
-
-    // Recording / live sharing drive the location stream from IosApp, which outlives this screen.
-    val isLiveSharing by coordinator.isLiveSharing.collectAsState()
+    LaunchedEffect(cameraFollowMode) {
+        if (cameraFollowMode != CameraFollowMode.FOLLOW_HEADING) {
+            headingSource = HeadingSource.COMPASS
+            followedCourseAt = null
+            return@LaunchedEffect
+        }
+        while (true) {
+            val fix = locationTracker.lastLocation
+            val speed = fix?.speed?.takeIf { it >= 0.0 }
+            val course = fix?.course?.takeIf { it >= 0.0 }
+            val source = headingSourceFor(headingSource, speed, course != null, followedCourseAt?.elapsedNow())
+            if (source == HeadingSource.COURSE) followedCourseAt = TimeSource.Monotonic.markNow()
+            headingSource = source
+            // Keep centering on every fix; HELD (or a missing reading) keeps the current bearing.
+            val bearing = when (source) {
+                HeadingSource.COURSE -> course
+                HeadingSource.COMPASS -> compassBearing
+                HeadingSource.HELD -> null
+            } ?: controller.cameraBearing
+            val loc = latestLoc.value
+            if (loc != null) controller.follow(loc.latitude, loc.longitude, bearing)
+            delay(500.milliseconds)
+        }
+    }
 
     // Debounced search
     LaunchedEffect(Unit) {
@@ -366,81 +363,10 @@ fun IosMapScreen(
             }
     }
 
-    // Camera move callback for crosshair and grid
-    DisposableEffect(Unit) {
-        mapViewProvider.setOnCameraMoveCallback(object : MapCameraMoveCallback {
-            override fun onCameraMove(latitude: Double, longitude: Double, zoom: Double, bearing: Double) {
-                centerLatLng = LatLng(latitude, longitude)
-                cameraZoom = zoom
-                cameraBearing = bearing
-            }
-        })
-        onDispose { mapViewProvider.setOnCameraMoveCallback(null) }
-    }
-
-    // Reflect gesture-driven follow changes (e.g. panning drops back to OFF) in the FAB state.
-    DisposableEffect(Unit) {
-        mapViewProvider.setOnTrackingModeCallback(object : MapTrackingModeCallback {
-            override fun onTrackingModeChanged(mode: CameraFollowMode) {
-                cameraFollowMode = mode
-            }
-        })
-        onDispose { mapViewProvider.setOnTrackingModeCallback(null) }
-    }
-
-    // Two-finger tap callback for distance measurement
-    DisposableEffect(Unit) {
-        mapViewProvider.setOnTwoFingerTapCallback( { lat1, lng1, lat2, lng2 ->
-            val ll1 = LatLng(lat1, lng1)
-            val ll2 = LatLng(lat2, lng2)
-            twoFingerMeasurement = TwoFingerMeasurement(lat1, lng1, lat2, lng2, ll1.distanceTo(ll2))
-        })
-        onDispose { mapViewProvider.setOnTwoFingerTapCallback(null) }
-    }
-
-    // Initialize center position when crosshair is activated
-    LaunchedEffect(crosshairActive) {
-        if (crosshairActive && centerLatLng == null) {
-            val center = mapViewProvider.getCameraCenter()
-            if (center != null && center.size >= 2) {
-                centerLatLng = LatLng(center[0], center[1])
-            }
-        }
-    }
-
-    // Update user location periodically while crosshair is active
-    LaunchedEffect(crosshairActive) {
-        if (!crosshairActive) {
-            userLocation = null
-            return@LaunchedEffect
-        }
-        while (true) {
-            val loc = mapViewProvider.getUserLocation()
-            if (loc != null && loc.size >= 2) {
-                userLocation = LatLng(loc[0], loc[1])
-            }
-            delay(3000.milliseconds)
-        }
-    }
-
-    // Debounced terrain info fetch
-    LaunchedEffect(crosshairActive, centerLatLng) {
-        val latLng = centerLatLng ?: return@LaunchedEffect
-        if (!crosshairActive) return@LaunchedEffect
-        crosshairInfo = CrosshairInfo(isLoading = true)
-        delay(500.milliseconds)
-        val info = TerrainClient.getTerrainInfo(latLng)
-        crosshairInfo = if (info != null) {
-            CrosshairInfo(elevation = info.elevation, slopeDegrees = info.slopeDegrees)
-        } else {
-            CrosshairInfo()
-        }
-    }
-
     // Coordinate grid overlay
     LaunchedEffect(showCoordGrid, coordFormat) {
         if (!showCoordGrid) {
-            mapViewProvider.clearCoordGrid()
+            coordGridGeoJson = null
             return@LaunchedEffect
         }
         snapshotFlow { Pair(centerLatLng, cameraZoom) }
@@ -448,67 +374,54 @@ fun IosMapScreen(
             .collect { (center, zoom) ->
                 val lat = center?.latitude ?: return@collect
                 val lng = center.longitude
-                val geoJson = withContext(Dispatchers.Default) {
+                coordGridGeoJson = withContext(Dispatchers.Default) {
                     CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat)
                 }
-                mapViewProvider.updateCoordGrid(geoJson)
             }
     }
 
     // Animate camera to viewing point
     LaunchedEffect(viewingPoint) {
         if (viewingPoint != null) {
-            mapViewProvider.setCamera(
-                latitude = viewingPoint.latLng.latitude,
-                longitude = viewingPoint.latLng.longitude,
-                zoom = 15.0
-            )
+            controller.setCamera(viewingPoint.latLng.latitude, viewingPoint.latLng.longitude, zoom = 15.0)
         }
-    }
-
-    // Render every visible track line from the shared data-driven FeatureCollection.
-    LaunchedEffect(tracksGeoJson) {
-        mapViewProvider.updateTracks(tracksGeoJson)
     }
 
     val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks, navChartTrack) {
         buildElevationMarkerGeoJson(viewingTracks, focusedTrackId, navChartTrack, elevationMarker)
     }
-    LaunchedEffect(elevationMarkerGeoJson) {
-        mapViewProvider.updateElevationMarker(elevationMarkerGeoJson)
-    }
 
-    // Fit the camera whenever the viewing set changes, but not on tap-focus (focusedTrackId is
-    // deliberately not a key). Opening a single track focuses it, so zoom to that track; a bulk
-    // multi-select clears focus, so fit the union of the whole set.
+    // Fit the camera whenever the viewing set changes, but not on tap-focus.
     LaunchedEffect(viewingTracks) {
-        if (navigation != null) return@LaunchedEffect   // the camera follows the user while navigating
+        if (navigation != null) return@LaunchedEffect
         val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
-        mapViewProvider.animateToBounds(bounds)
+        controller.animateToBounds(bounds)
     }
 
-    LaunchedEffect(twoFingerMeasurement) {
-        val m = twoFingerMeasurement
-        if (m != null) {
-            mapViewProvider.updateMeasurement(buildMeasurementLineGeoJson(m), buildMeasurementPointsGeoJson(m))
-        } else {
-            mapViewProvider.fadeMeasurement(TwoFingerTap.FADE_OUT_MS.toDouble())
-            delay(TwoFingerTap.FADE_OUT_MS.milliseconds)
-            mapViewProvider.clearMeasurement()
-        }
-    }
+    // Recording / live sharing drive the location stream from IosApp, which outlives this screen.
+    val isLiveSharing by coordinator.isLiveSharing.collectAsState()
 
-    // Set gesture callbacks
-    LaunchedEffect(Unit) {
-        mapViewProvider.setOnLongPressCallback(object : MapLongPressCallback {
-            override fun onLongPress(latitude: Double, longitude: Double) {
-                if (rulerState.isActive) return
-                val latLng = LatLng(latitude, longitude)
+    // Map tap and long-press routing.
+    val mapCallbacks = remember {
+        WhereMapCallbacks(
+            onUserGesture = { cameraFollowMode = CameraFollowMode.OFF },
+            onTwoFingerTap = { ll1, ll2 ->
+                twoFingerMeasurement = TwoFingerMeasurement(
+                    ll1.latitude, ll1.longitude, ll2.latitude, ll2.longitude, ll1.distanceTo(ll2)
+                )
+            },
+            onCameraMove = { center, zoom, bearing ->
+                centerLatLng = center
+                cameraZoom = zoom
+                cameraBearing = bearing
+            },
+            onLongPress = { latLng ->
+                if (rulerState.isActive) return@WhereMapCallbacks
                 val movingId = movingSharedPointId
                 if (movingId != null) {
                     coordinator.moveSharedPoint(movingId, latLng)
                     movingSharedPointId = null
-                    return
+                    return@WhereMapCallbacks
                 }
                 savePointLatLng = latLng
                 savePointName = ""
@@ -518,25 +431,21 @@ fun IosMapScreen(
                 scope.launch {
                     val name = GeocodingHelper.reverseGeocode(latLng)
                     if (name != null && savePointName.isBlank()) {
-                        savePointName = NamingUtils.makeUnique(
-                            name, savedPoints.map { it.name }
-                        )
+                        savePointName = NamingUtils.makeUnique(name, savedPoints.map { it.name })
                     }
                     isResolvingPointName = false
                 }
-            }
-        })
-        mapViewProvider.setOnMapClickCallback(object : MapClickCallback {
-            override fun onMapClick(latitude: Double, longitude: Double) {
+            },
+            onMapClick = { latLng ->
                 if (twoFingerMeasurement != null) {
                     twoFingerMeasurement = null
                 }
                 if (rulerState.isActive) {
-                    rulerState = rulerState.addPoint(LatLng(latitude, longitude))
-                    return
+                    rulerState = rulerState.addPoint(latLng)
+                    return@WhereMapCallbacks
                 }
                 val target = resolveMapTap(
-                    tap = LatLng(latitude, longitude),
+                    tap = latLng,
                     zoom = cameraZoom,
                     savedPoints = savedPoints,
                     viewingTracks = viewingTracks,
@@ -557,9 +466,59 @@ fun IosMapScreen(
                     MapTapTarget.OutsideTracks -> trackRepository.onMapTapOutsideTracks()
                     MapTapTarget.Nothing -> {}
                 }
-            }
-        })
+            },
+        )
     }
+
+    // All overlay GeoJSON for the reactive renderer.
+    val savedPointsJson = remember(showSavedPoints, savedPoints) {
+        if (showSavedPoints && savedPoints.isNotEmpty()) buildSavedPointsGeoJson(savedPoints) else null
+    }
+    val mySharedPointsJson = remember(mySharedPoints) {
+        if (mySharedPoints.isNotEmpty()) buildSharedPointsGeoJson(mySharedPoints) else null
+    }
+    val searchResultsJson = remember(searchResults) {
+        if (searchResults.isNotEmpty()) buildSearchResultsGeoJson(searchResults) else null
+    }
+    val searchHighlightJson = remember(highlightedSearchResult) {
+        highlightedSearchResult?.let { buildSearchResultsGeoJson(listOf(it)) }
+    }
+    // null (not an empty-coordinates LineString, which maplibre rejects and so keeps the old line)
+    // so the reactive source clears to an empty FeatureCollection when the ruler is cleared.
+    val rulerLineJson = remember(rulerState) {
+        if (rulerState.points.size >= 2) buildRulerLineGeoJson(rulerState.points) else null
+    }
+    val rulerPointsJson = remember(rulerState) {
+        if (rulerState.points.isNotEmpty()) buildRulerPointsGeoJson(rulerState.points) else null
+    }
+    val measurementLineJson = remember(twoFingerMeasurement) {
+        twoFingerMeasurement?.let { buildMeasurementLineGeoJson(it) }
+    }
+    val measurementPointsJson = remember(twoFingerMeasurement) {
+        twoFingerMeasurement?.let { buildMeasurementPointsGeoJson(it) }
+    }
+
+    val renderData = WhereMapRenderData(
+        styleJson = styleJson,
+        initialZoom = 5.0,
+        tracksGeoJson = tracksGeoJson,
+        elevationMarkerGeoJson = elevationMarkerGeoJson,
+        savedPointsGeoJson = savedPointsJson,
+        friendTrackGeoJson = friendTrackGeoJson,
+        mySharedPointsGeoJson = mySharedPointsJson,
+        friendSharedPointsGeoJson = friendPointsGeoJson,
+        searchResultsGeoJson = searchResultsJson,
+        searchHighlightGeoJson = searchHighlightJson,
+        rulerLineGeoJson = rulerLineJson,
+        rulerPointsGeoJson = rulerPointsJson,
+        measurementLineGeoJson = measurementLineJson,
+        measurementPointsGeoJson = measurementPointsJson,
+        coordGridGeoJson = coordGridGeoJson,
+        navCompletedGeoJson = navLayers?.completed,
+        navRemainingGeoJson = navLayers?.remaining,
+        navOffCourseGeoJson = navLayers?.offCourse,
+        userLocation = userLocation,
+    )
 
     if (showStopTrackDialog) {
         MapDialogs.StopTrackDialog(
@@ -567,7 +526,6 @@ fun IosMapScreen(
             onTrackNameChange = { trackNameInput = it },
             onDiscard = {
                 trackRepository.discardRecording()
-                mapViewProvider.clearTrackLine()
                 showStopTrackDialog = false
                 trackNameInput = ""
                 scope.launch { snackbarHostState.showSnackbar(trackDiscardedMsg) }
@@ -579,7 +537,6 @@ fun IosMapScreen(
                     trackRepository.renameTrack(current, name)
                 }
                 trackRepository.stopRecording()
-                mapViewProvider.clearTrackLine()
                 showStopTrackDialog = false
                 trackNameInput = ""
                 scope.launch { snackbarHostState.showSnackbar(trackSavedMsg) }
@@ -595,9 +552,6 @@ fun IosMapScreen(
         state = stopNavConfirm,
         isNavigating = navigation != null,
         onConfirm = {
-            // The shared render effect clears the nav layers when the session ends. Don't clear the
-            // track line: stopNavigation() puts the navigated track back in the viewing set (focused),
-            // so the reactive updateTracks() render redraws it in detail mode.
             trackRepository.stopNavigation()
         }
     )
@@ -741,7 +695,6 @@ fun IosMapScreen(
                 if (name.isNotBlank()) {
                     trackRepository.createTrackFromPoints(name, rulerState.points)
                     rulerState = rulerState.clear()
-                    mapViewProvider.clearRuler()
                 }
                 showSaveRulerAsTrackDialog = false
                 rulerTrackName = ""
@@ -752,6 +705,20 @@ fun IosMapScreen(
                 rulerTrackName = ""
             }
         )
+    }
+
+    // Debounced terrain info fetch (crosshair)
+    LaunchedEffect(crosshairActive, centerLatLng) {
+        val latLng = centerLatLng ?: return@LaunchedEffect
+        if (!crosshairActive) return@LaunchedEffect
+        crosshairInfo = CrosshairInfo(isLoading = true)
+        delay(500.milliseconds)
+        val info = TerrainClient.getTerrainInfo(latLng)
+        crosshairInfo = if (info != null) {
+            CrosshairInfo(elevation = info.elevation, slopeDegrees = info.slopeDegrees)
+        } else {
+            CrosshairInfo()
+        }
     }
 
     MapScreenContent(
@@ -789,16 +756,12 @@ fun IosMapScreen(
         onElevationScrub = { trackRepository.setElevationMarker(it) },
         mapBearing = cameraBearing,
         northLocked = northLocked,
-        // Only reachable with the camera free (see compassTapAction), so there is no follow mode
-        // for the animation to cancel.
-        onResetNorth = { mapViewProvider.resetNorth() },
+        onResetNorth = { controller.resetNorth() },
         onToggleNorthLock = {
             if (!northLocked) {
                 val next = cameraFollowMode.withoutHeading()
-                if (next != cameraFollowMode) {
-                    cameraFollowMode = next
-                    mapViewProvider.setCameraFollowMode(next, headingSource)
-                }
+                if (next != cameraFollowMode) cameraFollowMode = next
+                controller.resetNorth() // straighten a map that is already turned off north
             }
             userPreferences.updateNorthLocked(!northLocked)
         },
@@ -823,8 +786,6 @@ fun IosMapScreen(
         onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!waymarkedTrails) },
         onOsmPathsToggle = {
             userPreferences.updateShowOsmPaths(!osmPaths)
-            // The source carries no complete path data below OSM_PATHS_MIN_ZOOM, so say so rather
-            // than leaving a checked menu item that draws nothing.
             if (!osmPaths && cameraZoom < MapStyle.OSM_PATHS_MIN_ZOOM) {
                 scope.launch { snackbarHostState.showSnackbar(zoomInForPathsMsg) }
             }
@@ -878,11 +839,7 @@ fun IosMapScreen(
         },
         cameraFollowMode = cameraFollowMode,
         onMyLocationClick = {
-            // Cycle OFF -> FOLLOW -> FOLLOW_HEADING; the provider centers/rotates via the map's
-            // user tracking mode. Panning by hand reports back through the tracking-mode callback.
-            val next = cameraFollowMode.next(northLocked)
-            cameraFollowMode = next
-            mapViewProvider.setCameraFollowMode(next, headingSource)
+            cameraFollowMode = cameraFollowMode.next(northLocked)
         },
         onRulerToggle = {
             val measurement = twoFingerMeasurement
@@ -890,7 +847,6 @@ fun IosMapScreen(
                 twoFingerMeasurement = null
                 rulerState.activatedWith(measurement.endpoints)
             } else if (rulerState.isActive) {
-                mapViewProvider.clearRuler()
                 rulerState.clear()
             } else {
                 rulerState.copy(isActive = true)
@@ -899,13 +855,12 @@ fun IosMapScreen(
         onSettingsClick = onSettingsClick,
         onOfflineIndicatorClick = onOfflineIndicatorClick,
         onOnlineTrackingClick = onOnlineTrackingClick,
-        onZoomIn = { mapViewProvider.zoomIn() },
-        onZoomOut = { mapViewProvider.zoomOut() },
+        onZoomIn = { controller.zoomIn() },
+        onZoomOut = { controller.zoomOut() },
         onRulerUndo = {
             rulerState = rulerState.removeLastPoint()
         },
         onRulerClear = {
-            mapViewProvider.clearRuler()
             rulerState = rulerState.clear()
         },
         onRulerSaveAsTrack = {
@@ -952,11 +907,7 @@ fun IosMapScreen(
         onSearchQueryChange = { searchQuery = it },
         onSearchResultClick = { result ->
             highlightedSearchResult = null
-            mapViewProvider.setCamera(
-                latitude = result.latLng.latitude,
-                longitude = result.latLng.longitude,
-                zoom = 14.0
-            )
+            controller.setCamera(result.latLng.latitude, result.latLng.longitude, zoom = 14.0)
             userPreferences.addSearchHistoryEntry(result)
             showSearch = false
             searchQuery = ""
@@ -965,10 +916,7 @@ fun IosMapScreen(
         onSearchResultHover = { result ->
             highlightedSearchResult = result
             if (result != null) {
-                mapViewProvider.panTo(
-                    latitude = result.latLng.latitude,
-                    longitude = result.latLng.longitude
-                )
+                controller.panTo(result.latLng.latitude, result.latLng.longitude)
             }
         },
         onSearchClose = {
@@ -982,83 +930,19 @@ fun IosMapScreen(
         onFollowBannerClick = { clientId ->
             val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
             val bounds = following.tracks.friendBounds(clientId) ?: return@MapScreenContent
-            mapViewProvider.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
+            controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX.toDouble())
         },
         onStopFollowing = { stopFollowingAll(userPreferences, liveTrackingFollower) },
         isMovingSharedPoint = movingSharedPointId != null,
         onCancelMovePoint = { movingSharedPointId = null },
         mapContent = {
-            UIKitView(
-                factory = { mapViewProvider.createMapView() },
+            WhereComposeMap(
+                data = renderData,
                 modifier = Modifier.fillMaxSize(),
-                update = {
-                    mapViewProvider.setStyle(styleJson)
-                    mapViewProvider.setShowsUserLocation(true)
-
-                    // All track lines (viewing set + recording) from the shared data-driven
-                    // FeatureCollection; the navigated route is excluded (drawn as the split line),
-                    // while other viewed tracks stay visible (dimmed) alongside it.
-                    mapViewProvider.updateTracks(tracksGeoJson)
-
-                    // Friend track rendering
-                    val friendGeoJson = friendTrackGeoJson
-                    if (friendGeoJson != null) {
-                        mapViewProvider.updateFriendTrackLine(friendGeoJson)
-                    } else {
-                        mapViewProvider.clearFriendTrackLine()
-                    }
-
-                    // Saved points rendering
-                    if (showSavedPoints && savedPoints.isNotEmpty()) {
-                        val geoJson = buildSavedPointsGeoJson(savedPoints)
-                        mapViewProvider.updateSavedPoints(geoJson)
-                    } else {
-                        mapViewProvider.clearSavedPoints()
-                    }
-
-                    // Shared points (issue #99): own ones and followed friends'.
-                    if (mySharedPoints.isNotEmpty()) {
-                        mapViewProvider.updateMySharedPoints(buildSharedPointsGeoJson(mySharedPoints))
-                    } else {
-                        mapViewProvider.clearMySharedPoints()
-                    }
-                    val friendPoints = friendPointsGeoJson
-                    if (friendPoints != null) {
-                        mapViewProvider.updateFriendSharedPoints(friendPoints)
-                    } else {
-                        mapViewProvider.clearFriendSharedPoints()
-                    }
-
-                    // Search results rendering
-                    if (searchResults.isNotEmpty()) {
-                        val geoJson = buildSearchResultsGeoJson(searchResults)
-                        mapViewProvider.updateSearchResults(geoJson)
-                    } else {
-                        mapViewProvider.clearSearchResults()
-                    }
-
-                    // Search result highlight
-                    val highlighted = highlightedSearchResult
-                    if (highlighted != null) {
-                        val highlightGeoJson = buildSearchResultsGeoJson(listOf(highlighted))
-                        mapViewProvider.highlightSearchResult(highlightGeoJson)
-                    } else {
-                        mapViewProvider.clearHighlightedSearchResult()
-                    }
-
-                    // Ruler rendering
-                    if (rulerState.points.isNotEmpty()) {
-                        val pointsGeoJson = buildRulerPointsGeoJson(rulerState.points)
-                        val lineGeoJson = if (rulerState.points.size >= 2) {
-                            buildRulerLineGeoJson(rulerState.points)
-                        } else {
-                            """{"type":"Feature","geometry":{"type":"LineString","coordinates":[]}}"""
-                        }
-                        mapViewProvider.updateRuler(lineGeoJson, pointsGeoJson)
-                    } else {
-                        mapViewProvider.clearRuler()
-                    }
-                }
+                controller = controller,
+                callbacks = mapCallbacks,
+                rotateEnabled = !northLocked,
+                attributionVisible = !crosshairActive,
             )
         }
     )
