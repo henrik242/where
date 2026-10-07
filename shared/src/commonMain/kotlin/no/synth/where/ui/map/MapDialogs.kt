@@ -133,6 +133,25 @@ object MapDialogs {
     }
 
     @Composable
+    fun OfflineMigrationDialog(onDismiss: () -> Unit) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(stringResource(Res.string.offline_migration_title)) },
+            text = {
+                Text(
+                    text = stringResource(Res.string.offline_migration_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.offline_migration_ok))
+                }
+            },
+        )
+    }
+
+    @Composable
     fun BackgroundLocationDisclosureDialog(
         onAllow: () -> Unit,
         onDeny: () -> Unit

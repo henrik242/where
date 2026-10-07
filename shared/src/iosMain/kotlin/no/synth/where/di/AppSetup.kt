@@ -77,9 +77,17 @@ fun startApp() {
     val cachePaths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
     val cacheDir = requireNotNull((cachePaths.first() as NSURL).path) { "Caches directory not found" }
     OfflineTileReader.init(PlatformFile(cacheDir))
+    no.synth.where.data.OfflineCoverage.cacheDir = PlatformFile(cacheDir)
+    no.synth.where.data.MapCacheLogWatcher.install()
+    no.synth.where.data.OfflineMapGate.configure()
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     appScope.launch {
-        AppDependencies.userPreferences.offlineModeEnabled.collect { OfflineTileReader.offlineOnly = it }
+        AppDependencies.userPreferences.offlineModeEnabled.collect { OfflineTileReader.offlineOnly = it; no.synth.where.data.OfflineMapGate.enabled = it }
+    }
+    appScope.launch {
+        runCatching {
+            no.synth.where.data.OfflineCoverage.setMaxAmbientCacheSize(no.synth.where.data.MapCacheConfig.ambientCacheSizeBytes)
+        }
     }
 
     CrashReporter.setEnabled(AppDependencies.userPreferences.crashReportingEnabled.value)

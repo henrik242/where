@@ -409,4 +409,7 @@
         <item quantity="one">%1$d file had no points</item>
         <item quantity="other">%1$d files had no points</item>
     </plurals>
+    <string name="offline_migration_title">Offline maps need re-downloading</string>
+    <string name="offline_migration_message">This update switched to a new map engine, so previously downloaded offline areas can no longer be read and have been cleared. Open the download screen to download the areas you need again.</string>
+    <string name="offline_migration_ok">Got it</string>
 </resources>
