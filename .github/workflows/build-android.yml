@@ -22,6 +22,13 @@ on:
       - 'gradlew'
   workflow_dispatch:
 
+# Resolve the interim forked maplibre-compose (0.19.0-where1) from the fork's GitHub Packages.
+# A classic PAT with read:packages, stored as the MAPLIBRE_FORK_TOKEN secret (the built-in
+# GITHUB_TOKEN cannot read another repo's packages). See settings.gradle.kts WhereForkPackages.
+env:
+  MAPLIBRE_FORK_USER: henrik242
+  MAPLIBRE_FORK_TOKEN: ${{ secrets.MAPLIBRE_FORK_TOKEN }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
