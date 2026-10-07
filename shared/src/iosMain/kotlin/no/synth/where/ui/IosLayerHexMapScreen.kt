@@ -12,11 +12,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.UIKitView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.sin
@@ -34,17 +35,17 @@ import no.synth.where.data.forHex
 import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.data.summary
-import no.synth.where.ui.map.MapClickCallback
-import no.synth.where.ui.map.MapViewProvider
+import no.synth.where.ui.map.compose.HexComposeMap
+import no.synth.where.ui.map.compose.WhereMapController
 
 // Static bounds covering Norway (used to pre-generate the hex grid)
 private val NORWAY_BOUNDS = LatLngBounds(south = 56.0, west = 3.0, north = 72.0, east = 32.0)
 
+@OptIn(ExperimentalForeignApi::class)
 @Composable
 fun IosLayerHexMapScreen(
     layerId: String,
     onBackClick: () -> Unit,
-    hexMapViewProvider: MapViewProvider,
     downloadManager: IosMapDownloadManager,
     downloadElevationData: Boolean = true,
     downloadMaxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
@@ -55,6 +56,24 @@ fun IosLayerHexMapScreen(
     val scope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     val queue by downloadManager.queue.collectAsState()
+    val controller = remember { WhereMapController() }
+    val locationTracker = remember { no.synth.where.di.AppDependencies.locationTracker }
+    var downloadingOpacity by remember { mutableStateOf(0.4f) }
+    var userLocation by remember { mutableStateOf<no.synth.where.data.geo.LatLng?>(null) }
+    // IosMapScreen stopped the tracker keep-alive on dispose, so drive it here too or lastLocation
+    // stays frozen while the picker is open.
+    DisposableEffect(Unit) {
+        locationTracker.startKeepAlive()
+        onDispose { locationTracker.stopKeepAlive() }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            userLocation = locationTracker.lastLocation?.coordinate?.useContents {
+                no.synth.where.data.geo.LatLng(latitude, longitude)
+            }
+            delay(2000)
+        }
+    }
 
     val effectiveMaxZoom = DownloadLayers.effectiveMaxZoom(layerId, downloadMaxZoom)
 
@@ -79,62 +98,59 @@ fun IosLayerHexMapScreen(
     // downloadingHexId re-runs both when a download starts AND when it completes
     // (downloadingHexId → null). When not actively downloading, retry with a short
     // delay because MLNOfflineStorage.packs loads asynchronously on the Swift side.
+    // Refresh the downloaded-hex set when a download starts/finishes. Packs may not be ready yet on
+    // first call or right after a download completes, so retry once after a short delay.
     LaunchedEffect(refreshTrigger, downloadingIds) {
         downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
         if (downloadingIds.isEmpty()) {
-            // Packs may not be ready yet on first call or right after download completes
             delay(500)
             downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
         }
-        val hexGeoJson = buildHexGeoJson(allHexes, downloadedHexIds, downloadingIds)
-        hexMapViewProvider.setStyle(buildHexMapStyle(layerId, hexGeoJson))
-        hexMapViewProvider.setShowsUserLocation(true)
+    }
+
+    val hexGeoJson = remember(downloadedHexIds, downloadingIds) {
+        buildHexGeoJson(allHexes, downloadedHexIds, downloadingIds)
     }
 
     // Pulse the "downloading" hex fill while something is in progress. Gated to STARTED so the
-    // 80ms tick loop does not keep running while the app is backgrounded (the location background
-    // mode keeps the process scheduled during a recording).
+    // 80ms tick loop does not keep running while the app is backgrounded.
     LaunchedEffect(downloadingIds.isEmpty()) {
-        if (downloadingIds.isEmpty()) return@LaunchedEffect
+        if (downloadingIds.isEmpty()) {
+            downloadingOpacity = 0.4f
+            return@LaunchedEffect
+        }
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             var phase = 0.0
             while (isActive) {
-                hexMapViewProvider.setHexDownloadingOpacity(0.35 + 0.2 * sin(phase))
+                downloadingOpacity = (0.35 + 0.2 * sin(phase)).toFloat()
                 phase += 0.35
                 delay(80)
             }
         }
     }
 
-    DisposableEffect(Unit) {
-        hexMapViewProvider.setOnMapClickCallback(object : MapClickCallback {
-            override fun onMapClick(latitude: Double, longitude: Double) {
-                val hex = HexGrid.hexAtPoint(latitude, longitude)
-                if (selectedHex == hex) {
-                    selectedHex = null
-                    selectedHexInfo = null
-                    selectedHexName = null
-                    isLoadingHexName = false
-                } else {
-                    selectedHex = hex
-                    selectedHexInfo = null
-                    selectedHexName = null
-                    isLoadingHexName = true
-                    scope.launch {
-                        selectedHexInfo = downloadManager.getRegionTileInfo(
-                            HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom
-                        )
-                    }
-                    scope.launch {
-                        val center = HexGrid.hexCenter(hex)
-                        selectedHexName = GeocodingHelper.reverseGeocodeArea(center)
-                        isLoadingHexName = false
-                    }
-                }
+    val onHexTap: (no.synth.where.data.geo.LatLng) -> Unit = { latLng ->
+        val hex = HexGrid.hexAtPoint(latLng.latitude, latLng.longitude)
+        if (selectedHex == hex) {
+            selectedHex = null
+            selectedHexInfo = null
+            selectedHexName = null
+            isLoadingHexName = false
+        } else {
+            selectedHex = hex
+            selectedHexInfo = null
+            selectedHexName = null
+            isLoadingHexName = true
+            scope.launch {
+                selectedHexInfo = downloadManager.getRegionTileInfo(
+                    HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom
+                )
             }
-        })
-        onDispose {
-            hexMapViewProvider.setOnMapClickCallback(null)
+            scope.launch {
+                val center = HexGrid.hexCenter(hex)
+                selectedHexName = GeocodingHelper.reverseGeocodeArea(center)
+                isLoadingHexName = false
+            }
         }
     }
 
@@ -203,8 +219,8 @@ fun IosLayerHexMapScreen(
                 }
             }
         },
-        onZoomIn = { hexMapViewProvider.zoomIn() },
-        onZoomOut = { hexMapViewProvider.zoomOut() },
+        onZoomIn = { controller.zoomIn() },
+        onZoomOut = { controller.zoomOut() },
         onOfflineChipClick = onOfflineChipClick,
         onQueueChipClick = onQueueChipClick,
         onDismissDelete = { showDeleteDialog = false },
@@ -214,9 +230,14 @@ fun IosLayerHexMapScreen(
             selectedHexName = null
         },
         mapContent = {
-            UIKitView(
-                factory = { hexMapViewProvider.createMapView() },
-                modifier = Modifier.fillMaxSize()
+            HexComposeMap(
+                layerId = layerId,
+                hexGeoJson = hexGeoJson,
+                downloadingOpacity = downloadingOpacity,
+                modifier = Modifier.fillMaxSize(),
+                controller = controller,
+                userLocation = userLocation,
+                onMapClick = onHexTap,
             )
         }
     )

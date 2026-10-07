@@ -1,6 +1,8 @@
 package no.synth.where.data
 
 expect class PlatformFile {
+    /** Filesystem path, for building a `file://` URL. */
+    val path: String
     fun exists(): Boolean
     fun readText(): String
     fun readBytes(): ByteArray

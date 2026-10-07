@@ -142,6 +142,8 @@ kotlin {
             implementation(libs.compose.material3)
             implementation(libs.kmp.zip)
             api(libs.compose.components.resources)
+            implementation(libs.maplibre.compose)
+            api(libs.maplibre.compose.location)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -158,11 +160,13 @@ kotlin {
             implementation(libs.androidx.material3)
             api(libs.ktor.client.okhttp)
             api(libs.timber)
-            api(libs.maplibre.android.sdk)
             implementation(libs.play.services.location)
             api(project.dependencies.platform(libs.firebase.bom))
             api(libs.firebase.crashlytics)
+            // Captures native (maplibre-native) crashes, which the JVM reporter misses.
+            api(libs.firebase.crashlytics.ndk)
             implementation(libs.sqldelight.android.driver)
+            runtimeOnly(libs.maplibre.compose.runtime.vulkan.android)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

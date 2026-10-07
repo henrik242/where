@@ -43,10 +43,6 @@ fun WhereApp(
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
 
-    LaunchedEffect(offlineModeEnabled) {
-        org.maplibre.android.MapLibre.setConnected(!offlineModeEnabled)
-    }
-
     // A live share outlives the process — its deadline is in prefs — but the foreground service
     // that feeds the coordinator does not, so after a force-stop, a reboot or an OEM battery kill
     // the countdown keeps ticking while nothing is sent. Restarting it is gated on RESUMED because
@@ -205,6 +201,20 @@ fun WhereApp(
                 offlineModeEnabled = offlineModeEnabled
             )
         }
+    }
+
+    // One-time notice to upgraders: the engine switch orphaned any old offline downloads.
+    val migrationNoticeShown by userPreferences.offlineMigrationNoticeShown.collectAsState()
+    var showMigrationNotice by remember { mutableStateOf(false) }
+    LaunchedEffect(migrationNoticeShown) {
+        if (!migrationNoticeShown && no.synth.where.data.LegacyOfflineCache.exists()) showMigrationNotice = true
+    }
+    if (showMigrationNotice) {
+        no.synth.where.ui.map.MapDialogs.OfflineMigrationDialog(onDismiss = {
+            showMigrationNotice = false
+            userPreferences.markOfflineMigrationNoticeShown()
+            no.synth.where.data.LegacyOfflineCache.deleteAll()
+        })
     }
 }
 

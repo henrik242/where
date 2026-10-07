@@ -121,6 +121,10 @@ android {
             ndk {
                 debugSymbolLevel = "FULL"
             }
+            // Upload native symbols to Crashlytics so NDK crash traces are symbolicated.
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                nativeSymbolUploadEnabled = true
+            }
         }
     }
     buildFeatures {
@@ -166,6 +170,7 @@ afterEvaluate {
 
 dependencies {
     implementation(project(":shared"))
+    runtimeOnly(libs.maplibre.compose.runtime.vulkan.android)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

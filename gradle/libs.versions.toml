@@ -25,7 +25,12 @@ kotlinxCoroutines = "1.11.0"
 kotlinxSerializationJson = "1.11.0"
 ktor = "3.6.0"
 lifecycleRuntimeCompose = "2.11.0"
-maplibre = "13.6.1"
+# Interim fork: 0.19.0 + connectivity override #1735, from this fork's GitHub Packages as
+# 0.19.0-where1 (see the WhereForkPackages repo in settings.gradle.kts). Revert to the upstream
+# version once #1735 ships. The native render runtime is unchanged, so it stays on the official
+# maplibreComposeRuntime version.
+maplibreCompose = "0.19.0-where1"
+maplibreComposeRuntime = "0.19.0"
 material = "1.14.0"
 mockk = "1.14.11"
 mockkAndroid = "1.14.11"
@@ -56,6 +61,7 @@ androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+firebase-crashlytics-ndk = { group = "com.google.firebase", name = "firebase-crashlytics-ndk" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 kmp-zip = { module = "no.synth:kmp-zip", version.ref = "kmpZip" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -66,7 +72,9 @@ ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "kto
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
-maplibre-android-sdk = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibre" }
+maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version.ref = "maplibreCompose" }
+maplibre-compose-location = { module = "org.maplibre.compose:location", version.ref = "maplibreCompose" }
+maplibre-compose-runtime-vulkan-android = { module = "org.maplibre.compose:maplibre-compose-runtime-vulkan-android", version.ref = "maplibreComposeRuntime" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockkAndroid" }

@@ -1,5 +1,7 @@
 package no.synth.where.ui
 
+import no.synth.where.location.fusedLocationFlow
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -25,6 +27,7 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -42,6 +45,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import no.synth.where.data.CrosshairInfo
@@ -63,11 +68,11 @@ import no.synth.where.ui.map.rememberNavigationProgress
 import no.synth.where.WhereApplication
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.map.CameraFollowMode
+import no.synth.where.ui.map.HeadingSource
+import no.synth.where.ui.map.headingSourceFor
 import no.synth.where.ui.map.CoordGrid
 import no.synth.where.ui.map.MapDialogs
 import no.synth.where.ui.map.MapLayer
-import no.synth.where.ui.map.MapLibreMapView
-import no.synth.where.ui.map.MapRenderUtils
 import no.synth.where.ui.map.NavigationLayers
 import no.synth.where.ui.map.PointColors
 import no.synth.where.ui.map.MapZoomLevels
@@ -78,9 +83,23 @@ import no.synth.where.ui.map.followedFriends
 import no.synth.where.ui.map.friendBounds
 import no.synth.where.ui.map.buildTracksGeoJson
 import no.synth.where.ui.map.renderableTracks
-import no.synth.where.ui.map.animateToBounds
-import no.synth.where.ui.map.isLocationComponentEnabledSafe
+import no.synth.where.ui.map.TwoFingerMeasurement
 import no.synth.where.ui.map.MapScreenContent
+import no.synth.where.ui.map.buildSavedPointsGeoJson
+import no.synth.where.ui.map.buildSearchResultsGeoJson
+import no.synth.where.ui.map.buildRulerLineGeoJson
+import no.synth.where.ui.map.buildRulerPointsGeoJson
+import no.synth.where.ui.map.buildMeasurementLineGeoJson
+import no.synth.where.ui.map.buildMeasurementPointsGeoJson
+import no.synth.where.ui.map.compose.WhereComposeMap
+import no.synth.where.ui.map.compose.WhereMapCallbacks
+import no.synth.where.ui.map.compose.WhereMapController
+import org.maplibre.compose.location.AndroidHeadingProvider
+import org.maplibre.spatialk.units.Bearing
+import org.maplibre.spatialk.units.extensions.inDegrees
+import no.synth.where.ui.map.compose.WhereMapRenderData
+import no.synth.where.data.MapTapTarget
+import no.synth.where.data.resolveMapTap
 import no.synth.where.ui.map.StopNavigationConfirmDialog
 import no.synth.where.ui.map.rememberStopNavigationConfirmState
 import no.synth.where.ui.map.rememberAutoDismissingTwoFingerMeasurement
@@ -91,12 +110,14 @@ import no.synth.where.ui.map.ViewingPointBanner
 import no.synth.where.ui.map.ViewingTrackBanner
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
-import no.synth.where.data.geo.toMapLibre
-import org.maplibre.android.maps.MapLibreMap
 import no.synth.where.util.Logger
 import no.synth.where.util.formatDateTime
 import no.synth.where.util.currentTimeMillis
 import kotlin.time.Duration.Companion.milliseconds
+
+// MapLibre glyphs URL pointing at the PBF fonts bundled in app/src/main/assets/fonts/, so labels
+// render offline without a network round-trip.
+private const val ANDROID_ASSET_GLYPHS_URL = "asset://fonts/{fontstack}/{range}.pbf"
 
 @Composable
 fun MapScreen(
@@ -171,7 +192,8 @@ fun MapScreen(
     val friendPointsGeoJson by liveTrackingFollower.friendPointsGeoJson.collectAsState()
     val mySharedPointsGeoJson = remember(mySharedPoints) { buildSharedPointsGeoJson(mySharedPoints) }
 
-    var mapInstance by remember { mutableStateOf<MapLibreMap?>(null) }
+    val controller = remember { WhereMapController() }
+    val headingProvider = remember { AndroidHeadingProvider(context) }
     // A shared point this client is currently relocating (next long-press sets its new spot), and
     // the point dialogs (own point management / a friend's point).
     var movingSharedPointId by remember { mutableStateOf<String?>(null) }
@@ -192,18 +214,8 @@ fun MapScreen(
     val navigationProgress = rememberNavigationProgress(
         session = navigation,
         progress = viewModel.navigationProgress,
-        onRenderLayers = { layers ->
-            navigationLayers = layers
-            mapInstance?.style?.let {
-                MapRenderUtils.updateNavigationOnMap(it, layers.completed, layers.remaining, layers.offCourse)
-            }
-        },
-        onClearLayers = {
-            navigationLayers = null
-            mapInstance?.style?.let {
-                MapRenderUtils.updateNavigationOnMap(it, null, null, null)
-            }
-        },
+        onRenderLayers = { layers -> navigationLayers = layers },
+        onClearLayers = { navigationLayers = null },
     )
 
     // Stopping navigation is confirmed first so an active route isn't ended by an accidental tap.
@@ -230,13 +242,12 @@ fun MapScreen(
     LaunchedEffect(followedClientIds) {
         hasZoomedToFriend = false
     }
-    LaunchedEffect(followState, mapInstance) {
+    LaunchedEffect(followState) {
         val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@LaunchedEffect
-        val map = mapInstance ?: return@LaunchedEffect
         if (hasZoomedToFriend) return@LaunchedEffect
         val bounds = following.tracks.friendBounds() ?: return@LaunchedEffect
         hasZoomedToFriend = true
-        map.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
+        controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX.toDouble())
     }
     var cameraFollowMode by remember { mutableStateOf(CameraFollowMode.OFF) }
     var highlightedSearchResult by remember { mutableStateOf<PlaceSearchClient.SearchResult?>(null) }
@@ -248,6 +259,15 @@ fun MapScreen(
     val showOsmPaths by viewModel.userPreferences.showOsmPaths.collectAsState()
     val nveOverlay by viewModel.userPreferences.nveOverlay.collectAsState()
     val showCoordGrid by viewModel.userPreferences.showCoordGrid.collectAsState()
+    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay) {
+        MapStyle.getStyle(
+            selectedLayer = selectedLayer,
+            showWaymarkedTrails = showWaymarkedTrails,
+            nveOverlay = nveOverlay,
+            showOsmPaths = showOsmPaths,
+            glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
+        )
+    }
     var hasLocationPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -370,99 +390,34 @@ fun MapScreen(
         )
     }
 
-    LaunchedEffect(tracksGeoJson, mapInstance) {
-        mapInstance?.style?.let { style ->
-            MapRenderUtils.updateTracksOnMap(style, tracksGeoJson)
-        }
-    }
-
     val elevationMarker by viewModel.elevationMarker.collectAsState()
     val elevationMarkerGeoJson = remember(elevationMarker, focusedTrackId, viewingTracks, navChartTrack) {
         buildElevationMarkerGeoJson(viewingTracks, focusedTrackId, navChartTrack, elevationMarker)
     }
-    LaunchedEffect(elevationMarkerGeoJson, mapInstance) {
-        mapInstance?.style?.let { style ->
-            MapRenderUtils.updateElevationMarkerOnMap(style, elevationMarkerGeoJson)
-        }
-    }
 
     // Fit the camera whenever the viewing set changes (adding/removing a track), but not when
-    // merely tap-focusing one (focusedTrackId is deliberately not a key). When the set change
-    // brought a focused track along (opening a single track focuses it), zoom to that track;
-    // otherwise fit the union of the whole set (bulk multi-select).
-    LaunchedEffect(viewingTracks, mapInstance) {
-        val map = mapInstance ?: return@LaunchedEffect
+    // merely tap-focusing one (focusedTrackId is deliberately not a key).
+    LaunchedEffect(viewingTracks) {
         if (navigation != null) return@LaunchedEffect   // the camera follows the user while navigating
         val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
-        delay(100.milliseconds)
-        map.animateToBounds(bounds)
+        controller.animateToBounds(bounds)
     }
 
-    LaunchedEffect(mapInstance) {
-        val map = mapInstance
-        map?.addOnCameraMoveListener {
-            mapBearing = map.cameraPosition.bearing
-            map.cameraPosition.target?.let { target ->
-                savedCameraLat = target.latitude
-                savedCameraLon = target.longitude
-                savedCameraZoom = map.cameraPosition.zoom
-                centerLatLng = LatLng(target.latitude, target.longitude)
-            }
-        }
-    }
+    var lastFix by remember { mutableStateOf<android.location.Location?>(null) }
 
-    // Initialize center position when crosshair is activated
-    LaunchedEffect(crosshairActive) {
-        if (crosshairActive && centerLatLng == null) {
-            mapInstance?.cameraPosition?.target?.let { target ->
-                centerLatLng = LatLng(target.latitude, target.longitude)
-            }
-        }
-    }
-
-    // Track whether the location component has produced any fix yet, so the
-    // map can show a "Locating…" pill on cold start before the puck appears.
-    // Gated to STARTED so the poll pauses while the app is backgrounded.
-    LaunchedEffect(hasLocationPermission, mapInstance) {
-        if (!hasLocationPermission || mapInstance == null) {
+    // Subscribe to live location updates while the screen is visible, so the puck tracks movement
+    // during ordinary browsing (the tracking service only runs while recording/navigating/sharing,
+    // and getLastKnownLocation never refreshes). Gated to STARTED; removed on stop.
+    LaunchedEffect(hasLocationPermission) {
+        if (!hasLocationPermission) {
             hasFix = false
             return@LaunchedEffect
         }
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (!hasFix) {
-                try {
-                    val lc = mapInstance?.locationComponent
-                    if (mapInstance?.isLocationComponentEnabledSafe == true && lc?.lastKnownLocation != null) {
-                        hasFix = true
-                    }
-                } catch (e: Exception) {
-                    Logger.d("Could not read user location: %s", e.message ?: "unknown")
-                }
-                if (!hasFix) delay(1000.milliseconds)
-            }
-        }
-    }
-
-    // Update user location periodically while crosshair is active. Gated to STARTED because
-    // crosshairActive is a persisted preference, so this loop would otherwise keep polling
-    // while the app is backgrounded.
-    LaunchedEffect(crosshairActive, mapInstance) {
-        if (!crosshairActive) {
-            userLocation = null
-            return@LaunchedEffect
-        }
-        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            while (true) {
-                try {
-                    if (mapInstance?.isLocationComponentEnabledSafe == true) {
-                        mapInstance?.locationComponent?.lastKnownLocation?.let { loc ->
-                            userLocation = LatLng(loc.latitude, loc.longitude)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Logger.d("Could not read user location: %s", e.message ?: "unknown")
-                }
-                delay(3000.milliseconds)
+            fusedLocationFlow(context).collect { loc ->
+                hasFix = true
+                userLocation = LatLng(loc.latitude, loc.longitude)
+                lastFix = loc
             }
         }
     }
@@ -481,9 +436,8 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(hasLocationPermission, mapInstance, viewingTracks, currentTrack) {
-        val map = mapInstance
-        if (hasLocationPermission && map != null && !hasZoomedToLocation && viewingTracks.isEmpty() && currentTrack == null) {
+    LaunchedEffect(hasLocationPermission, viewingTracks, currentTrack) {
+        if (hasLocationPermission && !hasZoomedToLocation && viewingTracks.isEmpty() && currentTrack == null) {
             try {
                 val locationManager =
                     context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
@@ -497,12 +451,7 @@ fun MapScreen(
 
                 lastKnownLocation?.let { location ->
                     delay(500.milliseconds)
-                    map.animateCamera(
-                        org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                            LatLng(location.latitude, location.longitude).toMapLibre(),
-                            12.0
-                        )
-                    )
+                    controller.setCamera(location.latitude, location.longitude, zoom = 12.0)
                     hasZoomedToLocation = true
                 }
             } catch (e: Exception) {
@@ -511,19 +460,156 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(viewingPoint, mapInstance) {
-        val point = viewingPoint
-        val map = mapInstance
-        if (point != null && map != null) {
-            delay(100.milliseconds)
-            map.animateCamera(
-                org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(
-                    point.latLng.toMapLibre(),
-                    15.0
-                )
-            )
+    LaunchedEffect(viewingPoint) {
+        val point = viewingPoint ?: return@LaunchedEffect
+        controller.setCamera(point.latLng.latitude, point.latLng.longitude, zoom = 15.0)
+    }
+
+    // FOLLOW: keep the puck centered, north up.
+    LaunchedEffect(cameraFollowMode, userLocation) {
+        if (cameraFollowMode != CameraFollowMode.FOLLOW) return@LaunchedEffect
+        val loc = userLocation ?: return@LaunchedEffect
+        controller.follow(loc.latitude, loc.longitude, 0.0)
+    }
+
+    // FOLLOW_HEADING: center on the puck and rotate. Compass when on foot/stationary, course over
+    // ground while travelling (a vehicle's magnetization throws the compass off); a brief stop HELDs
+    // the last course. See headingSourceFor / HeadingSource.
+    val latestLoc = rememberUpdatedState(userLocation)
+    val latestFix = rememberUpdatedState(lastFix)
+    var compassBearing by remember { mutableStateOf<Double?>(null) }
+    var headingSource by remember { mutableStateOf(HeadingSource.COMPASS) }
+    var followedCourseAt by remember { mutableStateOf<kotlin.time.TimeMark?>(null) }
+    LaunchedEffect(cameraFollowMode) {
+        if (cameraFollowMode != CameraFollowMode.FOLLOW_HEADING) return@LaunchedEffect
+        headingProvider.updates().collect { compassBearing = (it.bearing - Bearing.North).inDegrees }
+    }
+    LaunchedEffect(cameraFollowMode) {
+        if (cameraFollowMode != CameraFollowMode.FOLLOW_HEADING) {
+            headingSource = HeadingSource.COMPASS
+            followedCourseAt = null
+            return@LaunchedEffect
+        }
+        while (true) {
+            val fix = latestFix.value
+            val speed = fix?.takeIf { it.hasSpeed() }?.speed?.toDouble()
+            val course = fix?.takeIf { it.hasBearing() }?.bearing?.toDouble()
+            val source = headingSourceFor(headingSource, speed, course != null, followedCourseAt?.elapsedNow())
+            if (source == HeadingSource.COURSE) followedCourseAt = kotlin.time.TimeSource.Monotonic.markNow()
+            headingSource = source
+            // Keep centering on every fix; HELD (or a missing reading) keeps the current bearing.
+            val bearing = when (source) {
+                HeadingSource.COURSE -> course
+                HeadingSource.COMPASS -> compassBearing
+                HeadingSource.HELD -> null
+            } ?: controller.cameraBearing
+            val loc = latestLoc.value
+            if (loc != null) controller.follow(loc.latitude, loc.longitude, bearing)
+            delay(500.milliseconds)
         }
     }
+
+    // Overlay GeoJSON for the reactive shared renderer.
+    val savedPointsJson = remember(showSavedPoints, savedPoints) {
+        if (showSavedPoints && savedPoints.isNotEmpty()) buildSavedPointsGeoJson(savedPoints) else null
+    }
+    val mySharedPointsJson = remember(mySharedPoints) {
+        if (mySharedPoints.isNotEmpty()) mySharedPointsGeoJson else null
+    }
+    val searchResultsJson = remember(searchResults) {
+        if (searchResults.isNotEmpty()) buildSearchResultsGeoJson(searchResults) else null
+    }
+    val searchHighlightJson = remember(highlightedSearchResult) {
+        highlightedSearchResult?.let { buildSearchResultsGeoJson(listOf(it)) }
+    }
+    // null (not an empty-coordinates LineString, which maplibre rejects and so keeps the old line)
+    // so the reactive source clears to an empty FeatureCollection when the ruler is cleared.
+    val rulerLineJson = remember(rulerState) {
+        if (rulerState.points.size >= 2) buildRulerLineGeoJson(rulerState.points) else null
+    }
+    val rulerPointsJson = remember(rulerState) {
+        if (rulerState.points.isNotEmpty()) buildRulerPointsGeoJson(rulerState.points) else null
+    }
+    val measurementLineJson = remember(twoFingerMeasurement) {
+        twoFingerMeasurement?.let { buildMeasurementLineGeoJson(it) }
+    }
+    val measurementPointsJson = remember(twoFingerMeasurement) {
+        twoFingerMeasurement?.let { buildMeasurementPointsGeoJson(it) }
+    }
+
+    val renderData = WhereMapRenderData(
+        styleJson = styleJson,
+        initialTarget = LatLng(savedCameraLat, savedCameraLon),
+        initialZoom = savedCameraZoom,
+        tracksGeoJson = tracksGeoJson,
+        elevationMarkerGeoJson = elevationMarkerGeoJson,
+        savedPointsGeoJson = savedPointsJson,
+        friendTrackGeoJson = friendTrackGeoJson,
+        mySharedPointsGeoJson = mySharedPointsJson,
+        friendSharedPointsGeoJson = friendPointsGeoJson,
+        searchResultsGeoJson = searchResultsJson,
+        searchHighlightGeoJson = searchHighlightJson,
+        rulerLineGeoJson = rulerLineJson,
+        rulerPointsGeoJson = rulerPointsJson,
+        measurementLineGeoJson = measurementLineJson,
+        measurementPointsGeoJson = measurementPointsJson,
+        coordGridGeoJson = coordGridGeoJson,
+        navCompletedGeoJson = navigationLayers?.completed,
+        navRemainingGeoJson = navigationLayers?.remaining,
+        navOffCourseGeoJson = navigationLayers?.offCourse,
+        userLocation = userLocation,
+    )
+
+    val mapCallbacks =
+        WhereMapCallbacks(
+            onUserGesture = { if (cameraFollowMode != CameraFollowMode.OFF) cameraFollowMode = CameraFollowMode.OFF },
+            onTwoFingerTap = { ll1, ll2 ->
+                twoFingerMeasurement = TwoFingerMeasurement(
+                    ll1.latitude, ll1.longitude, ll2.latitude, ll2.longitude, ll1.distanceTo(ll2)
+                )
+            },
+            onCameraMove = { center, zoom, bearing ->
+                mapBearing = bearing
+                savedCameraLat = center.latitude
+                savedCameraLon = center.longitude
+                savedCameraZoom = zoom
+                centerLatLng = center
+            },
+            onLongPress = { latLng ->
+                if (rulerState.isActive) return@WhereMapCallbacks
+                val movingId = movingSharedPointId
+                if (movingId != null) {
+                    coordinator.moveSharedPoint(movingId, latLng)
+                    movingSharedPointId = null
+                } else {
+                    viewModel.openSavePointDialog(latLng)
+                }
+            },
+            onMapClick = { latLng ->
+                if (twoFingerMeasurement != null) twoFingerMeasurement = null
+                if (rulerState.isActive) {
+                    viewModel.addRulerPoint(latLng)
+                    return@WhereMapCallbacks
+                }
+                val target = resolveMapTap(
+                    tap = latLng,
+                    zoom = savedCameraZoom,
+                    savedPoints = savedPoints,
+                    viewingTracks = viewingTracks,
+                    navigationTrack = navChartTrack,
+                    mySharedPoints = mySharedPoints,
+                    friendSharedPoints = friendSharedPoints,
+                )
+                when (target) {
+                    is MapTapTarget.Point -> viewModel.openPointInfoDialog(target.point)
+                    is MapTapTarget.SharedPoint ->
+                        if (target.mine) managingSharedPoint = target.point else friendPointDialog = target.point
+                    is MapTapTarget.TrackLine -> viewModel.onTrackTapped(target.trackId)
+                    MapTapTarget.OutsideTracks -> viewModel.onMapTapOutsideTracks()
+                    MapTapTarget.Nothing -> {}
+                }
+            },
+        )
 
     MapScreenContent(
         snackbarHostState = snackbarHostState,
@@ -562,11 +648,12 @@ fun MapScreen(
         northLocked = northLocked,
         // Only reachable with the camera free (see compassTapAction), so there is no follow mode
         // for the animation to cancel.
-        onResetNorth = {
-            mapInstance?.animateCamera(org.maplibre.android.camera.CameraUpdateFactory.bearingTo(0.0))
-        },
+        onResetNorth = { controller.resetNorth() },
         onToggleNorthLock = {
-            if (!northLocked) cameraFollowMode = cameraFollowMode.withoutHeading()
+            if (!northLocked) {
+                cameraFollowMode = cameraFollowMode.withoutHeading()
+                controller.resetNorth() // straighten a map that is already turned off north
+            }
             viewModel.userPreferences.updateNorthLocked(!northLocked)
         },
         navigation = NavigationUiState(
@@ -594,8 +681,7 @@ fun MapScreen(
             viewModel.userPreferences.updateShowOsmPaths(!showOsmPaths)
             // The source carries no complete path data below OSM_PATHS_MIN_ZOOM, so say so rather
             // than leaving a checked menu item that draws nothing.
-            val zoom = mapInstance?.cameraPosition?.zoom
-            if (!showOsmPaths && zoom != null && zoom < MapStyle.OSM_PATHS_MIN_ZOOM) {
+            if (!showOsmPaths && savedCameraZoom < MapStyle.OSM_PATHS_MIN_ZOOM) {
                 scope.launch { snackbarHostState.showSnackbar(zoomInForPathsMsg) }
             }
         },
@@ -632,20 +718,8 @@ fun MapScreen(
             }
         },
         onSettingsClick = onSettingsClick,
-        onZoomIn = {
-            mapInstance?.let { map ->
-                map.animateCamera(
-                    org.maplibre.android.camera.CameraUpdateFactory.zoomTo(map.cameraPosition.zoom + 1)
-                )
-            }
-        },
-        onZoomOut = {
-            mapInstance?.let { map ->
-                map.animateCamera(
-                    org.maplibre.android.camera.CameraUpdateFactory.zoomTo(map.cameraPosition.zoom - 1)
-                )
-            }
-        },
+        onZoomIn = { controller.zoomIn() },
+        onZoomOut = { controller.zoomOut() },
         onRulerUndo = { viewModel.removeLastRulerPoint() },
         onRulerClear = { viewModel.clearRuler() },
         onRulerSaveAsTrack = { viewModel.openSaveRulerAsTrackDialog() },
@@ -665,18 +739,14 @@ fun MapScreen(
         onSearchQueryChange = { viewModel.updateSearchQuery(it) },
         onSearchResultClick = { result ->
             highlightedSearchResult = null
-            mapInstance?.animateCamera(
-                org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(result.latLng.toMapLibre(), 14.0)
-            )
+            controller.setCamera(result.latLng.latitude, result.latLng.longitude, zoom = 14.0)
             viewModel.userPreferences.addSearchHistoryEntry(result)
             viewModel.onSearchResultClicked()
         },
         onSearchResultHover = { result ->
             highlightedSearchResult = result
             if (result != null) {
-                mapInstance?.animateCamera(
-                    org.maplibre.android.camera.CameraUpdateFactory.newLatLng(result.latLng.toMapLibre())
-                )
+                controller.panTo(result.latLng.latitude, result.latLng.longitude)
             }
         },
         onSearchClose = {
@@ -688,61 +758,19 @@ fun MapScreen(
         onFollowBannerClick = { clientId ->
             val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
             val bounds = following.tracks.friendBounds(clientId) ?: return@MapScreenContent
-            mapInstance?.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
+            controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX.toDouble())
         },
         onStopFollowing = { stopFollowingAll(viewModel.userPreferences, liveTrackingFollower) },
         isMovingSharedPoint = movingSharedPointId != null,
         onCancelMovePoint = { movingSharedPointId = null },
         mapContent = {
-            MapLibreMapView(
-                onMapReady = { mapInstance = it },
-                selectedLayer = selectedLayer,
-                hasLocationPermission = hasLocationPermission,
-                isRecording = isRecording,
-                showWaymarkedTrails = showWaymarkedTrails,
-                showOsmPaths = showOsmPaths,
-                nveOverlay = nveOverlay,
-                showSavedPoints = showSavedPoints,
-                savedPoints = savedPoints,
-                currentTrack = currentTrack,
-                viewingTracks = viewingTracks,
-                navigationTrack = navChartTrack,
-                tracksGeoJson = tracksGeoJson,
-                elevationMarkerGeoJson = elevationMarkerGeoJson,
-                friendTrackGeoJson = friendTrackGeoJson,
-                mySharedPointsGeoJson = mySharedPointsGeoJson,
-                friendPointsGeoJson = friendPointsGeoJson,
-                mySharedPoints = mySharedPoints,
-                friendSharedPoints = friendSharedPoints,
-                savedCameraLat = savedCameraLat,
-                savedCameraLon = savedCameraLon,
-                savedCameraZoom = savedCameraZoom,
-                rulerState = rulerState,
-                searchResults = searchResults,
-                highlightedSearchResult = highlightedSearchResult,
-                onRulerPointAdded = { latLng -> viewModel.addRulerPoint(latLng) },
-                onLongPress = { latLng ->
-                    val movingId = movingSharedPointId
-                    if (movingId != null) {
-                        coordinator.moveSharedPoint(movingId, latLng)
-                        movingSharedPointId = null
-                    } else {
-                        viewModel.openSavePointDialog(latLng)
-                    }
-                },
-                onPointClick = { point -> viewModel.openPointInfoDialog(point) },
-                onSharedPointClick = { point, mine ->
-                    if (mine) managingSharedPoint = point else friendPointDialog = point
-                },
-                onTrackClick = { id -> viewModel.onTrackTapped(id) },
-                onMapClickOutsideTrack = { viewModel.onMapTapOutsideTracks() },
-                onTwoFingerMeasure = { twoFingerMeasurement = it },
-                twoFingerMeasurement = twoFingerMeasurement,
-                coordGridGeoJson = coordGridGeoJson,
-                navigationLayers = navigationLayers,
-                cameraFollowMode = cameraFollowMode,
-                onFollowModeDismissed = { cameraFollowMode = CameraFollowMode.OFF },
-                northLocked = northLocked
+            WhereComposeMap(
+                data = renderData,
+                modifier = Modifier.fillMaxSize(),
+                controller = controller,
+                callbacks = mapCallbacks,
+                rotateEnabled = !northLocked,
+                attributionVisible = !crosshairActive,
             )
         }
     )

@@ -17,7 +17,7 @@ import platform.Foundation.timeIntervalSince1970
 import platform.Foundation.writeToFile
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-actual class PlatformFile(val path: String = "") {
+actual class PlatformFile(actual val path: String = "") {
     private val fileManager get() = NSFileManager.defaultManager
 
     actual fun exists(): Boolean = fileManager.fileExistsAtPath(path)

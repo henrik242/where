@@ -3,6 +3,7 @@ package no.synth.where.data
 import java.io.File
 
 actual class PlatformFile(internal val file: File) {
+    actual val path: String get() = file.path
     actual fun exists(): Boolean = file.exists()
     actual fun readText(): String = file.readText()
     actual fun readBytes(): ByteArray = file.readBytes()
