@@ -112,9 +112,12 @@ class WhereApplication : Application() {
         CrashReporter.setEnabled(userPreferences.crashReportingEnabled.value)
 
         OfflineTileReader.init(PlatformFile(cacheDir))
-        OfflineCoverage.cacheDir = PlatformFile(cacheDir)
+        // Keep the map cache (ambient tiles + downloaded packs) in filesDir, not the OS-purgeable
+        // cacheDir, so downloaded offline maps survive storage pressure.
+        val mapCacheFile = File(filesDir, "maplibre-cache.db")
+        OfflineCoverage.cacheDir = PlatformFile(filesDir)
         LegacyOfflineCache.appContext = this
-        OfflineMapGate.configure()
+        OfflineMapGate.configure(mapCacheFile.path)
         appScope.launch {
             userPreferences.offlineModeEnabled.collect {
                 OfflineTileReader.offlineOnly = it

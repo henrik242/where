@@ -42,7 +42,9 @@ import no.synth.where.ui.map.NavStyle
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraMoveReason
 import org.maplibre.compose.expressions.dsl.Feature
+import org.maplibre.compose.expressions.dsl.condition
 import org.maplibre.compose.expressions.dsl.const
+import org.maplibre.compose.expressions.dsl.switch
 import org.maplibre.compose.expressions.ast.Expression
 import org.maplibre.compose.expressions.dsl.all
 import org.maplibre.compose.expressions.dsl.eq
@@ -68,6 +70,7 @@ import org.maplibre.compose.interaction.MapInteractions
 import org.maplibre.compose.layers.CircleLayer
 import org.maplibre.compose.layers.LineLayer
 import org.maplibre.compose.layers.SymbolLayer
+import org.maplibre.compose.map.MapUiOptions
 import org.maplibre.compose.map.MaplibreMap
 import org.maplibre.compose.map.rememberMapState
 import org.maplibre.compose.overlay.AttributionDefaults
@@ -250,8 +253,19 @@ fun WhereComposeMap(
             Modifier
         }
 
+    // Drop the built-in two-finger-tap zoom-out so a two-finger-tap distance measurement doesn't also
+    // move the camera; pinch and rotate stay enabled.
+    val uiOptions = remember {
+        MapUiOptions(MapUiOptions.Standard) { bindings { twoFingerTap { enabled = false } } }
+    }
+
     Box(modifier = modifier.then(tapModifier)) {
-        MaplibreMap(modifier = Modifier.matchParentSize(), state = state, interactions = interactions) {
+        MaplibreMap(
+            modifier = Modifier.matchParentSize(),
+            state = state,
+            interactions = interactions,
+            uiOptions = uiOptions,
+        ) {
             // We draw our own MapCompass (with north-lock), so skip maplibre's built-in compass
             // (it doubled ours) and render only the tile-source attribution, bottom-left. Themed to
             // follow light/dark mode (the library default is a fixed white pill). Hidden via alpha -
@@ -400,14 +414,18 @@ private fun FriendTrackLayers(geoJson: String?) {
         strokeWidth = interpolate(linear(), zoom(), 8 to const(3.dp), 15 to const(0.dp)),
         strokeColor = const(Color.White),
     )
+    // Dim stopped friends (active == false) so their stale last position doesn't look live.
+    val liveOpacity = switch(listOf(condition(Feature["active"].cast<BooleanValue>(), const(1f))), const(0.5f))
     CircleLayer(
         id = "friend-track-point-layer",
         source = source,
         filter = Feature.geometryType() eqStr "Point",
         radius = const(6.dp),
         color = featureColor(),
+        opacity = liveOpacity,
         strokeWidth = const(2.dp),
         strokeColor = const(Color.White),
+        strokeOpacity = liveOpacity,
     )
     SymbolLayer(
         id = "friend-track-label-layer",

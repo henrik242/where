@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import org.maplibre.compose.map.DefaultMapRuntime
 import org.maplibre.compose.offline.DownloadProgress
 import org.maplibre.compose.offline.OfflineManager
+import org.maplibre.compose.offline.OfflineManagerState
 import org.maplibre.compose.offline.OfflinePack
 import org.maplibre.compose.offline.OfflinePackDefinition
 import org.maplibre.compose.offline.DownloadStatus as MlnDownloadStatus
@@ -67,16 +68,21 @@ class MaplibreComposeDownloadEngine(
                 demJob?.cancel()
                 throw e
             } catch (e: Throwable) {
-                // Convert any create/style-write/resume failure into a failed download instead of
-                // letting it escape and cancel the whole queue drain.
+                // A create/style-write/resume failure has no useful partial pack: drop it so it does
+                // not linger, and fail the download instead of cancelling the whole queue drain.
                 Logger.e(e, "Offline map download failed for %s", item.id)
+                pack?.let { withContext(NonCancellable) { runCatching { offlineManager.delete(it) } } }
+                pack = null
                 false
             } finally {
                 activePack = null
             }
 
         if (!mapOk) {
-            pack?.let { withContext(NonCancellable) { runCatching { offlineManager.delete(it) } } }
+            // A download-phase failure (e.g. a transient network error) keeps its partial pack,
+            // paused, so a retry resumes it rather than re-downloading; otherwise Native would keep
+            // retrying in the background after we stop waiting.
+            pack?.let { withContext(NonCancellable) { runCatching { offlineManager.pause(it) } } }
         }
         // A DEM failure must not bubble up and cancel the queue either.
         runCatching { demJob?.await() }
@@ -88,6 +94,9 @@ class MaplibreComposeDownloadEngine(
     }
 
     private suspend fun createPack(item: QueuedDownload): OfflinePack {
+        // Reuse an existing pack with the same id (e.g. a partial download resumed after a failure or
+        // a process death) instead of creating a duplicate definition for the same region.
+        existingPack(item.id)?.let { return it }
         val styleJson = DownloadLayers.getDownloadStyleJson(item.layerId)
         val styleFile = cacheDir.resolve("offline-style-${item.layerId}.json")
         styleFile.writeBytes(styleJson.encodeToByteArray())
@@ -106,6 +115,12 @@ class MaplibreComposeDownloadEngine(
                 maxZoom = DownloadLayers.effectiveMaxZoom(item.layerId, item.maxZoom),
             )
         return offlineManager.create(definition, metadata = item.id.encodeToByteArray())
+    }
+
+    private suspend fun existingPack(id: String): OfflinePack? {
+        val state = offlineManager.state.first { it !is OfflineManagerState.Loading }
+        val packs = (state as? OfflineManagerState.Ready)?.packs ?: return null
+        return packs.firstOrNull { it.metadata.value?.decodeToString() == id }
     }
 
     /** Suspends until the pack finishes, reporting 0..100 along the way. Returns success. */
