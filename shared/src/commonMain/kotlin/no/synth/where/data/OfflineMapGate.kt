@@ -1,7 +1,9 @@
 package no.synth.where.data
 
 import kotlin.concurrent.Volatile
+import kotlinx.io.files.Path
 import org.maplibre.compose.map.DefaultMapRuntime
+import org.maplibre.compose.map.MapRuntimeOptions
 
 /**
  * "Offline mode": while [enabled], MapLibre Native serves only already-cached data (ambient browsing
@@ -24,10 +26,15 @@ object OfflineMapGate {
 
     private var configured = false
 
-    fun configure() {
+    /**
+     * @param cacheFile durable path for the shared cache DB (ambient tiles + downloaded packs). Must
+     *   be outside the OS-purgeable cache dir, or downloaded offline maps can be silently evicted.
+     */
+    fun configure(cacheFile: String) {
         if (configured) return
         configured = true
         runCatching {
+            DefaultMapRuntime.configure(MapRuntimeOptions(cacheFile = Path(cacheFile)))
             // Build the runtime now, on the startup (main) thread, so its MainThreadGuard posts its
             // pin to the main dispatcher before the first map composes. Otherwise the guard is built
             // lazily during rememberMapState inside Scaffold's measure-pass subcomposition, where its

@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
+import no.synth.where.util.Logger
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -99,14 +100,16 @@ object OfflineCoverage {
 
     suspend fun deleteRegion(regionName: String, layerId: String): Boolean {
         val pack = packFor(regionName, layerId) ?: return false
-        manager.delete(pack)
-        return true
+        return runCatching { manager.delete(pack) }
+            .onFailure { Logger.e(it, "Failed to delete offline region %s/%s", regionName, layerId) }
+            .isSuccess
     }
 
     suspend fun deleteAllForLayer(layerId: String): Boolean {
         val suffix = "-$layerId"
-        packs().filter { it.idString()?.endsWith(suffix) == true }.forEach { manager.delete(it) }
-        return true
+        return runCatching {
+            packs().filter { it.idString()?.endsWith(suffix) == true }.forEach { manager.delete(it) }
+        }.onFailure { Logger.e(it, "Failed to delete offline packs for layer %s", layerId) }.isSuccess
     }
 
     /** True if any OTHER layer has a pack for the same hex region. */
@@ -131,7 +134,8 @@ object OfflineCoverage {
     }
 
     suspend fun clearAmbientCache() {
-        manager.clearAmbientCache()
+        runCatching { manager.clearAmbientCache() }
+            .onFailure { Logger.e(it, "Failed to clear ambient cache") }
     }
 
     suspend fun setMaxAmbientCacheSize(bytes: Long) {
