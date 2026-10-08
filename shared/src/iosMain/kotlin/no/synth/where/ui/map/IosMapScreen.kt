@@ -302,6 +302,12 @@ fun IosMapScreen(
         }
     }
 
+    // Zoom in when first engaging follow (e.g. from the country overview), but not on every fix, so
+    // the user can still zoom out while following.
+    LaunchedEffect(cameraFollowMode) {
+        if (cameraFollowMode != CameraFollowMode.OFF) controller.zoomToAtLeast(MapZoomLevels.FOLLOW_MIN)
+    }
+
     // FOLLOW: keep the puck centered, north up.
     LaunchedEffect(cameraFollowMode, userLocation) {
         if (cameraFollowMode != CameraFollowMode.FOLLOW) return@LaunchedEffect
@@ -381,7 +387,8 @@ fun IosMapScreen(
     }
 
     // Animate camera to viewing point
-    LaunchedEffect(viewingPoint) {
+    // Re-keyed on attach so a point opened before the map binds still gets centered once it does.
+    LaunchedEffect(viewingPoint, controller.isAttached) {
         if (viewingPoint != null) {
             controller.setCamera(viewingPoint.latLng.latitude, viewingPoint.latLng.longitude, zoom = 15.0)
         }

@@ -26,6 +26,7 @@ import no.synth.where.location.IosLocationTracker
 import no.synth.where.util.CrashReporter
 import platform.CoreLocation.CLLocationManager
 import platform.CoreLocation.kCLAuthorizationStatusAuthorizedAlways
+import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -44,6 +45,7 @@ object AppDependencies {
     lateinit var locationTracker: IosLocationTracker
 }
 
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 fun startApp() {
     val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
     val documentsDir = requireNotNull((paths.first() as NSURL).path) { "Documents directory not found" }
@@ -77,9 +79,14 @@ fun startApp() {
     val cachePaths = NSFileManager.defaultManager.URLsForDirectory(NSCachesDirectory, NSUserDomainMask)
     val cacheDir = requireNotNull((cachePaths.first() as NSURL).path) { "Caches directory not found" }
     OfflineTileReader.init(PlatformFile(cacheDir))
-    no.synth.where.data.OfflineCoverage.cacheDir = PlatformFile(cacheDir)
+    // The map cache (ambient tiles + downloaded packs) goes in Application Support, not the
+    // OS-purgeable Caches dir, so downloaded offline maps survive storage pressure.
+    val appSupportPaths = NSFileManager.defaultManager.URLsForDirectory(NSApplicationSupportDirectory, NSUserDomainMask)
+    val appSupportDir = requireNotNull((appSupportPaths.first() as NSURL).path) { "Application Support directory not found" }
+    NSFileManager.defaultManager.createDirectoryAtPath(appSupportDir, withIntermediateDirectories = true, attributes = null, error = null)
+    no.synth.where.data.OfflineCoverage.cacheDir = PlatformFile(appSupportDir)
     no.synth.where.data.MapCacheLogWatcher.install()
-    no.synth.where.data.OfflineMapGate.configure()
+    no.synth.where.data.OfflineMapGate.configure("$appSupportDir/maplibre-cache.db")
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     appScope.launch {
         AppDependencies.userPreferences.offlineModeEnabled.collect { OfflineTileReader.offlineOnly = it; no.synth.where.data.OfflineMapGate.enabled = it }

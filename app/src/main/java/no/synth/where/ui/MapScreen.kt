@@ -4,6 +4,8 @@ import no.synth.where.location.fusedLocationFlow
 
 import android.Manifest
 import android.content.Context
+import android.view.Surface
+import android.view.WindowManager
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -460,9 +462,16 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(viewingPoint) {
+    // Re-keyed on attach so a point opened before the map binds still gets centered once it does.
+    LaunchedEffect(viewingPoint, controller.isAttached) {
         val point = viewingPoint ?: return@LaunchedEffect
         controller.setCamera(point.latLng.latitude, point.latLng.longitude, zoom = 15.0)
+    }
+
+    // Zoom in when first engaging follow (e.g. from the country overview), but not on every fix, so
+    // the user can still zoom out while following.
+    LaunchedEffect(cameraFollowMode) {
+        if (cameraFollowMode != CameraFollowMode.OFF) controller.zoomToAtLeast(MapZoomLevels.FOLLOW_MIN)
     }
 
     // FOLLOW: keep the puck centered, north up.
@@ -482,7 +491,13 @@ fun MapScreen(
     var followedCourseAt by remember { mutableStateOf<kotlin.time.TimeMark?>(null) }
     LaunchedEffect(cameraFollowMode) {
         if (cameraFollowMode != CameraFollowMode.FOLLOW_HEADING) return@LaunchedEffect
-        headingProvider.updates().collect { compassBearing = (it.bearing - Bearing.North).inDegrees }
+        headingProvider.updates().collect {
+            // The library reports azimuth in the device's natural orientation; add the display
+            // rotation so the map turns the right way in landscape. Approximate: unlike the old
+            // sensor engine it does not correct for flat-vs-upright posture.
+            val deviceDeg = (it.bearing - Bearing.North).inDegrees
+            compassBearing = (deviceDeg + displayRotationDegrees(context)).mod(360.0)
+        }
     }
     LaunchedEffect(cameraFollowMode) {
         if (cameraFollowMode != CameraFollowMode.FOLLOW_HEADING) {
@@ -1124,3 +1139,13 @@ private fun MapScreenFullPreview() {
         )
     }
 }
+
+/** Current display rotation as degrees (Surface.ROTATION_* -> 0/90/180/270). */
+@Suppress("DEPRECATION")
+private fun displayRotationDegrees(context: Context): Int =
+    when ((context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
+        Surface.ROTATION_90 -> 90
+        Surface.ROTATION_180 -> 180
+        Surface.ROTATION_270 -> 270
+        else -> 0
+    }

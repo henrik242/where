@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.ui.map.MapZoomLevels
 import org.maplibre.compose.camera.CameraAnimation
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraUpdate
@@ -38,8 +39,17 @@ class WhereMapController {
     val cameraBearing: Double
         get() = position?.bearing ?: 0.0
 
+    /** True once bound to a live map; observable, so effects can wait for the map to attach. */
+    val isAttached: Boolean
+        get() = state != null
+
     private fun launch(block: suspend () -> Unit) {
         scope?.launch { block() }
+    }
+
+    /** Zoom in to at least [minZoom], e.g. when engaging follow from a zoomed-out overview. */
+    fun zoomToAtLeast(minZoom: Double) = launch {
+        if (cameraZoom < minZoom) state?.animateCamera(CameraUpdate(zoom = minZoom))
     }
 
     /** WGS84 position under a screen point, for gesture→map hit resolution. Null if not attached. */
@@ -79,6 +89,18 @@ class WhereMapController {
     fun animateToBounds(bounds: LatLngBounds, maxZoom: Double? = null) {
         launch {
             val s = state ?: return@launch
+            // A single point (or lone fix) has zero-area bounds that fitting can't zoom sensibly, so
+            // center on it at a fixed zoom instead.
+            if (bounds.isPoint) {
+                s.animateCamera(
+                    CameraUpdate(
+                        target = Position(longitude = bounds.west, latitude = bounds.south),
+                        zoom = maxZoom ?: MapZoomLevels.SINGLE_POINT,
+                    ),
+                    CameraAnimation.Ease(),
+                )
+                return@launch
+            }
             val box =
                 BoundingBox(
                     west = bounds.west,
