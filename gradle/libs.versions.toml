@@ -37,7 +37,7 @@ mockkAndroid = "1.14.11"
 navigationCompose = "2.10.2"
 playServicesLocation = "21.4.0"
 robolectric = "4.17"
-sqldelight = "2.4.0"
+sqldelight = "2.4.1"
 timber = "5.0.1"
 
 [libraries]
