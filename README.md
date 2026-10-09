@@ -118,4 +118,4 @@ See [web/README.md](web/README.md).
 
 ## License
 
-[Mozilla Public License 2.0](LICENSE).
+[GNU General Public License v2.0 or later](LICENSE) (GPL-2.0-or-later).
