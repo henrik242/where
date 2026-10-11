@@ -109,7 +109,7 @@ fun DesktopMapScreen(
     var rulerState by remember { mutableStateOf(RulerState()) }
     val scope = rememberCoroutineScope()
     val routeSession = remember { AppDependencies.hikingRouteSession }
-    val routeProgress by routeSession.progress.collectAsState()
+    val isPlanningRoute by routeSession.isPlanning.collectAsState()
     val plannedCrossings by routeSession.crossings.collectAsState()
     HikingRouteSnackbars(routeSession, snackbarHostState)
 
@@ -634,7 +634,7 @@ fun DesktopMapScreen(
         onZoomOut = { controller.zoomOut() },
         onRulerUndo = { rulerState = rulerState.removeLastPoint() },
         onRulerClear = { rulerState = rulerState.clear() },
-        routeProgress = routeProgress,
+        isPlanningRoute = isPlanningRoute,
         onFindRoute = {
             val planned = rulerState.points
             routeSession.plan(planned.map { it.latLng }) { if (rulerState.points == planned) rulerState = rulerState.clear() }

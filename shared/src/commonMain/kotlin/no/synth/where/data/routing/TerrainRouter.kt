@@ -29,11 +29,11 @@ object TerrainRouter {
     private val DY = intArrayOf(0, 0, 1, -1, 1, -1, 1, -1, 2, 1, -1, -2, -2, -1, 1, 2)
 
     /** Fastest walking route from [start] to [end], or null when none exists. */
-    suspend fun route(grid: TerrainGrid, start: LatLng, end: LatLng, onProgress: (Float) -> Unit = {}): TerrainRoute? {
+    suspend fun route(grid: TerrainGrid, start: LatLng, end: LatLng): TerrainRoute? {
         val blocked = HikingCost.blockedCells(grid)
         val s = snap(grid, blocked, grid.latLngToIndex(start)) ?: return null
         val t = snap(grid, blocked, grid.latLngToIndex(end)) ?: return null
-        val path = search(grid, blocked, s, t, onProgress) ?: return null
+        val path = search(grid, blocked, s, t) ?: return null
         return buildRoute(grid, path, blocked)
     }
 
@@ -42,7 +42,6 @@ object TerrainRouter {
         blocked: BooleanArray,
         start: Int,
         target: Int,
-        onProgress: (Float) -> Unit,
     ): IntArray? {
         val w = grid.width
         val n = w * grid.height
@@ -59,7 +58,6 @@ object TerrainRouter {
             val dy = (i / w - ty).toDouble()
             return sqrt(dx * dx + dy * dy) * c / HikingCost.maxSpeed
         }
-        val totalH = h(start)
 
         g[start] = 0f
         heap.push(start, h(start))
@@ -69,10 +67,7 @@ object TerrainRouter {
             if (closed[cur]) continue
             if (cur == target) return reconstruct(cameFrom, target)
             closed[cur] = true
-            if (++expanded and 0xFFFF == 0) {
-                currentCoroutineContext().ensureActive()
-                if (totalH > 0) onProgress((1.0 - h(cur) / totalH).toFloat().coerceIn(0f, 1f))
-            }
+            if (++expanded and 0xFFFF == 0) currentCoroutineContext().ensureActive()
             val cx = cur % w
             val cy = cur / w
             for (k in DX.indices) {
