@@ -29,7 +29,7 @@ jobs:
     - name: Compute version tag
       id: version
       run: |
-        VERSION_TAG="desktop-v$(git rev-list --count HEAD)"
+        VERSION_TAG="v$(git rev-list --count HEAD)"
         SHORT_SHA=$(git rev-parse --short HEAD)
         echo "tag=$VERSION_TAG" >> "$GITHUB_OUTPUT"
         echo "Version tag: $VERSION_TAG ($SHORT_SHA)"

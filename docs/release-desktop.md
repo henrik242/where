@@ -1,7 +1,8 @@
 # macOS desktop release
 
 The `Release macOS desktop` workflow (`.github/workflows/release-desktop.yml`, `workflow_dispatch`)
-builds, signs, notarizes and staples a DMG, then attaches it to a `desktop-v<commit-count>` release.
+builds, signs, notarizes and staples a DMG, then attaches it to the `v<commit-count>` release,
+shared with the Android and iOS releases of the same commit.
 
 ## Local build
 
