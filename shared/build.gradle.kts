@@ -127,10 +127,6 @@ kotlin {
         androidResources {
             enable = true
         }
-
-        // Run commonTest on the JVM as host tests so CI / Android-only machines execute the
-        // shared unit tests without an iOS simulator.
-        withHostTest {}
     }
 
     listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
@@ -160,10 +156,6 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
-        }
-        getByName("androidHostTest").dependencies {
-            // Real SQLite on the JVM host so the DAO contract/migration guards exercise actual SQL.
-            implementation(libs.sqldelight.sqlite.driver)
         }
         jvmMain.dependencies {
             api(libs.ktor.client.okhttp)

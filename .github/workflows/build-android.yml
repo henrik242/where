@@ -153,11 +153,10 @@ jobs:
     - name: Run tests
       run: ./gradlew testDebugUnitTest --stacktrace
 
-    # testDebugUnitTest only covers the app module. The shared commonTest suite -- navigation,
-    # geometry, heading, importers, all the logic both platforms share -- runs on the JVM through
-    # this task, and went unrun by CI until now.
+    # testDebugUnitTest only covers the app module. The shared suite (commonTest plus the
+    # JDBC-backed jvmTest) runs on the desktop JVM target.
     - name: Run shared tests
-      run: ./gradlew :shared:testAndroidHostTest --stacktrace
+      run: ./gradlew :shared:jvmTest --stacktrace
 
     - name: Upload debug APK
       if: github.actor != 'dependabot[bot]'

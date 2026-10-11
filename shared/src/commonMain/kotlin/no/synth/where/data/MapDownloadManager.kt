@@ -1,21 +1,13 @@
 package no.synth.where.data
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Desktop download facade. Owns the shared [DownloadQueueManager] (map tiles via
- * [MaplibreComposeDownloadEngine] + DEM via [OfflineTileReader]) and exposes coverage/stats/delete
- * over [OfflineCoverage], mirroring the iOS/Android managers.
+ * Offline map facade shared by all platforms: the download queue plus coverage, stats and deletion
+ * over [OfflineCoverage]. Each platform builds the [DownloadQueueManager] with its own engine and
+ * scope (Android also starts its foreground service from it).
  */
-class DesktopMapDownloadManager {
-
-    private val queueManager = DownloadQueueManager(
-        engine = MaplibreComposeDownloadEngine(PlatformFile(System.getProperty("java.io.tmpdir"))),
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
-    )
+class MapDownloadManager(private val queueManager: DownloadQueueManager) {
 
     val queue: StateFlow<List<QueuedDownload>> get() = queueManager.queue
     fun enqueue(item: QueuedDownload) = queueManager.enqueue(item)
@@ -44,6 +36,17 @@ class DesktopMapDownloadManager {
 
     suspend fun deleteAllRegionsForLayer(layerName: String): Boolean =
         OfflineCoverage.deleteAllForLayer(layerName)
+
+    /** Deletes every downloaded region of [layerName], and the DEM tiles no other layer still covers. */
+    suspend fun deleteLayer(layerName: String) {
+        val downloadedHexIds = getDownloadedRegionsForLayer(layerName)
+        deleteAllRegionsForLayer(layerName)
+        for (hexId in downloadedHexIds) {
+            if (!hasOtherLayersForRegion(hexId, layerName)) {
+                HexGrid.hexFromId(hexId)?.let { OfflineTileReader.deleteDemTilesForBounds(HexGrid.hexBounds(it)) }
+            }
+        }
+    }
 
     suspend fun clearAutoCache(): Boolean {
         OfflineCoverage.clearAmbientCache()

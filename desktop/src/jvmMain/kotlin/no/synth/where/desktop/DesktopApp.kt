@@ -10,15 +10,21 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import no.synth.where.data.BulkImportOutcome
 import no.synth.where.data.BulkImportResult
+import no.synth.where.data.DownloadQueueManager
 import no.synth.where.data.DownloadStatus
-import no.synth.where.data.HexGrid
 import no.synth.where.data.ImportFailure
 import no.synth.where.data.LiveTrackingFollower
+import no.synth.where.data.MapDownloadManager
+import no.synth.where.data.MaplibreComposeDownloadEngine
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.PendingBulkImport
+import no.synth.where.data.PlatformFile
 import no.synth.where.data.RouteListResult
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.StravaRoute
@@ -40,6 +46,7 @@ import no.synth.where.resources.import_url_error
 import no.synth.where.ui.AttributionsScreenContent
 import no.synth.where.ui.DownloadQueueScreenContent
 import no.synth.where.ui.DownloadScreenContent
+import no.synth.where.ui.LayerHexMapScreen
 import no.synth.where.ui.OnlineTrackingScreenContent
 import no.synth.where.ui.PointImportState
 import no.synth.where.ui.SavedPointsScreenContent
@@ -88,7 +95,14 @@ fun DesktopApp() {
     val trackRepository = remember { AppDependencies.trackRepository }
     val savedPointsRepository = remember { AppDependencies.savedPointsRepository }
     val clientIdManager = remember { AppDependencies.clientIdManager }
-    val downloadManager = remember { no.synth.where.data.DesktopMapDownloadManager() }
+    val downloadManager = remember {
+        MapDownloadManager(
+            DownloadQueueManager(
+                engine = MaplibreComposeDownloadEngine(PlatformFile(System.getProperty("java.io.tmpdir"))),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
+            )
+        )
+    }
 
     val themeMode by userPreferences.themeMode.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
@@ -379,15 +393,7 @@ fun DesktopApp() {
                     },
                     onDeleteLayer = { layerId ->
                         scope.launch {
-                            val downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
-                            downloadManager.deleteAllRegionsForLayer(layerId)
-                            for (hexId in downloadedHexIds) {
-                                if (!downloadManager.hasOtherLayersForRegion(hexId, layerId)) {
-                                    HexGrid.hexFromId(hexId)?.let {
-                                        OfflineTileReader.deleteDemTilesForBounds(HexGrid.hexBounds(it))
-                                    }
-                                }
-                            }
+                            downloadManager.deleteLayer(layerId)
                             refreshTrigger++
                         }
                     },
@@ -420,10 +426,11 @@ fun DesktopApp() {
                 onBackClick = { navigateBack() },
             )
 
-            Screen.LAYER_REGIONS -> DesktopLayerHexMapScreen(
+            Screen.LAYER_REGIONS -> LayerHexMapScreen(
                 layerId = selectedLayerId,
                 onBackClick = { navigateBack() },
                 downloadManager = downloadManager,
+                userLocation = null,
                 downloadElevationData = downloadElevationData,
                 downloadMaxZoom = downloadMaxZoom,
                 offlineModeEnabled = offlineModeEnabled,

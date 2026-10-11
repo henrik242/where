@@ -20,6 +20,8 @@ import androidx.navigation.toRoute
 import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.util.CrashReporter
 import no.synth.where.data.SavedPoint
+import no.synth.where.data.geo.LatLng
+import no.synth.where.location.fusedLocationFlow
 import no.synth.where.navigation.*
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
@@ -193,9 +195,23 @@ fun WhereApp(
         }
         composable<LayerRegionsRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<LayerRegionsRoute>()
+            val lifecycleOwner = LocalLifecycleOwner.current
+            val downloadElevationData by userPreferences.downloadElevationData.collectAsState()
+            val downloadMaxZoom by userPreferences.downloadMaxZoom.collectAsState()
+            var userLocation by remember { mutableStateOf<LatLng?>(null) }
+            // Live location so the picker dot tracks movement; works without location permission.
+            LaunchedEffect(Unit) {
+                lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    fusedLocationFlow(context).collect { userLocation = LatLng(it.latitude, it.longitude) }
+                }
+            }
             LayerHexMapScreen(
                 layerId = route.layerId,
                 onBackClick = { navController.popBackStack() },
+                downloadManager = app.mapDownloadManager,
+                userLocation = userLocation,
+                downloadElevationData = downloadElevationData,
+                downloadMaxZoom = downloadMaxZoom,
                 onOfflineChipClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
                 onQueueChipClick = { navController.navigate(DownloadQueueRoute) },
                 offlineModeEnabled = offlineModeEnabled

@@ -1,6 +1,7 @@
 package no.synth.where
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -10,6 +11,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import no.synth.where.data.BulkImportOutcome
 import no.synth.where.data.BulkImportResult
@@ -24,7 +31,11 @@ import no.synth.where.data.stopFollowingAll
 import no.synth.where.data.unfollow
 import no.synth.where.data.DownloadStatus
 import no.synth.where.data.summary
-import no.synth.where.data.IosMapDownloadManager
+import no.synth.where.data.DownloadQueueManager
+import no.synth.where.data.MapDownloadManager
+import no.synth.where.data.MaplibreComposeDownloadEngine
+import no.synth.where.data.PlatformFile
+import no.synth.where.data.geo.LatLng
 import no.synth.where.data.ImportFailure
 import no.synth.where.data.RouteListResult
 import no.synth.where.data.SavedPoint
@@ -35,7 +46,7 @@ import no.synth.where.data.TrackUrlImporter
 import no.synth.where.ui.AttributionsScreenContent
 import no.synth.where.ui.DownloadQueueScreenContent
 import no.synth.where.ui.DownloadScreenContent
-import no.synth.where.ui.IosLayerHexMapScreen
+import no.synth.where.ui.LayerHexMapScreen
 import no.synth.where.ui.rememberLayerInfos
 import no.synth.where.ui.OnlineTrackingScreenContent
 import no.synth.where.ui.PointImportState
@@ -47,7 +58,6 @@ import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.followedFriends
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
-import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.di.AppDependencies
 import platform.UIKit.UIApplicationOpenSettingsURLString
@@ -61,6 +71,7 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSystemFreeSize
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSNumber
+import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSUserDefaults
 
 /** Types the import pickers accept. public.data is the catch-all, so this matches Android's any-file pick. */
@@ -94,7 +105,14 @@ fun IosApp() {
     val trackRepository = remember { AppDependencies.trackRepository }
     val savedPointsRepository = remember { AppDependencies.savedPointsRepository }
     val clientIdManager = remember { AppDependencies.clientIdManager }
-    val downloadManager = remember { IosMapDownloadManager() }
+    val downloadManager = remember {
+        MapDownloadManager(
+            DownloadQueueManager(
+                engine = MaplibreComposeDownloadEngine(PlatformFile(NSTemporaryDirectory())),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            )
+        )
+    }
 
     val themeMode by userPreferences.themeMode.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
@@ -523,17 +541,7 @@ fun IosApp() {
                     },
                     onDeleteLayer = { layerId ->
                         scope.launch {
-                            val downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
-                            downloadManager.deleteAllRegionsForLayer(layerId)
-                            for (hexId in downloadedHexIds) {
-                                val hasOther = downloadManager.hasOtherLayersForRegion(hexId, layerId)
-                                if (!hasOther) {
-                                    val hex = HexGrid.hexFromId(hexId)
-                                    if (hex != null) {
-                                        OfflineTileReader.deleteDemTilesForBounds(HexGrid.hexBounds(hex))
-                                    }
-                                }
-                            }
+                            downloadManager.deleteLayer(layerId)
                             refreshTrigger++
                         }
                     },
@@ -571,10 +579,11 @@ fun IosApp() {
             }
 
             Screen.LAYER_REGIONS -> {
-                IosLayerHexMapScreen(
+                LayerHexMapScreen(
                     layerId = selectedLayerId,
                     onBackClick = { navigateBack() },
                     downloadManager = downloadManager,
+                    userLocation = rememberTrackerLocation(),
                     downloadElevationData = downloadElevationData,
                     downloadMaxZoom = downloadMaxZoom,
                     offlineModeEnabled = offlineModeEnabled,
@@ -694,4 +703,26 @@ fun IosApp() {
             no.synth.where.data.LegacyOfflineCache.deleteAll()
         })
     }
+}
+
+/**
+ * The tracker's last fix, polled while shown. IosMapScreen stops the tracker keep-alive on dispose,
+ * so drive it here too or the fix stays frozen.
+ */
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+private fun rememberTrackerLocation(): LatLng? {
+    val locationTracker = remember { AppDependencies.locationTracker }
+    var location by remember { mutableStateOf<LatLng?>(null) }
+    DisposableEffect(Unit) {
+        locationTracker.startKeepAlive()
+        onDispose { locationTracker.stopKeepAlive() }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            location = locationTracker.lastLocation?.coordinate?.useContents { LatLng(latitude, longitude) }
+            delay(2000)
+        }
+    }
+    return location
 }
