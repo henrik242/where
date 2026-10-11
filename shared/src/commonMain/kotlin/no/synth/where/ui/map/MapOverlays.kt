@@ -27,6 +27,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
@@ -116,7 +118,9 @@ fun RulerCard(
     rulerState: RulerState,
     onUndo: () -> Unit,
     onClear: () -> Unit,
-    onSaveAsTrack: () -> Unit
+    onSaveAsTrack: () -> Unit,
+    routeProgress: Float? = null,
+    onFindRoute: (() -> Unit)? = null,
 ) {
     Card(
         modifier = modifier,
@@ -170,6 +174,41 @@ fun RulerCard(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                }
+            }
+
+            if (rulerState.points.size >= 2 && onFindRoute != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                if (routeProgress != null) {
+                    Text(
+                        text = stringResource(Res.string.finding_route),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { routeProgress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Button(
+                        onClick = onFindRoute,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            painterResource(Res.drawable.ic_map),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(Res.string.find_hiking_route))
+                    }
+                    Text(
+                        text = stringResource(Res.string.route_suggestion_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
 
@@ -914,6 +953,8 @@ fun BoxScope.MapOverlays(
     onRulerUndo: () -> Unit,
     onRulerClear: () -> Unit,
     onRulerSaveAsTrack: () -> Unit,
+    routeProgress: Float? = null,
+    onFindRoute: (() -> Unit)? = null,
     onOnlineTrackingClick: () -> Unit = {},
     onCloseTrack: () -> Unit,
     onCollapseTrack: () -> Unit = {},
@@ -1105,7 +1146,9 @@ fun BoxScope.MapOverlays(
                     rulerState = rulerState,
                     onUndo = onRulerUndo,
                     onClear = onRulerClear,
-                    onSaveAsTrack = onRulerSaveAsTrack
+                    onSaveAsTrack = onRulerSaveAsTrack,
+                    routeProgress = routeProgress,
+                    onFindRoute = onFindRoute
                 )
             }
             if (isRecording && recordingTrack != null) {

@@ -1,5 +1,7 @@
 package no.synth.where.ui
 
+import no.synth.where.ui.map.HikingRouteSnackbars
+import no.synth.where.ui.map.crossingsGeoJsonFor
 import no.synth.where.location.fusedLocationFlow
 
 import android.Manifest
@@ -290,6 +292,9 @@ fun MapScreen(
     var showBackgroundLocationDisclosure by remember { mutableStateOf(false) }
     var pendingRecordStart by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val routeProgress by viewModel.routeSession.progress.collectAsState()
+    val plannedCrossings by viewModel.routeSession.crossings.collectAsState()
+    HikingRouteSnackbars(viewModel.routeSession, snackbarHostState)
     val scope = rememberCoroutineScope()
 
     val crosshairActive by viewModel.userPreferences.crosshairActive.collectAsState()
@@ -566,6 +571,7 @@ fun MapScreen(
         searchHighlightGeoJson = searchHighlightJson,
         rulerLineGeoJson = rulerLineJson,
         rulerPointsGeoJson = rulerPointsJson,
+        crossingsGeoJson = remember(plannedCrossings, viewingTracks) { crossingsGeoJsonFor(plannedCrossings, viewingTracks) },
         measurementLineGeoJson = measurementLineJson,
         measurementPointsGeoJson = measurementPointsJson,
         coordGridGeoJson = coordGridGeoJson,
@@ -737,6 +743,8 @@ fun MapScreen(
         onZoomOut = { controller.zoomOut() },
         onRulerUndo = { viewModel.removeLastRulerPoint() },
         onRulerClear = { viewModel.clearRuler() },
+        routeProgress = routeProgress,
+        onFindRoute = { viewModel.findHikingRoute() },
         onRulerSaveAsTrack = { viewModel.openSaveRulerAsTrackDialog() },
         onOfflineIndicatorClick = onOfflineSettingsClick,
         onOnlineTrackingClick = onOnlineTrackingSettingsClick,

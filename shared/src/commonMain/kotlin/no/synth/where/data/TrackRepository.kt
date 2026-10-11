@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import no.synth.where.data.db.TrackDao
+import no.synth.where.data.routing.RoutePoint
 import no.synth.where.data.db.TrackEntity
 import no.synth.where.data.db.TrackPointEntity
 import no.synth.where.util.NamingUtils
@@ -592,6 +593,20 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         val trackWithUniqueName = track.copy(name = uniqueName)
         persistTrack(trackWithUniqueName)
         trackWithUniqueName
+    }
+
+    /** Saves a planned route, keeping its DEM elevations, and shows it focused on the map. */
+    suspend fun savePlannedRoute(name: String, points: List<RoutePoint>): Track {
+        val now = currentTimeMillis()
+        val track = Track(
+            name = NamingUtils.makeUnique(name, _tracks.value.map { it.name }),
+            points = points.map { TrackPoint(latLng = it.latLng, timestamp = now, altitude = it.elevation) },
+            startTime = now,
+            endTime = now,
+        )
+        persistTrack(track)
+        addViewingTrack(track)
+        return track
     }
 
     fun createTrackFromPoints(name: String, rulerPoints: List<RulerPoint>) {

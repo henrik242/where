@@ -15,6 +15,7 @@ import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
+import no.synth.where.data.routing.HikingRouteSession
 import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
 import kotlin.time.Duration.Companion.milliseconds
@@ -31,6 +32,7 @@ class MapScreenViewModel(
     val currentTrack = trackRepository.currentTrack
     val viewingTracks = trackRepository.viewingTracks
     val focusedTrackId = trackRepository.focusedTrackId
+    val routeSession = HikingRouteSession(trackRepository, viewModelScope)
     val tracks = trackRepository.tracks
     val onlineTrackingEnabled = userPreferences.onlineTrackingEnabled
 
@@ -297,6 +299,10 @@ class MapScreenViewModel(
 
     fun clearRuler() {
         _rulerState.value = _rulerState.value.clear()
+    }
+
+    fun findHikingRoute() {
+        routeSession.plan(_rulerState.value.points.map { it.latLng }) { clearRuler() }
     }
 
     // Save ruler as track

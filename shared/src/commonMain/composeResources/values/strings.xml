@@ -412,4 +412,18 @@
     <string name="offline_migration_title">Offline maps need re-downloading</string>
     <string name="offline_migration_message">This update switched to a new map engine, so previously downloaded offline areas can no longer be read and have been cleared. Open the download screen to download the areas you need again.</string>
     <string name="offline_migration_ok">Got it</string>
+    <string name="find_hiking_route">Find hiking route</string>
+    <string name="finding_route">Finding route…</string>
+    <string name="hiking_route">Hiking route</string>
+    <string name="route_suggestion_note">A suggestion from elevation and map data. Cliffs lower than about 15 m and river depth are unknown.</string>
+    <string name="route_planned">%1$s, about %2$s</string>
+    <string name="route_duration_hours">%1$d h %2$d min</string>
+    <string name="route_duration_minutes">%1$d min</string>
+    <plurals name="route_crossings">
+        <item quantity="one">%1$d river or stream crossing</item>
+        <item quantity="other">%1$d river or stream crossings</item>
+    </plurals>
+    <string name="route_features_incomplete">Lake and river data is missing for parts of the area</string>
+    <string name="route_no_terrain">No elevation data for this area. Go online or download the area first.</string>
+    <string name="route_not_found">No walkable route found</string>
 </resources>

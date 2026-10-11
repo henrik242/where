@@ -21,6 +21,7 @@ object OfflineTileReader {
 
     const val DEM_TILE_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
     private const val DEM_DOWNLOAD_ZOOM = 12
+    private const val DEM_SUBDIR = "dem-tiles"
 
     @Volatile
     var offlineOnly: Boolean = false
@@ -30,13 +31,17 @@ object OfflineTileReader {
     }
 
     suspend fun readCachedTile(tileUrl: String, z: Int, x: Int, y: Int): ByteArray? =
+        readCachedTile(tileUrl, z, x, y, DEM_SUBDIR, "png")
+
+    /** Disk-cached tile fetch; [subdir] and [ext] keep each tile type in its own cache folder. */
+    suspend fun readCachedTile(tileUrl: String, z: Int, x: Int, y: Int, subdir: String, ext: String): ByteArray? =
         withContext(Dispatchers.Default) {
-            val cached = readFromDiskCache(z, x, y)
+            val cached = readFromDiskCache(z, x, y, subdir, ext)
             if (cached != null) return@withContext cached
             if (offlineOnly) return@withContext null
 
             val fetched = fetchFromNetwork(tileUrl, z, x, y) ?: return@withContext null
-            writeToDiskCache(z, x, y, fetched)
+            writeToDiskCache(z, x, y, fetched, subdir, ext)
             fetched
         }
 
@@ -122,27 +127,27 @@ object OfflineTileReader {
         return tiles
     }
 
-    private fun readFromDiskCache(z: Int, x: Int, y: Int): ByteArray? {
+    private fun readFromDiskCache(z: Int, x: Int, y: Int, subdir: String = DEM_SUBDIR, ext: String = "png"): ByteArray? {
         val dir = cacheDir ?: return null
-        val file = dir.resolve("dem-tiles").resolve("$z").resolve("$x").resolve("$y.png")
+        val file = dir.resolve(subdir).resolve("$z").resolve("$x").resolve("$y.$ext")
         if (!file.exists()) return null
         return try {
             val bytes = file.readBytes()
             if (bytes.isNotEmpty()) bytes else null
         } catch (e: Exception) {
-            Logger.e(e, "Failed to read cached DEM tile %d/%d/%d", z, x, y)
+            Logger.e(e, "Failed to read cached tile %s/%d/%d/%d", subdir, z, x, y)
             null
         }
     }
 
-    private fun writeToDiskCache(z: Int, x: Int, y: Int, data: ByteArray) {
+    private fun writeToDiskCache(z: Int, x: Int, y: Int, data: ByteArray, subdir: String = DEM_SUBDIR, ext: String = "png") {
         val dir = cacheDir ?: return
         try {
-            val tileDir = dir.resolve("dem-tiles").resolve("$z").resolve("$x")
+            val tileDir = dir.resolve(subdir).resolve("$z").resolve("$x")
             tileDir.mkdirs()
-            tileDir.resolve("$y.png").writeBytes(data)
+            tileDir.resolve("$y.$ext").writeBytes(data)
         } catch (e: Exception) {
-            Logger.e(e, "Failed to cache DEM tile %d/%d/%d", z, x, y)
+            Logger.e(e, "Failed to cache tile %s/%d/%d/%d", subdir, z, x, y)
         }
     }
 
@@ -161,7 +166,7 @@ object OfflineTileReader {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Logger.e(e, "Failed to fetch DEM tile %d/%d/%d", z, x, y)
+            Logger.e(e, "Failed to fetch tile %d/%d/%d", z, x, y)
             null
         }
     }

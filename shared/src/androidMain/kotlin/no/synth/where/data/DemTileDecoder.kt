@@ -9,11 +9,24 @@ actual object DemTileDecoder {
         try {
             if (pixelX < 0 || pixelX >= bitmap.width || pixelY < 0 || pixelY >= bitmap.height) return null
             val pixel = bitmap.getPixel(pixelX, pixelY)
-            val r = Color.red(pixel)
-            val g = Color.green(pixel)
-            val b = Color.blue(pixel)
-            // Terrarium encoding: elevation = (r * 256 + g + b / 256) - 32768
-            return (r * 256.0 + g + b / 256.0) - 32768.0
+            return terrariumElevation(Color.red(pixel), Color.green(pixel), Color.blue(pixel))
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    actual fun decodeTile(pngData: ByteArray): DemTile? {
+        val bitmap = BitmapFactory.decodeByteArray(pngData, 0, pngData.size) ?: return null
+        try {
+            val w = bitmap.width
+            val h = bitmap.height
+            val pixels = IntArray(w * h)
+            bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
+            val out = FloatArray(w * h) { i ->
+                val p = pixels[i]
+                terrariumElevation(Color.red(p), Color.green(p), Color.blue(p)).toFloat()
+            }
+            return DemTile(w, h, out)
         } finally {
             bitmap.recycle()
         }

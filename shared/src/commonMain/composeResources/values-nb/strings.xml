@@ -412,4 +412,18 @@
     <string name="offline_migration_title">Offline-kart må lastes ned på nytt</string>
     <string name="offline_migration_message">Denne oppdateringen byttet til en ny kartmotor, så tidligere nedlastede offline-områder kan ikke lenger leses og er fjernet. Åpne nedlastingsskjermen for å laste ned områdene du trenger på nytt.</string>
     <string name="offline_migration_ok">Greit</string>
+    <string name="find_hiking_route">Finn turrute</string>
+    <string name="finding_route">Finner rute…</string>
+    <string name="hiking_route">Turrute</string>
+    <string name="route_suggestion_note">Et forslag basert på høydedata og kart. Stup lavere enn ca. 15 m og elvedybde er ukjent.</string>
+    <string name="route_planned">%1$s, ca. %2$s</string>
+    <string name="route_duration_hours">%1$d t %2$d min</string>
+    <string name="route_duration_minutes">%1$d min</string>
+    <plurals name="route_crossings">
+        <item quantity="one">%1$d kryssing av elv eller bekk</item>
+        <item quantity="other">%1$d kryssinger av elv eller bekk</item>
+    </plurals>
+    <string name="route_features_incomplete">Mangler data om vann og elver for deler av området</string>
+    <string name="route_no_terrain">Ingen høydedata for området. Gå på nett eller last ned området først.</string>
+    <string name="route_not_found">Fant ingen farbar rute</string>
 </resources>
