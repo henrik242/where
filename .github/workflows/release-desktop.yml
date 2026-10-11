@@ -80,7 +80,7 @@ jobs:
       run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
 
     - name: Run shared unit tests
-      run: ./gradlew :shared:testAndroidHostTest
+      run: ./gradlew :shared:jvmTest
 
     # A throwaway keychain holding only the Developer ID, which codesign finds by name.
     - name: Import Developer ID certificate

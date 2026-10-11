@@ -11,12 +11,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
-import no.synth.where.data.HexGrid
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.summary
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
-import no.synth.where.data.MapDownloadManager
 import java.io.File
 
 @Composable
@@ -27,11 +25,11 @@ fun DownloadScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val downloadManager = remember { MapDownloadManager(context) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var cacheSize by remember { mutableLongStateOf(0L) }
     val app = context.applicationContext as no.synth.where.WhereApplication
-    val queue by app.downloadQueueManager.queue.collectAsState()
+    val downloadManager = app.mapDownloadManager
+    val queue by downloadManager.queue.collectAsState()
     val downloadElevationData by app.userPreferences.downloadElevationData.collectAsState()
     val downloadMaxZoom by app.userPreferences.downloadMaxZoom.collectAsState()
 
@@ -69,17 +67,7 @@ fun DownloadScreen(
         onLayerClick = onLayerClick,
         onDeleteLayer = { layerId ->
             scope.launch {
-                val downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
-                downloadManager.deleteAllRegionsForLayer(layerId)
-                for (hexId in downloadedHexIds.keys) {
-                    val hasOther = downloadManager.hasOtherLayersForRegion(hexId, layerId)
-                    if (!hasOther) {
-                        val hex = HexGrid.hexFromId(hexId)
-                        if (hex != null) {
-                            OfflineTileReader.deleteDemTilesForBounds(HexGrid.hexBounds(hex))
-                        }
-                    }
-                }
+                downloadManager.deleteLayer(layerId)
                 refreshTrigger++
             }
         },

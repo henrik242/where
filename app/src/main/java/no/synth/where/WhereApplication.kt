@@ -15,6 +15,7 @@ import no.synth.where.data.MapCacheLogWatcher
 import no.synth.where.data.OfflineMapGate
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.DownloadQueueManager
+import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.MapCacheConfig
 import no.synth.where.data.OfflineTileReader
@@ -84,6 +85,7 @@ class WhereApplication : Application() {
             onActive = { no.synth.where.service.MapDownloadService.start(this) },
         )
     }
+    val mapDownloadManager by lazy { MapDownloadManager(downloadQueueManager) }
     val liveTrackingFollower by lazy { LiveTrackingFollower(userPreferences.trackingServerUrl.value) }
     val onlineTrackingCoordinator by lazy {
         OnlineTrackingCoordinator(

@@ -1,4 +1,4 @@
-package no.synth.where.desktop
+package no.synth.where.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -11,13 +11,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.sin
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.DownloadStatus
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.HexGrid
+import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.QueuedDownload
 import no.synth.where.data.RegionTileInfo
@@ -28,26 +33,27 @@ import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.data.summary
-import no.synth.where.ui.HexMapScreenContent
-import no.synth.where.ui.buildHexGeoJson
 import no.synth.where.ui.map.compose.HexComposeMap
 import no.synth.where.ui.map.compose.WhereMapController
-import kotlin.math.sin
 
+// Static bounds covering Norway (used to pre-generate the hex grid)
 private val NORWAY_BOUNDS = LatLngBounds(south = 56.0, west = 3.0, north = 72.0, east = 32.0)
 
+/** Picks hexes of [layerId] to download or delete. [userLocation] is null where there is no GPS. */
 @Composable
-fun DesktopLayerHexMapScreen(
+fun LayerHexMapScreen(
     layerId: String,
     onBackClick: () -> Unit,
-    downloadManager: no.synth.where.data.DesktopMapDownloadManager,
+    downloadManager: MapDownloadManager,
+    userLocation: LatLng?,
     downloadElevationData: Boolean = true,
     downloadMaxZoom: Int = UserPreferences.DEFAULT_DOWNLOAD_MAX_ZOOM,
     offlineModeEnabled: Boolean = false,
     onOfflineChipClick: () -> Unit = {},
-    onQueueChipClick: () -> Unit = {},
+    onQueueChipClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
     val queue by downloadManager.queue.collectAsState()
     val controller = remember { WhereMapController() }
     var downloadingOpacity by remember { mutableStateOf(0.4f) }
@@ -67,8 +73,11 @@ fun DesktopLayerHexMapScreen(
     }
 
     val downloadingIds = queue.downloadingHexIds(layerId)
+
     val allHexes = remember { HexGrid.hexesInBounds(NORWAY_BOUNDS) }
 
+    // Refresh the downloaded-hex set when a download starts/finishes. Packs may not be ready yet on
+    // first call or right after a download completes, so retry once after a short delay.
     LaunchedEffect(refreshTrigger, downloadingIds) {
         downloadedHexIds = downloadManager.getDownloadedRegionsForLayer(layerId)
         if (downloadingIds.isEmpty()) {
@@ -81,16 +90,20 @@ fun DesktopLayerHexMapScreen(
         buildHexGeoJson(allHexes, downloadedHexIds, downloadingIds)
     }
 
+    // Pulse the "downloading" hex fill while something is in progress. Gated to STARTED so the
+    // 80ms tick loop does not keep running while the app is backgrounded.
     LaunchedEffect(downloadingIds.isEmpty()) {
         if (downloadingIds.isEmpty()) {
             downloadingOpacity = 0.4f
             return@LaunchedEffect
         }
-        var phase = 0.0
-        while (isActive) {
-            downloadingOpacity = (0.35 + 0.2 * sin(phase)).toFloat()
-            phase += 0.35
-            delay(80)
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            var phase = 0.0
+            while (isActive) {
+                downloadingOpacity = (0.35 + 0.2 * sin(phase)).toFloat()
+                phase += 0.35
+                delay(80)
+            }
         }
     }
 
@@ -107,10 +120,13 @@ fun DesktopLayerHexMapScreen(
             selectedHexName = null
             isLoadingHexName = true
             scope.launch {
-                selectedHexInfo = downloadManager.getRegionTileInfo(HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom)
+                selectedHexInfo = downloadManager.getRegionTileInfo(
+                    HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom
+                )
             }
             scope.launch {
-                selectedHexName = GeocodingHelper.reverseGeocodeArea(HexGrid.hexCenter(hex))
+                val center = HexGrid.hexCenter(hex)
+                selectedHexName = GeocodingHelper.reverseGeocodeArea(center)
                 isLoadingHexName = false
             }
         }
@@ -123,10 +139,14 @@ fun DesktopLayerHexMapScreen(
     val selectedHexDownload = currentHex?.let { hex -> queue.forHex(hex.id, layerId) }
     val queueSummary = queue.summary()
 
+    // Refresh the selected hex's tile info once its download finishes, so the panel flips from
+    // "downloading" to the downloaded size + Delete instead of a stale "Not downloaded".
     LaunchedEffect(selectedHexDownload?.status) {
         val hex = currentHex ?: return@LaunchedEffect
         if (selectedHexDownload?.status == DownloadStatus.COMPLETED) {
-            selectedHexInfo = downloadManager.getRegionTileInfo(HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom)
+            selectedHexInfo = downloadManager.getRegionTileInfo(
+                HexGrid.hexToRegion(hex), layerId, maxZoom = effectiveMaxZoom
+            )
         }
     }
 
@@ -166,7 +186,9 @@ fun DesktopLayerHexMapScreen(
                     val region = HexGrid.hexToRegion(hex)
                     val hasOther = downloadManager.hasOtherLayersForRegion(hex.id, layerId)
                     downloadManager.deleteRegionTiles(region, layerId)
-                    if (!hasOther) OfflineTileReader.deleteDemTilesForBounds(region.boundingBox)
+                    if (!hasOther) {
+                        OfflineTileReader.deleteDemTilesForBounds(region.boundingBox)
+                    }
                     showDeleteDialog = false
                     selectedHex = null
                     selectedHexInfo = null
@@ -192,9 +214,9 @@ fun DesktopLayerHexMapScreen(
                 downloadingOpacity = downloadingOpacity,
                 modifier = Modifier.fillMaxSize(),
                 controller = controller,
-                userLocation = null,
+                userLocation = userLocation,
                 onMapClick = onHexTap,
             )
-        },
+        }
     )
 }

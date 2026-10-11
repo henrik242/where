@@ -7,13 +7,13 @@
 - Lint: `cd app && ../gradlew lint`
 - Single test: `cd app && ../gradlew testDebugUnitTest --tests "no.synth.where.ClassName"`
 - Build shared module: `./gradlew :shared:assembleDebug`
-- Shared unit tests (commonTest, runs on the JVM): `./gradlew :shared:testAndroidHostTest`
+- Shared unit tests (commonTest + jvmTest, on the JVM): `./gradlew :shared:jvmTest`
 - Web server: `cd web && bun run dev`
 - Web tests: `cd web && bun test`
 
 Note: `cd app && ../gradlew testDebugUnitTest` only covers the `app` module. The shared
-`commonTest` suite runs via `:shared:testAndroidHostTest` (host/JVM) or `:shared:allTests`
-(adds the iOS simulator, needs a Mac).
+suite runs via `:shared:jvmTest` or `:shared:allTests` (adds the iOS simulator, needs a Mac).
+Tests that need JDK APIs (files, JDBC SQLite) go in `shared/src/jvmTest`.
 
 ## General Code Guidelines
 

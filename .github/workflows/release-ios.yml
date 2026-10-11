@@ -144,7 +144,7 @@ jobs:
         EOF
 
     - name: Run tests
-      run: ./gradlew testDebugUnitTest
+      run: ./gradlew testDebugUnitTest :shared:jvmTest
 
     - name: Upload test results
       if: always()
