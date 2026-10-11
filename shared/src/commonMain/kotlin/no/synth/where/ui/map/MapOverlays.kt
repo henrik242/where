@@ -118,7 +118,7 @@ fun RulerCard(
     onUndo: () -> Unit,
     onClear: () -> Unit,
     onSaveAsTrack: () -> Unit,
-    routeProgress: Float? = null,
+    isPlanningRoute: Boolean = false,
     onFindRoute: (() -> Unit)? = null,
 ) {
     Card(
@@ -176,7 +176,7 @@ fun RulerCard(
                 }
             }
 
-            if (routeProgress != null) {
+            if (isPlanningRoute) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(Res.string.finding_route),
@@ -184,10 +184,7 @@ fun RulerCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { routeProgress },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 Text(
                     text = stringResource(Res.string.route_suggestion_note),
                     style = MaterialTheme.typography.bodySmall,
@@ -951,7 +948,7 @@ fun BoxScope.MapOverlays(
     onRulerUndo: () -> Unit,
     onRulerClear: () -> Unit,
     onRulerSaveAsTrack: () -> Unit,
-    routeProgress: Float? = null,
+    isPlanningRoute: Boolean = false,
     onFindRoute: (() -> Unit)? = null,
     onOnlineTrackingClick: () -> Unit = {},
     onCloseTrack: () -> Unit,
@@ -1145,7 +1142,7 @@ fun BoxScope.MapOverlays(
                     onUndo = onRulerUndo,
                     onClear = onRulerClear,
                     onSaveAsTrack = onRulerSaveAsTrack,
-                    routeProgress = routeProgress,
+                    isPlanningRoute = isPlanningRoute,
                     onFindRoute = onFindRoute
                 )
             }

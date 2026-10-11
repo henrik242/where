@@ -39,9 +39,9 @@ class HikingRouteSession(
     private val trackRepository: TrackRepository,
     private val scope: CoroutineScope,
 ) {
-    /** Progress 0..1 while planning, null when idle. */
-    private val _progress = MutableStateFlow<Float?>(null)
-    val progress: StateFlow<Float?> = _progress.asStateFlow()
+    // A percentage would mislead: the slow part is fetching tiles, the search itself takes ms.
+    private val _isPlanning = MutableStateFlow(false)
+    val isPlanning: StateFlow<Boolean> = _isPlanning.asStateFlow()
 
     private val _crossings = MutableStateFlow<PlannedCrossings?>(null)
     val crossings: StateFlow<PlannedCrossings?> = _crossings.asStateFlow()
@@ -51,15 +51,19 @@ class HikingRouteSession(
 
     private var job: Job? = null
 
+    private companion object {
+        val MARGIN_SCALES = listOf(1.0, 4.0)
+    }
+
     /** Routes each leg between consecutive [waypoints]; calls [onPlanned] after the track is saved. */
     fun plan(waypoints: List<LatLng>, onPlanned: () -> Unit = {}) {
         if (waypoints.size < 2 || job?.isActive == true) return
         job = scope.launch {
             try {
-                _progress.value = 0f
+                _isPlanning.value = true
                 _events.send(planLegs(waypoints, onPlanned))
             } finally {
-                _progress.value = null
+                _isPlanning.value = false
             }
         }
     }
@@ -68,11 +72,17 @@ class HikingRouteSession(
         val legs = waypoints.zipWithNext()
         val routes = mutableListOf<TerrainRoute>()
         var incomplete = false
-        for ((i, leg) in legs.withIndex()) {
-            val grid = TerrainGridLoader.load(leg.first, leg.second) ?: return RoutePlanEvent.NoTerrainData
-            incomplete = VectorFeatureLoader.burnInto(grid) > 0 || incomplete
-            routes += TerrainRouter.route(grid, leg.first, leg.second) { p -> _progress.value = (i + p) / legs.size }
-                ?: return RoutePlanEvent.NoRoute
+        for ((from, to) in legs) {
+            // The way around a long lake can lie outside the default area; retry once, wider.
+            var route: TerrainRoute? = null
+            for ((attempt, marginScale) in MARGIN_SCALES.withIndex()) {
+                val grid = TerrainGridLoader.load(from, to, marginScale)
+                    ?: if (attempt == 0) return RoutePlanEvent.NoTerrainData else break
+                incomplete = VectorFeatureLoader.burnInto(grid) > 0 || incomplete
+                route = TerrainRouter.route(grid, from, to)
+                if (route != null) break
+            }
+            routes += route ?: return RoutePlanEvent.NoRoute
         }
         // Each leg starts where the previous ended; drop the duplicated joint.
         val points = routes.flatMapIndexed { i, r -> if (i == 0) r.points else r.points.drop(1) }

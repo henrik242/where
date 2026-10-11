@@ -118,7 +118,7 @@ fun IosMapScreen(
     val currentTrack by trackRepository.currentTrack.collectAsState()
     val viewingTracks by trackRepository.viewingTracks.collectAsState()
     val routeSession = remember { AppDependencies.hikingRouteSession }
-    val routeProgress by routeSession.progress.collectAsState()
+    val isPlanningRoute by routeSession.isPlanning.collectAsState()
     val plannedCrossings by routeSession.crossings.collectAsState()
     HikingRouteSnackbars(routeSession, snackbarHostState)
     val focusedTrackId by trackRepository.focusedTrackId.collectAsState()
@@ -862,7 +862,7 @@ fun IosMapScreen(
         onRulerClear = {
             rulerState = rulerState.clear()
         },
-        routeProgress = routeProgress,
+        isPlanningRoute = isPlanningRoute,
         onFindRoute = {
             val planned = rulerState.points
             routeSession.plan(planned.map { it.latLng }) { if (rulerState.points == planned) rulerState = rulerState.clear() }

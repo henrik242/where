@@ -292,7 +292,7 @@ fun MapScreen(
     var showBackgroundLocationDisclosure by remember { mutableStateOf(false) }
     var pendingRecordStart by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val routeProgress by viewModel.routeSession.progress.collectAsState()
+    val isPlanningRoute by viewModel.routeSession.isPlanning.collectAsState()
     val plannedCrossings by viewModel.routeSession.crossings.collectAsState()
     HikingRouteSnackbars(viewModel.routeSession, snackbarHostState)
     val scope = rememberCoroutineScope()
@@ -743,7 +743,7 @@ fun MapScreen(
         onZoomOut = { controller.zoomOut() },
         onRulerUndo = { viewModel.removeLastRulerPoint() },
         onRulerClear = { viewModel.clearRuler() },
-        routeProgress = routeProgress,
+        isPlanningRoute = isPlanningRoute,
         onFindRoute = { viewModel.findHikingRoute() },
         onRulerSaveAsTrack = { viewModel.openSaveRulerAsTrackDialog() },
         onOfflineIndicatorClick = onOfflineSettingsClick,
