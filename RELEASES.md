@@ -8,14 +8,15 @@ tag dates.
 
 [diff](https://github.com/henrik242/where/compare/v579...main)
 
-- New macOS desktop app: a map viewer that browses saved tracks and points, downloads offline maps,
-  and follows friends' live online tracks. No GPS, so it does not record or share your own position.
-- Strava stays connected through a flaky network, a timeout or a Strava outage. Only Strava
-  actually rejecting your login asks you to reconnect.
-- Fixed being asked to reconnect Strava after an app upgrade
 - Find a hiking route between ruler points, also off-trail. It avoids cliffs, lakes and glaciers,
-  prefers paths and bridges, estimates walking time, and marks where you must cross a river or stream.
-  Offline elevation downloads now include the lake and river data it needs.
+  prefers paths and bridges, estimates walking time, and marks where you must cross a river or
+  stream. Offline elevation downloads now include the lake and river data it needs.
+- New macOS desktop app: a map viewer for saved tracks and points, offline map downloads and
+  friends' live tracks. No GPS, so it does not record or share your own position.
+- Strava stays connected through a flaky network, a timeout, an outage or an app upgrade; only
+  Strava rejecting your login asks you to reconnect
+- iOS: the map keeps its position when you return from settings, the layer menu closes after
+  picking a layer, and the live-tracking share message is translated
 
 ## v579 (2026-09-15)
 
