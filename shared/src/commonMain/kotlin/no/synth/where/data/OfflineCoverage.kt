@@ -9,17 +9,18 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.maplibre.compose.map.DefaultMapRuntime
 import org.maplibre.compose.offline.DownloadProgress
 import org.maplibre.compose.offline.DownloadStatus
-import org.maplibre.compose.offline.OfflineManagerState
+import org.maplibre.compose.offline.OfflineStorageState
 import org.maplibre.compose.offline.OfflinePack
+import org.maplibre.compose.offline.offlineStorage
 
 /**
- * Coverage/stats/deletion over maplibre-compose's [org.maplibre.compose.offline.OfflineManager].
+ * Coverage/stats/deletion over maplibre-compose's [org.maplibre.compose.offline.OfflineStorage].
  * Packs are keyed by [QueuedDownload.id] ("regionName-layerId"), stored as the pack metadata by
  * [MaplibreComposeDownloadEngine]. Every query awaits manager readiness so a startup call can't
  * mistake a still-loading database for an empty one.
  */
 object OfflineCoverage {
-    private val manager get() = DefaultMapRuntime.instance.offlineManager
+    private val manager get() = DefaultMapRuntime.instance.offlineStorage
 
     private const val PROGRESS_TIMEOUT_MS = 1500L
 
@@ -39,8 +40,8 @@ object OfflineCoverage {
     }
 
     private suspend fun packs(): Set<OfflinePack> =
-        when (val s = manager.state.first { it !is OfflineManagerState.Loading }) {
-            is OfflineManagerState.Ready -> s.packs
+        when (val s = manager.state.first { it !is OfflineStorageState.Loading }) {
+            is OfflineStorageState.Ready -> s.packs
             else -> emptySet()
         }
 
@@ -61,7 +62,7 @@ object OfflineCoverage {
     /** Wait briefly for the pack to report real progress; a restored pack starts [Unknown]. */
     private suspend fun progressOf(pack: OfflinePack): DownloadProgress =
         withTimeoutOrNull(PROGRESS_TIMEOUT_MS) {
-            pack.downloadProgress.first { it !is DownloadProgress.Unknown }
+            pack.downloadProgress.first { it !is DownloadProgress.NotReported }
         } ?: pack.downloadProgress.value
 
     private suspend fun tileInfoOf(pack: OfflinePack, estimatedTiles: Int): RegionTileInfo =

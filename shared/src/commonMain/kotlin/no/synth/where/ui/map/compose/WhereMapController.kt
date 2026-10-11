@@ -11,6 +11,7 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.ui.map.MapZoomLevels
 import org.maplibre.compose.camera.CameraAnimation
+import org.maplibre.compose.camera.CameraFit
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.camera.CameraUpdate
 import org.maplibre.compose.map.MapState
@@ -31,7 +32,7 @@ class WhereMapController {
         get() = state?.cameraPosition
 
     val cameraCenter: LatLng?
-        get() = position?.target?.let { LatLng(it.latitude, it.longitude) }
+        get() = position?.center?.let { LatLng(it.latitude, it.longitude) }
 
     val cameraZoom: Double
         get() = position?.zoom ?: 0.0
@@ -59,14 +60,14 @@ class WhereMapController {
     /** Jump (no animation) so opening a point or search result lands immediately. */
     fun setCamera(latitude: Double, longitude: Double, zoom: Double) {
         state?.setCameraPosition(
-            CameraPosition(target = Position(longitude = longitude, latitude = latitude), zoom = zoom)
+            CameraPosition(center = Position(longitude = longitude, latitude = latitude), zoom = zoom)
         )
     }
 
     fun panTo(latitude: Double, longitude: Double) {
         launch {
             state?.animateCamera(
-                CameraUpdate(target = Position(longitude = longitude, latitude = latitude))
+                CameraUpdate(center = Position(longitude = longitude, latitude = latitude))
             )
         }
     }
@@ -81,7 +82,7 @@ class WhereMapController {
     fun follow(latitude: Double, longitude: Double, bearing: Double) {
         val cur = position ?: return
         state?.setCameraPosition(
-            cur.copy(target = Position(longitude = longitude, latitude = latitude), bearing = bearing)
+            cur.copy(center = Position(longitude = longitude, latitude = latitude), bearing = bearing)
         )
     }
 
@@ -94,10 +95,10 @@ class WhereMapController {
             if (bounds.isPoint) {
                 s.animateCamera(
                     CameraUpdate(
-                        target = Position(longitude = bounds.west, latitude = bounds.south),
+                        center = Position(longitude = bounds.west, latitude = bounds.south),
                         zoom = maxZoom ?: MapZoomLevels.SINGLE_POINT,
                     ),
-                    CameraAnimation.Ease(),
+                    CameraAnimation.Ease.Standard,
                 )
                 return@launch
             }
@@ -108,10 +109,10 @@ class WhereMapController {
                     east = bounds.east,
                     north = bounds.north,
                 )
-            val fitted = s.cameraForBounds(boundingBox = box, fitPadding = DEFAULT_FIT_PADDING)
+            val fitted = s.cameraForBounds(box, CameraFit(fitPadding = DEFAULT_FIT_PADDING))
             val clamped =
                 if (maxZoom != null && fitted.zoom > maxZoom) fitted.copy(zoom = maxZoom) else fitted
-            s.animateCamera(CameraUpdate(target = clamped.target, zoom = clamped.zoom), CameraAnimation.Ease())
+            s.animateCamera(CameraUpdate(center = clamped.center, zoom = clamped.zoom), CameraAnimation.Ease.Standard)
         }
     }
 

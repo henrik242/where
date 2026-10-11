@@ -15,6 +15,8 @@ coreKtx = "1.19.1"
 crashlyticsPlugin = "3.0.8"
 datastorePreferences = "1.2.1"
 espressoCore = "3.7.0"
+# Downloads the JDK 25 toolchain the desktop (jvm) target needs in CI.
+foojayResolver = "1.0.0"
 firebaseBom = "34.19.0"
 googleServicesPlugin = "4.5.0"
 junit = "4.13.2"
@@ -25,12 +27,11 @@ kotlinxCoroutines = "1.11.0"
 kotlinxSerializationJson = "1.11.0"
 ktor = "3.6.0"
 lifecycleRuntimeCompose = "2.11.0"
-# Interim fork: 0.19.0 + connectivity override #1735, from this fork's GitHub Packages as
-# 0.19.0-where1 (see the WhereForkPackages repo in settings.gradle.kts). Revert to the upstream
-# version once #1735 ships. The native render runtime is unchanged, so it stays on the official
-# maplibreComposeRuntime version.
-maplibreCompose = "0.19.0-where1"
-maplibreComposeRuntime = "0.19.0"
+# Upstream 0.20.0 shipped the connectivity override (PR #1735, MapConnectivity/ForceOffline) that
+# the interim 0.19.0-where1 fork carried, and publishes JVM artifacts the desktop target needs, so
+# the fork is gone (see OfflineMapGate). Keep both refs on the same release.
+maplibreCompose = "0.20.0"
+maplibreComposeRuntime = "0.20.0"
 material = "1.14.0"
 mockk = "1.14.11"
 mockkAndroid = "1.14.11"
@@ -65,6 +66,9 @@ firebase-crashlytics-ndk = { group = "com.google.firebase", name = "firebase-cra
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 kmp-zip = { module = "no.synth:kmp-zip", version.ref = "kmpZip" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+# Dispatchers.Main on desktop (the AWT event thread), which the desktop map needs for its callbacks.
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -75,6 +79,8 @@ ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.re
 maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version.ref = "maplibreCompose" }
 maplibre-compose-location = { module = "org.maplibre.compose:location", version.ref = "maplibreCompose" }
 maplibre-compose-runtime-vulkan-android = { module = "org.maplibre.compose:maplibre-compose-runtime-vulkan-android", version.ref = "maplibreComposeRuntime" }
+# Metal render runtime for the desktop (JVM) map on Apple Silicon.
+maplibre-compose-runtime-metal-macos-arm64 = { module = "org.maplibre.compose:maplibre-compose-runtime-metal-macos-arm64", version.ref = "maplibreComposeRuntime" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockkAndroid" }

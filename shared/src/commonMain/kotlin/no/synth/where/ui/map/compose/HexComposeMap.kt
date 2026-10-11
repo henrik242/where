@@ -55,7 +55,7 @@ fun HexComposeMap(
         rememberMapState(
             baseStyle = BaseStyle.Json(baseStyle),
             initialCameraPosition =
-                CameraPosition(target = Position(longitude = 13.0, latitude = 64.5), zoom = 3.5),
+                CameraPosition(center = Position(longitude = 13.0, latitude = 64.5), zoom = 3.5),
         ) {
             val source = rememberGeoJsonSource(GeoJsonData.JsonString(hexGeoJson))
             FillLayer(

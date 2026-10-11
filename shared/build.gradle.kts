@@ -104,6 +104,17 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
+    // MapLibre Compose desktop renders through the Java FFM API and is built for Java 25 bytecode,
+    // so the JVM compilation runs on a JDK 25 toolchain. The Android target keeps its own JVM_21
+    // jvmTarget (the dexer accepts bytecode from a newer compiler JDK), so this does not disturb it.
+    jvmToolchain(25)
+
+    jvm {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+        }
+    }
+
     android {
         namespace = "no.synth.where.shared"
         compileSdk = 37
@@ -153,6 +164,13 @@ kotlin {
         getByName("androidHostTest").dependencies {
             // Real SQLite on the JVM host so the DAO contract/migration guards exercise actual SQL.
             implementation(libs.sqldelight.sqlite.driver)
+        }
+        jvmMain.dependencies {
+            api(libs.ktor.client.okhttp)
+            implementation(libs.sqldelight.sqlite.driver)
+            implementation(libs.kotlinx.coroutines.core)
+            // Metal render runtime for the desktop map (Apple Silicon).
+            runtimeOnly(libs.maplibre.compose.runtime.metal.macos.arm64)
         }
         androidMain.dependencies {
             // compose.material3 redirects android to an androidx material3 built against an older
