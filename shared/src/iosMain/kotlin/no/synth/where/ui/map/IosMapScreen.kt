@@ -1,5 +1,6 @@
 package no.synth.where.ui.map
 
+import no.synth.where.data.routing.HikingRouteSession
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -117,6 +118,10 @@ fun IosMapScreen(
     val isRecording by trackRepository.isRecording.collectAsState()
     val currentTrack by trackRepository.currentTrack.collectAsState()
     val viewingTracks by trackRepository.viewingTracks.collectAsState()
+    val routeSession = remember { HikingRouteSession(trackRepository, scope) }
+    val routeProgress by routeSession.progress.collectAsState()
+    val plannedCrossings by routeSession.crossings.collectAsState()
+    HikingRouteSnackbars(routeSession, snackbarHostState)
     val focusedTrackId by trackRepository.focusedTrackId.collectAsState()
     val navigation by trackRepository.navigation.collectAsState()
     val navigationChartVisible by trackRepository.navigationChartVisible.collectAsState()
@@ -518,6 +523,7 @@ fun IosMapScreen(
         searchHighlightGeoJson = searchHighlightJson,
         rulerLineGeoJson = rulerLineJson,
         rulerPointsGeoJson = rulerPointsJson,
+        crossingsGeoJson = remember(plannedCrossings, viewingTracks) { crossingsGeoJsonFor(plannedCrossings, viewingTracks) },
         measurementLineGeoJson = measurementLineJson,
         measurementPointsGeoJson = measurementPointsJson,
         coordGridGeoJson = coordGridGeoJson,
@@ -869,6 +875,10 @@ fun IosMapScreen(
         },
         onRulerClear = {
             rulerState = rulerState.clear()
+        },
+        routeProgress = routeProgress,
+        onFindRoute = {
+            routeSession.plan(rulerState.points.map { it.latLng }) { rulerState = rulerState.clear() }
         },
         onRulerSaveAsTrack = {
             showSaveRulerAsTrackDialog = true

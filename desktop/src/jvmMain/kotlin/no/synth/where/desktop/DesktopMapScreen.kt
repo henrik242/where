@@ -1,5 +1,8 @@
 package no.synth.where.desktop
 
+import no.synth.where.data.routing.HikingRouteSession
+import no.synth.where.ui.map.HikingRouteSnackbars
+import no.synth.where.ui.map.crossingsGeoJsonFor
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -106,6 +109,10 @@ fun DesktopMapScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var rulerState by remember { mutableStateOf(RulerState()) }
     val scope = rememberCoroutineScope()
+    val routeSession = remember { HikingRouteSession(trackRepository, scope) }
+    val routeProgress by routeSession.progress.collectAsState()
+    val plannedCrossings by routeSession.crossings.collectAsState()
+    HikingRouteSnackbars(routeSession, snackbarHostState)
 
     val isRecording by trackRepository.isRecording.collectAsState()
     val currentTrack by trackRepository.currentTrack.collectAsState()
@@ -390,6 +397,7 @@ fun DesktopMapScreen(
         searchHighlightGeoJson = searchHighlightJson,
         rulerLineGeoJson = rulerLineJson,
         rulerPointsGeoJson = rulerPointsJson,
+        crossingsGeoJson = remember(plannedCrossings, viewingTracks) { crossingsGeoJsonFor(plannedCrossings, viewingTracks) },
         measurementLineGeoJson = measurementLineJson,
         measurementPointsGeoJson = measurementPointsJson,
         coordGridGeoJson = coordGridGeoJson,
@@ -627,6 +635,10 @@ fun DesktopMapScreen(
         onZoomOut = { controller.zoomOut() },
         onRulerUndo = { rulerState = rulerState.removeLastPoint() },
         onRulerClear = { rulerState = rulerState.clear() },
+        routeProgress = routeProgress,
+        onFindRoute = {
+            routeSession.plan(rulerState.points.map { it.latLng }) { rulerState = rulerState.clear() }
+        },
         onRulerSaveAsTrack = {
             showSaveRulerAsTrackDialog = true
             rulerTrackName = ""

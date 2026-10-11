@@ -13,6 +13,8 @@ tag dates.
 - Strava stays connected through a flaky network, a timeout or a Strava outage. Only Strava
   actually rejecting your login asks you to reconnect.
 - Fixed being asked to reconnect Strava after an app upgrade
+- Find a hiking route between ruler points, also off-trail. It avoids cliffs, lakes and glaciers,
+  prefers paths and bridges, estimates walking time, and marks where you must cross a river or stream.
 
 ## v579 (2026-09-15)
 

@@ -2,6 +2,7 @@ package no.synth.where.ui.map
 
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
+import no.synth.where.data.routing.RiverCrossing
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SharedPoint
 import no.synth.where.data.Track
@@ -167,6 +168,13 @@ fun buildSharedPointsGeoJson(points: List<SharedPoint>): String {
     val features = points.joinToString(",") { point ->
         val name = point.name.replace("\\", "\\\\").replace("\"", "\\\"")
         """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"id":"${point.id}","name":"$name","color":"${point.color}"}}"""
+    }
+    return """{"type":"FeatureCollection","features":[$features]}"""
+}
+
+fun buildCrossingsGeoJson(crossings: List<RiverCrossing>): String {
+    val features = crossings.joinToString(",") { c ->
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${c.latLng.longitude},${c.latLng.latitude}]},"properties":{"river":${c.isRiver}}}"""
     }
     return """{"type":"FeatureCollection","features":[$features]}"""
 }

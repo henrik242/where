@@ -123,6 +123,7 @@ data class WhereMapRenderData(
     val searchHighlightGeoJson: String? = null,
     val rulerLineGeoJson: String? = null,
     val rulerPointsGeoJson: String? = null,
+    val crossingsGeoJson: String? = null,
     val measurementLineGeoJson: String? = null,
     val measurementPointsGeoJson: String? = null,
     val coordGridGeoJson: String? = null,
@@ -177,6 +178,7 @@ fun WhereComposeMap(
             NavigationLayers(data.navCompletedGeoJson, data.navRemainingGeoJson, data.navOffCourseGeoJson)
             FriendTrackLayers(data.friendTrackGeoJson)
             RulerLayers(data.rulerLineGeoJson, data.rulerPointsGeoJson)
+            CrossingsLayer(data.crossingsGeoJson)
             MeasurementLayers(data.measurementLineGeoJson, data.measurementPointsGeoJson)
             SavedPointsLayer(data.savedPointsGeoJson)
             SharedPointsLayers(data.mySharedPointsGeoJson, "my-shared-points")
@@ -459,6 +461,20 @@ private fun RulerLayers(lineGeoJson: String?, pointsGeoJson: String?) {
         source = src("ruler-point-source", pointsGeoJson),
         radius = const(6.dp),
         color = const(orange),
+        strokeWidth = const(2.dp),
+        strokeColor = const(Color.White),
+    )
+}
+
+/** River and stream crossings on a planned hiking route: rivers larger and darker. */
+@Composable
+private fun CrossingsLayer(geoJson: String?) {
+    val isRiver = Feature["river"].cast<BooleanValue>()
+    CircleLayer(
+        id = "route-crossing-layer",
+        source = src("route-crossing-source", geoJson),
+        radius = switch(listOf(condition(isRiver, const(8.dp))), const(6.dp)),
+        color = switch(listOf(condition(isRiver, const(hexColor("#0D47A1")))), const(hexColor("#29B6F6"))),
         strokeWidth = const(2.dp),
         strokeColor = const(Color.White),
     )
