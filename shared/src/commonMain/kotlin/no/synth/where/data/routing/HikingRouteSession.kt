@@ -23,11 +23,18 @@ sealed interface RoutePlanEvent {
         val crossings: Int,
         val featuresIncomplete: Boolean,
     ) : RoutePlanEvent
+    /** Elevation tiles missing (offline) or the area is too large. */
     data object NoTerrainData : RoutePlanEvent
     data object NoRoute : RoutePlanEvent
 }
 
-/** Plans a hiking route through the ruler points and saves it as a track. One per map screen. */
+/** Crossings of the planned route saved as track [trackId]. Not persisted with the track. */
+data class PlannedCrossings(val trackId: String, val crossings: List<RiverCrossing>)
+
+/**
+ * Plans hiking routes through ruler points and saves them as tracks. One per app, on an app-wide
+ * [scope], so leaving the map screen doesn't cancel a plan in progress.
+ */
 class HikingRouteSession(
     private val trackRepository: TrackRepository,
     private val scope: CoroutineScope,
@@ -36,9 +43,8 @@ class HikingRouteSession(
     private val _progress = MutableStateFlow<Float?>(null)
     val progress: StateFlow<Float?> = _progress.asStateFlow()
 
-    /** Crossings of the last planned route, keyed by its track id so they hide with the track. */
-    private val _crossings = MutableStateFlow<Pair<String, List<RiverCrossing>>?>(null)
-    val crossings: StateFlow<Pair<String, List<RiverCrossing>>?> = _crossings.asStateFlow()
+    private val _crossings = MutableStateFlow<PlannedCrossings?>(null)
+    val crossings: StateFlow<PlannedCrossings?> = _crossings.asStateFlow()
 
     private val _events = Channel<RoutePlanEvent>(Channel.BUFFERED)
     val events: Flow<RoutePlanEvent> = _events.receiveAsFlow()
@@ -50,54 +56,36 @@ class HikingRouteSession(
         if (waypoints.size < 2 || job?.isActive == true) return
         job = scope.launch {
             try {
-                val legs = waypoints.zipWithNext()
-                val routes = mutableListOf<TerrainRoute>()
-                var incomplete = false
                 _progress.value = 0f
-                for ((i, leg) in legs.withIndex()) {
-                    val result = HikingRoutePlanner.plan(leg.first, leg.second) { p ->
-                        _progress.value = (i + p) / legs.size
-                    }
-                    when (result) {
-                        is PlanResult.Found -> {
-                            routes += result.route
-                            incomplete = incomplete || result.featuresIncomplete
-                        }
-                        PlanResult.NoTerrainData -> return@launch _events.send(RoutePlanEvent.NoTerrainData)
-                        PlanResult.NoRoute -> return@launch _events.send(RoutePlanEvent.NoRoute)
-                    }
-                }
-                // Each leg starts where the previous ended; drop the duplicated joint.
-                val points = routes.flatMapIndexed { i, r -> if (i == 0) r.points else r.points.drop(1) }
-                val crossings = routes.flatMap { it.crossings }
-                val track = trackRepository.savePlannedRoute(routeName(waypoints.first(), waypoints.last()), points)
-                _crossings.value = track.id to crossings
-                onPlanned()
-                _events.send(
-                    RoutePlanEvent.Planned(
-                        distanceMeters = routes.sumOf { it.distanceMeters },
-                        durationSeconds = routes.sumOf { it.durationSeconds },
-                        crossings = crossings.size,
-                        featuresIncomplete = incomplete,
-                    )
-                )
+                _events.send(planLegs(waypoints, onPlanned))
             } finally {
                 _progress.value = null
             }
         }
     }
 
-    fun cancel() {
-        job?.cancel()
-    }
-
-    private suspend fun routeName(start: LatLng, end: LatLng): String {
-        val from = GeocodingHelper.reverseGeocode(start)
-        val to = GeocodingHelper.reverseGeocode(end)
-        return when {
-            from != null && to != null && from != to -> "$from → $to"
-            from != null -> from
-            else -> getString(Res.string.hiking_route)
+    private suspend fun planLegs(waypoints: List<LatLng>, onPlanned: () -> Unit): RoutePlanEvent {
+        val legs = waypoints.zipWithNext()
+        val routes = mutableListOf<TerrainRoute>()
+        var incomplete = false
+        for ((i, leg) in legs.withIndex()) {
+            val grid = TerrainGridLoader.load(leg.first, leg.second) ?: return RoutePlanEvent.NoTerrainData
+            incomplete = VectorFeatureLoader.burnInto(grid) > 0 || incomplete
+            routes += TerrainRouter.route(grid, leg.first, leg.second) { p -> _progress.value = (i + p) / legs.size }
+                ?: return RoutePlanEvent.NoRoute
         }
+        // Each leg starts where the previous ended; drop the duplicated joint.
+        val points = routes.flatMapIndexed { i, r -> if (i == 0) r.points else r.points.drop(1) }
+        val crossings = routes.flatMap { it.crossings }
+        val name = GeocodingHelper.routeName(waypoints.first(), waypoints.last()) ?: getString(Res.string.hiking_route)
+        val track = trackRepository.savePlannedRoute(name, points)
+        _crossings.value = PlannedCrossings(track.id, crossings)
+        onPlanned()
+        return RoutePlanEvent.Planned(
+            distanceMeters = routes.sumOf { it.distanceMeters },
+            durationSeconds = routes.sumOf { it.durationSeconds },
+            crossings = crossings.size,
+            featuresIncomplete = incomplete,
+        )
     }
 }

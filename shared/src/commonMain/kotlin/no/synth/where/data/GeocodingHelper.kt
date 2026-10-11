@@ -173,6 +173,14 @@ object GeocodingHelper {
         return null
     }
 
+    /** "Start → End" for a track or route, or just the start name when the ends are close or share a name. */
+    suspend fun routeName(start: LatLng, end: LatLng): String? {
+        val startName = reverseGeocode(start) ?: return null
+        if (start.distanceTo(end) <= 100) return startName
+        val endName = reverseGeocode(end)
+        return if (endName != null && endName != startName) "$startName → $endName" else startName
+    }
+
     suspend fun reverseGeocode(latLng: LatLng): String? = withContext(Dispatchers.Default) {
         val key = cacheKey(latLng)
         cacheMutex.withLock { nameCache[key] }?.let { return@withContext it }

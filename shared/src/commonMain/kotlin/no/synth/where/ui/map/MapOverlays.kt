@@ -27,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SmallFloatingActionButton
@@ -177,38 +176,37 @@ fun RulerCard(
                 }
             }
 
-            if (rulerState.points.size >= 2 && onFindRoute != null) {
+            if (routeProgress != null) {
                 Spacer(modifier = Modifier.height(8.dp))
-                if (routeProgress != null) {
-                    Text(
-                        text = stringResource(Res.string.finding_route),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Text(
+                    text = stringResource(Res.string.finding_route),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { routeProgress },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = stringResource(Res.string.route_suggestion_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            } else if (rulerState.points.size >= 2 && onFindRoute != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onFindRoute,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.ic_map),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    LinearProgressIndicator(
-                        progress = { routeProgress },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Button(
-                        onClick = onFindRoute,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_map),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(Res.string.find_hiking_route))
-                    }
-                    Text(
-                        text = stringResource(Res.string.route_suggestion_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(Res.string.find_hiking_route))
                 }
             }
 

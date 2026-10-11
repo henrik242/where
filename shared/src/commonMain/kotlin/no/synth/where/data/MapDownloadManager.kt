@@ -1,5 +1,6 @@
 package no.synth.where.data
 
+import no.synth.where.data.routing.OfflineTerrain
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -43,7 +44,7 @@ class MapDownloadManager(private val queueManager: DownloadQueueManager) {
         deleteAllRegionsForLayer(layerName)
         for (hexId in downloadedHexIds) {
             if (!hasOtherLayersForRegion(hexId, layerName)) {
-                HexGrid.hexFromId(hexId)?.let { OfflineTileReader.deleteDemTilesForBounds(HexGrid.hexBounds(it)) }
+                HexGrid.hexFromId(hexId)?.let { OfflineTerrain.delete(HexGrid.hexBounds(it)) }
             }
         }
     }

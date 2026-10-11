@@ -1,6 +1,5 @@
 package no.synth.where.desktop
 
-import no.synth.where.data.routing.HikingRouteSession
 import no.synth.where.ui.map.HikingRouteSnackbars
 import no.synth.where.ui.map.crossingsGeoJsonFor
 import androidx.compose.foundation.layout.fillMaxSize
@@ -109,7 +108,7 @@ fun DesktopMapScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var rulerState by remember { mutableStateOf(RulerState()) }
     val scope = rememberCoroutineScope()
-    val routeSession = remember { HikingRouteSession(trackRepository, scope) }
+    val routeSession = remember { AppDependencies.hikingRouteSession }
     val routeProgress by routeSession.progress.collectAsState()
     val plannedCrossings by routeSession.crossings.collectAsState()
     HikingRouteSnackbars(routeSession, snackbarHostState)
@@ -637,7 +636,8 @@ fun DesktopMapScreen(
         onRulerClear = { rulerState = rulerState.clear() },
         routeProgress = routeProgress,
         onFindRoute = {
-            routeSession.plan(rulerState.points.map { it.latLng }) { rulerState = rulerState.clear() }
+            val planned = rulerState.points
+            routeSession.plan(planned.map { it.latLng }) { if (rulerState.points == planned) rulerState = rulerState.clear() }
         },
         onRulerSaveAsTrack = {
             showSaveRulerAsTrackDialog = true

@@ -1,5 +1,6 @@
 package no.synth.where.ui
 
+import no.synth.where.data.routing.OfflineTerrain
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,7 +24,6 @@ import no.synth.where.data.DownloadStatus
 import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.HexGrid
 import no.synth.where.data.MapDownloadManager
-import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.QueuedDownload
 import no.synth.where.data.RegionTileInfo
 import no.synth.where.data.UserPreferences
@@ -187,7 +187,7 @@ fun LayerHexMapScreen(
                     val hasOther = downloadManager.hasOtherLayersForRegion(hex.id, layerId)
                     downloadManager.deleteRegionTiles(region, layerId)
                     if (!hasOther) {
-                        OfflineTileReader.deleteDemTilesForBounds(region.boundingBox)
+                        OfflineTerrain.delete(region.boundingBox)
                     }
                     showDeleteDialog = false
                     selectedHex = null

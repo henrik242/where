@@ -1,5 +1,6 @@
 package no.synth.where.data.routing
 
+import no.synth.where.data.TileUtils
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -13,15 +14,12 @@ object FeatureRasterizer {
     // Not walkable, or not something a hiker should follow.
     private val NON_WALKABLE_TRANSPORT = setOf("motorway", "ferry", "rail", "transit", "raceway", "aerialway")
 
-    // Standing water; river/stream areas stay crossable as rivers.
-    private val RIVER_AREA_CLASSES = setOf("river")
-
     fun burnTile(grid: TerrainGrid, layers: List<MvtDecoder.Layer>, tileZ: Int, tileX: Int, tileY: Int) {
         for (layer in layers) {
             // Tile coordinates -> grid cell coordinates (fractional).
-            val scale = Mercator.TILE_SIZE.toDouble() / layer.extent * pow2(grid.zoom - tileZ)
-            val offX = tileX * Mercator.TILE_SIZE * pow2(grid.zoom - tileZ) - grid.originPx
-            val offY = tileY * Mercator.TILE_SIZE * pow2(grid.zoom - tileZ) - grid.originPy
+            val scale = TileUtils.TILE_SIZE.toDouble() / layer.extent * pow2(grid.zoom - tileZ)
+            val offX = tileX * TileUtils.TILE_SIZE * pow2(grid.zoom - tileZ) - grid.originPx
+            val offY = tileY * TileUtils.TILE_SIZE * pow2(grid.zoom - tileZ) - grid.originPy
             fun toGrid(part: IntArray) = DoubleArray(part.size) { i ->
                 part[i] * scale + if (i % 2 == 0) offX else offY
             }
@@ -29,7 +27,11 @@ object FeatureRasterizer {
                 val flag = flagFor(layer.name, f) ?: continue
                 val parts = f.parts.map(::toGrid)
                 when (f.type) {
-                    MvtDecoder.GeomType.POLYGON -> fillPolygon(grid, parts, flag)
+                    MvtDecoder.GeomType.POLYGON -> {
+                        fillPolygon(grid, parts, flag)
+                        // Outlines too, so necks and inlets narrower than a cell aren't missed.
+                        parts.forEach { drawLine(grid, it, flag) }
+                    }
                     MvtDecoder.GeomType.LINESTRING -> parts.forEach { drawLine(grid, it, flag) }
                     else -> Unit
                 }
@@ -43,7 +45,8 @@ object FeatureRasterizer {
         return when (layer) {
             "water" -> when {
                 brunnel == "tunnel" -> null
-                cls in RIVER_AREA_CLASSES -> CellFlags.RIVER
+                // River areas stay crossable (as rivers); everything else is standing water.
+                cls == "river" -> CellFlags.RIVER
                 else -> CellFlags.WATER
             }
             "waterway" -> when {

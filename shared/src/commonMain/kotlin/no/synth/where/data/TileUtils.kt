@@ -26,25 +26,36 @@ object TileUtils {
         return totalTiles.coerceAtLeast(1)
     }
 
-    fun latLngToTileCoord(lat: Double, lng: Double, zoom: Int, tileSize: Int = 256): TileCoord {
+    const val TILE_SIZE = 256
+
+    /** Web Mercator position in global pixels at [zoom], for [TILE_SIZE] px tiles. */
+    fun latLngToWorldPixel(latLng: LatLng, zoom: Int): Pair<Double, Double> {
+        val size = TILE_SIZE.toDouble() * (1 shl zoom)
+        val latRad = latLng.latitude * PI / 180.0
+        val x = (latLng.longitude + 180.0) / 360.0 * size
+        val y = (1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * size
+        return x to y
+    }
+
+    fun worldPixelToLatLng(px: Double, py: Double, zoom: Int): LatLng {
+        val size = TILE_SIZE.toDouble() * (1 shl zoom)
+        val lng = px / size * 360.0 - 180.0
+        val lat = atan(sinh(PI * (1.0 - 2.0 * py / size))) * 180.0 / PI
+        return LatLng(lat, lng)
+    }
+
+    fun latLngToTileCoord(lat: Double, lng: Double, zoom: Int, tileSize: Int = TILE_SIZE): TileCoord {
         val n = 1 shl zoom
-        val xTile = floor((lng + 180.0) / 360.0 * n).toInt().coerceIn(0, n - 1)
-        val latRad = lat * PI / 180.0
-        val yTile = floor((1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * n).toInt().coerceIn(0, n - 1)
-
-        val xFraction = ((lng + 180.0) / 360.0 * n) - xTile
-        val yFraction = ((1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * n) - yTile
-        val pixelX = (xFraction * tileSize).toInt().coerceIn(0, tileSize - 1)
-        val pixelY = (yFraction * tileSize).toInt().coerceIn(0, tileSize - 1)
-
+        val (px, py) = latLngToWorldPixel(LatLng(lat, lng), zoom)
+        val tx = px / TILE_SIZE
+        val ty = py / TILE_SIZE
+        val xTile = floor(tx).toInt().coerceIn(0, n - 1)
+        val yTile = floor(ty).toInt().coerceIn(0, n - 1)
+        val pixelX = ((tx - xTile) * tileSize).toInt().coerceIn(0, tileSize - 1)
+        val pixelY = ((ty - yTile) * tileSize).toInt().coerceIn(0, tileSize - 1)
         return TileCoord(zoom, xTile, yTile, pixelX, pixelY)
     }
 
-    fun tileToLatLng(z: Int, x: Int, y: Int): LatLng {
-        val n = 1 shl z
-        val lng = x.toDouble() / n * 360.0 - 180.0
-        val latRad = atan(sinh(PI * (1 - 2.0 * y / n)))
-        val lat = latRad * 180.0 / PI
-        return LatLng(lat, lng)
-    }
+    fun tileToLatLng(z: Int, x: Int, y: Int): LatLng =
+        worldPixelToLatLng(x.toDouble() * TILE_SIZE, y.toDouble() * TILE_SIZE, z)
 }
