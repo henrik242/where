@@ -24,6 +24,38 @@ object MvtDecoder {
         return layers
     }
 
+    /** Copies only the layers named in [wanted], byte for byte; no re-encoding. */
+    fun keepLayers(data: ByteArray, wanted: Set<String>): ByteArray {
+        val out = ArrayList<ByteArray>()
+        val r = ProtoReader(data, 0, data.size)
+        while (r.hasMore()) {
+            val start = r.position
+            val (field, wire) = r.tag()
+            if (field == 3 && wire == 2) {
+                val layer = r.subReader()
+                if (layerName(layer) in wanted) out += data.copyOfRange(start, r.position)
+            } else {
+                r.skip(wire)
+            }
+        }
+        val result = ByteArray(out.sumOf { it.size })
+        var offset = 0
+        for (chunk in out) {
+            chunk.copyInto(result, offset)
+            offset += chunk.size
+        }
+        return result
+    }
+
+    private fun layerName(r: ProtoReader): String? {
+        while (r.hasMore()) {
+            val (field, wire) = r.tag()
+            if (field == 1 && wire == 2) return r.string()
+            r.skip(wire)
+        }
+        return null
+    }
+
     private class RawFeature(val type: Int, val tags: IntArray, val geometry: IntArray)
 
     private fun decodeLayer(r: ProtoReader, wanted: Set<String>?): Layer? {
@@ -138,6 +170,8 @@ object MvtDecoder {
     }
 
     private class ProtoReader(private val buf: ByteArray, private var pos: Int, private val end: Int) {
+        val position get() = pos
+
         fun hasMore() = pos < end
 
         fun tag(): Pair<Int, Int> {

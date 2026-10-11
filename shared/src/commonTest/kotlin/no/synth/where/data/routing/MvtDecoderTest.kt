@@ -53,6 +53,10 @@ class MvtDecoderTest {
             bytesField(3, layer)
         }.toByteArray()
 
+        val stripped = MvtDecoder.keepLayers(tile, setOf("waterway"))
+        assertEquals(tile.size - (skipped.size + 2), stripped.size)
+        assertEquals(listOf("waterway"), MvtDecoder.decode(stripped).map { it.name })
+
         val layers = MvtDecoder.decode(tile, setOf("waterway"))
         assertEquals(1, layers.size)
         val f = layers.single().features.single()

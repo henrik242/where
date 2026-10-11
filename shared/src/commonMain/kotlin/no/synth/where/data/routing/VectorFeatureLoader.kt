@@ -23,15 +23,16 @@ import kotlin.coroutines.cancellation.CancellationException
 /** Burns lakes, rivers, streams, paths, bridges and wetland from OpenFreeMap tiles into a grid. */
 object VectorFeatureLoader {
     /** OpenFreeMap's max zoom; the only one carrying every stream and path. */
-    private const val TILE_ZOOM = 14
-    private const val CACHE_SUBDIR = "vector-tiles"
+    const val TILE_ZOOM = 14
+    const val CACHE_SUBDIR = "vector-tiles"
+    const val CACHE_EXT = "pbf"
 
     @Volatile
     private var tileUrlTemplate: String? = null
 
     /** Returns the number of tiles that couldn't be loaded; 0 means the grid has full feature data. */
     suspend fun burnInto(grid: TerrainGrid): Int = withContext(Dispatchers.Default) {
-        val template = resolveTemplate()
+        val template = tileTemplate().orEmpty()
         val shift = TILE_ZOOM - grid.zoom
         val tileCells = Mercator.TILE_SIZE shr shift
         val tx0 = grid.originPx / tileCells
@@ -45,7 +46,7 @@ object VectorFeatureLoader {
             tiles.map { (tx, ty) ->
                 async {
                     semaphore.withPermit {
-                        val bytes = OfflineTileReader.readCachedTile(template, TILE_ZOOM, tx, ty, CACHE_SUBDIR, "pbf")
+                        val bytes = readTile(template, tx, ty)
                         bytes?.let {
                             try {
                                 MvtDecoder.decode(it, FeatureRasterizer.LAYERS)
@@ -67,20 +68,29 @@ object VectorFeatureLoader {
         missing
     }
 
-    /** The TileJSON names a dated build; offline we fall back to whatever is on disk. */
-    private suspend fun resolveTemplate(): String {
+    /** Cached tile, else fetched with only the router's layers kept (~75% smaller in towns). */
+    suspend fun readTile(template: String, x: Int, y: Int): ByteArray? =
+        OfflineTileReader.readCachedTile(template, TILE_ZOOM, x, y, CACHE_SUBDIR, CACHE_EXT) {
+            MvtDecoder.keepLayers(it, FeatureRasterizer.LAYERS)
+        }
+
+    /**
+     * Tile URL template from the TileJSON, which names a dated build. Null when it can't be
+     * resolved (offline): tiles already on disk are still read, they're cached by z/x/y only.
+     */
+    suspend fun tileTemplate(): String? {
         tileUrlTemplate?.let { return it }
-        if (OfflineTileReader.offlineOnly) return ""
+        if (OfflineTileReader.offlineOnly) return null
         return try {
             val json = Json.parseToJsonElement(TerrainClient.client.get(MapStyle.OSM_PATHS_TILEJSON_URL).bodyAsText())
-            val url = json.jsonObject["tiles"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content.orEmpty()
-            if (url.isNotEmpty()) tileUrlTemplate = url
-            url
+            json.jsonObject["tiles"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content
+                ?.takeIf { it.isNotEmpty() }
+                ?.also { tileUrlTemplate = it }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Logger.e(e, "Failed to resolve vector TileJSON")
-            ""
+            null
         }
     }
 }

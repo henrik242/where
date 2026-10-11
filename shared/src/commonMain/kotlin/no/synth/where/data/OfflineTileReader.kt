@@ -12,6 +12,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.data.routing.VectorFeatureLoader
 import no.synth.where.util.Logger
 import kotlin.concurrent.Volatile
 
@@ -22,6 +23,7 @@ object OfflineTileReader {
     const val DEM_TILE_URL = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
     private const val DEM_DOWNLOAD_ZOOM = 12
     private const val DEM_SUBDIR = "dem-tiles"
+    private val TERRAIN_SUBDIRS = listOf(DEM_SUBDIR, VectorFeatureLoader.CACHE_SUBDIR)
 
     @Volatile
     var offlineOnly: Boolean = false
@@ -33,14 +35,20 @@ object OfflineTileReader {
     suspend fun readCachedTile(tileUrl: String, z: Int, x: Int, y: Int): ByteArray? =
         readCachedTile(tileUrl, z, x, y, DEM_SUBDIR, "png")
 
-    /** Disk-cached tile fetch; [subdir] and [ext] keep each tile type in its own cache folder. */
-    suspend fun readCachedTile(tileUrl: String, z: Int, x: Int, y: Int, subdir: String, ext: String): ByteArray? =
+    /**
+     * Disk-cached tile fetch; [subdir] and [ext] keep each tile type in its own cache folder.
+     * [transform] runs on freshly fetched bytes before they are cached, e.g. to strip unused data.
+     */
+    suspend fun readCachedTile(
+        tileUrl: String, z: Int, x: Int, y: Int, subdir: String, ext: String,
+        transform: (ByteArray) -> ByteArray = { it },
+    ): ByteArray? =
         withContext(Dispatchers.Default) {
             val cached = readFromDiskCache(z, x, y, subdir, ext)
             if (cached != null) return@withContext cached
             if (offlineOnly) return@withContext null
 
-            val fetched = fetchFromNetwork(tileUrl, z, x, y) ?: return@withContext null
+            val fetched = fetchFromNetwork(tileUrl, z, x, y)?.let(transform) ?: return@withContext null
             writeToDiskCache(z, x, y, fetched, subdir, ext)
             fetched
         }
@@ -55,64 +63,70 @@ object OfflineTileReader {
 
     fun hasCachedTile(z: Int, x: Int, y: Int): Boolean {
         val dir = cacheDir ?: return false
-        return dir.resolve("dem-tiles").resolve("$z").resolve("$x").resolve("$y.png").exists()
+        return dir.resolve(DEM_SUBDIR).resolve("$z").resolve("$x").resolve("$y.png").exists()
     }
 
+    /**
+     * Offline terrain data for [bounds]: DEM tiles, plus the lake/river/path tiles the hiking route
+     * planner needs. Progress covers both.
+     */
     suspend fun downloadDemTilesForBounds(
         bounds: LatLngBounds,
         onProgress: (Int) -> Unit = {}
     ): Int = withContext(Dispatchers.Default) {
-        val zoom = DEM_DOWNLOAD_ZOOM
-        val tiles = tilesInBounds(bounds, zoom)
-        if (tiles.isEmpty()) return@withContext 0
+        val featureTemplate = VectorFeatureLoader.tileTemplate()
+        val jobs = tilesInBounds(bounds, DEM_DOWNLOAD_ZOOM).map { (x, y) ->
+            suspend { readCachedTile(DEM_TILE_URL, DEM_DOWNLOAD_ZOOM, x, y) }
+        } + if (featureTemplate == null) emptyList() else tilesInBounds(bounds, VectorFeatureLoader.TILE_ZOOM).map { (x, y) ->
+            suspend { VectorFeatureLoader.readTile(featureTemplate, x, y) }
+        }
+        if (jobs.isEmpty()) return@withContext 0
         val semaphore = Semaphore(6)
         val mutex = Mutex()
         var completed = 0
-        val total = tiles.size
-        tiles.map { (x, y) ->
+        jobs.map { job ->
             async<Unit> {
                 semaphore.withPermit {
-                    if (!hasCachedTile(zoom, x, y)) {
-                        val data = fetchFromNetwork(DEM_TILE_URL, zoom, x, y)
-                        if (data != null) {
-                            writeToDiskCache(zoom, x, y, data)
-                        }
-                    }
+                    job()
                     mutex.withLock {
                         completed++
-                        onProgress((completed * 100 / total).coerceIn(0, 100))
+                        onProgress((completed * 100 / jobs.size).coerceIn(0, 100))
                     }
                 }
             }
         }.awaitAll()
-        Logger.d("Processed %d DEM tiles at z%d for bounds", total, zoom)
+        Logger.d("Processed %d terrain tiles for bounds", jobs.size)
         completed
     }
 
     fun getDemCacheSize(): Long {
-        val dir = cacheDir?.resolve("dem-tiles") ?: return 0L
-        return dir.totalSize()
+        val dir = cacheDir ?: return 0L
+        return TERRAIN_SUBDIRS.sumOf { dir.resolve(it).totalSize() }
     }
 
     fun clearAllDemTiles() {
-        val dir = cacheDir?.resolve("dem-tiles") ?: return
-        if (dir.exists()) dir.deleteRecursively()
-        Logger.d("Cleared all DEM tiles")
+        val dir = cacheDir ?: return
+        for (subdir in TERRAIN_SUBDIRS) dir.resolve(subdir).takeIf { it.exists() }?.deleteRecursively()
+        Logger.d("Cleared all terrain tiles")
     }
 
     fun deleteDemTilesForBounds(bounds: LatLngBounds) {
-        val zoom = DEM_DOWNLOAD_ZOOM
-        val tiles = tilesInBounds(bounds, zoom)
+        val deleted = deleteTiles(bounds, DEM_DOWNLOAD_ZOOM, DEM_SUBDIR, "png") +
+            deleteTiles(bounds, VectorFeatureLoader.TILE_ZOOM, VectorFeatureLoader.CACHE_SUBDIR, VectorFeatureLoader.CACHE_EXT)
+        Logger.d("Deleted %d terrain tiles for bounds", deleted)
+    }
+
+    private fun deleteTiles(bounds: LatLngBounds, zoom: Int, subdir: String, ext: String): Int {
+        val dir = cacheDir ?: return 0
         var deleted = 0
-        for ((x, y) in tiles) {
-            val dir = cacheDir ?: return
-            val file = dir.resolve("dem-tiles").resolve("$zoom").resolve("$x").resolve("$y.png")
+        for ((x, y) in tilesInBounds(bounds, zoom)) {
+            val file = dir.resolve(subdir).resolve("$zoom").resolve("$x").resolve("$y.$ext")
             if (file.exists()) {
                 file.delete()
                 deleted++
             }
         }
-        Logger.d("Deleted %d DEM tiles at z%d for bounds", deleted, zoom)
+        return deleted
     }
 
     private fun tilesInBounds(bounds: LatLngBounds, zoom: Int): List<Pair<Int, Int>> {

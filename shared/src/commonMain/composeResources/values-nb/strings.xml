@@ -214,7 +214,7 @@
     <string name="offline_mode">Offline modus</string>
     <string name="offline_mode_description">Bruk kun bufrede kart og data, ingen nettverksforespørsler</string>
     <string name="download_elevation_data">Last ned høydedata</string>
-    <string name="download_elevation_data_description">Last ned høyde- og bratthetdata ved nedlasting av kartfliser for offline bruk</string>
+    <string name="download_elevation_data_description">Last ned høyde-, bratthets-, vann- og elvedata med offline-kart, for høydeavlesning og turruter</string>
     <string name="download_detail_level">Detaljnivå</string>
     <string name="download_detail_level_description">Høyere detaljnivå gir skarpere offline-kart, men mye større nedlastinger</string>
     <string name="download_detail_standard">Standard</string>

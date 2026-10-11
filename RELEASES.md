@@ -15,6 +15,7 @@ tag dates.
 - Fixed being asked to reconnect Strava after an app upgrade
 - Find a hiking route between ruler points, also off-trail. It avoids cliffs, lakes and glaciers,
   prefers paths and bridges, estimates walking time, and marks where you must cross a river or stream.
+  Offline elevation downloads now include the lake and river data it needs.
 
 ## v579 (2026-09-15)
 

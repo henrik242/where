@@ -214,7 +214,7 @@
     <string name="offline_mode">Offline Mode</string>
     <string name="offline_mode_description">Only use cached maps and data, no network requests</string>
     <string name="download_elevation_data">Download elevation data</string>
-    <string name="download_elevation_data_description">Download altitude and slope data when downloading map tiles for offline use</string>
+    <string name="download_elevation_data_description">Download altitude, slope, and lake and river data with offline maps, for elevation readouts and hiking routes</string>
     <string name="download_detail_level">Detail level</string>
     <string name="download_detail_level_description">Higher detail gives sharper offline maps but much larger downloads</string>
     <string name="download_detail_standard">Standard</string>
