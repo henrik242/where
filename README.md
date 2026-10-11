@@ -43,7 +43,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 
 ## Built with
 
-Kotlin Multiplatform sharing navigation, geometry, storage, and Compose Multiplatform UI between Android and iOS. Maps render with MapLibre, and tracks and points are stored locally with SQLDelight. The optional live-tracking backend under [`web/`](web/) runs on Bun.
+Kotlin Multiplatform sharing navigation, geometry, storage, and Compose Multiplatform UI between Android, iOS and a macOS desktop build. Maps render with MapLibre, and tracks and points are stored locally with SQLDelight. The optional live-tracking backend under [`web/`](web/) runs on Bun.
 
 ## Building
 
@@ -72,7 +72,17 @@ To verify just the shared framework without Xcode:
 ./gradlew :shared:linkDebugFrameworkIosArm64            # device
 ```
 
-### iOS crash reports (Crashlytics dSYMs)
+### Desktop app (macOS)
+
+A map viewer that also follows live online tracks; it has no GPS, so it does not record or share its
+own position. The map renders through the Java FFM API, which needs a JDK 25 (the Gradle toolchain
+fetches BellSoft Liberica 25). See [docs/release-desktop.md](docs/release-desktop.md) for signing.
+
+1. Set up `local.properties` as above (the shared module build needs it)
+2. Run it: `./gradlew :desktop:run`
+3. Build an unsigned DMG: `./gradlew :desktop:packageDmg` (output under `desktop/build/compose/binaries/main/dmg/`)
+
+Data lives in `~/.where` (database, preferences, map cache).
 
 Crashlytics needs a build's dSYM to turn addresses into function names. Releases handle this in two
 places: the `Upload Crashlytics dSYMs` build phase in `Where.xcodeproj` runs on every Release build,

@@ -8,6 +8,8 @@ tag dates.
 
 [diff](https://github.com/henrik242/where/compare/v579...main)
 
+- New macOS desktop app: a map viewer that browses saved tracks and points, downloads offline maps,
+  and follows friends' live online tracks. No GPS, so it does not record or share your own position.
 - Strava stays connected through a flaky network, a timeout or a Strava outage. Only Strava
   actually rejecting your login asks you to reconnect.
 - Fixed being asked to reconnect Strava after an app upgrade

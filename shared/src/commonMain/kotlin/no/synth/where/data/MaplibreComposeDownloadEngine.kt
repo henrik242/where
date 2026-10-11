@@ -8,16 +8,17 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.maplibre.compose.map.DefaultMapRuntime
 import org.maplibre.compose.offline.DownloadProgress
-import org.maplibre.compose.offline.OfflineManager
-import org.maplibre.compose.offline.OfflineManagerState
+import org.maplibre.compose.offline.OfflineStorage
+import org.maplibre.compose.offline.OfflineStorageState
 import org.maplibre.compose.offline.OfflinePack
 import org.maplibre.compose.offline.OfflinePackDefinition
+import org.maplibre.compose.offline.offlineStorage
 import org.maplibre.compose.offline.DownloadStatus as MlnDownloadStatus
 import org.maplibre.spatialk.geojson.BoundingBox
 import no.synth.where.util.Logger
 
 /**
- * [DownloadEngine] backed by maplibre-compose's [OfflineManager] for the map tiles, plus the shared
+ * [DownloadEngine] backed by maplibre-compose's [OfflineStorage] for the map tiles, plus the shared
  * [OfflineTileReader] for DEM tiles (unchanged). Replaces the per-platform native offline managers
  * and the local StyleServer: the pack's style is written to a cache file and referenced by a
  * `file://` URL.
@@ -29,8 +30,8 @@ class MaplibreComposeDownloadEngine(
     private val pixelRatio: Float = 2.0f,
 ) : DownloadEngine {
 
-    private val offlineManager: OfflineManager
-        get() = DefaultMapRuntime.instance.offlineManager
+    private val offlineStorage: OfflineStorage
+        get() = DefaultMapRuntime.instance.offlineStorage
 
     private var activePack: OfflinePack? = null
 
@@ -58,20 +59,20 @@ class MaplibreComposeDownloadEngine(
                 val created = createPack(item)
                 pack = created
                 activePack = created
-                offlineManager.resume(created)
+                offlineStorage.resume(created)
                 awaitComplete(created) { percent ->
                     mapPercent = percent
                     onProgress(mapPercent, demPercent)
                 }
             } catch (e: CancellationException) {
-                pack?.let { withContext(NonCancellable) { runCatching { offlineManager.delete(it) } } }
+                pack?.let { withContext(NonCancellable) { runCatching { offlineStorage.delete(it) } } }
                 demJob?.cancel()
                 throw e
             } catch (e: Throwable) {
                 // A create/style-write/resume failure has no useful partial pack: drop it so it does
                 // not linger, and fail the download instead of cancelling the whole queue drain.
                 Logger.e(e, "Offline map download failed for %s", item.id)
-                pack?.let { withContext(NonCancellable) { runCatching { offlineManager.delete(it) } } }
+                pack?.let { withContext(NonCancellable) { runCatching { offlineStorage.delete(it) } } }
                 pack = null
                 false
             } finally {
@@ -82,7 +83,7 @@ class MaplibreComposeDownloadEngine(
             // A download-phase failure (e.g. a transient network error) keeps its partial pack,
             // paused, so a retry resumes it rather than re-downloading; otherwise Native would keep
             // retrying in the background after we stop waiting.
-            pack?.let { withContext(NonCancellable) { runCatching { offlineManager.pause(it) } } }
+            pack?.let { withContext(NonCancellable) { runCatching { offlineStorage.pause(it) } } }
         }
         // A DEM failure must not bubble up and cancel the queue either.
         runCatching { demJob?.await() }
@@ -90,7 +91,7 @@ class MaplibreComposeDownloadEngine(
     }
 
     override fun cancelActive() {
-        activePack?.let { runCatching { offlineManager.pause(it) } }
+        activePack?.let { runCatching { offlineStorage.pause(it) } }
     }
 
     private suspend fun createPack(item: QueuedDownload): OfflinePack {
@@ -111,15 +112,15 @@ class MaplibreComposeDownloadEngine(
                     north = bounds.north,
                 ),
                 pixelRatio = pixelRatio,
-                minZoom = item.minZoom,
-                maxZoom = DownloadLayers.effectiveMaxZoom(item.layerId, item.maxZoom),
+                minZoom = item.minZoom.toDouble(),
+                maxZoom = DownloadLayers.effectiveMaxZoom(item.layerId, item.maxZoom).toDouble(),
             )
-        return offlineManager.create(definition, metadata = item.id.encodeToByteArray())
+        return offlineStorage.create(definition, metadata = item.id.encodeToByteArray())
     }
 
     private suspend fun existingPack(id: String): OfflinePack? {
-        val state = offlineManager.state.first { it !is OfflineManagerState.Loading }
-        val packs = (state as? OfflineManagerState.Ready)?.packs ?: return null
+        val state = offlineStorage.state.first { it !is OfflineStorageState.Loading }
+        val packs = (state as? OfflineStorageState.Ready)?.packs ?: return null
         return packs.firstOrNull { it.metadata.value?.decodeToString() == id }
     }
 
@@ -134,7 +135,8 @@ class MaplibreComposeDownloadEngine(
                     }
                     is DownloadProgress.Error -> true
                     is DownloadProgress.TileLimitExceeded -> true
-                    DownloadProgress.Unknown -> false
+                    // NotReported and the library-internal unspecified sentinel: keep waiting.
+                    else -> false
                 }
             }
         return terminal is DownloadProgress.Healthy && terminal.status == MlnDownloadStatus.Complete

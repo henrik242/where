@@ -4,6 +4,7 @@ import kotlin.concurrent.Volatile
 import kotlinx.io.files.Path
 import org.maplibre.compose.map.DefaultMapRuntime
 import org.maplibre.compose.map.MapRuntimeOptions
+import org.maplibre.compose.util.ExperimentalMaplibreComposeApi
 
 /**
  * "Offline mode": while [enabled], MapLibre Native serves only already-cached data (ambient browsing
@@ -30,11 +31,12 @@ object OfflineMapGate {
      * @param cacheFile durable path for the shared cache DB (ambient tiles + downloaded packs). Must
      *   be outside the OS-purgeable cache dir, or downloaded offline maps can be silently evicted.
      */
+    @OptIn(ExperimentalMaplibreComposeApi::class)
     fun configure(cacheFile: String) {
         if (configured) return
         configured = true
         runCatching {
-            DefaultMapRuntime.configure(MapRuntimeOptions(cacheFile = Path(cacheFile)))
+            DefaultMapRuntime.configure(MapRuntimeOptions { this.cacheFile = Path(cacheFile) })
             // Build the runtime now, on the startup (main) thread, so its MainThreadGuard posts its
             // pin to the main dispatcher before the first map composes. Otherwise the guard is built
             // lazily during rememberMapState inside Scaffold's measure-pass subcomposition, where its

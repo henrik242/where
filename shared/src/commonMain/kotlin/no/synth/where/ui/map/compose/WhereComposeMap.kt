@@ -165,7 +165,7 @@ fun WhereComposeMap(
             baseStyle = BaseStyle.Json(data.styleJson),
             initialCameraPosition =
                 CameraPosition(
-                    target =
+                    center =
                         data.initialTarget?.let { Position(longitude = it.longitude, latitude = it.latitude) }
                             ?: Position(longitude = 10.0, latitude = 60.0),
                     zoom = data.initialZoom,
@@ -204,11 +204,11 @@ fun WhereComposeMap(
         snapshotFlow { state.cameraPosition }
             .collect { pos ->
                 cb.onCameraMove(
-                    LatLng(pos.target.latitude, pos.target.longitude),
+                    LatLng(pos.center.latitude, pos.center.longitude),
                     pos.zoom,
                     pos.bearing,
                 )
-                if (state.cameraMoveReason == CameraMoveReason.GESTURE) {
+                if (state.cameraMoveReason == CameraMoveReason.Gesture) {
                     cb.onUserGesture()
                     attrExpanded = false
                 }
