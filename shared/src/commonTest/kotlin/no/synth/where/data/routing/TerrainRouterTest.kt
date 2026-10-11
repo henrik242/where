@@ -27,8 +27,13 @@ class TerrainRouterTest {
         val g = grid(60, 30)
         val route = routeCells(g, 5 to 15, 55 to 15)
         assertEquals(500.0, route.distanceMeters, 1.0)
-        assertEquals(2, route.points.size)
         assertTrue(route.crossings.isEmpty())
+        // Densified to at most ~20 m between points, all on the straight line.
+        val gaps = route.points.zipWithNext { p, q -> p.latLng.distanceTo(q.latLng) }
+        assertTrue(gaps.all { it <= 20.5 }, "gaps=$gaps")
+        assertTrue(route.points.size >= 25)
+        val lat = route.points.first().latLng.latitude
+        assertTrue(route.points.all { abs(it.latLng.latitude - lat) < 1e-9 })
     }
 
     @Test

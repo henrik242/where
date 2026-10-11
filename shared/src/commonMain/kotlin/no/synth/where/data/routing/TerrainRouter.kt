@@ -29,6 +29,9 @@ sealed interface RouteResult {
 object TerrainRouter {
     /** How far (in cells) to look for a walkable cell when A or B sits on a blocked one. */
     private const val SNAP_RADIUS = 10
+    private const val SMOOTH_RADIUS = 2
+    private const val SIMPLIFY_TOLERANCE_CELLS = 0.25
+    private const val MAX_POINT_SPACING_METERS = 20.0
 
     // 16-neighbourhood: knight moves give smoother lines than 8 directions.
     private val DX = intArrayOf(1, -1, 0, 0, 1, 1, -1, -1, 1, 2, 2, 1, -1, -2, -2, -1)
@@ -49,7 +52,7 @@ object TerrainRouter {
         val t = snap(grid, blocked, rawEnd) ?: return RouteResult.NoRoute
 
         val path = search(grid, blocked, cost, s, t, onProgress) ?: return RouteResult.NoRoute
-        return RouteResult.Found(buildRoute(grid, cost, path))
+        return RouteResult.Found(buildRoute(grid, cost, path, blocked))
     }
 
     private suspend fun search(
@@ -165,7 +168,7 @@ object TerrainRouter {
         return null
     }
 
-    private fun buildRoute(grid: TerrainGrid, cost: HikingCost, path: IntArray): TerrainRoute {
+    private fun buildRoute(grid: TerrainGrid, cost: HikingCost, path: IntArray, blocked: BooleanArray): TerrainRoute {
         val w = grid.width
         var distance = 0.0
         var ascent = 0.0
@@ -186,33 +189,89 @@ object TerrainRouter {
                 crossings += RiverCrossing(grid.cellToLatLng(b % w, b / w), grid.hasFlag(b, CellFlags.RIVER))
             }
         }
-        val keep = simplify(grid, path, toleranceCells = 1.0)
-        val points = keep.map { i -> RoutePoint(grid.cellToLatLng(i % w, i / w), grid.elevations[i].toDouble()) }
-        return TerrainRoute(points, distance, ascent, descent, seconds, crossings)
+        return TerrainRoute(trackPoints(grid, path, blocked), distance, ascent, descent, seconds, crossings)
     }
 
-    /** Douglas-Peucker in cell space. */
-    internal fun simplify(grid: TerrainGrid, path: IntArray, toleranceCells: Double): List<Int> {
-        if (path.size < 3) return path.toList()
+    /**
+     * Turns the cell path into track points: smooths the 16-direction staircase, drops points
+     * that add little (Douglas-Peucker), then fills gaps so no two points are more than
+     * [MAX_POINT_SPACING_METERS] apart, keeping the line and elevation profile detailed.
+     */
+    internal fun trackPoints(grid: TerrainGrid, path: IntArray, blocked: BooleanArray): List<RoutePoint> {
         val w = grid.width
-        val keep = BooleanArray(path.size)
+        val n = path.size
+        val xs = DoubleArray(n) { path[it] % w + 0.5 }
+        val ys = DoubleArray(n) { path[it] / w + 0.5 }
+        val sx = smooth(xs)
+        val sy = smooth(ys)
+        // Smoothing cuts corners; never let it pull a point into a lake or over a cliff edge.
+        for (i in 0 until n) {
+            val cx = sx[i].toInt().coerceIn(0, w - 1)
+            val cy = sy[i].toInt().coerceIn(0, grid.height - 1)
+            if (blocked[grid.index(cx, cy)]) {
+                sx[i] = xs[i]
+                sy[i] = ys[i]
+            }
+        }
+        val keep = simplify(sx, sy, SIMPLIFY_TOLERANCE_CELLS)
+        val maxGapCells = MAX_POINT_SPACING_METERS / grid.cellSizeMeters
+        val out = ArrayList<RoutePoint>()
+        fun add(i: Int) {
+            val latLng = Mercator.pixelToLatLng(grid.originPx + sx[i], grid.originPy + sy[i], grid.zoom)
+            out += RoutePoint(latLng, grid.elevations[path[i]].toDouble())
+        }
+        var prev = 0
+        add(0)
+        for (k in 1 until n) {
+            if (!keep[k]) continue
+            // Walk the dropped stretch, re-adding a point whenever the gap would get too long.
+            var last = prev
+            for (i in prev + 1 until k) {
+                val dx = sx[i + 1] - sx[last]
+                val dy = sy[i + 1] - sy[last]
+                if (sqrt(dx * dx + dy * dy) > maxGapCells) {
+                    add(i)
+                    last = i
+                }
+            }
+            add(k)
+            prev = k
+        }
+        return out
+    }
+
+    /** Moving average over [SMOOTH_RADIUS] cells each way; endpoints stay put. */
+    private fun smooth(v: DoubleArray): DoubleArray {
+        val n = v.size
+        return DoubleArray(n) { i ->
+            val r = minOf(SMOOTH_RADIUS, i, n - 1 - i)
+            var sum = 0.0
+            for (j in i - r..i + r) sum += v[j]
+            sum / (2 * r + 1)
+        }
+    }
+
+    /** Douglas-Peucker; returns which points to keep. */
+    private fun simplify(xs: DoubleArray, ys: DoubleArray, toleranceCells: Double): BooleanArray {
+        val n = xs.size
+        val keep = BooleanArray(n)
         keep[0] = true
-        keep[path.size - 1] = true
+        keep[n - 1] = true
         val stack = ArrayDeque<Pair<Int, Int>>()
-        stack.addLast(0 to path.size - 1)
+        stack.addLast(0 to n - 1)
         while (stack.isNotEmpty()) {
             val (lo, hi) = stack.removeLast()
             if (hi - lo < 2) continue
-            val ax = (path[lo] % w).toDouble()
-            val ay = (path[lo] / w).toDouble()
-            val bx = (path[hi] % w).toDouble()
-            val by = (path[hi] / w).toDouble()
+            val ax = xs[lo]
+            val ay = ys[lo]
+            val bx = xs[hi]
+            val by = ys[hi]
             val len = sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay))
             var maxD = -1.0
             var maxI = -1
             for (i in lo + 1 until hi) {
-                val px = (path[i] % w).toDouble()
-                val py = (path[i] / w).toDouble()
+                val px = xs[i]
+                val py = ys[i]
                 val d = if (len == 0.0) {
                     sqrt((px - ax) * (px - ax) + (py - ay) * (py - ay))
                 } else {
@@ -229,7 +288,7 @@ object TerrainRouter {
                 stack.addLast(maxI to hi)
             }
         }
-        return path.filterIndexed { i, _ -> keep[i] }
+        return keep
     }
 }
 
