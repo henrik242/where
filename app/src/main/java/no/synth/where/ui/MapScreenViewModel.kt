@@ -178,20 +178,7 @@ class MapScreenViewModel(
             val track = currentTrack.value
             if (track != null && _trackNameInput.value.isBlank() && track.points.isNotEmpty()) {
                 _isResolvingTrackName.value = true
-                val firstPoint = track.points.first()
-                val lastPoint = track.points.last()
-                val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
-                val distance = firstPoint.latLng.distanceTo(lastPoint.latLng)
-                val baseName = if (distance > 100 && startName != null) {
-                    val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
-                    if (endName != null && startName != endName) {
-                        "$startName → $endName"
-                    } else {
-                        startName
-                    }
-                } else {
-                    startName
-                }
+                val baseName = GeocodingHelper.routeName(track.points.first().latLng, track.points.last().latLng)
                 if (baseName != null) {
                     _trackNameInput.value =
                         NamingUtils.makeUnique(
@@ -302,7 +289,9 @@ class MapScreenViewModel(
     }
 
     fun findHikingRoute() {
-        routeSession.plan(_rulerState.value.points.map { it.latLng }) { clearRuler() }
+        val planned = _rulerState.value.points
+        // Points added while planning are a new measurement; keep them.
+        routeSession.plan(planned.map { it.latLng }) { if (_rulerState.value.points == planned) clearRuler() }
     }
 
     // Save ruler as track
@@ -334,25 +323,7 @@ class MapScreenViewModel(
             val points = _rulerState.value.points
             if (points.isNotEmpty()) {
                 _isResolvingRulerName.value = true
-                val firstPoint = points.first()
-                val lastPoint = points.last()
-                val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
-
-                val baseName = if (points.size > 1) {
-                    val distance = firstPoint.latLng.distanceTo(lastPoint.latLng)
-                    if (distance > 100 && startName != null) {
-                        val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
-                        if (endName != null && startName != endName) {
-                            "$startName → $endName"
-                        } else {
-                            startName
-                        }
-                    } else {
-                        startName
-                    }
-                } else {
-                    startName
-                }
+                val baseName = GeocodingHelper.routeName(points.first().latLng, points.last().latLng)
 
                 if (baseName != null) {
                     _rulerTrackName.value =

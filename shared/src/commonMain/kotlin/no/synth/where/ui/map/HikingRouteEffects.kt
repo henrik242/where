@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import no.synth.where.data.Track
 import no.synth.where.data.routing.HikingRouteSession
-import no.synth.where.data.routing.RiverCrossing
+import no.synth.where.data.routing.PlannedCrossings
 import no.synth.where.data.routing.RoutePlanEvent
 import no.synth.where.resources.Res
 import no.synth.where.resources.route_crossings
@@ -50,9 +50,8 @@ private suspend fun formatHikingTime(seconds: Double): String {
     }
 }
 
-/** Crossing markers for the planned route ([HikingRouteSession.crossings]), only while its track is on the map. */
-fun crossingsGeoJsonFor(planned: Pair<String, List<RiverCrossing>>?, viewingTracks: List<Track>): String? {
-    val (trackId, crossings) = planned ?: return null
-    if (crossings.isEmpty() || viewingTracks.none { it.id == trackId }) return null
-    return buildCrossingsGeoJson(crossings)
+/** Crossing markers for the planned route, only while its track is on the map. */
+fun crossingsGeoJsonFor(planned: PlannedCrossings?, viewingTracks: List<Track>): String? {
+    if (planned == null || planned.crossings.isEmpty() || viewingTracks.none { it.id == planned.trackId }) return null
+    return buildCrossingsGeoJson(planned.crossings)
 }

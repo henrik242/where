@@ -3,11 +3,6 @@ package no.synth.where.data.routing
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -16,7 +11,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.data.MapStyle
 import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.TerrainClient
+import no.synth.where.data.TileUtils
 import no.synth.where.util.Logger
+import no.synth.where.util.mapConcurrently
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -34,30 +31,22 @@ object VectorFeatureLoader {
     suspend fun burnInto(grid: TerrainGrid): Int = withContext(Dispatchers.Default) {
         val template = tileTemplate().orEmpty()
         val shift = TILE_ZOOM - grid.zoom
-        val tileCells = Mercator.TILE_SIZE shr shift
+        val tileCells = TileUtils.TILE_SIZE shr shift
         val tx0 = grid.originPx / tileCells
         val ty0 = grid.originPy / tileCells
         val tx1 = (grid.originPx + grid.width - 1) / tileCells
         val ty1 = (grid.originPy + grid.height - 1) / tileCells
         val tiles = (ty0..ty1).flatMap { ty -> (tx0..tx1).map { tx -> tx to ty } }
 
-        val semaphore = Semaphore(6)
-        val decoded = coroutineScope {
-            tiles.map { (tx, ty) ->
-                async {
-                    semaphore.withPermit {
-                        val bytes = readTile(template, tx, ty)
-                        bytes?.let {
-                            try {
-                                MvtDecoder.decode(it, FeatureRasterizer.LAYERS)
-                            } catch (e: Exception) {
-                                Logger.e(e, "Failed to decode vector tile %d/%d", tx, ty)
-                                null
-                            }
-                        }
-                    }
+        val decoded = tiles.mapConcurrently { (tx, ty) ->
+            readTile(template, tx, ty)?.let {
+                try {
+                    MvtDecoder.decode(it, FeatureRasterizer.LAYERS)
+                } catch (e: Exception) {
+                    Logger.e(e, "Failed to decode vector tile %d/%d", tx, ty)
+                    null
                 }
-            }.awaitAll()
+            }
         }
         // Flags are a shared array, so burn sequentially.
         var missing = 0
@@ -69,10 +58,13 @@ object VectorFeatureLoader {
     }
 
     /** Cached tile, else fetched with only the router's layers kept (~75% smaller in towns). */
-    suspend fun readTile(template: String, x: Int, y: Int): ByteArray? =
-        OfflineTileReader.readCachedTile(template, TILE_ZOOM, x, y, CACHE_SUBDIR, CACHE_EXT) {
-            MvtDecoder.keepLayers(it, FeatureRasterizer.LAYERS)
-        }
+    private suspend fun readTile(template: String, x: Int, y: Int): ByteArray? =
+        OfflineTileReader.readCachedTile(template, TILE_ZOOM, x, y, CACHE_SUBDIR, CACHE_EXT, ::stripTile)
+
+    suspend fun ensureCached(template: String, x: Int, y: Int) =
+        OfflineTileReader.ensureCached(template, TILE_ZOOM, x, y, CACHE_SUBDIR, CACHE_EXT, ::stripTile)
+
+    private fun stripTile(data: ByteArray) = MvtDecoder.keepLayers(data, FeatureRasterizer.LAYERS)
 
     /**
      * Tile URL template from the TileJSON, which names a dated build. Null when it can't be

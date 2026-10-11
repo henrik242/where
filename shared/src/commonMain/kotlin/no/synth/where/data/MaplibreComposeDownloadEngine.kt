@@ -1,5 +1,6 @@
 package no.synth.where.data
 
+import no.synth.where.data.routing.OfflineTerrain
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
@@ -44,7 +45,7 @@ class MaplibreComposeDownloadEngine(
 
         val demJob = if (item.downloadDem) {
             async {
-                OfflineTileReader.downloadDemTilesForBounds(item.region.boundingBox) { percent ->
+                OfflineTerrain.download(item.region.boundingBox) { percent ->
                     demPercent = percent
                     onProgress(mapPercent, demPercent)
                 }

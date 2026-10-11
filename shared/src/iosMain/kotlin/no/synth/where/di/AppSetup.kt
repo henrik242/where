@@ -1,5 +1,6 @@
 package no.synth.where.di
 
+import no.synth.where.data.routing.HikingRouteSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,6 +43,7 @@ object AppDependencies {
     lateinit var onlineTrackingCoordinator: OnlineTrackingCoordinator
     lateinit var stravaTokenManager: StravaTokenManager
     lateinit var stravaRouteImporter: StravaRouteImporter
+    lateinit var hikingRouteSession: HikingRouteSession
     lateinit var locationTracker: IosLocationTracker
 }
 
@@ -88,6 +90,7 @@ fun startApp() {
     no.synth.where.data.MapCacheLogWatcher.install()
     no.synth.where.data.OfflineMapGate.configure("$appSupportDir/maplibre-cache.db")
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    AppDependencies.hikingRouteSession = HikingRouteSession(AppDependencies.trackRepository, appScope)
     appScope.launch {
         AppDependencies.userPreferences.offlineModeEnabled.collect { OfflineTileReader.offlineOnly = it; no.synth.where.data.OfflineMapGate.enabled = it }
     }

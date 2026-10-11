@@ -1,5 +1,6 @@
 package no.synth.where
 
+import no.synth.where.data.routing.OfflineTerrain
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -58,7 +59,6 @@ import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.ui.map.followedFriends
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
-import no.synth.where.data.OfflineTileReader
 import no.synth.where.di.AppDependencies
 import platform.UIKit.UIApplicationOpenSettingsURLString
 import no.synth.where.util.CrashReporter
@@ -552,12 +552,12 @@ fun IosApp() {
                         }
                     },
                     downloadElevationData = downloadElevationData,
-                    demCacheSize = remember(refreshTrigger) { OfflineTileReader.getDemCacheSize() },
+                    demCacheSize = remember(refreshTrigger) { OfflineTerrain.cacheSize() },
                     onDownloadElevationDataChange = { enabled ->
                         userPreferences.updateDownloadElevationData(enabled)
                         if (!enabled) {
                             scope.launch {
-                                OfflineTileReader.clearAllDemTiles()
+                                OfflineTerrain.clear()
                                 refreshTrigger++
                             }
                         }

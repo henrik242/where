@@ -34,6 +34,19 @@ class FeatureRasterizerTest {
     }
 
     @Test
+    fun thinPolygonStillMarksCells() {
+        // Rows 30.6 to 31.0: no cell centre lies inside, only the outline marks it.
+        val g = TerrainGrid(64, 64, 13, 512, 512, 10.0, FloatArray(64 * 64))
+        val channel = MvtDecoder.Feature(
+            MvtDecoder.GeomType.POLYGON,
+            mapOf("class" to "lake"),
+            listOf(intArrayOf(0, 980, 4096, 980, 4096, 992, 0, 992, 0, 980)),
+        )
+        FeatureRasterizer.burnTile(g, listOf(MvtDecoder.Layer("water", 4096, listOf(channel))), 14, 4, 4)
+        assertTrue(g.hasFlag(g.index(20, 30), CellFlags.WATER))
+    }
+
+    @Test
     fun mapsOpenMapTilesClasses() {
         fun f(vararg tags: Pair<String, Any>) =
             MvtDecoder.Feature(MvtDecoder.GeomType.LINESTRING, mapOf(*tags), emptyList())

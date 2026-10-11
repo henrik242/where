@@ -4,7 +4,8 @@ import kotlinx.coroutines.test.runTest
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TerrainRouterTest {
@@ -16,8 +17,7 @@ class TerrainRouterTest {
         TerrainGrid(w, h, zoom, originPx, originPy, 10.0, FloatArray(w * h) { elevation(it % w, it / w) })
 
     private suspend fun routeCells(g: TerrainGrid, from: Pair<Int, Int>, to: Pair<Int, Int>): TerrainRoute {
-        val result = TerrainRouter.route(g, g.cellToLatLng(from.first, from.second), g.cellToLatLng(to.first, to.second))
-        return assertIs<RouteResult.Found>(result).route
+        return assertNotNull(TerrainRouter.route(g, g.cellToLatLng(from.first, from.second), g.cellToLatLng(to.first, to.second)))
     }
 
     private fun TerrainGrid.cellsOf(route: TerrainRoute) = route.points.map { latLngToIndex(it.latLng) }
@@ -28,7 +28,7 @@ class TerrainRouterTest {
         val route = routeCells(g, 5 to 15, 55 to 15)
         assertEquals(500.0, route.distanceMeters, 1.0)
         assertTrue(route.crossings.isEmpty())
-        // Densified to at most ~20 m between points, all on the straight line.
+        // One point per cell, all on the straight line.
         val gaps = route.points.zipWithNext { p, q -> p.latLng.distanceTo(q.latLng) }
         assertTrue(gaps.all { it <= 20.5 }, "gaps=$gaps")
         assertTrue(route.points.size >= 25)
@@ -80,27 +80,35 @@ class TerrainRouterTest {
     }
 
     @Test
+    fun cannotDropOntoPathFromCliffAbove() {
+        // A path along the foot of a 30 m wall: stepping down onto it is still a cliff.
+        val g = grid(40, 40) { _, y -> if (y < 20) 30f else 0f }
+        for (x in 0 until 40) g.addFlag(g.index(x, 20), CellFlags.PATH)
+        val down = g.index(10, 20)
+        assertNull(HikingCost.stepSeconds(g, g.index(10, 19), down, 10.0))
+        assertNotNull(HikingCost.stepSeconds(g, g.index(11, 20), down, 10.0))
+    }
+
+    @Test
     fun walledInTargetHasNoRoute() = runTest {
         val g = grid(40, 40)
         for (y in 0 until 40) for (x in 0 until 40) {
             if (abs(x - 30) > 3 || abs(y - 30) > 3) continue
             if (abs(x - 30) == 3 || abs(y - 30) == 3) g.addFlag(g.index(x, y), CellFlags.WATER)
         }
-        val result = TerrainRouter.route(g, g.cellToLatLng(5, 5), g.cellToLatLng(30, 30))
-        assertIs<RouteResult.NoRoute>(result)
+        assertNull(TerrainRouter.route(g, g.cellToLatLng(5, 5), g.cellToLatLng(30, 30)))
     }
 
     @Test
     fun matchesDijkstraOnHillyTerrain() = runTest {
         val g = grid(40, 40) { x, y -> (kotlin.math.sin(x / 4.0) * 15 + kotlin.math.cos(y / 5.0) * 15).toFloat() }
-        val cost = HikingCost()
         val route = routeCells(g, 2 to 3, 37 to 36)
-        val best = dijkstra(g, cost, g.index(2, 3), g.index(37, 36))
+        val best = dijkstra(g, g.index(2, 3), g.index(37, 36))
         assertEquals(best, route.durationSeconds, best * 1e-4)
     }
 
     /** Reference: plain Dijkstra over the same 16-neighbourhood, no heuristic. */
-    private fun dijkstra(g: TerrainGrid, cost: HikingCost, start: Int, target: Int): Double {
+    private fun dijkstra(g: TerrainGrid, start: Int, target: Int): Double {
         val dx = intArrayOf(1, -1, 0, 0, 1, 1, -1, -1, 1, 2, 2, 1, -1, -2, -2, -1)
         val dy = intArrayOf(0, 0, 1, -1, 1, -1, 1, -1, 2, 1, -1, -2, -2, -1, 1, 2)
         val dist = DoubleArray(g.width * g.height) { Double.POSITIVE_INFINITY }
@@ -118,7 +126,7 @@ class TerrainRouterTest {
                 if (nx !in 0 until g.width || ny !in 0 until g.height) continue
                 val next = g.index(nx, ny)
                 val d = 10.0 * kotlin.math.sqrt((dx[k] * dx[k] + dy[k] * dy[k]).toDouble())
-                val step = cost.stepSeconds(g, cur, next, d) ?: continue
+                val step = HikingCost.stepSeconds(g, cur, next, d) ?: continue
                 if (dist[cur] + step < dist[next]) dist[next] = dist[cur] + step
             }
         }

@@ -1,5 +1,6 @@
 package no.synth.where.desktop
 
+import no.synth.where.data.routing.OfflineTerrain
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -22,7 +23,6 @@ import no.synth.where.data.ImportFailure
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.MaplibreComposeDownloadEngine
-import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.PendingBulkImport
 import no.synth.where.data.PlatformFile
 import no.synth.where.data.RouteListResult
@@ -404,11 +404,11 @@ fun DesktopApp() {
                         }
                     },
                     downloadElevationData = downloadElevationData,
-                    demCacheSize = remember(refreshTrigger) { OfflineTileReader.getDemCacheSize() },
+                    demCacheSize = remember(refreshTrigger) { OfflineTerrain.cacheSize() },
                     onDownloadElevationDataChange = { enabled ->
                         userPreferences.updateDownloadElevationData(enabled)
                         if (!enabled) scope.launch {
-                            OfflineTileReader.clearAllDemTiles()
+                            OfflineTerrain.clear()
                             refreshTrigger++
                         }
                     },

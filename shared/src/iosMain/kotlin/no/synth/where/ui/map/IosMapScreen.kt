@@ -1,6 +1,5 @@
 package no.synth.where.ui.map
 
-import no.synth.where.data.routing.HikingRouteSession
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -118,7 +117,7 @@ fun IosMapScreen(
     val isRecording by trackRepository.isRecording.collectAsState()
     val currentTrack by trackRepository.currentTrack.collectAsState()
     val viewingTracks by trackRepository.viewingTracks.collectAsState()
-    val routeSession = remember { HikingRouteSession(trackRepository, scope) }
+    val routeSession = remember { AppDependencies.hikingRouteSession }
     val routeProgress by routeSession.progress.collectAsState()
     val plannedCrossings by routeSession.crossings.collectAsState()
     HikingRouteSnackbars(routeSession, snackbarHostState)
@@ -814,20 +813,7 @@ fun IosMapScreen(
                 scope.launch {
                     val track = currentTrack
                     if (track != null && track.points.isNotEmpty()) {
-                        val firstPoint = track.points.first()
-                        val lastPoint = track.points.last()
-                        val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
-                        val distance = firstPoint.latLng.distanceTo(lastPoint.latLng)
-                        val baseName = if (distance > 100 && startName != null) {
-                            val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
-                            if (endName != null && startName != endName) {
-                                "$startName → $endName"
-                            } else {
-                                startName
-                            }
-                        } else {
-                            startName
-                        }
+                        val baseName = GeocodingHelper.routeName(track.points.first().latLng, track.points.last().latLng)
                         if (baseName != null) {
                             trackNameInput = NamingUtils.makeUnique(
                                 baseName,
@@ -878,7 +864,8 @@ fun IosMapScreen(
         },
         routeProgress = routeProgress,
         onFindRoute = {
-            routeSession.plan(rulerState.points.map { it.latLng }) { rulerState = rulerState.clear() }
+            val planned = rulerState.points
+            routeSession.plan(planned.map { it.latLng }) { if (rulerState.points == planned) rulerState = rulerState.clear() }
         },
         onRulerSaveAsTrack = {
             showSaveRulerAsTrackDialog = true
@@ -887,24 +874,7 @@ fun IosMapScreen(
             scope.launch {
                 val points = rulerState.points
                 if (points.isNotEmpty()) {
-                    val firstPoint = points.first()
-                    val lastPoint = points.last()
-                    val startName = GeocodingHelper.reverseGeocode(firstPoint.latLng)
-                    val baseName = if (points.size > 1) {
-                        val distance = firstPoint.latLng.distanceTo(lastPoint.latLng)
-                        if (distance > 100 && startName != null) {
-                            val endName = GeocodingHelper.reverseGeocode(lastPoint.latLng)
-                            if (endName != null && startName != endName) {
-                                "$startName → $endName"
-                            } else {
-                                startName
-                            }
-                        } else {
-                            startName
-                        }
-                    } else {
-                        startName
-                    }
+                    val baseName = GeocodingHelper.routeName(points.first().latLng, points.last().latLng)
                     if (baseName != null) {
                         rulerTrackName = NamingUtils.makeUnique(
                             baseName, trackRepository.tracks.value.map { it.name }

@@ -6,27 +6,27 @@ import kotlin.math.exp
 import kotlin.math.sqrt
 import kotlin.math.tan
 
-/** Tunables for the walking-time cost. Times are in seconds. */
-data class HikingCost(
+/** Walking time for a step between grid cells, in seconds. */
+internal object HikingCost {
     /** Cells steeper than this, or steps rising/falling faster, are impassable (cliff proxy). */
-    val maxSlopeDegrees: Double = 40.0,
+    private val maxGradient = tan(40.0 * PI / 180.0)
     /** Tobler's off-path factor: off-trail walking takes 1/0.6 of on-trail time. */
-    val offTrailFactor: Double = 1.0 / 0.6,
-    val wetlandFactor: Double = 1.5,
-    val streamCrossingSeconds: Double = 60.0,
-    val riverCrossingSeconds: Double = 900.0,
-    /** Time multiplier for walking along inside a waterway cell. */
-    val inWaterwayFactor: Double = 3.0,
-) {
-    val maxGradient = tan(maxSlopeDegrees * PI / 180.0)
+    private const val OFF_TRAIL_FACTOR = 1.0 / 0.6
+    private const val WETLAND_FACTOR = 1.5
+    private const val STREAM_CROSSING_SECONDS = 60.0
+    private const val RIVER_CROSSING_SECONDS = 900.0
+    /** Discourages walking along inside a stream or river. */
+    private const val IN_WATERWAY_FACTOR = 3.0
 
     /** Fastest possible speed in m/s, for an admissible A* heuristic. */
     val maxSpeed = toblerSpeed(-0.05)
 
-    /** Tobler's hiking function: walking speed in m/s for gradient dh/dx. */
-    fun toblerSpeed(gradient: Double) = 6.0 * exp(-3.5 * abs(gradient + 0.05)) / 3.6
+    /** Tobler's hiking function: speed in m/s over horizontal distance, for gradient dh/dx. */
+    private fun toblerSpeed(gradient: Double) = 6.0 * exp(-3.5 * abs(gradient + 0.05)) / 3.6
 
-    /** Marks cells whose own slope (central differences) exceeds [maxSlopeDegrees], plus open water and glaciers. */
+    private fun TerrainGrid.isPath(i: Int) = hasFlag(i, CellFlags.PATH or CellFlags.BRIDGE)
+
+    /** Cells too steep to walk (central differences), plus open water and glaciers. */
     fun blockedCells(grid: TerrainGrid): BooleanArray {
         val w = grid.width
         val h = grid.height
@@ -41,7 +41,7 @@ data class HikingCost(
                     continue
                 }
                 // Mapped paths and bridges stay walkable even where the DEM is noisy.
-                if (grid.hasFlag(i, CellFlags.PATH) || grid.hasFlag(i, CellFlags.BRIDGE)) continue
+                if (grid.isPath(i)) continue
                 val x0 = if (x > 0) x - 1 else x
                 val x1 = if (x < w - 1) x + 1 else x
                 val y0 = if (y > 0) y - 1 else y
@@ -54,23 +54,19 @@ data class HikingCost(
         return blocked
     }
 
-    /**
-     * Seconds to walk from cell [from] to adjacent cell [to] over horizontal [distance] meters,
-     * or null when the step is impassable.
-     */
+    /** Seconds to walk [distance] meters from cell [from] to adjacent cell [to], or null if impassable. */
     fun stepSeconds(grid: TerrainGrid, from: Int, to: Int, distance: Double): Double? {
         val gradient = (grid.elevations[to] - grid.elevations[from]) / distance
-        val onPath = grid.hasFlag(to, CellFlags.PATH) || grid.hasFlag(to, CellFlags.BRIDGE)
+        // Only a step along the path is exempt, not one dropping onto it from a cut or cliff above.
+        val onPath = grid.isPath(from) && grid.isPath(to)
         if (!onPath && abs(gradient) > maxGradient) return null
-        // Slope distance, not map distance.
-        val walked = distance * sqrt(1.0 + gradient * gradient)
-        var seconds = walked / toblerSpeed(gradient)
-        if (!onPath) seconds *= offTrailFactor
-        if (grid.hasFlag(to, CellFlags.WETLAND)) seconds *= wetlandFactor
+        var seconds = distance / toblerSpeed(gradient)
+        if (!onPath) seconds *= OFF_TRAIL_FACTOR
+        if (grid.hasFlag(to, CellFlags.WETLAND)) seconds *= WETLAND_FACTOR
         if (grid.isWaterwayCrossing(to)) {
-            seconds *= inWaterwayFactor
+            seconds *= IN_WATERWAY_FACTOR
             if (!grid.isWaterwayCrossing(from)) {
-                seconds += if (grid.hasFlag(to, CellFlags.RIVER)) riverCrossingSeconds else streamCrossingSeconds
+                seconds += if (grid.hasFlag(to, CellFlags.RIVER)) RIVER_CROSSING_SECONDS else STREAM_CROSSING_SECONDS
             }
         }
         return seconds

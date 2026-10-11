@@ -1,5 +1,6 @@
 package no.synth.where.ui
 
+import no.synth.where.data.routing.OfflineTerrain
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -11,7 +12,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
-import no.synth.where.data.OfflineTileReader
 import no.synth.where.data.summary
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
@@ -78,12 +78,12 @@ fun DownloadScreen(
             }
         },
         downloadElevationData = downloadElevationData,
-        demCacheSize = remember(refreshTrigger) { OfflineTileReader.getDemCacheSize() },
+        demCacheSize = remember(refreshTrigger) { OfflineTerrain.cacheSize() },
         onDownloadElevationDataChange = { enabled ->
             app.userPreferences.updateDownloadElevationData(enabled)
             if (!enabled) {
                 scope.launch {
-                    OfflineTileReader.clearAllDemTiles()
+                    OfflineTerrain.clear()
                     refreshTrigger++
                 }
             }
