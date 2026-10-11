@@ -89,12 +89,14 @@ fun WhereApp(
 
     NavHost(navController = navController, startDestination = MapRoute) {
         composable<MapRoute> {
-            MapScreen(
-                onSettingsClick = { navController.navigate(SettingsRoute()) },
-                onOfflineSettingsClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
-                onOnlineTrackingSettingsClick = { navController.navigate(OnlineTrackingRoute) },
-                viewingPoint = viewingPoint,
-                onClearViewingPoint = { viewingPoint = null }
+            AndroidMapScreen(
+                MapScreenNavigation(
+                    viewingPoint = viewingPoint,
+                    onClearViewingPoint = { viewingPoint = null },
+                    onSettingsClick = { navController.navigate(SettingsRoute()) },
+                    onOfflineIndicatorClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
+                    onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
+                )
             )
         }
         composable<SettingsRoute> { backStackEntry ->
@@ -109,21 +111,15 @@ fun WhereApp(
                     else LocaleListCompat.forLanguageTags(tag)
                     AppCompatDelegate.setApplicationLocales(locales)
                 },
-                onSponsorClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://buymeacoffee.com/henrik242".toUri()))
-                },
+                onSponsorClick = { context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.SPONSOR.toUri())) },
                 onBackClick = { navController.popBackStack() },
                 onDownloadClick = { navController.navigate(DownloadRoute) },
                 onTracksClick = { navController.navigate(TracksRoute()) },
                 onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
                 onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
                 onAttributionsClick = { navController.navigate(AttributionsRoute) },
-                onReleaseNotesClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://github.com/henrik242/where/blob/main/RELEASES.md".toUri()))
-                },
-                onGuideClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, "https://where.synth.no/guide".toUri()))
-                },
+                onReleaseNotesClick = { context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.RELEASE_NOTES.toUri())) },
+                onGuideClick = { context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.GUIDE.toUri())) },
                 onCrashReportingChange = { enabled ->
                     userPreferences.updateCrashReportingEnabled(enabled)
                     CrashReporter.setEnabled(enabled)
@@ -137,13 +133,13 @@ fun WhereApp(
             )
         }
         composable<OnlineTrackingRoute> {
-            OnlineTrackingScreen(
+            AndroidOnlineTrackingScreen(
                 onBackClick = { navController.popBackStack() },
                 onNavigateToMap = { navController.popBackStack<MapRoute>(false) }
             )
         }
         composable<SavedPointsRoute> {
-            SavedPointsScreen(
+            AndroidSavedPointsScreen(
                 onBackClick = { navController.popBackStack() },
                 onShowOnMap = { point ->
                     viewingPoint = point
@@ -153,36 +149,30 @@ fun WhereApp(
         }
         composable<TracksRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<TracksRoute>()
-            TracksScreen(
+            AndroidTracksScreen(
                 pendingImportUrl = route.importUrl,
                 pendingImportFileUri = route.importFileUri,
                 onBackClick = { navController.popBackStack() },
-                onShowTrackOnMap = { track ->
-                    trackRepository.addViewingTrack(track)
-                    navController.popBackStack<MapRoute>(false)
-                },
-                onShowTracksOnMap = { tracks ->
-                    trackRepository.setViewingTracks(tracks)
-                    navController.popBackStack<MapRoute>(false)
-                },
-                onNavigateTrack = { track ->
-                    trackRepository.startNavigation(track, reversed = false)
+                onShowMap = { navController.popBackStack<MapRoute>(false) },
+                onNavigationStarted = {
                     // The foreground service owns the location stream and the persistent
                     // notification while navigating; it self-stops when navigation ends.
                     if (trackRepository.navigation.value != null) {
                         LocationTrackingService.start(context)
                     }
-                    navController.popBackStack<MapRoute>(false)
                 },
-                onCropTrack = { track ->
-                    trackRepository.addViewingTrack(track)
-                    trackRepository.startCrop(track.id)
-                    navController.popBackStack<MapRoute>(false)
-                }
             )
         }
         composable<DownloadRoute> {
             DownloadScreen(
+                downloadManager = app.mapDownloadManager,
+                userPreferences = userPreferences,
+                freeStorageBytes = {
+                    runCatching {
+                        val dir = context.getExternalFilesDir(null) ?: context.filesDir
+                        android.os.StatFs(dir.absolutePath).availableBytes
+                    }.getOrDefault(-1L)
+                },
                 onBackClick = { navController.popBackStack() },
                 onLayerClick = { layerId ->
                     navController.navigate(LayerRegionsRoute(layerId))
@@ -191,7 +181,7 @@ fun WhereApp(
             )
         }
         composable<DownloadQueueRoute> {
-            DownloadQueueScreen(onBackClick = { navController.popBackStack() })
+            DownloadQueueScreen(app.mapDownloadManager, onBackClick = { navController.popBackStack() })
         }
         composable<LayerRegionsRoute> { backStackEntry ->
             val route = backStackEntry.toRoute<LayerRegionsRoute>()
@@ -219,18 +209,5 @@ fun WhereApp(
         }
     }
 
-    // One-time notice to upgraders: the engine switch orphaned any old offline downloads.
-    val migrationNoticeShown by userPreferences.offlineMigrationNoticeShown.collectAsState()
-    var showMigrationNotice by remember { mutableStateOf(false) }
-    LaunchedEffect(migrationNoticeShown) {
-        if (!migrationNoticeShown && no.synth.where.data.LegacyOfflineCache.exists()) showMigrationNotice = true
-    }
-    if (showMigrationNotice) {
-        no.synth.where.ui.map.MapDialogs.OfflineMigrationDialog(onDismiss = {
-            showMigrationNotice = false
-            userPreferences.markOfflineMigrationNoticeShown()
-            no.synth.where.data.LegacyOfflineCache.deleteAll()
-        })
-    }
+    OfflineMigrationNotice(userPreferences)
 }
-

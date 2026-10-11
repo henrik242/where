@@ -5,7 +5,7 @@ import no.synth.where.ui.map.NveOverlay
 
 object MapStyle {
     /** Network fallback used only by tests; production callers pass a platform-local URL. */
-    private const val DEFAULT_GLYPHS_URL =
+    const val DEFAULT_GLYPHS_URL =
         "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf"
 
     /** OpenMapTiles-schema vector tiles, no API key. TileJSON, so the weekly planet build stays current. */
