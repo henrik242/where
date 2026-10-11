@@ -162,7 +162,7 @@ fun DesktopMapScreen(
         if (hasZoomedToFriend) return@LaunchedEffect
         val bounds = following.tracks.friendBounds() ?: return@LaunchedEffect
         hasZoomedToFriend = true
-        controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX.toDouble())
+        controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
     }
 
     val trackSavedMsg = stringResource(Res.string.point_saved)
@@ -671,7 +671,7 @@ fun DesktopMapScreen(
         onFollowBannerClick = { clientId ->
             val following = followState as? LiveTrackingFollower.FollowState.Following ?: return@MapScreenContent
             val bounds = following.tracks.friendBounds(clientId) ?: return@MapScreenContent
-            controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX.toDouble())
+            controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
         },
         onStopFollowing = { stopFollowingAll(userPreferences, liveTrackingFollower) },
         isMovingSharedPoint = movingSharedPointId != null,

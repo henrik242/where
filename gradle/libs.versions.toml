@@ -3,7 +3,7 @@ activityCompose = "1.13.0"
 agp = "9.4.1"
 # Must stay on the same compose train as composeBom. Overrides the androidx material3
 # 1.5.0-alpha22 that composeMaterial3 pulls in on android.
-androidxMaterial3 = "1.5.0-alpha29"
+androidxMaterial3 = "1.5.0-beta01"
 appcompat = "1.8.0"
 browser = "1.10.0"
 # Component versions from https://github.com/JetBrains/compose-multiplatform/releases
@@ -17,12 +17,12 @@ datastorePreferences = "1.2.1"
 espressoCore = "3.7.0"
 # Downloads the JDK 25 toolchain the desktop (jvm) target needs in CI.
 foojayResolver = "1.0.0"
-firebaseBom = "34.19.0"
+firebaseBom = "35.0.0"
 googleServicesPlugin = "4.5.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 kmpZip = "1.0.0"
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerializationJson = "1.11.0"
 ktor = "3.6.0"
@@ -38,7 +38,7 @@ mockkAndroid = "1.14.11"
 navigationCompose = "2.10.2"
 playServicesLocation = "21.4.0"
 robolectric = "4.17"
-sqldelight = "2.4.0"
+sqldelight = "2.4.1"
 timber = "5.0.1"
 
 [libraries]

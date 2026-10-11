@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.UiComposable
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.geo.LatLng
@@ -38,6 +39,9 @@ import org.maplibre.spatialk.geojson.Position
  * (the screen maps it to a hex with HexGrid.hexAtPoint).
  */
 @Composable
+// Pin the applier target: the compiler otherwise infers a MapLibre target here and warns at every
+// UI call site. It is a plain UI composable (MaplibreMap hosts the map), like WhereComposeMap.
+@UiComposable
 fun HexComposeMap(
     layerId: String,
     hexGeoJson: String,
