@@ -16,6 +16,8 @@ tag dates.
   back to the straight lines.
 - Route planning can be cancelled, with the Cancel button or by clearing or closing the ruler,
   and says so when it takes longer than usual. Uses less memory on large areas.
+- Following your position now pans and rotates the map smoothly instead of in steps at each
+  GPS fix and compass reading.
 
 ## v619 (2026-10-14)
 
