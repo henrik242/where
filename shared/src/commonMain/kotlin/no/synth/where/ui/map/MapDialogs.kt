@@ -541,7 +541,8 @@ object MapDialogs {
     @Composable
     fun SaveRulerAsTrackDialog(
         trackName: String,
-        pointCount: Int,
+        /** Null when saving a found route, whose points aren't the ruler's. */
+        pointCount: Int?,
         distanceMeters: Double,
         onTrackNameChange: (String) -> Unit,
         onSave: () -> Unit,
@@ -570,7 +571,7 @@ object MapDialogs {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = stringResource(Res.string.ruler_points_distance, pointCount, distanceMeters.formatDistance()),
+                        text = if (pointCount != null) stringResource(Res.string.ruler_points_distance, pointCount, distanceMeters.formatDistance()) else distanceMeters.formatDistance(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -8,16 +8,11 @@ tag dates.
 
 [diff](https://github.com/henrik242/where/compare/v619...main)
 
-- Faster hiking route planning: tiles for each leg download in parallel and ahead of routing.
-  On Android the route search no longer blocks the UI, and leaving the map no longer cancels it.
-  A newly planned route is framed with more surrounding terrain.
-- A found hiking route is no longer saved automatically. It shows along the ruler points with its
-  distance, walking time and crossings in the ruler card, and "Save as track" saves it. Undo goes
-  back to the straight lines.
-- Route planning can be cancelled, with the Cancel button or by clearing or closing the ruler,
-  and says so when it takes longer than usual. Uses less memory on large areas.
-- Following your position now pans and rotates the map smoothly instead of in steps at each
-  GPS fix and compass reading.
+- Faster hiking route planning with less memory use, without blocking the UI. A found route is
+  shown with distance, walking time and crossings before you save it; undo goes back to the
+  straight lines. Planning can be cancelled and says when it is slow.
+- Following your position pans and rotates the map smoothly instead of in steps.
+- The coverage overlay is off in offline mode.
 
 ## v619 (2026-10-14)
 
@@ -34,7 +29,7 @@ tag dates.
   prefers paths and bridges, estimates walking time, and marks where you must cross a river or
   stream. Offline elevation downloads now include the lake and river data it needs.
 - iOS: the map keeps its position when you return from settings, the layer menu closes after
-  picking a layer, and the live-tracking share message is translated
+  picking a layer, and the live-tracking share message is translated.
 
 ## v608 (2026-10-11)
 
@@ -48,7 +43,7 @@ tag dates.
 [diff](https://github.com/henrik242/where/compare/v579...v590)
 
 - Strava stays connected through a flaky network, a timeout, an outage or an app upgrade; only
-  Strava rejecting your login asks you to reconnect
+  Strava rejecting your login asks you to reconnect.
 
 ## v579 (2026-09-15)
 

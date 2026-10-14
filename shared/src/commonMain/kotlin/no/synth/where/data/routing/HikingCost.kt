@@ -29,7 +29,7 @@ internal object HikingCost {
     private const val TOBLER_STEPS = 4096
     private val toblerMaxU = maxGradient + 0.05
     private val toblerScale = TOBLER_STEPS / toblerMaxU
-    private val toblerTable = DoubleArray(TOBLER_STEPS + 2) { 6.0 * exp(-3.5 * it / toblerScale) / 3.6 }
+    private val toblerTable = DoubleArray(TOBLER_STEPS + 2) { toblerSpeed(it / toblerScale - 0.05) }
 
     private fun toblerSpeedFast(gradient: Double): Double {
         val u = abs(gradient + 0.05)

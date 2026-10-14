@@ -269,7 +269,8 @@ private fun RulerCardPreview() {
             rulerState = sampleRulerState,
             onUndo = {},
             onClear = {},
-            onSaveAsTrack = {}
+            onSaveAsTrack = {},
+            onCancelRoute = {},
         )
     }
 }
@@ -358,6 +359,7 @@ private fun MapScreenFullPreview() {
             onRulerUndo = {},
             onRulerClear = {},
             onRulerSaveAsTrack = {},
+            onCancelRoute = {},
             onCloseTrack = {},
             onCloseViewingPoint = {},
             onSearchQueryChange = {},
@@ -376,7 +378,7 @@ private fun MapScreenFullPreview() {
                         color = Color.Gray
                     )
                 }
-            }
+            },
         )
     }
 }

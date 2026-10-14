@@ -102,7 +102,7 @@ fun MapScreenContent(
     isPlanningRoute: Boolean = false,
     routePreview: PlannedRoute? = null,
     onFindRoute: (() -> Unit)? = null,
-    onCancelRoute: () -> Unit = {},
+    onCancelRoute: () -> Unit,
     onOnlineTrackingClick: () -> Unit = {},
     onOfflineIndicatorClick: () -> Unit = {},
     onCloseTrack: () -> Unit,
@@ -246,7 +246,7 @@ fun MapScreenContent(
             // Pinned bottom-left, left of the FAB column, so snackbars sit at the bottom of the
             // screen rather than floating mid-screen above the tall FAB stack. Lifted above the
             // bottom chart when one is shown so it doesn't cover it (e.g. the crop-undo snackbar).
-            // The ruler card fills the bottom, so messages go up between the zoom buttons and compass.
+            // Above the ruler card when it's open.
             SnackbarHost(
                 snackbarHostState,
                 modifier = if (rulerState.isActive) {

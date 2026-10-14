@@ -107,6 +107,18 @@ class TerrainRouterTest {
         assertEquals(best, route.durationSeconds, best * 1e-4)
     }
 
+    @Test
+    fun pathRunsUnbrokenFromStartToTarget() = runTest {
+        val g = grid(40, 40) { x, y -> (kotlin.math.sin(x / 4.0) * 15 + kotlin.math.cos(y / 5.0) * 15).toFloat() }
+        val route = routeCells(g, 2 to 3, 37 to 36)
+        val cells = g.cellsOf(route)
+        assertEquals(g.index(2, 3), cells.first())
+        assertEquals(g.index(37, 36), cells.last())
+        // No gap longer than a knight move (sqrt(5) cells), so the reconstructed path is connected.
+        val gaps = route.points.zipWithNext { p, q -> p.latLng.distanceTo(q.latLng) }
+        assertTrue(gaps.all { it <= 10.0 * kotlin.math.sqrt(5.0) + 0.5 }, "max gap=${gaps.max()}")
+    }
+
     /** Reference: plain Dijkstra over the same 16-neighbourhood, no heuristic. */
     private fun dijkstra(g: TerrainGrid, start: Int, target: Int): Double {
         val dx = intArrayOf(1, -1, 0, 0, 1, 1, -1, -1, 1, 2, 2, 1, -1, -2, -2, -1)

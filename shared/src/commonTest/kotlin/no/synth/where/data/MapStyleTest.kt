@@ -151,7 +151,7 @@ class MapStyleTest {
                 showWaymarkedTrails = true,
                 nveOverlay = NveOverlay.STEEPNESS_RUNOUT,
                 showOsmPaths = true,
-                showCoverage = true,
+                coverageVersion = "v",
             )
         )
         assertEquals(
@@ -175,7 +175,7 @@ class MapStyleTest {
                             showWaymarkedTrails = overlays,
                             nveOverlay = nveOverlay,
                             showOsmPaths = overlays,
-                            showCoverage = overlays,
+                            coverageVersion = "v".takeIf { overlays },
                         )
                     )
                     val declared = style.getValue("sources").jsonObject.keys
@@ -274,7 +274,7 @@ class MapStyleTest {
 
     @Test
     fun coverageOverlayUsesTheVersionedCallTiles() {
-        val source = parse(MapStyle.getStyle(showCoverage = true, coverageVersion = "2026-10-06"))
+        val source = parse(MapStyle.getStyle(coverageVersion = "2026-10-06"))
             .source(CoverageTilesClient.SOURCE_ID)
         assertEquals(
             "https://erdetdekning.no/tiles/2026-10-06/coverage/calls/{z}/{x}/{y}.png",
