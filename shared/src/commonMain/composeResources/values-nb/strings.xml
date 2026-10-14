@@ -64,6 +64,17 @@
     <string name="zoom_in_for_paths">Zoom inn for å se stier</string>
     <string name="steepness_nve">Bratthet (NVE)</string>
     <string name="steepness_runout_nve">Bratthet + skredutløp (NVE)</string>
+    <string name="mobile_coverage">Mobildekning</string>
+    <string name="coverage_112_likely">112: trolig mulig</string>
+    <string name="coverage_112_weak">112: svak dekning</string>
+    <string name="coverage_112_unlikely">112: trolig ikke mulig</string>
+    <string name="coverage_112_unknown">112: ingen data</string>
+    <string name="coverage_112_failed">112: kunne ikke hente dekning</string>
+    <string name="coverage_112_loading">112: …</string>
+    <string name="coverage_none">Ingen</string>
+    <string name="coverage_weak">Svak</string>
+    <string name="coverage_good">God</string>
+    <string name="coverage_very_good">Svært god</string>
     <string name="saved_points">Lagrede punkter</string>
     <string name="stop_recording">Stopp opptak</string>
     <string name="start_recording">Start opptak</string>

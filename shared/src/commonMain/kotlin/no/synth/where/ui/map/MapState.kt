@@ -34,4 +34,3 @@ enum class NveOverlay(val sourceId: String, service: String) {
         const val MAX_ZOOM = 16
     }
 }
-

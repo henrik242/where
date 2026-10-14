@@ -148,9 +148,9 @@ class UserPreferencesTest {
     @Test
     fun nveOverlay_persistsBothChoiceAndOff() = runBlocking {
         val file = tempFolder.newFile("nve_overlay_persist.preferences_pb")
-        assertEquals(NveOverlay.STEEPNESS, reload(file) { it.updateNveOverlay(NveOverlay.STEEPNESS) })
+        assertEquals(NveOverlay.STEEPNESS, reload(file) { it.updateNveOverlay(NveOverlay.STEEPNESS) }.nveOverlay.value)
         // Turning it off must survive a reload, not fall back to the legacy boolean.
-        assertNull(reload(file) { it.updateNveOverlay(null) })
+        assertNull(reload(file) { it.updateNveOverlay(null) }.nveOverlay.value)
     }
 
     @Test
@@ -165,8 +165,8 @@ class UserPreferencesTest {
         scope.cancel()
     }
 
-    /** Applies [change], then reopens the same file in a fresh UserPreferences and reads it back. */
-    private suspend fun reload(file: java.io.File, change: (UserPreferences) -> Unit): NveOverlay? {
+    /** Applies [change], then reopens the same file in a fresh UserPreferences and returns it. */
+    private suspend fun reload(file: java.io.File, change: (UserPreferences) -> Unit): UserPreferences {
         val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val writeStore = PreferenceDataStoreFactory.create(scope = writeScope, produceFile = { file })
         val writer = UserPreferences(writeStore)
@@ -179,45 +179,34 @@ class UserPreferencesTest {
         val readStore = PreferenceDataStoreFactory.create(scope = readScope, produceFile = { file })
         val reader = UserPreferences(readStore)
         delay(200)
-        return reader.nveOverlay.value.also { readScope.cancel() }
+        readScope.cancel()
+        return reader
     }
 
     @Test
     fun showOsmPaths_defaultsOffAndPersistsAcrossReload() = runBlocking {
         assertEquals(false, prefs.showOsmPaths.value)
-
         val file = tempFolder.newFile("osm_paths_persist.preferences_pb")
-        val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val first = UserPreferences(PreferenceDataStoreFactory.create(scope = firstScope, produceFile = { file }))
-        delay(100)
-        first.updateShowOsmPaths(true)
-        delay(200)
-        firstScope.cancel()
-
-        val secondScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val second = UserPreferences(PreferenceDataStoreFactory.create(scope = secondScope, produceFile = { file }))
-        delay(200)
-        assertEquals(true, second.showOsmPaths.value)
-        secondScope.cancel()
+        assertEquals(true, reload(file) { it.updateShowOsmPaths(true) }.showOsmPaths.value)
     }
 
     @Test
     fun updateCoordFormat_persistsAcrossReload() = runBlocking {
         val file = tempFolder.newFile("coord_format_persist.preferences_pb")
-        val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val firstStore = PreferenceDataStoreFactory.create(scope = firstScope, produceFile = { file })
-        val first = UserPreferences(firstStore)
-        delay(100)
-        first.updateCoordFormat(CoordFormat.MGRS)
-        delay(200)
-        firstScope.cancel()
-
-        val secondScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val secondStore = PreferenceDataStoreFactory.create(scope = secondScope, produceFile = { file })
-        val second = UserPreferences(secondStore)
-        delay(200)
-        assertEquals(CoordFormat.MGRS, second.coordFormat.value)
-        secondScope.cancel()
+        assertEquals(CoordFormat.MGRS, reload(file) { it.updateCoordFormat(CoordFormat.MGRS) }.coordFormat.value)
     }
 
+    @Test
+    fun showCoverage_defaultsOffAndPersistsAcrossReload() = runBlocking {
+        assertEquals(false, prefs.showCoverage.value)
+        val file = tempFolder.newFile("coverage_persist.preferences_pb")
+        assertEquals(true, reload(file) { it.updateShowCoverage(true) }.showCoverage.value)
+    }
+
+    @Test
+    fun coverageTilesVersion_defaultsToFallbackAndPersistsAcrossReload() = runBlocking {
+        assertEquals(CoverageTilesClient.FALLBACK_VERSION, prefs.coverageTilesVersion.value)
+        val file = tempFolder.newFile("coverage_version_persist.preferences_pb")
+        assertEquals("2026-11-01", reload(file) { it.updateCoverageTilesVersion("2026-11-01") }.coverageTilesVersion.value)
+    }
 }
