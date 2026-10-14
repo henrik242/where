@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.LatLngBounds
+import no.synth.where.ui.map.FollowPose
 import no.synth.where.ui.map.MapZoomLevels
 import org.maplibre.compose.camera.CameraAnimation
 import org.maplibre.compose.camera.CameraFit
@@ -44,8 +45,18 @@ class WhereMapController {
     val isAttached: Boolean
         get() = state != null
 
+    /** Camera animations in flight; the follow step yields to them so it doesn't cancel them. */
+    private var animations = 0
+
     private fun launch(block: suspend () -> Unit) {
-        scope?.launch { block() }
+        scope?.launch {
+            animations++
+            try {
+                block()
+            } finally {
+                animations--
+            }
+        }
     }
 
     /** Zoom in to at least [minZoom], e.g. when engaging follow from a zoomed-out overview. */
@@ -78,11 +89,16 @@ class WhereMapController {
 
     fun resetNorth() = launch { state?.animateCamera(CameraUpdate(bearing = 0.0)) }
 
-    /** Center on [latitude]/[longitude] and set [bearing] in one update (camera follow). Instant. */
-    fun follow(latitude: Double, longitude: Double, bearing: Double) {
+    /**
+     * One frame of a follow mode: moves the camera to the pose [next] makes of its current one
+     * (null leaves it). Skipped while an animation such as a zoom button runs.
+     */
+    fun followStep(next: (FollowPose) -> FollowPose?) {
+        if (animations > 0) return
         val cur = position ?: return
+        val pose = next(FollowPose(LatLng(cur.center.latitude, cur.center.longitude), cur.bearing)) ?: return
         state?.setCameraPosition(
-            cur.copy(center = Position(longitude = longitude, latitude = latitude), bearing = bearing)
+            cur.copy(center = Position(longitude = pose.center.longitude, latitude = pose.center.latitude), bearing = pose.bearing)
         )
     }
 

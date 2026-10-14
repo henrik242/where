@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -275,13 +276,6 @@ fun MapScreen(
         if (cameraFollowMode != CameraFollowMode.OFF) controller.zoomToAtLeast(MapZoomLevels.FOLLOW_MIN)
     }
 
-    // FOLLOW: keep the puck centered, north up.
-    LaunchedEffect(cameraFollowMode, fix?.latLng) {
-        if (cameraFollowMode != CameraFollowMode.FOLLOW) return@LaunchedEffect
-        val loc = fix?.latLng ?: return@LaunchedEffect
-        controller.follow(loc.latitude, loc.longitude, 0.0)
-    }
-
     // FOLLOW_HEADING: center on the puck and rotate. Compass when on foot or stationary, course over
     // ground while travelling (a vehicle's magnetization throws the compass off); a brief stop HELDs
     // the last course. See headingSourceFor / HeadingSource.
@@ -301,18 +295,28 @@ fun MapScreen(
         }
         while (true) {
             val current = latestFix.value
-            val course = current?.course
-            val source = headingSourceFor(headingSource, current?.speed, course != null, followedCourseAt?.elapsedNow())
+            val source = headingSourceFor(headingSource, current?.speed, current?.course != null, followedCourseAt?.elapsedNow())
             if (source == HeadingSource.COURSE) followedCourseAt = TimeSource.Monotonic.markNow()
             headingSource = source
-            // Keep centering on every fix; HELD (or a missing reading) keeps the current bearing.
-            val bearing = when (source) {
-                HeadingSource.COURSE -> course
+            delay(500.milliseconds)
+        }
+    }
+
+    // Both follow modes move the camera every frame, gliding between fixes and easing the bearing,
+    // so the map doesn't jump at each GPS fix or compass reading. FOLLOW keeps north up.
+    LaunchedEffect(cameraFollowMode) {
+        if (cameraFollowMode == CameraFollowMode.OFF) return@LaunchedEffect
+        val animator = FollowCameraAnimator()
+        while (true) {
+            val frame = withFrameNanos { it }
+            val current = latestFix.value ?: continue
+            // HELD (or a missing reading) keeps the current bearing.
+            val bearing = if (cameraFollowMode == CameraFollowMode.FOLLOW) 0.0 else when (headingSource) {
+                HeadingSource.COURSE -> current.course
                 HeadingSource.COMPASS -> compassBearing
                 HeadingSource.HELD -> null
-            } ?: controller.cameraBearing
-            if (current != null) controller.follow(current.latLng.latitude, current.latLng.longitude, bearing)
-            delay(500.milliseconds)
+            }
+            controller.followStep { pose -> animator.step(frame, pose, current.latLng, bearing) }
         }
     }
 
