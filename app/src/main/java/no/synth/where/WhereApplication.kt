@@ -31,6 +31,7 @@ import no.synth.where.data.UserPreferences
 import no.synth.where.data.db.SqlDelightSavedPointDao
 import no.synth.where.data.db.SqlDelightTrackDao
 import no.synth.where.data.db.WhereDatabase
+import no.synth.where.data.routing.HikingRouteSession
 import no.synth.where.util.CrashReporter
 import timber.log.Timber
 import java.io.File
@@ -86,6 +87,7 @@ class WhereApplication : Application() {
         )
     }
     val mapDownloadManager by lazy { MapDownloadManager(downloadQueueManager) }
+    val hikingRouteSession by lazy { HikingRouteSession(trackRepository, appScope) }
     val liveTrackingFollower by lazy { LiveTrackingFollower(userPreferences.trackingServerUrl.value) }
     val onlineTrackingCoordinator by lazy {
         OnlineTrackingCoordinator(

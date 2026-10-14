@@ -8,6 +8,10 @@ tag dates.
 
 [diff](https://github.com/henrik242/where/compare/v619...main)
 
+- Faster hiking route planning: tiles for each leg download in parallel and ahead of routing.
+  On Android the route search no longer blocks the UI, and leaving the map no longer cancels it.
+  A newly planned route is framed with more surrounding terrain.
+
 ## v619 (2026-10-14)
 
 [diff](https://github.com/henrik242/where/compare/v618...v619)

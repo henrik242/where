@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.util.Logger
 import kotlin.concurrent.Volatile
+import kotlin.random.Random
 
 object OfflineTileReader {
     @Volatile
@@ -104,7 +105,10 @@ object OfflineTileReader {
         try {
             val tileDir = cacheDir?.resolve(subdir)?.resolve("$z")?.resolve("$x") ?: return data
             tileDir.mkdirs()
-            tileDir.resolve("$y.$ext").writeBytes(data)
+            // Write then rename, so a concurrent reader never sees a half-written tile.
+            val tmp = tileDir.resolve("$y.$ext.${Random.nextLong().toULong()}.tmp")
+            tmp.writeBytes(data)
+            if (!tmp.renameTo(tileDir.resolve("$y.$ext"))) tmp.delete()
         } catch (e: Exception) {
             Logger.e(e, "Failed to cache tile %s/%d/%d/%d", subdir, z, x, y)
         }

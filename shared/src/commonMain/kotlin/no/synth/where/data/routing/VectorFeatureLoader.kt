@@ -30,13 +30,7 @@ object VectorFeatureLoader {
     /** Returns the number of tiles that couldn't be loaded; 0 means the grid has full feature data. */
     suspend fun burnInto(grid: TerrainGrid): Int = withContext(Dispatchers.Default) {
         val template = tileTemplate().orEmpty()
-        val shift = TILE_ZOOM - grid.zoom
-        val tileCells = TileUtils.TILE_SIZE shr shift
-        val tx0 = grid.originPx / tileCells
-        val ty0 = grid.originPy / tileCells
-        val tx1 = (grid.originPx + grid.width - 1) / tileCells
-        val ty1 = (grid.originPy + grid.height - 1) / tileCells
-        val tiles = (ty0..ty1).flatMap { ty -> (tx0..tx1).map { tx -> tx to ty } }
+        val tiles = tilesCovering(grid.zoom, grid.originPx, grid.originPy, grid.originPx + grid.width - 1, grid.originPy + grid.height - 1)
 
         val decoded = tiles.mapConcurrently { (tx, ty) ->
             readTile(template, tx, ty)?.let {
@@ -55,6 +49,18 @@ object VectorFeatureLoader {
             if (layers == null) missing++ else FeatureRasterizer.burnTile(grid, layers, TILE_ZOOM, tx, ty)
         }
         missing
+    }
+
+    /** Downloads the tiles [burnInto] needs for this pixel area at [zoom] into the disk cache. */
+    suspend fun prefetch(zoom: Int, x0: Int, y0: Int, x1: Int, y1: Int) {
+        val template = tileTemplate() ?: return
+        tilesCovering(zoom, x0, y0, x1, y1).mapConcurrently { (x, y) -> ensureCached(template, x, y) }
+    }
+
+    /** [TILE_ZOOM] tiles covering global pixels [x0]..[x1], [y0]..[y1] at [zoom]. */
+    private fun tilesCovering(zoom: Int, x0: Int, y0: Int, x1: Int, y1: Int): List<Pair<Int, Int>> {
+        val tileCells = TileUtils.TILE_SIZE shr (TILE_ZOOM - zoom)
+        return (y0 / tileCells..y1 / tileCells).flatMap { ty -> (x0 / tileCells..x1 / tileCells).map { tx -> tx to ty } }
     }
 
     /** Cached tile, else fetched with only the router's layers kept (~75% smaller in towns). */

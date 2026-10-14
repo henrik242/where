@@ -86,8 +86,8 @@ class WhereMapController {
         )
     }
 
-    /** Fit [bounds], optionally clamping in from the computed zoom (e.g. a lone friend dot). */
-    fun animateToBounds(bounds: LatLngBounds, maxZoom: Double? = null) {
+    /** Fit [bounds], optionally clamping in from the computed zoom (e.g. a lone friend dot), then back off [zoomOut] levels. */
+    fun animateToBounds(bounds: LatLngBounds, maxZoom: Double? = null, zoomOut: Double = 0.0) {
         launch {
             val s = state ?: return@launch
             // A single point (or lone fix) has zero-area bounds that fitting can't zoom sensibly, so
@@ -112,7 +112,7 @@ class WhereMapController {
             val fitted = s.cameraForBounds(box, CameraFit(fitPadding = DEFAULT_FIT_PADDING))
             val clamped =
                 if (maxZoom != null && fitted.zoom > maxZoom) fitted.copy(zoom = maxZoom) else fitted
-            s.animateCamera(CameraUpdate(center = clamped.center, zoom = clamped.zoom), CameraAnimation.Ease.Standard)
+            s.animateCamera(CameraUpdate(center = clamped.center, zoom = clamped.zoom - zoomOut), CameraAnimation.Ease.Standard)
         }
     }
 

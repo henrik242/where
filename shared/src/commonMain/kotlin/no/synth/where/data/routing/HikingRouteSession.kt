@@ -1,8 +1,13 @@
 package no.synth.where.data.routing
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +19,10 @@ import no.synth.where.data.TrackRepository
 import no.synth.where.data.geo.LatLng
 import no.synth.where.resources.Res
 import no.synth.where.resources.hiking_route
+import no.synth.where.util.Logger
 import org.jetbrains.compose.resources.getString
+import kotlin.concurrent.Volatile
+import kotlin.coroutines.cancellation.CancellationException
 
 sealed interface RoutePlanEvent {
     data class Planned(
@@ -39,7 +47,7 @@ class HikingRouteSession(
     private val trackRepository: TrackRepository,
     private val scope: CoroutineScope,
 ) {
-    // A percentage would mislead: the slow part is fetching tiles, the search itself takes ms.
+    // A percentage would mislead: the slow part is fetching tiles, which runs ahead of the search.
     private val _isPlanning = MutableStateFlow(false)
     val isPlanning: StateFlow<Boolean> = _isPlanning.asStateFlow()
 
@@ -50,6 +58,12 @@ class HikingRouteSession(
     val events: Flow<RoutePlanEvent> = _events.receiveAsFlow()
 
     private var job: Job? = null
+
+    @Volatile
+    private var routeJustSaved = false
+
+    /** True once after a planned route is added to the map, so the camera can frame it more loosely. */
+    fun consumeRouteJustSaved(): Boolean = routeJustSaved.also { routeJustSaved = false }
 
     private companion object {
         val MARGIN_SCALES = listOf(1.0, 4.0)
@@ -68,14 +82,46 @@ class HikingRouteSession(
         }
     }
 
-    private suspend fun planLegs(waypoints: List<LatLng>, onPlanned: () -> Unit): RoutePlanEvent {
+    private suspend fun planLegs(waypoints: List<LatLng>, onPlanned: () -> Unit): RoutePlanEvent = coroutineScope {
         val legs = waypoints.zipWithNext()
+        // Fetching tiles is the slow part: download each leg's tiles while the previous one is routed.
+        val prefetched = legs.map { CompletableDeferred<Unit>() }
+        launch {
+            legs.forEachIndexed { i, (from, to) ->
+                try {
+                    TerrainGridLoader.prefetch(from, to)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Logger.e(e, "Failed to prefetch route tiles")
+                } finally {
+                    prefetched[i].complete(Unit)
+                }
+            }
+        }
+        val name = async { GeocodingHelper.routeName(waypoints.first(), waypoints.last()) ?: getString(Res.string.hiking_route) }
+        try {
+            planPrefetchedLegs(legs, prefetched, name, onPlanned)
+        } finally {
+            coroutineContext.cancelChildren()
+        }
+    }
+
+    private suspend fun planPrefetchedLegs(
+        legs: List<Pair<LatLng, LatLng>>,
+        prefetched: List<CompletableDeferred<Unit>>,
+        name: Deferred<String>,
+        onPlanned: () -> Unit,
+    ): RoutePlanEvent {
         val routes = mutableListOf<TerrainRoute>()
         var incomplete = false
-        for ((from, to) in legs) {
+        for ((i, leg) in legs.withIndex()) {
+            val (from, to) = leg
+            prefetched[i].await()
             // The way around a long lake can lie outside the default area; retry once, wider.
             var route: TerrainRoute? = null
             for ((attempt, marginScale) in MARGIN_SCALES.withIndex()) {
+                if (attempt > 0) TerrainGridLoader.prefetch(from, to, marginScale)
                 val grid = TerrainGridLoader.load(from, to, marginScale)
                     ?: if (attempt == 0) return RoutePlanEvent.NoTerrainData else break
                 incomplete = VectorFeatureLoader.burnInto(grid) > 0 || incomplete
@@ -87,8 +133,10 @@ class HikingRouteSession(
         // Each leg starts where the previous ended; drop the duplicated joint.
         val points = routes.flatMapIndexed { i, r -> if (i == 0) r.points else r.points.drop(1) }
         val crossings = routes.flatMap { it.crossings }
-        val name = GeocodingHelper.routeName(waypoints.first(), waypoints.last()) ?: getString(Res.string.hiking_route)
-        val track = trackRepository.savePlannedRoute(name, points)
+        val trackName = name.await()
+        // Set before saving: adding the track to the map triggers the camera fit.
+        routeJustSaved = true
+        val track = trackRepository.savePlannedRoute(trackName, points)
         _crossings.value = PlannedCrossings(track.id, crossings)
         onPlanned()
         return RoutePlanEvent.Planned(

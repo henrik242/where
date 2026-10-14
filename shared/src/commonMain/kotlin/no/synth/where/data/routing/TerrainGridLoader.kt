@@ -1,6 +1,8 @@
 package no.synth.where.data.routing
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import no.synth.where.data.DemTile
 import no.synth.where.data.DemTileDecoder
@@ -27,10 +29,36 @@ object TerrainGridLoader {
      * if tiles are missing or it would be too large.
      */
     suspend fun load(a: LatLng, b: LatLng, marginScale: Double = 1.0): TerrainGrid? = withContext(Dispatchers.Default) {
+        val zoom = zoomFor(a, b, marginScale) ?: return@withContext null
+        loadAtZoom(a, b, zoom, marginScale) ?: if (zoom > FALLBACK_ZOOM) loadAtZoom(a, b, FALLBACK_ZOOM, marginScale) else null
+    }
+
+    /**
+     * Downloads the elevation and feature tiles [load] and [VectorFeatureLoader.burnInto] will read,
+     * in parallel, so both are served from disk afterwards.
+     */
+    suspend fun prefetch(a: LatLng, b: LatLng, marginScale: Double = 1.0) {
+        if (OfflineTileReader.offlineOnly) return
+        val zoom = zoomFor(a, b, marginScale) ?: return
+        val (x0, y0, x1, y1) = pixelBounds(a, b, zoom, marginScale)
+        coroutineScope {
+            launch { VectorFeatureLoader.prefetch(zoom, x0, y0, x1, y1) }
+            demTiles(x0, y0, x1, y1).mapConcurrently { (tx, ty) ->
+                OfflineTileReader.ensureCached(OfflineTileReader.DEM_TILE_URL, zoom, tx, ty, OfflineTileReader.DEM_SUBDIR, "png")
+            }
+        }
+    }
+
+    /** Finest zoom that keeps the grid under [MAX_CELLS], or null if none does. */
+    private fun zoomFor(a: LatLng, b: LatLng, marginScale: Double): Int? {
         var zoom = PREFERRED_ZOOM
         while (zoom > FALLBACK_ZOOM && cellCount(a, b, zoom, marginScale) > MAX_CELLS) zoom--
-        if (cellCount(a, b, zoom, marginScale) > MAX_CELLS) return@withContext null
-        loadAtZoom(a, b, zoom, marginScale) ?: if (zoom > FALLBACK_ZOOM) loadAtZoom(a, b, FALLBACK_ZOOM, marginScale) else null
+        return zoom.takeIf { cellCount(a, b, it, marginScale) <= MAX_CELLS }
+    }
+
+    private fun demTiles(x0: Int, y0: Int, x1: Int, y1: Int): List<Pair<Int, Int>> {
+        val size = TileUtils.TILE_SIZE
+        return (y0 / size..y1 / size).flatMap { ty -> (x0 / size..x1 / size).map { tx -> tx to ty } }
     }
 
     private fun pixelBounds(a: LatLng, b: LatLng, zoom: Int, marginScale: Double): IntArray {
@@ -56,7 +84,7 @@ object TerrainGridLoader {
     private suspend fun loadAtZoom(a: LatLng, b: LatLng, zoom: Int, marginScale: Double): TerrainGrid? {
         val (x0, y0, x1, y1) = pixelBounds(a, b, zoom, marginScale)
         val size = TileUtils.TILE_SIZE
-        val tiles = (y0 / size..y1 / size).flatMap { ty -> (x0 / size..x1 / size).map { tx -> tx to ty } }
+        val tiles = demTiles(x0, y0, x1, y1)
         val decoded = tiles.mapConcurrently { (tx, ty) ->
             OfflineTileReader.readCachedTile(OfflineTileReader.DEM_TILE_URL, zoom, tx, ty)?.let { DemTileDecoder.decodeTile(it) }
         }

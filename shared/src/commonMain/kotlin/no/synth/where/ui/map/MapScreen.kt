@@ -253,9 +253,11 @@ fun MapScreen(
 
     // Fit the camera whenever the viewing set changes, but not when merely tap-focusing a track.
     LaunchedEffect(viewingTracks) {
+        // A fresh planned route gets room around it to see the terrain it avoids.
+        val zoomOut = if (state.routeSession.consumeRouteJustSaved()) 0.5 else 0.0
         if (navigation != null) return@LaunchedEffect // the camera follows the user while navigating
         val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
-        controller.animateToBounds(bounds)
+        controller.animateToBounds(bounds, zoomOut = zoomOut)
     }
 
     // Zoom in when first engaging follow (e.g. from the country overview), but not on every fix, so
