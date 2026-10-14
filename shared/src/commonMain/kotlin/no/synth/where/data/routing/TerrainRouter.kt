@@ -1,7 +1,9 @@
 package no.synth.where.data.routing
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import no.synth.where.data.TileUtils
 import no.synth.where.data.geo.LatLng
 import kotlin.math.abs
@@ -29,12 +31,12 @@ object TerrainRouter {
     private val DY = intArrayOf(0, 0, 1, -1, 1, -1, 1, -1, 2, 1, -1, -2, -2, -1, 1, 2)
 
     /** Fastest walking route from [start] to [end], or null when none exists. */
-    suspend fun route(grid: TerrainGrid, start: LatLng, end: LatLng): TerrainRoute? {
+    suspend fun route(grid: TerrainGrid, start: LatLng, end: LatLng): TerrainRoute? = withContext(Dispatchers.Default) {
         val blocked = HikingCost.blockedCells(grid)
-        val s = snap(grid, blocked, grid.latLngToIndex(start)) ?: return null
-        val t = snap(grid, blocked, grid.latLngToIndex(end)) ?: return null
-        val path = search(grid, blocked, s, t) ?: return null
-        return buildRoute(grid, path, blocked)
+        val s = snap(grid, blocked, grid.latLngToIndex(start)) ?: return@withContext null
+        val t = snap(grid, blocked, grid.latLngToIndex(end)) ?: return@withContext null
+        val path = search(grid, blocked, s, t) ?: return@withContext null
+        buildRoute(grid, path, blocked)
     }
 
     private suspend fun search(

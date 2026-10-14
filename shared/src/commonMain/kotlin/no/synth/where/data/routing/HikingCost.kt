@@ -24,6 +24,23 @@ internal object HikingCost {
     /** Tobler's hiking function: speed in m/s over horizontal distance, for gradient dh/dx. */
     private fun toblerSpeed(gradient: Double) = 6.0 * exp(-3.5 * abs(gradient + 0.05)) / 3.6
 
+    // Table lookup instead of exp() per step (~15% of search time). Linear interpolation keeps the
+    // relative error near 1e-7, below the Float precision of A*'s g scores.
+    private const val TOBLER_STEPS = 4096
+    private val toblerMaxU = maxGradient + 0.05
+    private val toblerScale = TOBLER_STEPS / toblerMaxU
+    private val toblerTable = DoubleArray(TOBLER_STEPS + 2) { 6.0 * exp(-3.5 * it / toblerScale) / 3.6 }
+
+    private fun toblerSpeedFast(gradient: Double): Double {
+        val u = abs(gradient + 0.05)
+        // Steeper steps are only allowed along paths; compute those exactly.
+        if (u >= toblerMaxU) return toblerSpeed(gradient)
+        val f = u * toblerScale
+        val i = f.toInt()
+        val t = f - i
+        return toblerTable[i] + (toblerTable[i + 1] - toblerTable[i]) * t
+    }
+
     private fun TerrainGrid.isPath(i: Int) = hasFlag(i, CellFlags.PATH or CellFlags.BRIDGE)
 
     /** Cells too steep to walk (central differences), plus open water and glaciers. */
@@ -60,7 +77,7 @@ internal object HikingCost {
         // Only a step along the path is exempt, not one dropping onto it from a cut or cliff above.
         val onPath = grid.isPath(from) && grid.isPath(to)
         if (!onPath && abs(gradient) > maxGradient) return null
-        var seconds = distance / toblerSpeed(gradient)
+        var seconds = distance / toblerSpeedFast(gradient)
         if (!onPath) seconds *= OFF_TRAIL_FACTOR
         if (grid.hasFlag(to, CellFlags.WETLAND)) seconds *= WETLAND_FACTOR
         if (grid.isWaterwayCrossing(to)) {

@@ -40,7 +40,6 @@ import no.synth.where.data.RulerState
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
 import no.synth.where.data.geo.LatLng
-import no.synth.where.data.routing.HikingRouteSession
 import no.synth.where.location.fusedLocationFlow
 import no.synth.where.resources.Res
 import no.synth.where.resources.recording_snackbar
@@ -84,7 +83,7 @@ fun AndroidMapScreen(nav: MapScreenNavigation) {
             app.userPreferences,
             app.onlineTrackingCoordinator,
             app.liveTrackingFollower,
-            HikingRouteSession(app.trackRepository, scope),
+            app.hikingRouteSession,
             scope,
         )
     }
