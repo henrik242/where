@@ -11,6 +11,11 @@ tag dates.
 - Faster hiking route planning: tiles for each leg download in parallel and ahead of routing.
   On Android the route search no longer blocks the UI, and leaving the map no longer cancels it.
   A newly planned route is framed with more surrounding terrain.
+- A found hiking route is no longer saved automatically. It shows along the ruler points with its
+  distance, walking time and crossings in the ruler card, and "Save as track" saves it. Undo goes
+  back to the straight lines.
+- Route planning can be cancelled, with the Cancel button or by clearing or closing the ruler,
+  and says so when it takes longer than usual. Uses less memory on large areas.
 
 ## v619 (2026-10-14)
 

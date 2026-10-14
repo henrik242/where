@@ -426,8 +426,9 @@
     <string name="find_hiking_route">Find hiking route</string>
     <string name="finding_route">Finding route…</string>
     <string name="hiking_route">Hiking route</string>
+    <string name="route_planning_slow">This is taking longer than usual. Long routes through steep terrain can take a minute.</string>
     <string name="route_suggestion_note">A suggestion from elevation and map data. Cliffs lower than about 15 m and river depth are unknown.</string>
-    <string name="route_planned">%1$s, about %2$s</string>
+    <string name="route_walking_time">About %1$s on foot</string>
     <string name="route_duration_hours">%1$d h %2$d min</string>
     <string name="route_duration_minutes">%1$d min</string>
     <plurals name="route_crossings">

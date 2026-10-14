@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import no.synth.where.data.GeocodingHelper
+import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.geo.LatLng
 import no.synth.where.resources.Res
@@ -25,12 +26,8 @@ import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
 
 sealed interface RoutePlanEvent {
-    data class Planned(
-        val distanceMeters: Double,
-        val durationSeconds: Double,
-        val crossings: Int,
-        val featuresIncomplete: Boolean,
-    ) : RoutePlanEvent
+    /** The route is in [HikingRouteSession.preview]. */
+    data object Planned : RoutePlanEvent
     /** Elevation tiles missing (offline) or the area is too large. */
     data object NoTerrainData : RoutePlanEvent
     data object NoRoute : RoutePlanEvent
@@ -39,9 +36,20 @@ sealed interface RoutePlanEvent {
 /** Crossings of the planned route saved as track [trackId]. Not persisted with the track. */
 data class PlannedCrossings(val trackId: String, val crossings: List<RiverCrossing>)
 
+/** A planned route not saved yet; [waypoints] are the ruler points it was planned through. */
+data class PlannedRoute(
+    val waypoints: List<LatLng>,
+    val points: List<RoutePoint>,
+    val crossings: List<RiverCrossing>,
+    val name: String,
+    val distanceMeters: Double,
+    val durationSeconds: Double,
+    val featuresIncomplete: Boolean,
+)
+
 /**
- * Plans hiking routes through ruler points and saves them as tracks. One per app, on an app-wide
- * [scope], so leaving the map screen doesn't cancel a plan in progress.
+ * Plans hiking routes through ruler points as a [preview] the user can save as a track. One per
+ * app, on an app-wide [scope], so leaving the map screen doesn't cancel a plan in progress.
  */
 class HikingRouteSession(
     private val trackRepository: TrackRepository,
@@ -50,6 +58,9 @@ class HikingRouteSession(
     // A percentage would mislead: the slow part is fetching tiles, which runs ahead of the search.
     private val _isPlanning = MutableStateFlow(false)
     val isPlanning: StateFlow<Boolean> = _isPlanning.asStateFlow()
+
+    private val _preview = MutableStateFlow<PlannedRoute?>(null)
+    val preview: StateFlow<PlannedRoute?> = _preview.asStateFlow()
 
     private val _crossings = MutableStateFlow<PlannedCrossings?>(null)
     val crossings: StateFlow<PlannedCrossings?> = _crossings.asStateFlow()
@@ -62,27 +73,48 @@ class HikingRouteSession(
     @Volatile
     private var routeJustSaved = false
 
-    /** True once after a planned route is added to the map, so the camera can frame it more loosely. */
+    /** True once after a planned route is saved, so the camera keeps the preview's looser framing. */
     fun consumeRouteJustSaved(): Boolean = routeJustSaved.also { routeJustSaved = false }
 
     private companion object {
         val MARGIN_SCALES = listOf(1.0, 4.0)
     }
 
-    /** Routes each leg between consecutive [waypoints]; calls [onPlanned] after the track is saved. */
-    fun plan(waypoints: List<LatLng>, onPlanned: () -> Unit = {}) {
+    /** Routes each leg between consecutive [waypoints] into [preview]. */
+    fun plan(waypoints: List<LatLng>) {
         if (waypoints.size < 2 || job?.isActive == true) return
+        _preview.value = null
         job = scope.launch {
             try {
                 _isPlanning.value = true
-                _events.send(planLegs(waypoints, onPlanned))
+                _events.send(planLegs(waypoints))
             } finally {
                 _isPlanning.value = false
             }
         }
     }
 
-    private suspend fun planLegs(waypoints: List<LatLng>, onPlanned: () -> Unit): RoutePlanEvent = coroutineScope {
+    /** Saves [preview] as track [name] and shows it on the map; null when there is nothing to save. */
+    suspend fun save(name: String): Track? {
+        val route = _preview.value ?: return null
+        // Set before saving: adding the track to the map triggers the camera fit.
+        routeJustSaved = true
+        val track = trackRepository.savePlannedRoute(name, route.points)
+        _crossings.value = PlannedCrossings(track.id, route.crossings)
+        _preview.value = null
+        return track
+    }
+
+    fun discard() {
+        _preview.value = null
+    }
+
+    /** Stops a plan in progress; it reports nothing. */
+    fun cancel() {
+        job?.cancel()
+    }
+
+    private suspend fun planLegs(waypoints: List<LatLng>): RoutePlanEvent = coroutineScope {
         val legs = waypoints.zipWithNext()
         // Fetching tiles is the slow part: download each leg's tiles while the previous one is routed.
         val prefetched = legs.map { CompletableDeferred<Unit>() }
@@ -101,17 +133,17 @@ class HikingRouteSession(
         }
         val name = async { GeocodingHelper.routeName(waypoints.first(), waypoints.last()) ?: getString(Res.string.hiking_route) }
         try {
-            planPrefetchedLegs(legs, prefetched, name, onPlanned)
+            planPrefetchedLegs(waypoints, legs, prefetched, name)
         } finally {
             coroutineContext.cancelChildren()
         }
     }
 
     private suspend fun planPrefetchedLegs(
+        waypoints: List<LatLng>,
         legs: List<Pair<LatLng, LatLng>>,
         prefetched: List<CompletableDeferred<Unit>>,
         name: Deferred<String>,
-        onPlanned: () -> Unit,
     ): RoutePlanEvent {
         val routes = mutableListOf<TerrainRoute>()
         var incomplete = false
@@ -133,17 +165,15 @@ class HikingRouteSession(
         // Each leg starts where the previous ended; drop the duplicated joint.
         val points = routes.flatMapIndexed { i, r -> if (i == 0) r.points else r.points.drop(1) }
         val crossings = routes.flatMap { it.crossings }
-        val trackName = name.await()
-        // Set before saving: adding the track to the map triggers the camera fit.
-        routeJustSaved = true
-        val track = trackRepository.savePlannedRoute(trackName, points)
-        _crossings.value = PlannedCrossings(track.id, crossings)
-        onPlanned()
-        return RoutePlanEvent.Planned(
+        _preview.value = PlannedRoute(
+            waypoints = waypoints,
+            points = points,
+            crossings = crossings,
+            name = name.await(),
             distanceMeters = routes.sumOf { it.distanceMeters },
             durationSeconds = routes.sumOf { it.durationSeconds },
-            crossings = crossings.size,
             featuresIncomplete = incomplete,
         )
+        return RoutePlanEvent.Planned
     }
 }

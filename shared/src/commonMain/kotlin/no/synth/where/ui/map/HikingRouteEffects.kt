@@ -9,29 +9,21 @@ import no.synth.where.data.routing.HikingRouteSession
 import no.synth.where.data.routing.PlannedCrossings
 import no.synth.where.data.routing.RoutePlanEvent
 import no.synth.where.resources.Res
-import no.synth.where.resources.route_crossings
 import no.synth.where.resources.route_duration_hours
 import no.synth.where.resources.route_duration_minutes
-import no.synth.where.resources.route_features_incomplete
 import no.synth.where.resources.route_no_terrain
 import no.synth.where.resources.route_not_found
-import no.synth.where.resources.route_planned
-import no.synth.where.util.formatDistance
-import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
-/** Shows each planning result from [session] as a snackbar. */
+/** Shows failed plans from [session] as a snackbar; a found route is summarized in the ruler card. */
 @Composable
 fun HikingRouteSnackbars(session: HikingRouteSession, snackbarHostState: SnackbarHostState) {
     LaunchedEffect(session) {
         session.events.collect { event ->
             val message = when (event) {
-                is RoutePlanEvent.Planned -> buildList {
-                    add(getString(Res.string.route_planned, event.distanceMeters.formatDistance(), formatHikingTime(event.durationSeconds)))
-                    if (event.crossings > 0) add(getPluralString(Res.plurals.route_crossings, event.crossings, event.crossings))
-                    if (event.featuresIncomplete) add(getString(Res.string.route_features_incomplete))
-                }.joinToString(". ")
+                RoutePlanEvent.Planned -> return@collect
                 RoutePlanEvent.NoTerrainData -> getString(Res.string.route_no_terrain)
                 RoutePlanEvent.NoRoute -> getString(Res.string.route_not_found)
             }
@@ -41,12 +33,13 @@ fun HikingRouteSnackbars(session: HikingRouteSession, snackbarHostState: Snackba
 }
 
 /** Walking time rounded to 5 minutes; finer would suggest accuracy the model doesn't have. */
-private suspend fun formatHikingTime(seconds: Double): String {
+@Composable
+fun hikingTimeText(seconds: Double): String {
     val minutes = ((seconds / 60.0 / 5.0).roundToInt() * 5).coerceAtLeast(5)
     return if (minutes < 60) {
-        getString(Res.string.route_duration_minutes, minutes)
+        stringResource(Res.string.route_duration_minutes, minutes)
     } else {
-        getString(Res.string.route_duration_hours, minutes / 60, minutes % 60)
+        stringResource(Res.string.route_duration_hours, minutes / 60, minutes % 60)
     }
 }
 

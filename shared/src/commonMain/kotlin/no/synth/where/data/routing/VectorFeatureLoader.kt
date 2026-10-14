@@ -3,6 +3,8 @@ package no.synth.where.data.routing
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -32,23 +34,22 @@ object VectorFeatureLoader {
         val template = tileTemplate().orEmpty()
         val tiles = tilesCovering(grid.zoom, grid.originPx, grid.originPy, grid.originPx + grid.width - 1, grid.originPy + grid.height - 1)
 
-        val decoded = tiles.mapConcurrently { (tx, ty) ->
-            readTile(template, tx, ty)?.let {
+        // Burn each tile as soon as it's decoded, so only a few decoded tiles are held at once.
+        // Flags are a shared array, so burning is serialized.
+        val burnLock = Mutex()
+        val loaded = tiles.mapConcurrently { (tx, ty) ->
+            val layers = readTile(template, tx, ty)?.let {
                 try {
                     MvtDecoder.decode(it, FeatureRasterizer.LAYERS)
                 } catch (e: Exception) {
                     Logger.e(e, "Failed to decode vector tile %d/%d", tx, ty)
                     null
                 }
-            }
+            } ?: return@mapConcurrently false
+            burnLock.withLock { FeatureRasterizer.burnTile(grid, layers, TILE_ZOOM, tx, ty) }
+            true
         }
-        // Flags are a shared array, so burn sequentially.
-        var missing = 0
-        tiles.forEachIndexed { i, (tx, ty) ->
-            val layers = decoded[i]
-            if (layers == null) missing++ else FeatureRasterizer.burnTile(grid, layers, TILE_ZOOM, tx, ty)
-        }
-        missing
+        loaded.count { !it }
     }
 
     /** Downloads the tiles [burnInto] needs for this pixel area at [zoom] into the disk cache. */

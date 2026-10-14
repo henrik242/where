@@ -29,6 +29,7 @@ import no.synth.where.data.MapTapTarget
 import no.synth.where.data.TerrainClient
 import no.synth.where.data.Track
 import no.synth.where.data.geo.LatLng
+import no.synth.where.data.geo.bounds
 import no.synth.where.data.resolveMapTap
 import no.synth.where.data.stopFollowingAll
 import no.synth.where.resources.Res
@@ -95,6 +96,8 @@ fun MapScreen(
     val navigationChartVisible by trackRepository.navigationChartVisible.collectAsState()
     val isPlanningRoute by state.routeSession.isPlanning.collectAsState()
     val plannedCrossings by state.routeSession.crossings.collectAsState()
+    val latestRoutePreview by state.routeSession.preview.collectAsState()
+    val routePreview = state.routePreviewFor(latestRoutePreview)
 
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val viewerCount by userPreferences.viewerCount.collectAsState()
@@ -251,9 +254,15 @@ fun MapScreen(
         controller.setCamera(point.latLng.latitude, point.latLng.longitude, zoom = 15.0)
     }
 
+    // Frame a found route with room around it to see the terrain it avoids.
+    LaunchedEffect(routePreview) {
+        val bounds = routePreview?.points?.map { it.latLng }?.bounds() ?: return@LaunchedEffect
+        controller.animateToBounds(bounds, zoomOut = 0.5)
+    }
+
     // Fit the camera whenever the viewing set changes, but not when merely tap-focusing a track.
     LaunchedEffect(viewingTracks) {
-        // A fresh planned route gets room around it to see the terrain it avoids.
+        // A just-saved route keeps its preview's framing.
         val zoomOut = if (state.routeSession.consumeRouteJustSaved()) 0.5 else 0.0
         if (navigation != null) return@LaunchedEffect // the camera follows the user while navigating
         val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
@@ -357,13 +366,20 @@ fun MapScreen(
         },
         // null (not an empty-coordinates LineString, which maplibre rejects and so keeps the old
         // line) so the source clears when the ruler is cleared.
-        rulerLineGeoJson = remember(rulerState) {
-            if (rulerState.points.size >= 2) buildRulerLineGeoJson(rulerState.points) else null
+        rulerLineGeoJson = remember(rulerState, routePreview) {
+            when {
+                routePreview != null -> buildLineGeoJson(routePreview.points.map { it.latLng })
+                rulerState.points.size >= 2 -> buildRulerLineGeoJson(rulerState.points)
+                else -> null
+            }
         },
         rulerPointsGeoJson = remember(rulerState) {
             if (rulerState.points.isNotEmpty()) buildRulerPointsGeoJson(rulerState.points) else null
         },
-        crossingsGeoJson = remember(plannedCrossings, viewingTracks) { crossingsGeoJsonFor(plannedCrossings, viewingTracks) },
+        crossingsGeoJson = remember(routePreview, plannedCrossings, viewingTracks) {
+            routePreview?.crossings?.takeIf { it.isNotEmpty() }?.let { buildCrossingsGeoJson(it) }
+                ?: crossingsGeoJsonFor(plannedCrossings, viewingTracks)
+        },
         measurementLineGeoJson = remember(twoFingerMeasurement) { twoFingerMeasurement?.let { buildMeasurementLineGeoJson(it) } },
         measurementPointsGeoJson = remember(twoFingerMeasurement) { twoFingerMeasurement?.let { buildMeasurementPointsGeoJson(it) } },
         coordGridGeoJson = coordGridGeoJson,
@@ -509,10 +525,12 @@ fun MapScreen(
         onOnlineTrackingClick = nav.onOnlineTrackingClick,
         onZoomIn = { controller.zoomIn() },
         onZoomOut = { controller.zoomOut() },
-        onRulerUndo = { state.rulerState = state.rulerState.removeLastPoint() },
-        onRulerClear = { state.rulerState = state.rulerState.clear() },
+        onRulerUndo = state::undoRuler,
+        onRulerClear = state::clearRuler,
         isPlanningRoute = isPlanningRoute,
+        routePreview = routePreview,
         onFindRoute = state::findHikingRoute,
+        onCancelRoute = state.routeSession::cancel,
         onRulerSaveAsTrack = state::openSaveRulerAsTrackDialog,
         onCloseTrack = { focusedTrackId?.let { trackRepository.removeViewingTrack(it) } },
         onCollapseTrack = { trackRepository.setFocusedTrack(null) },
@@ -648,7 +666,8 @@ private fun MapScreenDialogs(state: MapScreenState, canShare: Boolean, isNavigat
     if (state.showSaveRulerAsTrackDialog) {
         MapDialogs.SaveRulerAsTrackDialog(
             trackName = state.rulerTrackName,
-            rulerState = state.rulerState,
+            pointCount = state.rulerState.points.size,
+            distanceMeters = state.routePreviewFor(state.routeSession.preview.value)?.distanceMeters ?: state.rulerState.getTotalDistanceMeters(),
             onTrackNameChange = { state.rulerTrackName = it },
             isLoading = state.isResolvingRulerName,
             onSave = state::saveRulerAsTrack,
