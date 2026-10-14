@@ -22,7 +22,6 @@ import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.routing.HikingRouteSession
-import no.synth.where.data.routing.PlannedRoute
 import no.synth.where.resources.Res
 import no.synth.where.resources.point_deleted
 import no.synth.where.resources.point_saved
@@ -54,7 +53,15 @@ class MapScreenState(
     val snackbarHostState = SnackbarHostState()
     val stopNavConfirm = StopNavigationConfirmState()
 
-    var rulerState by mutableStateOf(RulerState())
+    private var _rulerState by mutableStateOf(RulerState())
+
+    /** Changing the points drops the found or pending route, which belonged to the old ones. */
+    var rulerState: RulerState
+        get() = _rulerState
+        set(value) {
+            if (value.points != _rulerState.points) routeSession.clear()
+            _rulerState = value
+        }
 
     var showSearch by mutableStateOf(false)
     var searchQuery by mutableStateOf("")
@@ -91,6 +98,8 @@ class MapScreenState(
     var friendPointDialog by mutableStateOf<SharedPoint?>(null)
 
     init {
+        // A route left from an earlier map screen has no ruler points to belong to.
+        routeSession.clear()
         scope.launch {
             snapshotFlow { searchQuery }
                 .debounce(300.milliseconds)
@@ -243,28 +252,19 @@ class MapScreenState(
     fun toggleRuler(measurement: TwoFingerMeasurement?) {
         rulerState = when {
             !rulerState.isActive && measurement != null -> rulerState.activatedWith(measurement.endpoints)
-            rulerState.isActive -> rulerState.clear().also { routeSession.cancel() }
+            rulerState.isActive -> rulerState.clear()
             else -> rulerState.copy(isActive = true)
         }
     }
 
     /** Back from a found route to the straight lines, else remove the last point. */
     fun undoRuler() {
-        if (routePreviewFor(routeSession.preview.value) != null) {
-            routeSession.discard()
+        if (routeSession.preview.value != null) {
+            routeSession.clear()
         } else {
             rulerState = rulerState.removeLastPoint()
         }
     }
-
-    fun clearRuler() {
-        routeSession.cancel()
-        rulerState = rulerState.clear()
-    }
-
-    /** The planned route through the current ruler points; moving a point leaves it stale and hidden. */
-    fun routePreviewFor(preview: PlannedRoute?): PlannedRoute? =
-        preview?.takeIf { it.waypoints == rulerState.points.map { p -> p.latLng } }
 
     fun findHikingRoute() {
         routeSession.plan(rulerState.points.map { it.latLng })
@@ -272,11 +272,12 @@ class MapScreenState(
 
     fun openSaveRulerAsTrackDialog() {
         showSaveRulerAsTrackDialog = true
-        rulerTrackName = ""
-        routePreviewFor(routeSession.preview.value)?.let {
-            rulerTrackName = NamingUtils.makeUnique(it.name, trackRepository.tracks.value.map { t -> t.name })
+        val route = routeSession.preview.value
+        if (route != null) {
+            rulerTrackName = NamingUtils.makeUnique(route.name, trackRepository.tracks.value.map { it.name })
             return
         }
+        rulerTrackName = ""
         val points = rulerState.points
         if (points.isEmpty()) return
         scope.launch {
@@ -297,13 +298,14 @@ class MapScreenState(
     fun saveRulerAsTrack() {
         val name = rulerTrackName
         if (name.isNotBlank()) {
-            if (routePreviewFor(routeSession.preview.value) != null) {
-                scope.launch { routeSession.save(name) }
+            val route = routeSession.preview.value
+            if (route != null) {
+                routeSession.save(route, name) { showMessage(Res.string.saved_as_track_name, name) }
             } else {
                 trackRepository.createTrackFromPoints(name, rulerState.points)
+                showMessage(Res.string.saved_as_track_name, name)
             }
             rulerState = rulerState.clear()
-            showMessage(Res.string.saved_as_track_name, name)
         }
         dismissSaveRulerAsTrackDialog()
     }

@@ -20,7 +20,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.withContext
 import no.synth.where.data.CoverageTilesClient
 import no.synth.where.data.CrosshairInfo
@@ -97,8 +100,7 @@ fun MapScreen(
     val navigationChartVisible by trackRepository.navigationChartVisible.collectAsState()
     val isPlanningRoute by state.routeSession.isPlanning.collectAsState()
     val plannedCrossings by state.routeSession.crossings.collectAsState()
-    val latestRoutePreview by state.routeSession.preview.collectAsState()
-    val routePreview = state.routePreviewFor(latestRoutePreview)
+    val routePreview = state.routeSession.preview.collectAsState().value
 
     val onlineTrackingEnabled by userPreferences.onlineTrackingEnabled.collectAsState()
     val viewerCount by userPreferences.viewerCount.collectAsState()
@@ -206,37 +208,39 @@ fun MapScreen(
             coordGridGeoJson = null
             return@LaunchedEffect
         }
+        // Sampled, not debounced: a following camera never stops moving long enough to debounce.
         snapshotFlow { Triple(cameraLat, cameraLon, cameraZoom) }
-            .debounce(200.milliseconds)
+            .sample(200.milliseconds)
             .collect { (lat, lng, zoom) ->
                 coordGridGeoJson = withContext(Dispatchers.Default) { CoordGrid.buildGeoJson(lat, lng, zoom, coordFormat) }
             }
     }
 
-    // Debounced terrain info for the crosshair. Each effect only touches its own fields of crosshairInfo.
-    LaunchedEffect(crosshairActive, centerLatLng) {
-        val latLng = centerLatLng ?: return@LaunchedEffect
+    // Terrain info for the crosshair, at most every 500 ms; the last value stays up while refreshing.
+    // Each effect only touches its own fields of crosshairInfo.
+    LaunchedEffect(crosshairActive) {
         if (!crosshairActive) return@LaunchedEffect
         crosshairInfo = crosshairInfo.copy(isLoading = true, elevation = null, slopeDegrees = null)
-        delay(500.milliseconds)
-        val info = TerrainClient.getTerrainInfo(latLng)
-        crosshairInfo = crosshairInfo.copy(isLoading = false, elevation = info?.elevation, slopeDegrees = info?.slopeDegrees)
+        snapshotFlow { centerLatLng }.filterNotNull().sample(500.milliseconds).collect { latLng ->
+            val info = TerrainClient.getTerrainInfo(latLng)
+            crosshairInfo = crosshairInfo.copy(isLoading = false, elevation = info?.elevation, slopeDegrees = info?.slopeDegrees)
+        }
     }
 
     // Coverage under the crosshair while the overlay is shown. Keyed on the version so a lookup
     // made against a stale version is redone once the current one is known.
     val withCoverage = showCoverage && !offlineModeEnabled
-    LaunchedEffect(crosshairActive, centerLatLng, withCoverage, coverageTilesVersion) {
+    LaunchedEffect(crosshairActive, withCoverage, coverageTilesVersion) {
         crosshairInfo = crosshairInfo.copy(
             showCoverage = withCoverage, isCoverageLoading = withCoverage, coverage = null, coverageFailed = false
         )
-        val latLng = centerLatLng ?: return@LaunchedEffect
         if (!crosshairActive || !withCoverage) return@LaunchedEffect
-        delay(500.milliseconds)
-        val result = CoverageTilesClient.getCoverage(latLng, coverageTilesVersion)
-        crosshairInfo = crosshairInfo.copy(
-            isCoverageLoading = false, coverage = result.getOrNull(), coverageFailed = result.isFailure
-        )
+        snapshotFlow { centerLatLng }.filterNotNull().sample(500.milliseconds).collect { latLng ->
+            val result = CoverageTilesClient.getCoverage(latLng, coverageTilesVersion)
+            crosshairInfo = crosshairInfo.copy(
+                isCoverageLoading = false, coverage = result.getOrNull(), coverageFailed = result.isFailure
+            )
+        }
     }
 
     // Open on the last known position, unless there is something else to show.
@@ -258,16 +262,16 @@ fun MapScreen(
     // Frame a found route with room around it to see the terrain it avoids.
     LaunchedEffect(routePreview) {
         val bounds = routePreview?.points?.map { it.latLng }?.bounds() ?: return@LaunchedEffect
-        controller.animateToBounds(bounds, zoomOut = 0.5)
+        controller.animateToBounds(bounds, zoomOut = MapZoomLevels.ROUTE_ZOOM_OUT)
     }
 
     // Fit the camera whenever the viewing set changes, but not when merely tap-focusing a track.
     LaunchedEffect(viewingTracks) {
-        // A just-saved route keeps its preview's framing.
-        val zoomOut = if (state.routeSession.consumeRouteJustSaved()) 0.5 else 0.0
         if (navigation != null) return@LaunchedEffect // the camera follows the user while navigating
         val bounds = Track.focusOrCombinedBounds(viewingTracks, focusedTrackId) ?: return@LaunchedEffect
-        controller.animateToBounds(bounds, zoomOut = zoomOut)
+        // A just-saved route keeps its preview's framing.
+        val justSaved = viewingTracks.lastOrNull()?.id == state.routeSession.crossings.value?.trackId
+        controller.animateToBounds(bounds, zoomOut = if (justSaved) MapZoomLevels.ROUTE_ZOOM_OUT else 0.0)
     }
 
     // Zoom in when first engaging follow (e.g. from the country overview), but not on every fix, so
@@ -309,14 +313,16 @@ fun MapScreen(
         val animator = FollowCameraAnimator()
         while (true) {
             val frame = withFrameNanos { it }
-            val current = latestFix.value ?: continue
+            val current = latestFix.value
             // HELD (or a missing reading) keeps the current bearing.
             val bearing = if (cameraFollowMode == CameraFollowMode.FOLLOW) 0.0 else when (headingSource) {
-                HeadingSource.COURSE -> current.course
+                HeadingSource.COURSE -> current?.course
                 HeadingSource.COMPASS -> compassBearing
                 HeadingSource.HELD -> null
             }
-            controller.followStep { pose -> animator.step(frame, pose, current.latLng, bearing) }
+            val moving = current != null && controller.followStep { pose -> animator.step(frame, pose, current.latLng, bearing) }
+            // Settled: stop asking for frames until there is something new to follow.
+            if (!moving) snapshotFlow { Triple(latestFix.value, compassBearing, headingSource) }.drop(1).first()
         }
     }
 
@@ -381,8 +387,11 @@ fun MapScreen(
             if (rulerState.points.isNotEmpty()) buildRulerPointsGeoJson(rulerState.points) else null
         },
         crossingsGeoJson = remember(routePreview, plannedCrossings, viewingTracks) {
-            routePreview?.crossings?.takeIf { it.isNotEmpty() }?.let { buildCrossingsGeoJson(it) }
-                ?: crossingsGeoJsonFor(plannedCrossings, viewingTracks)
+            if (routePreview != null) {
+                routePreview.crossings.takeIf { it.isNotEmpty() }?.let(::buildCrossingsGeoJson)
+            } else {
+                crossingsGeoJsonFor(plannedCrossings, viewingTracks)
+            }
         },
         measurementLineGeoJson = remember(twoFingerMeasurement) { twoFingerMeasurement?.let { buildMeasurementLineGeoJson(it) } },
         measurementPointsGeoJson = remember(twoFingerMeasurement) { twoFingerMeasurement?.let { buildMeasurementPointsGeoJson(it) } },
@@ -530,11 +539,11 @@ fun MapScreen(
         onZoomIn = { controller.zoomIn() },
         onZoomOut = { controller.zoomOut() },
         onRulerUndo = state::undoRuler,
-        onRulerClear = state::clearRuler,
+        onRulerClear = { state.rulerState = state.rulerState.clear() },
         isPlanningRoute = isPlanningRoute,
         routePreview = routePreview,
         onFindRoute = state::findHikingRoute,
-        onCancelRoute = state.routeSession::cancel,
+        onCancelRoute = state.routeSession::clear,
         onRulerSaveAsTrack = state::openSaveRulerAsTrackDialog,
         onCloseTrack = { focusedTrackId?.let { trackRepository.removeViewingTrack(it) } },
         onCollapseTrack = { trackRepository.setFocusedTrack(null) },
@@ -582,6 +591,7 @@ private fun LatLng.coordinateText() = "${latitude.toString().take(10)}, ${longit
 
 @Composable
 private fun MapScreenDialogs(state: MapScreenState, canShare: Boolean, isNavigating: Boolean) {
+    val routePreview = state.routeSession.preview.collectAsState().value
     if (state.showStopTrackDialog) {
         MapDialogs.StopTrackDialog(
             trackNameInput = state.trackNameInput,
@@ -671,7 +681,7 @@ private fun MapScreenDialogs(state: MapScreenState, canShare: Boolean, isNavigat
         MapDialogs.SaveRulerAsTrackDialog(
             trackName = state.rulerTrackName,
             pointCount = state.rulerState.points.size,
-            distanceMeters = state.routePreviewFor(state.routeSession.preview.value)?.distanceMeters ?: state.rulerState.getTotalDistanceMeters(),
+            distanceMeters = routePreview?.distanceMeters ?: state.rulerState.getTotalDistanceMeters(),
             onTrackNameChange = { state.rulerTrackName = it },
             isLoading = state.isResolvingRulerName,
             onSave = state::saveRulerAsTrack,

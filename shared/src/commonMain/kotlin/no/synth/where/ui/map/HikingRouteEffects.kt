@@ -23,7 +23,6 @@ fun HikingRouteSnackbars(session: HikingRouteSession, snackbarHostState: Snackba
     LaunchedEffect(session) {
         session.events.collect { event ->
             val message = when (event) {
-                RoutePlanEvent.Planned -> return@collect
                 RoutePlanEvent.NoTerrainData -> getString(Res.string.route_no_terrain)
                 RoutePlanEvent.NoRoute -> getString(Res.string.route_not_found)
             }
