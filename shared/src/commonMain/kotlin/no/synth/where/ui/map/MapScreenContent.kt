@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import no.synth.where.data.routing.PlannedRoute
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerState
@@ -99,7 +100,9 @@ fun MapScreenContent(
     onRulerClear: () -> Unit,
     onRulerSaveAsTrack: () -> Unit,
     isPlanningRoute: Boolean = false,
+    routePreview: PlannedRoute? = null,
     onFindRoute: (() -> Unit)? = null,
+    onCancelRoute: () -> Unit = {},
     onOnlineTrackingClick: () -> Unit = {},
     onOfflineIndicatorClick: () -> Unit = {},
     onCloseTrack: () -> Unit,
@@ -218,7 +221,9 @@ fun MapScreenContent(
                 onRulerClear = onRulerClear,
                 onRulerSaveAsTrack = onRulerSaveAsTrack,
                 isPlanningRoute = isPlanningRoute,
+                routePreview = routePreview,
                 onFindRoute = onFindRoute,
+                onCancelRoute = onCancelRoute,
                 onOnlineTrackingClick = onOnlineTrackingClick,
                 onOfflineIndicatorClick = onOfflineIndicatorClick,
                 onCloseTrack = onCloseTrack,
@@ -241,11 +246,14 @@ fun MapScreenContent(
             // Pinned bottom-left, left of the FAB column, so snackbars sit at the bottom of the
             // screen rather than floating mid-screen above the tall FAB stack. Lifted above the
             // bottom chart when one is shown so it doesn't cover it (e.g. the crop-undo snackbar).
+            // The ruler card fills the bottom, so messages go up between the zoom buttons and compass.
             SnackbarHost(
                 snackbarHostState,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 8.dp, end = 80.dp, bottom = bottomChartHeight)
+                modifier = if (rulerState.isActive) {
+                    Modifier.align(Alignment.TopCenter).padding(start = 64.dp, end = 64.dp, top = 8.dp)
+                } else {
+                    Modifier.align(Alignment.BottomStart).padding(start = 8.dp, end = 80.dp, bottom = bottomChartHeight)
+                }
             )
         }
     }

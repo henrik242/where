@@ -70,6 +70,7 @@ import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.compassPoint8
 import no.synth.where.data.navigation.NavigationProgress
+import no.synth.where.data.routing.PlannedRoute
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.currentTimeMillis
@@ -82,8 +83,13 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
+/** When route planning starts warning that it is slow. */
+private val ROUTE_SLOW_AFTER = 20.seconds
 
 @Composable
 fun ZoomControls(
@@ -120,7 +126,9 @@ fun RulerCard(
     onClear: () -> Unit,
     onSaveAsTrack: () -> Unit,
     isPlanningRoute: Boolean = false,
+    routePreview: PlannedRoute? = null,
     onFindRoute: (() -> Unit)? = null,
+    onCancelRoute: () -> Unit = {},
 ) {
     Card(
         modifier = modifier,
@@ -134,13 +142,34 @@ fun RulerCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    val totalDistance = rulerState.getTotalDistanceMeters()
+                    val totalDistance = routePreview?.distanceMeters ?: rulerState.getTotalDistanceMeters()
                     Text(
                         text = if (rulerState.points.isEmpty()) stringResource(Res.string.tap_to_measure) else totalDistance.formatDistance(),
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    if (rulerState.points.size > 1) {
+                    if (routePreview != null) {
+                        Text(
+                            text = stringResource(Res.string.route_walking_time, hikingTimeText(routePreview.durationSeconds)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        val crossings = routePreview.crossings.size
+                        if (crossings > 0) {
+                            Text(
+                                text = pluralStringResource(Res.plurals.route_crossings, crossings, crossings),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (routePreview.featuresIncomplete) {
+                            Text(
+                                text = stringResource(Res.string.route_features_incomplete),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else if (rulerState.points.size > 1) {
                         Text(
                             text = stringResource(Res.string.n_points, rulerState.points.size),
                             style = MaterialTheme.typography.bodySmall,
@@ -149,7 +178,8 @@ fun RulerCard(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // While planning, Cancel is the one way out.
+                if (!isPlanningRoute) Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (rulerState.points.size > 1) {
                         SmallFloatingActionButton(
                             onClick = onUndo,
@@ -186,13 +216,24 @@ fun RulerCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                var slow by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    delay(ROUTE_SLOW_AFTER)
+                    slow = true
+                }
                 Text(
-                    text = stringResource(Res.string.route_suggestion_note),
+                    text = stringResource(if (slow) Res.string.route_planning_slow else Res.string.route_suggestion_note),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (slow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
-            } else if (rulerState.points.size >= 2 && onFindRoute != null) {
+                OutlinedButton(
+                    onClick = onCancelRoute,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                ) {
+                    Text(stringResource(Res.string.cancel))
+                }
+            } else if (rulerState.points.size >= 2 && onFindRoute != null && routePreview == null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = onFindRoute,
@@ -208,7 +249,8 @@ fun RulerCard(
                 }
             }
 
-            if (rulerState.points.size >= 2) {
+            // Saves the found route when there is one, else the straight lines. Hidden while planning.
+            if (rulerState.points.size >= 2 && !isPlanningRoute) {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = onSaveAsTrack,
@@ -989,7 +1031,9 @@ fun BoxScope.MapOverlays(
     onRulerClear: () -> Unit,
     onRulerSaveAsTrack: () -> Unit,
     isPlanningRoute: Boolean = false,
+    routePreview: PlannedRoute? = null,
     onFindRoute: (() -> Unit)? = null,
+    onCancelRoute: () -> Unit = {},
     onOnlineTrackingClick: () -> Unit = {},
     onCloseTrack: () -> Unit,
     onCollapseTrack: () -> Unit = {},
@@ -1183,7 +1227,9 @@ fun BoxScope.MapOverlays(
                     onClear = onRulerClear,
                     onSaveAsTrack = onRulerSaveAsTrack,
                     isPlanningRoute = isPlanningRoute,
-                    onFindRoute = onFindRoute
+                    routePreview = routePreview,
+                    onFindRoute = onFindRoute,
+                    onCancelRoute = onCancelRoute,
                 )
             }
             if (isRecording && recordingTrack != null) {

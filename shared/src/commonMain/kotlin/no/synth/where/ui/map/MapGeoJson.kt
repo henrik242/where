@@ -179,10 +179,10 @@ fun buildCrossingsGeoJson(crossings: List<RiverCrossing>): String {
     return """{"type":"FeatureCollection","features":[$features]}"""
 }
 
-fun buildRulerLineGeoJson(points: List<RulerPoint>): String {
-    val coordinates = points.joinToString(",") { point ->
-        "[${point.latLng.longitude},${point.latLng.latitude}]"
-    }
+fun buildRulerLineGeoJson(points: List<RulerPoint>): String = buildLineGeoJson(points.map { it.latLng })
+
+fun buildLineGeoJson(points: List<LatLng>): String {
+    val coordinates = points.joinToString(",") { "[${it.longitude},${it.latitude}]" }
     return """{"type":"Feature","geometry":{"type":"LineString","coordinates":[$coordinates]}}"""
 }
 

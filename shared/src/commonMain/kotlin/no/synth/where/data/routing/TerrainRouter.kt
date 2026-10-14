@@ -49,7 +49,8 @@ object TerrainRouter {
         val n = w * grid.height
         val c = grid.cellSizeMeters
         val g = FloatArray(n) { Float.POSITIVE_INFINITY }
-        val cameFrom = IntArray(n) { -1 }
+        // Direction index into DX/DY each cell was reached by: a byte instead of a 4-byte cell index.
+        val cameFrom = ByteArray(n) { -1 }
         val closed = BooleanArray(n)
         val heap = MinHeap()
         val tx = target % w
@@ -67,7 +68,7 @@ object TerrainRouter {
         while (heap.isNotEmpty()) {
             val cur = heap.pop()
             if (closed[cur]) continue
-            if (cur == target) return reconstruct(cameFrom, target)
+            if (cur == target) return reconstruct(cameFrom, w, target)
             closed[cur] = true
             if (++expanded and 0xFFFF == 0) currentCoroutineContext().ensureActive()
             val cx = cur % w
@@ -85,7 +86,7 @@ object TerrainRouter {
                 val tentative = g[cur] + step.toFloat()
                 if (tentative < g[next]) {
                     g[next] = tentative
-                    cameFrom[next] = cur
+                    cameFrom[next] = k.toByte()
                     heap.push(next, tentative + h(next))
                 }
             }
@@ -107,12 +108,14 @@ object TerrainRouter {
         return !blocked[a] && !blocked[b] && !grid.hasFlag(a, waterway) && !grid.hasFlag(b, waterway)
     }
 
-    private fun reconstruct(cameFrom: IntArray, target: Int): IntArray {
+    private fun reconstruct(cameFrom: ByteArray, w: Int, target: Int): IntArray {
         val out = ArrayList<Int>()
         var cur = target
-        while (cur != -1) {
+        out.add(cur)
+        while (cameFrom[cur] >= 0) {
+            val k = cameFrom[cur].toInt()
+            cur -= DY[k] * w + DX[k]
             out.add(cur)
-            cur = cameFrom[cur]
         }
         out.reverse()
         return out.toIntArray()

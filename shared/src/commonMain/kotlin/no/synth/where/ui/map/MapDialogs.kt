@@ -28,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import no.synth.where.data.RulerState
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.util.formatDistance
@@ -542,7 +541,8 @@ object MapDialogs {
     @Composable
     fun SaveRulerAsTrackDialog(
         trackName: String,
-        rulerState: RulerState,
+        pointCount: Int,
+        distanceMeters: Double,
         onTrackNameChange: (String) -> Unit,
         onSave: () -> Unit,
         onDismiss: () -> Unit,
@@ -570,7 +570,7 @@ object MapDialogs {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = stringResource(Res.string.ruler_points_distance, rulerState.points.size, rulerState.getTotalDistanceMeters().formatDistance()),
+                        text = stringResource(Res.string.ruler_points_distance, pointCount, distanceMeters.formatDistance()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

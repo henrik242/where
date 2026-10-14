@@ -22,6 +22,7 @@ import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.routing.HikingRouteSession
+import no.synth.where.data.routing.PlannedRoute
 import no.synth.where.resources.Res
 import no.synth.where.resources.point_deleted
 import no.synth.where.resources.point_saved
@@ -242,20 +243,40 @@ class MapScreenState(
     fun toggleRuler(measurement: TwoFingerMeasurement?) {
         rulerState = when {
             !rulerState.isActive && measurement != null -> rulerState.activatedWith(measurement.endpoints)
-            rulerState.isActive -> rulerState.clear()
+            rulerState.isActive -> rulerState.clear().also { routeSession.cancel() }
             else -> rulerState.copy(isActive = true)
         }
     }
 
+    /** Back from a found route to the straight lines, else remove the last point. */
+    fun undoRuler() {
+        if (routePreviewFor(routeSession.preview.value) != null) {
+            routeSession.discard()
+        } else {
+            rulerState = rulerState.removeLastPoint()
+        }
+    }
+
+    fun clearRuler() {
+        routeSession.cancel()
+        rulerState = rulerState.clear()
+    }
+
+    /** The planned route through the current ruler points; moving a point leaves it stale and hidden. */
+    fun routePreviewFor(preview: PlannedRoute?): PlannedRoute? =
+        preview?.takeIf { it.waypoints == rulerState.points.map { p -> p.latLng } }
+
     fun findHikingRoute() {
-        val planned = rulerState.points
-        // Points added while planning are a new measurement; keep them.
-        routeSession.plan(planned.map { it.latLng }) { if (rulerState.points == planned) rulerState = rulerState.clear() }
+        routeSession.plan(rulerState.points.map { it.latLng })
     }
 
     fun openSaveRulerAsTrackDialog() {
         showSaveRulerAsTrackDialog = true
         rulerTrackName = ""
+        routePreviewFor(routeSession.preview.value)?.let {
+            rulerTrackName = NamingUtils.makeUnique(it.name, trackRepository.tracks.value.map { t -> t.name })
+            return
+        }
         val points = rulerState.points
         if (points.isEmpty()) return
         scope.launch {
@@ -276,7 +297,11 @@ class MapScreenState(
     fun saveRulerAsTrack() {
         val name = rulerTrackName
         if (name.isNotBlank()) {
-            trackRepository.createTrackFromPoints(name, rulerState.points)
+            if (routePreviewFor(routeSession.preview.value) != null) {
+                scope.launch { routeSession.save(name) }
+            } else {
+                trackRepository.createTrackFromPoints(name, rulerState.points)
+            }
             rulerState = rulerState.clear()
             showMessage(Res.string.saved_as_track_name, name)
         }
