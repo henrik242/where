@@ -2,6 +2,7 @@ package no.synth.where.data
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -150,11 +151,12 @@ class MapStyleTest {
                 showWaymarkedTrails = true,
                 nveOverlay = NveOverlay.STEEPNESS_RUNOUT,
                 showOsmPaths = true,
+                showCoverage = true,
             )
         )
         assertEquals(
             listOf(
-                "background", "base-layer", "avalanchezones-layer",
+                "background", "base-layer", "avalanchezones-layer", "coverage-layer",
                 "waymarkedtrails-layer", "osmpaths-casing", "osmpaths-line", "osmpaths-paved",
             ),
             style.layers().map { it.id() }
@@ -173,6 +175,7 @@ class MapStyleTest {
                             showWaymarkedTrails = overlays,
                             nveOverlay = nveOverlay,
                             showOsmPaths = overlays,
+                            showCoverage = overlays,
                         )
                     )
                     val declared = style.getValue("sources").jsonObject.keys
@@ -262,5 +265,23 @@ class MapStyleTest {
             .map { style.indexOf(it) }
         assertFalse(order.contains(-1), "Every overlay should be present")
         assertEquals(order.sorted(), order, "Overlays should be drawn base, NVE, then trails")
+    }
+
+    @Test
+    fun noCoverageOverlayByDefault() {
+        assertFalse(parse(MapStyle.getStyle()).getValue("sources").jsonObject.containsKey(CoverageTilesClient.SOURCE_ID))
+    }
+
+    @Test
+    fun coverageOverlayUsesTheVersionedCallTiles() {
+        val source = parse(MapStyle.getStyle(showCoverage = true, coverageVersion = "2026-10-06"))
+            .source(CoverageTilesClient.SOURCE_ID)
+        assertEquals(
+            "https://erdetdekning.no/tiles/2026-10-06/coverage/calls/{z}/{x}/{y}.png",
+            source.getValue("tiles").jsonArray.single().jsonPrimitive.content
+        )
+        assertEquals(5, source.getValue("minzoom").jsonPrimitive.int)
+        assertEquals(12, source.getValue("maxzoom").jsonPrimitive.int)
+        assertTrue("Dekning: " in source.getValue("attribution").jsonPrimitive.content, "Needs the required credit")
     }
 }

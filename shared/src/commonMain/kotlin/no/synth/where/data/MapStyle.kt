@@ -43,6 +43,8 @@ object MapStyle {
         showWaymarkedTrails: Boolean = false,
         nveOverlay: NveOverlay? = null,
         showOsmPaths: Boolean = false,
+        showCoverage: Boolean = false,
+        coverageVersion: String = CoverageTilesClient.FALLBACK_VERSION,
         glyphsUrl: String = DEFAULT_GLYPHS_URL,
     ): String {
         data class TileSource(val id: String, val tiles: String, val attribution: String, val maxZoom: Int? = null)
@@ -97,6 +99,18 @@ object MapStyle {
       "maxzoom": ${NveOverlay.MAX_ZOOM}
     }""")
             }
+            if (showCoverage) {
+                append(""",
+    "${CoverageTilesClient.SOURCE_ID}": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": ["${CoverageTilesClient.tileUrl(coverageVersion)}"],
+      "tileSize": 256,
+      "attribution": "Dekning: <a href='https://erdetdekning.no'>erdetdekning.no</a>",
+      "minzoom": ${CoverageTilesClient.MIN_ZOOM},
+      "maxzoom": ${CoverageTilesClient.NATIVE_ZOOM}
+    }""")
+            }
             if (showOsmPaths) {
                 append(""",
     "osmpaths": {
@@ -132,6 +146,18 @@ object MapStyle {
       "source": "${nveOverlay.sourceId}",
       "paint": {
         "raster-opacity": 0.6
+      }
+    }""")
+            }
+            if (showCoverage) {
+                // The tiles carry their own alpha; this just keeps the base map readable through them.
+                append(""",
+    {
+      "id": "${CoverageTilesClient.SOURCE_ID}-layer",
+      "type": "raster",
+      "source": "${CoverageTilesClient.SOURCE_ID}",
+      "paint": {
+        "raster-opacity": 0.8
       }
     }""")
             }

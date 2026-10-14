@@ -11,6 +11,8 @@ tag dates.
 - Find a hiking route between ruler points, also off-trail. It avoids cliffs, lakes and glaciers,
   prefers paths and bridges, estimates walking time, and marks where you must cross a river or
   stream. Offline elevation downloads now include the lake and river data it needs.
+- Mobile coverage overlay (Telenor, Telia and Ice call coverage from erdetdekning.no). With the
+  crosshair on, it shows each operator's coverage and whether 112 is likely reachable there.
 - New macOS desktop app: a map viewer for saved tracks and points, offline map downloads and
   friends' live tracks. No GPS, so it does not record or share your own position.
 - Strava stays connected through a flaky network, a timeout, an outage or an app upgrade; only
