@@ -43,8 +43,8 @@ object MapStyle {
         showWaymarkedTrails: Boolean = false,
         nveOverlay: NveOverlay? = null,
         showOsmPaths: Boolean = false,
-        showCoverage: Boolean = false,
-        coverageVersion: String = CoverageTilesClient.FALLBACK_VERSION,
+        /** Shows the coverage overlay from this dataset version; null hides it. */
+        coverageVersion: String? = null,
         glyphsUrl: String = DEFAULT_GLYPHS_URL,
     ): String {
         data class TileSource(val id: String, val tiles: String, val attribution: String, val maxZoom: Int? = null)
@@ -99,7 +99,7 @@ object MapStyle {
       "maxzoom": ${NveOverlay.MAX_ZOOM}
     }""")
             }
-            if (showCoverage) {
+            if (coverageVersion != null) {
                 append(""",
     "${CoverageTilesClient.SOURCE_ID}": {
       "type": "raster",
@@ -149,7 +149,7 @@ object MapStyle {
       }
     }""")
             }
-            if (showCoverage) {
+            if (coverageVersion != null) {
                 // The tiles carry their own alpha; this just keeps the base map readable through them.
                 append(""",
     {

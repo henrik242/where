@@ -8,10 +8,8 @@ import kotlin.math.exp
 data class FollowPose(val center: LatLng, val bearing: Double)
 
 /**
- * Moves a following camera a little each frame instead of jumping at each update. GPS fixes come
- * about once a second, so the center glides from where the camera is to the newest fix over the
- * time the fix took to arrive, which keeps a steady walking pace on screen one fix behind. Compass
- * readings arrive faster and jitter, so the bearing eases toward its target along the shorter arc.
+ * Moves a following camera a little each frame: the center glides to each new fix over the time
+ * that fix took to arrive, and the bearing eases toward its target along the shorter arc.
  */
 class FollowCameraAnimator {
     private var from: LatLng? = null
@@ -20,10 +18,7 @@ class FollowCameraAnimator {
     private var segmentNanos = DEFAULT_SEGMENT_NANOS
     private var lastFrame = 0L
 
-    /**
-     * The pose for frame [frameNanos], moving [current] toward [target] and [targetBearing] (null
-     * keeps the bearing), or null when the camera is already there.
-     */
+    /** The pose for frame [frameNanos], or null when [current] is already there. Null [targetBearing] keeps the bearing. */
     fun step(frameNanos: Long, current: FollowPose, target: LatLng, targetBearing: Double?): FollowPose? {
         if (target != to) {
             val previous = to

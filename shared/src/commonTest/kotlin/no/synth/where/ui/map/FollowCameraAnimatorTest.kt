@@ -34,12 +34,32 @@ class FollowCameraAnimatorTest {
     @Test
     fun glidesToNextFixOverTheFixInterval() {
         val anim = FollowCameraAnimator()
-        var (pose, t) = run(anim, FollowPose(a, 0.0), 0, 60, a, null) // settle on a for 1 s
+        val (pose, t) = run(anim, FollowPose(a, 0.0), 0, 60, a, null) // settle on a for 1 s
         // Halfway through the next second the camera is about halfway to b.
         val half = run(anim, pose, t, 30, b, null)
         val progress = (half.first.center.latitude - a.latitude) / (b.latitude - a.latitude)
         assertTrue(progress in 0.4..0.6, "progress=$progress")
         val end = run(anim, half.first, half.second, 40, b, null).first
+        assertEquals(b, end.center)
+    }
+
+    @Test
+    fun newFixMidGlideContinuesFromWhereTheCameraIs() {
+        val anim = FollowCameraAnimator()
+        val (settled, t0) = run(anim, FollowPose(a, 0.0), 0, 60, a, null)
+        val (mid, t1) = run(anim, settled, t0, 30, b, null)
+        val c = LatLng(60.0001, 10.0002)
+        // The new glide starts where the camera is: a couple of frames move it a little, toward c.
+        val next = run(anim, mid, t1, 2, c, null).first
+        assertTrue(mid.center.distanceTo(next.center) < 1.0, "jumped ${mid.center.distanceTo(next.center)} m")
+        assertTrue(next.center.distanceTo(c) < mid.center.distanceTo(c))
+    }
+
+    @Test
+    fun longGapBetweenFixesStillGlidesInAboutTwoSeconds() {
+        val anim = FollowCameraAnimator()
+        val (settled, t0) = run(anim, FollowPose(a, 0.0), 0, 600, a, null) // 10 s on a
+        val end = run(anim, settled, t0, 125, b, null).first // ~2.1 s
         assertEquals(b, end.center)
     }
 
@@ -55,9 +75,8 @@ class FollowCameraAnimatorTest {
     fun bearingTakesTheShortArc() {
         val anim = FollowCameraAnimator()
         val pose = assertNotNull(anim.step(frame, FollowPose(a, 350.0), a, 10.0))
-        val moved = pose.bearing
-        // Moving clockwise through north, never back through 180.
-        assertTrue(moved > 350.0 || moved < 10.0, "bearing=$moved")
+        // First step goes clockwise from 350 toward north, not back through 180.
+        assertTrue(pose.bearing in 350.0..360.0, "bearing=${pose.bearing}")
         val end = run(anim, pose, frame, 120, a, 10.0).first
         assertTrue(abs(end.bearing - 10.0) < 0.1, "bearing=${end.bearing}")
     }

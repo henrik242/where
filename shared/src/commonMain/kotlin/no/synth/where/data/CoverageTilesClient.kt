@@ -29,15 +29,15 @@ object CoverageTilesClient {
     const val NATIVE_ZOOM = 12
 
     /** Used until the first successful lookup. Bump now and then; old versions are kept a while. */
-    const val FALLBACK_VERSION = "2026-10-06"
+    const val FALLBACK_VERSION = "2026-10-13"
 
     private const val TILE_TIMEOUT_MS = 5_000L
 
     private val VERSION_REGEX = Regex("""^[0-9A-Za-z._-]+$""")
 
-    /** The last raw tile fetched (URL to bytes, null bytes for a 404), so panning within it needs no fetch. */
+    /** The last tile fetched (null for a 404), so panning within it needs no fetch. */
     @Volatile
-    private var lastTile: Pair<String, ByteArray?>? = null
+    private var lastTile: Pair<String, RgbImage?>? = null
 
     /** Coloured tiles for the map overlay. */
     fun tileUrl(version: String) = "$BASE_URL/$version/coverage/calls/{z}/{x}/{y}.png"
@@ -60,28 +60,33 @@ object CoverageTilesClient {
         null
     }
 
-    /** Coverage at [latLng] (null outside Norway or at sea), or a failure when the tile can't be fetched. */
-    suspend fun getCoverage(latLng: LatLng, version: String): Result<CoverageAtPoint?> = try {
+    /** Coverage at [latLng], or [CoverageLookup.Failed] when the tile can't be fetched. */
+    suspend fun getCoverage(latLng: LatLng, version: String): CoverageLookup = try {
         val coord = TileUtils.latLngToTileCoord(latLng.latitude, latLng.longitude, NATIVE_ZOOM)
-        val png = levelsTile("$BASE_URL/$version/levels/${coord.z}/${coord.x}/${coord.y}.png")
-        val rgb = png?.let { withContext(Dispatchers.Default) { PngDecoder.decode(it)?.rgbAt(coord.pixelX, coord.pixelY) } }
-        Result.success(rgb?.let { CoverageAtPoint.fromRgb(it) })
+        val rgb = levelsTile("$BASE_URL/$version/levels/${coord.z}/${coord.x}/${coord.y}.png")?.rgbAt(coord.pixelX, coord.pixelY)
+        CoverageLookup.Found(rgb?.let { CoverageAtPoint.fromRgb(it) })
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         Logger.w(e, "Coverage lookup failed")
-        Result.failure(e)
+        CoverageLookup.Failed
     }
 
-    private suspend fun levelsTile(url: String): ByteArray? {
-        lastTile?.let { (cachedUrl, bytes) -> if (cachedUrl == url) return bytes }
+    private suspend fun levelsTile(url: String): RgbImage? {
+        lastTile?.let { (cachedUrl, image) -> if (cachedUrl == url) return image }
         val response = client.get(url) { timeout { requestTimeoutMillis = TILE_TIMEOUT_MS } }
         // Tiles with no Norwegian land (sea, abroad) don't exist, so a 404 is an answer worth keeping.
         if (!response.status.isSuccess() && response.status != HttpStatusCode.NotFound) {
             error("Coverage tile HTTP ${response.status.value}")
         }
-        val bytes = if (response.status.isSuccess()) response.bodyAsBytes() else null
-        lastTile = url to bytes
-        return bytes
+        val image = if (response.status.isSuccess()) {
+            val bytes = response.bodyAsBytes()
+            // A 200 that isn't a PNG (a captive portal, say) is a failure, not "no data here".
+            withContext(Dispatchers.Default) { PngDecoder.decode(bytes) } ?: error("Coverage tile is not a PNG")
+        } else {
+            null
+        }
+        lastTile = url to image
+        return image
     }
 }

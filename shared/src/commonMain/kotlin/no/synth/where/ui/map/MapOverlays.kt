@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.CoverageAtPoint
+import no.synth.where.data.CoverageLookup
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.elevationProfileOrNull
 import no.synth.where.data.hasElevationData
@@ -128,7 +129,7 @@ fun RulerCard(
     isPlanningRoute: Boolean = false,
     routePreview: PlannedRoute? = null,
     onFindRoute: (() -> Unit)? = null,
-    onCancelRoute: () -> Unit = {},
+    onCancelRoute: () -> Unit,
 ) {
     Card(
         modifier = modifier,
@@ -179,30 +180,32 @@ fun RulerCard(
                 }
 
                 // While planning, Cancel is the one way out.
-                if (!isPlanningRoute) Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (rulerState.points.size > 1) {
+                if (!isPlanningRoute) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (rulerState.points.size > 1) {
+                            SmallFloatingActionButton(
+                                onClick = onUndo,
+                                modifier = Modifier.size(32.dp),
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Icon(
+                                    painterResource(Res.drawable.ic_undo),
+                                    contentDescription = stringResource(Res.string.remove_last_point),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                         SmallFloatingActionButton(
-                            onClick = onUndo,
+                            onClick = onClear,
                             modifier = Modifier.size(32.dp),
                             containerColor = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Icon(
-                                painterResource(Res.drawable.ic_undo),
-                                contentDescription = stringResource(Res.string.remove_last_point),
+                                painterResource(Res.drawable.ic_clear),
+                                contentDescription = stringResource(Res.string.clear_all),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
-                    }
-                    SmallFloatingActionButton(
-                        onClick = onClear,
-                        modifier = Modifier.size(32.dp),
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Icon(
-                            painterResource(Res.drawable.ic_clear),
-                            contentDescription = stringResource(Res.string.clear_all),
-                            modifier = Modifier.size(16.dp)
-                        )
                     }
                 }
             }
@@ -224,7 +227,7 @@ fun RulerCard(
                 Text(
                     text = stringResource(if (slow) Res.string.route_planning_slow else Res.string.route_suggestion_note),
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (slow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 OutlinedButton(
@@ -249,7 +252,7 @@ fun RulerCard(
                 }
             }
 
-            // Saves the found route when there is one, else the straight lines. Hidden while planning.
+            // Saves the found route when there is one, else the straight lines.
             if (rulerState.points.size >= 2 && !isPlanningRoute) {
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
@@ -926,9 +929,9 @@ fun CrosshairInfoCard(
                     color = dataColor
                 )
             }
-            if (crosshairInfo.showCoverage) {
+            crosshairInfo.coverage?.let {
                 Spacer(modifier = Modifier.height(4.dp))
-                CoverageDetail(crosshairInfo.coverage, crosshairInfo.isCoverageLoading, crosshairInfo.coverageFailed)
+                CoverageDetail(it)
             }
             if (userLocation != null && centerLatLng != null) {
                 Row(
@@ -954,10 +957,11 @@ fun CrosshairInfoCard(
 
 /** Whether 112 can likely be called under the crosshair, then each operator's call coverage. */
 @Composable
-private fun CoverageDetail(coverage: CoverageAtPoint?, isLoading: Boolean, failed: Boolean) {
+private fun CoverageDetail(lookup: CoverageLookup) {
+    val coverage = (lookup as? CoverageLookup.Found)?.coverage
     val emergency = when {
-        isLoading -> Res.string.coverage_112_loading
-        failed -> Res.string.coverage_112_failed
+        lookup == CoverageLookup.Loading -> Res.string.coverage_112_loading
+        lookup == CoverageLookup.Failed -> Res.string.coverage_112_failed
         coverage == null -> Res.string.coverage_112_unknown
         coverage.bestLevel == 0 -> Res.string.coverage_112_unlikely
         coverage.bestLevel == 1 -> Res.string.coverage_112_weak
@@ -1033,7 +1037,7 @@ fun BoxScope.MapOverlays(
     isPlanningRoute: Boolean = false,
     routePreview: PlannedRoute? = null,
     onFindRoute: (() -> Unit)? = null,
-    onCancelRoute: () -> Unit = {},
+    onCancelRoute: () -> Unit,
     onOnlineTrackingClick: () -> Unit = {},
     onCloseTrack: () -> Unit,
     onCollapseTrack: () -> Unit = {},

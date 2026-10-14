@@ -7,11 +7,13 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
 import no.synth.where.data.geo.LatLng
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
+import javax.imageio.ImageIO
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /** Each test uses its own dataset version, so the client's last-tile cache never carries over. */
 class CoverageTilesClientNetworkTest {
@@ -34,9 +36,20 @@ class CoverageTilesClientNetworkTest {
     @Test
     fun readsThePixelUnderThePointFromTheVersionedTile() = runTest {
         serve(HttpStatusCode.OK, uniformTile(0xFF010203.toInt()))
-        assertEquals(CoverageAtPoint(1, 2, 3), CoverageTilesClient.getCoverage(point, "v-read").getOrThrow())
+        assertEquals(CoverageLookup.Found(CoverageAtPoint(1, 2, 3)), CoverageTilesClient.getCoverage(point, "v-read"))
         val tile = TileUtils.latLngToTileCoord(point.latitude, point.longitude, 12)
         assertEquals("https://erdetdekning.no/tiles/v-read/levels/12/${tile.x}/${tile.y}.png", requests.single())
+    }
+
+    @Test
+    fun readsTheRightPixel() = runTest {
+        // Telenor's level is the pixel's x mod 4, Telia's its y mod 4.
+        val image = BufferedImage(256, 256, BufferedImage.TYPE_INT_ARGB)
+        for (y in 0 until 256) for (x in 0 until 256) image.setRGB(x, y, (0xFF shl 24) or ((x and 3) shl 16) or ((y and 3) shl 8))
+        serve(HttpStatusCode.OK, ByteArrayOutputStream().also { ImageIO.write(image, "png", it) }.toByteArray())
+        val tile = TileUtils.latLngToTileCoord(point.latitude, point.longitude, 12)
+        val expected = CoverageAtPoint(telenor = tile.pixelX and 3, telia = tile.pixelY and 3, ice = 0)
+        assertEquals(CoverageLookup.Found(expected), CoverageTilesClient.getCoverage(point, "v-pixel"))
     }
 
     @Test
@@ -50,16 +63,24 @@ class CoverageTilesClientNetworkTest {
     @Test
     fun missingTileIsNoDataAndIsKept() = runTest {
         serve(HttpStatusCode.NotFound)
-        assertNull(CoverageTilesClient.getCoverage(point, "v-404").getOrThrow())
-        assertNull(CoverageTilesClient.getCoverage(point, "v-404").getOrThrow())
+        assertEquals(CoverageLookup.Found(null), CoverageTilesClient.getCoverage(point, "v-404"))
+        assertEquals(CoverageLookup.Found(null), CoverageTilesClient.getCoverage(point, "v-404"))
         assertEquals(1, requests.size)
     }
 
     @Test
     fun serverErrorIsAFailureAndIsRetried() = runTest {
         serve(HttpStatusCode.InternalServerError)
-        assertTrue(CoverageTilesClient.getCoverage(point, "v-500").isFailure)
-        assertTrue(CoverageTilesClient.getCoverage(point, "v-500").isFailure)
+        assertEquals(CoverageLookup.Failed, CoverageTilesClient.getCoverage(point, "v-500"))
+        assertEquals(CoverageLookup.Failed, CoverageTilesClient.getCoverage(point, "v-500"))
+        assertEquals(2, requests.size)
+    }
+
+    @Test
+    fun nonPngIsAFailureAndIsRetried() = runTest {
+        serve(HttpStatusCode.OK, "<html>Log in to the Wi-Fi</html>".encodeToByteArray())
+        assertEquals(CoverageLookup.Failed, CoverageTilesClient.getCoverage(point, "v-html"))
+        assertEquals(CoverageLookup.Failed, CoverageTilesClient.getCoverage(point, "v-html"))
         assertEquals(2, requests.size)
     }
 

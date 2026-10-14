@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.withContext
+import no.synth.where.data.CoverageLookup
 import no.synth.where.data.CoverageTilesClient
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.LiveTrackingFollower
@@ -227,19 +228,13 @@ fun MapScreen(
         }
     }
 
-    // Coverage under the crosshair while the overlay is shown. Keyed on the version so a lookup
-    // made against a stale version is redone once the current one is known.
+    // Coverage needs a connection; the overlay and readout are off offline. Re-keyed when the version updates.
     val withCoverage = showCoverage && !offlineModeEnabled
     LaunchedEffect(crosshairActive, withCoverage, coverageTilesVersion) {
-        crosshairInfo = crosshairInfo.copy(
-            showCoverage = withCoverage, isCoverageLoading = withCoverage, coverage = null, coverageFailed = false
-        )
+        crosshairInfo = crosshairInfo.copy(coverage = if (withCoverage) CoverageLookup.Loading else null)
         if (!crosshairActive || !withCoverage) return@LaunchedEffect
         snapshotFlow { centerLatLng }.filterNotNull().sample(500.milliseconds).collect { latLng ->
-            val result = CoverageTilesClient.getCoverage(latLng, coverageTilesVersion)
-            crosshairInfo = crosshairInfo.copy(
-                isCoverageLoading = false, coverage = result.getOrNull(), coverageFailed = result.isFailure
-            )
+            crosshairInfo = crosshairInfo.copy(coverage = CoverageTilesClient.getCoverage(latLng, coverageTilesVersion))
         }
     }
 
@@ -306,8 +301,7 @@ fun MapScreen(
         }
     }
 
-    // Both follow modes move the camera every frame, gliding between fixes and easing the bearing,
-    // so the map doesn't jump at each GPS fix or compass reading. FOLLOW keeps north up.
+    // Both follow modes animate the camera per frame; FOLLOW keeps north up.
     LaunchedEffect(cameraFollowMode) {
         if (cameraFollowMode == CameraFollowMode.OFF) return@LaunchedEffect
         val animator = FollowCameraAnimator()
@@ -327,20 +321,19 @@ fun MapScreen(
     }
 
     // The coverage tile URLs contain the dataset version, so look it up whenever the overlay is shown.
-    LaunchedEffect(showCoverage, offlineModeEnabled) {
-        if (showCoverage && !offlineModeEnabled) {
+    LaunchedEffect(withCoverage) {
+        if (withCoverage) {
             CoverageTilesClient.fetchVersion()?.let { userPreferences.updateCoverageTilesVersion(it) }
         }
     }
 
-    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay, showCoverage, coverageTilesVersion) {
+    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay, withCoverage, coverageTilesVersion) {
         MapStyle.getStyle(
             selectedLayer = selectedLayer,
             showWaymarkedTrails = showWaymarkedTrails,
             nveOverlay = nveOverlay,
             showOsmPaths = showOsmPaths,
-            showCoverage = showCoverage,
-            coverageVersion = coverageTilesVersion,
+            coverageVersion = coverageTilesVersion.takeIf { withCoverage },
             glyphsUrl = platform.glyphsUrl ?: MapStyle.DEFAULT_GLYPHS_URL,
         )
     }
@@ -680,7 +673,7 @@ private fun MapScreenDialogs(state: MapScreenState, canShare: Boolean, isNavigat
     if (state.showSaveRulerAsTrackDialog) {
         MapDialogs.SaveRulerAsTrackDialog(
             trackName = state.rulerTrackName,
-            pointCount = state.rulerState.points.size,
+            pointCount = state.rulerState.points.size.takeIf { routePreview == null },
             distanceMeters = routePreview?.distanceMeters ?: state.rulerState.getTotalDistanceMeters(),
             onTrackNameChange = { state.rulerTrackName = it },
             isLoading = state.isResolvingRulerName,
