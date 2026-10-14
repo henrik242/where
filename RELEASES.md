@@ -6,19 +6,38 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v579...main)
+[diff](https://github.com/henrik242/where/compare/v619...main)
+
+## v619 (2026-10-14)
+
+[diff](https://github.com/henrik242/where/compare/v618...v619)
+
+- Mobile coverage overlay (Telenor, Telia and Ice call coverage from erdetdekning.no). With the
+  crosshair on, it shows each operator's coverage and whether 112 is likely reachable there.
+
+## v618 (2026-10-11)
+
+[diff](https://github.com/henrik242/where/compare/v608...v618)
 
 - Find a hiking route between ruler points, also off-trail. It avoids cliffs, lakes and glaciers,
   prefers paths and bridges, estimates walking time, and marks where you must cross a river or
   stream. Offline elevation downloads now include the lake and river data it needs.
-- Mobile coverage overlay (Telenor, Telia and Ice call coverage from erdetdekning.no). With the
-  crosshair on, it shows each operator's coverage and whether 112 is likely reachable there.
-- New macOS desktop app: a map viewer for saved tracks and points, offline map downloads and
-  friends' live tracks. No GPS, so it does not record or share your own position.
-- Strava stays connected through a flaky network, a timeout, an outage or an app upgrade; only
-  Strava rejecting your login asks you to reconnect
 - iOS: the map keeps its position when you return from settings, the layer menu closes after
   picking a layer, and the live-tracking share message is translated
+
+## v608 (2026-10-11)
+
+[diff](https://github.com/henrik242/where/compare/v590...v608)
+
+- New macOS desktop app: a map viewer for saved tracks and points, offline map downloads and
+  friends' live tracks. No GPS, so it does not record or share your own position.
+
+## v590 (2026-09-29)
+
+[diff](https://github.com/henrik242/where/compare/v579...v590)
+
+- Strava stays connected through a flaky network, a timeout, an outage or an app upgrade; only
+  Strava rejecting your login asks you to reconnect
 
 ## v579 (2026-09-15)
 
