@@ -90,16 +90,17 @@ class WhereMapController {
     fun resetNorth() = launch { state?.animateCamera(CameraUpdate(bearing = 0.0)) }
 
     /**
-     * One frame of a follow mode: moves the camera to the pose [next] makes of its current one
-     * (null leaves it). Skipped while an animation such as a zoom button runs.
+     * One frame of a follow mode: moves the camera to the pose [next] makes of its current one.
+     * False once [next] has nothing left to do; skipped (true) while an animation such as a zoom button runs.
      */
-    fun followStep(next: (FollowPose) -> FollowPose?) {
-        if (animations > 0) return
-        val cur = position ?: return
-        val pose = next(FollowPose(LatLng(cur.center.latitude, cur.center.longitude), cur.bearing)) ?: return
+    fun followStep(next: (FollowPose) -> FollowPose?): Boolean {
+        if (animations > 0) return true
+        val cur = position ?: return true
+        val pose = next(FollowPose(LatLng(cur.center.latitude, cur.center.longitude), cur.bearing)) ?: return false
         state?.setCameraPosition(
             cur.copy(center = Position(longitude = pose.center.longitude, latitude = pose.center.latitude), bearing = pose.bearing)
         )
+        return true
     }
 
     /** Fit [bounds], optionally clamping in from the computed zoom (e.g. a lone friend dot), then back off [zoomOut] levels. */
