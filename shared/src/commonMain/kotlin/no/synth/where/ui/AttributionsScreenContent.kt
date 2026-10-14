@@ -33,6 +33,7 @@ private val dataSources = listOf(
     Attribution("Waymarked Trails", "Hiking trail overlay", "CC-BY-SA"),
     Attribution("OpenFreeMap / OpenMapTiles", "Vector tiles for the path overlay", "ODbL, CC BY 4.0"),
     Attribution("NVE", "Slope steepness and avalanche terrain data", "NLOD"),
+    Attribution("erdetdekning.no", "Mobile coverage overlay (from Telenor, Telia and Ice coverage maps)", ""),
     Attribution("Tilezen Joerd", "Terrain elevation tiles", "Public Domain"),
     Attribution("Open-Meteo", "Elevation data", "CC BY 4.0"),
     Attribution("Nominatim", "Geocoding and reverse geocoding", "ODbL"),

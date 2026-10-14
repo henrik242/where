@@ -100,6 +100,13 @@ class UserPreferences(
     private val _nveOverlay = MutableStateFlow<NveOverlay?>(null)
     val nveOverlay: StateFlow<NveOverlay?> = _nveOverlay.asStateFlow()
 
+    private val _showCoverage = MutableStateFlow(false)
+    val showCoverage: StateFlow<Boolean> = _showCoverage.asStateFlow()
+
+    /** Last known erdetdekning.no dataset version, so the overlay works before (or without) a lookup. */
+    private val _coverageTilesVersion = MutableStateFlow(CoverageTilesClient.FALLBACK_VERSION)
+    val coverageTilesVersion: StateFlow<String> = _coverageTilesVersion.asStateFlow()
+
     private val _showCoordGrid = MutableStateFlow(false)
     val showCoordGrid: StateFlow<Boolean> = _showCoordGrid.asStateFlow()
 
@@ -160,6 +167,8 @@ class UserPreferences(
                 } else {
                     NveOverlay.entries.find { it.name == storedNveOverlay }
                 }
+                _showCoverage.value = prefs[SHOW_COVERAGE] ?: false
+                _coverageTilesVersion.value = prefs[COVERAGE_TILES_VERSION] ?: CoverageTilesClient.FALLBACK_VERSION
                 _showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
                 _northLocked.value = prefs[NORTH_LOCKED] ?: false
@@ -317,6 +326,17 @@ class UserPreferences(
     /** Tapping the active overlay turns it off. */
     fun toggleNveOverlay(value: NveOverlay) =
         updateNveOverlay(if (_nveOverlay.value == value) null else value)
+
+    fun updateShowCoverage(value: Boolean) {
+        _showCoverage.value = value
+        scope.launch { dataStore.edit { it[SHOW_COVERAGE] = value } }
+    }
+
+    fun updateCoverageTilesVersion(value: String) {
+        if (_coverageTilesVersion.value == value) return
+        _coverageTilesVersion.value = value
+        scope.launch { dataStore.edit { it[COVERAGE_TILES_VERSION] = value } }
+    }
 
     fun updateShowCoordGrid(value: Boolean) {
         _showCoordGrid.value = value
@@ -561,6 +581,8 @@ class UserPreferences(
         private val SHOW_OSM_PATHS = booleanPreferencesKey("show_osm_paths")
         private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
         private val NVE_OVERLAY = stringPreferencesKey("nve_overlay")
+        private val SHOW_COVERAGE = booleanPreferencesKey("show_coverage")
+        private val COVERAGE_TILES_VERSION = stringPreferencesKey("coverage_tiles_version")
 
         // Read-only legacy key: superseded by NVE_OVERLAY, still read to migrate old installs.
         private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")

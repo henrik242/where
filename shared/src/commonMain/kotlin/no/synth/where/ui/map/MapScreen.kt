@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.withContext
+import no.synth.where.data.CoverageTilesClient
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.MapStyle
@@ -106,6 +107,8 @@ fun MapScreen(
     val showWaymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
     val showOsmPaths by userPreferences.showOsmPaths.collectAsState()
     val nveOverlay by userPreferences.nveOverlay.collectAsState()
+    val showCoverage by userPreferences.showCoverage.collectAsState()
+    val coverageTilesVersion by userPreferences.coverageTilesVersion.collectAsState()
     val showCoordGrid by userPreferences.showCoordGrid.collectAsState()
     val crosshairActive by userPreferences.crosshairActive.collectAsState()
     val coordFormat by userPreferences.coordFormat.collectAsState()
@@ -206,14 +209,30 @@ fun MapScreen(
             }
     }
 
-    // Debounced terrain info for the crosshair.
+    // Debounced terrain info for the crosshair. Each effect only touches its own fields of crosshairInfo.
     LaunchedEffect(crosshairActive, centerLatLng) {
         val latLng = centerLatLng ?: return@LaunchedEffect
         if (!crosshairActive) return@LaunchedEffect
-        crosshairInfo = CrosshairInfo(isLoading = true)
+        crosshairInfo = crosshairInfo.copy(isLoading = true, elevation = null, slopeDegrees = null)
         delay(500.milliseconds)
         val info = TerrainClient.getTerrainInfo(latLng)
-        crosshairInfo = if (info != null) CrosshairInfo(elevation = info.elevation, slopeDegrees = info.slopeDegrees) else CrosshairInfo()
+        crosshairInfo = crosshairInfo.copy(isLoading = false, elevation = info?.elevation, slopeDegrees = info?.slopeDegrees)
+    }
+
+    // Coverage under the crosshair while the overlay is shown. Keyed on the version so a lookup
+    // made against a stale version is redone once the current one is known.
+    val withCoverage = showCoverage && !offlineModeEnabled
+    LaunchedEffect(crosshairActive, centerLatLng, withCoverage, coverageTilesVersion) {
+        crosshairInfo = crosshairInfo.copy(
+            showCoverage = withCoverage, isCoverageLoading = withCoverage, coverage = null, coverageFailed = false
+        )
+        val latLng = centerLatLng ?: return@LaunchedEffect
+        if (!crosshairActive || !withCoverage) return@LaunchedEffect
+        delay(500.milliseconds)
+        val result = CoverageTilesClient.getCoverage(latLng, coverageTilesVersion)
+        crosshairInfo = crosshairInfo.copy(
+            isCoverageLoading = false, coverage = result.getOrNull(), coverageFailed = result.isFailure
+        )
     }
 
     // Open on the last known position, unless there is something else to show.
@@ -286,12 +305,21 @@ fun MapScreen(
         }
     }
 
-    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay) {
+    // The coverage tile URLs contain the dataset version, so look it up whenever the overlay is shown.
+    LaunchedEffect(showCoverage, offlineModeEnabled) {
+        if (showCoverage && !offlineModeEnabled) {
+            CoverageTilesClient.fetchVersion()?.let { userPreferences.updateCoverageTilesVersion(it) }
+        }
+    }
+
+    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay, showCoverage, coverageTilesVersion) {
         MapStyle.getStyle(
             selectedLayer = selectedLayer,
             showWaymarkedTrails = showWaymarkedTrails,
             nveOverlay = nveOverlay,
             showOsmPaths = showOsmPaths,
+            showCoverage = showCoverage,
+            coverageVersion = coverageTilesVersion,
             glyphsUrl = platform.glyphsUrl ?: MapStyle.DEFAULT_GLYPHS_URL,
         )
     }
@@ -394,6 +422,7 @@ fun MapScreen(
         showOsmPaths = showOsmPaths,
         showSavedPoints = showSavedPoints,
         nveOverlay = nveOverlay,
+        showCoverage = showCoverage,
         showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo,
@@ -460,6 +489,7 @@ fun MapScreen(
             if (!showOsmPaths && cameraZoom < MapStyle.OSM_PATHS_MIN_ZOOM) state.showMessage(Res.string.zoom_in_for_paths)
         },
         onNveOverlayToggle = { userPreferences.toggleNveOverlay(it) },
+        onCoverageToggle = { userPreferences.updateShowCoverage(!showCoverage) },
         onCoordGridToggle = { userPreferences.updateShowCoordGrid(!showCoordGrid) },
         onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {

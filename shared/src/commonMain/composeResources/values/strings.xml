@@ -64,6 +64,17 @@
     <string name="zoom_in_for_paths">Zoom in to see paths</string>
     <string name="steepness_nve">Steepness (NVE)</string>
     <string name="steepness_runout_nve">Steepness + Runout (NVE)</string>
+    <string name="mobile_coverage">Mobile coverage</string>
+    <string name="coverage_112_likely">112: likely possible</string>
+    <string name="coverage_112_weak">112: weak signal</string>
+    <string name="coverage_112_unlikely">112: likely not possible</string>
+    <string name="coverage_112_unknown">112: no data</string>
+    <string name="coverage_112_failed">112: couldn\'t load coverage</string>
+    <string name="coverage_112_loading">112: …</string>
+    <string name="coverage_none">None</string>
+    <string name="coverage_weak">Weak</string>
+    <string name="coverage_good">Good</string>
+    <string name="coverage_very_good">Very good</string>
     <string name="saved_points">Saved Points</string>
     <string name="stop_recording">Stop Recording</string>
     <string name="start_recording">Start Recording</string>

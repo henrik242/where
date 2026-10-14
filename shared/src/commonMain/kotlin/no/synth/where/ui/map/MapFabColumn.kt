@@ -60,6 +60,7 @@ fun MapFabColumn(
     showOsmPaths: Boolean,
     showSavedPoints: Boolean,
     nveOverlay: NveOverlay?,
+    showCoverage: Boolean = false,
     showCoordGrid: Boolean = false,
     showRecordFab: Boolean = true,
     cameraFollowMode: CameraFollowMode = CameraFollowMode.OFF,
@@ -70,6 +71,7 @@ fun MapFabColumn(
     onOsmPathsToggle: () -> Unit,
     onSavedPointsToggle: () -> Unit,
     onNveOverlayToggle: (NveOverlay) -> Unit,
+    onCoverageToggle: () -> Unit = {},
     onCoordGridToggle: () -> Unit = {},
     onRecordStopClick: () -> Unit,
     onMyLocationClick: () -> Unit,
@@ -116,6 +118,7 @@ fun MapFabColumn(
             LayerMenuItem(stringResource(Res.string.paths_osm), showOsmPaths) { onOsmPathsToggle() }
             LayerMenuItem(stringResource(Res.string.steepness_nve), nveOverlay == NveOverlay.STEEPNESS) { onNveOverlayToggle(NveOverlay.STEEPNESS) }
             LayerMenuItem(stringResource(Res.string.steepness_runout_nve), nveOverlay == NveOverlay.STEEPNESS_RUNOUT) { onNveOverlayToggle(NveOverlay.STEEPNESS_RUNOUT) }
+            LayerMenuItem(stringResource(Res.string.mobile_coverage), showCoverage) { onCoverageToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
             LayerMenuItem(stringResource(Res.string.coordinate_grid), showCoordGrid) { onCoordGridToggle() }
             LayerMenuItem(stringResource(Res.string.crosshair), crosshairActive) { onCrosshairToggle() }

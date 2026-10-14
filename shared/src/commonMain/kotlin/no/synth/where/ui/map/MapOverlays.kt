@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import no.synth.where.data.CoverageAtPoint
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.elevationProfileOrNull
 import no.synth.where.data.hasElevationData
@@ -883,6 +884,10 @@ fun CrosshairInfoCard(
                     color = dataColor
                 )
             }
+            if (crosshairInfo.showCoverage) {
+                Spacer(modifier = Modifier.height(4.dp))
+                CoverageDetail(crosshairInfo.coverage, crosshairInfo.isCoverageLoading, crosshairInfo.coverageFailed)
+            }
             if (userLocation != null && centerLatLng != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -903,6 +908,41 @@ fun CrosshairInfoCard(
             }
         }
     }
+}
+
+/** Whether 112 can likely be called under the crosshair, then each operator's call coverage. */
+@Composable
+private fun CoverageDetail(coverage: CoverageAtPoint?, isLoading: Boolean, failed: Boolean) {
+    val emergency = when {
+        isLoading -> Res.string.coverage_112_loading
+        failed -> Res.string.coverage_112_failed
+        coverage == null -> Res.string.coverage_112_unknown
+        coverage.bestLevel == 0 -> Res.string.coverage_112_unlikely
+        coverage.bestLevel == 1 -> Res.string.coverage_112_weak
+        else -> Res.string.coverage_112_likely
+    }
+    Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
+        Text(
+            text = stringResource(emergency),
+            style = MaterialTheme.typography.titleSmall,
+            color = if (coverage?.bestLevel == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+        )
+        if (coverage != null) {
+            val levels = coverage.operators.map { (name, level) -> "$name ${stringResource(coverageLevelText(level))}" }
+            Text(
+                text = levels.joinToString(" \u00b7 "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun coverageLevelText(level: Int) = when (level) {
+    1 -> Res.string.coverage_weak
+    2 -> Res.string.coverage_good
+    3 -> Res.string.coverage_very_good
+    else -> Res.string.coverage_none
 }
 
 @Composable
