@@ -6,11 +6,12 @@ Fastlane is pinned in the root `Gemfile`/`Gemfile.lock` and run through Bundler,
 CI (`ruby/setup-ruby` with `bundler-cache: true`).
 
 ```sh
-bundle install
+fastlane/bundle.sh
 bundle exec fastlane ios build
 ```
 
-Bump the pinned version with `bundle update fastlane` and commit `Gemfile.lock`.
+Bump the pinned version with `fastlane/bundle.sh update` and commit `Gemfile.lock`. The script also
+repairs Bundler after `brew upgrade ruby`, which deletes its gem files but leaves the gemspecs.
 
 ## How to Release
 
