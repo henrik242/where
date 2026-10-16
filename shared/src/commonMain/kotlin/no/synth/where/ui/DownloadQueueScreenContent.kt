@@ -128,13 +128,7 @@ private fun QueueItemRow(item: QueuedDownload, onCancel: () -> Unit) {
                             progress = { item.overallProgress / 100f },
                             modifier = Modifier.fillMaxWidth()
                         )
-                        val caption = if (item.demProgress >= 0) {
-                            "${stringResource(Res.string.map_tiles)} ${item.mapProgress}%  ·  " +
-                                "${stringResource(Res.string.elevation_data)} ${item.demProgress}%"
-                        } else {
-                            "${item.mapProgress}%"
-                        }
-                        Text(caption, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(downloadProgressCaption(item), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     DownloadStatus.QUEUED -> Text(
                         stringResource(Res.string.queued),
@@ -166,3 +160,13 @@ private fun QueueItemRow(item: QueuedDownload, onCancel: () -> Unit) {
         }
     }
 }
+
+/** Per-part progress; the bar shows the combined value, so map alone can read 100% too early. */
+@Composable
+internal fun downloadProgressCaption(item: QueuedDownload): String =
+    if (item.demProgress >= 0) {
+        "${stringResource(Res.string.map_tiles)} ${item.mapProgress}%  ·  " +
+            "${stringResource(Res.string.elevation_data)} ${item.demProgress}%"
+    } else {
+        "${item.mapProgress}%"
+    }

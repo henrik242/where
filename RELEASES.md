@@ -9,6 +9,8 @@ tag dates.
 [diff](https://github.com/henrik242/where/compare/v630...main)
 
 - App Store and Play Store release notes summarize the update instead of a generic text.
+- The download panel on the map shows map and elevation progress separately instead of
+  reaching 100% while elevation data is still downloading.
 
 ## v630 (2026-10-16)
 
