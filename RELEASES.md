@@ -6,7 +6,11 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v630...main)
+[diff](https://github.com/henrik242/where/compare/v633...main)
+
+## v633 (2026-10-16)
+
+[diff](https://github.com/henrik242/where/compare/v630...v633)
 
 - App Store and Play Store release notes summarize the update instead of a generic text.
 - The download panel on the map shows map and elevation progress separately instead of
