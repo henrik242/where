@@ -6,15 +6,26 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v619...main)
+[diff](https://github.com/henrik242/where/compare/v630...main)
+
+- App Store and Play Store release notes summarize the update instead of a generic text.
+
+## v630 (2026-10-16)
+
+[diff](https://github.com/henrik242/where/compare/v626...v630)
+
+- Import GeoJSON files: lines become one track, points become waypoints.
+- The offline download panel shows a realistic tile count and an estimated download time.
+
+## v626 (2026-10-14)
+
+[diff](https://github.com/henrik242/where/compare/v619...v626)
 
 - Faster hiking route planning with less memory use, without blocking the UI. A found route is
   shown with distance, walking time and crossings before you save it; undo goes back to the
   straight lines. Planning can be cancelled and says when it is slow.
 - Following your position pans and rotates the map smoothly instead of in steps.
 - The coverage overlay is off in offline mode.
-- Import GeoJSON files: lines become one track, points become waypoints.
-- The offline download panel shows a realistic tile count and an estimated download time.
 
 ## v619 (2026-10-14)
 
