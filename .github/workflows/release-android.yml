@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       whats_new_en:
-        description: "What's New (English)"
-        required: true
-        default: "Bug fixes and improvements."
+        description: "What's New (English); blank uses fastlane/whats_new/en.txt"
+        required: false
+        default: ""
       whats_new_no:
-        description: "Hva er nytt (norsk)"
-        required: true
-        default: "Feilrettinger og forbedringer."
+        description: "Hva er nytt (norsk); blank uses fastlane/whats_new/no.txt"
+        required: false
+        default: ""
       submit_for_review:
         description: "Submit for review (uncheck to upload without releasing)"
         type: boolean
@@ -146,11 +146,14 @@ jobs:
       run: echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 -d > /tmp/play-service-account.json
 
     - name: Create changelogs
+      env:
+        WHATS_NEW_EN: ${{ github.event.inputs.whats_new_en }}
+        WHATS_NEW_NO: ${{ github.event.inputs.whats_new_no }}
       run: |
         mkdir -p fastlane/metadata/android/en-US/changelogs
         mkdir -p fastlane/metadata/android/no-NO/changelogs
-        echo "${{ github.event.inputs.whats_new_en }}" > fastlane/metadata/android/en-US/changelogs/default.txt
-        echo "${{ github.event.inputs.whats_new_no }}" > fastlane/metadata/android/no-NO/changelogs/default.txt
+        printf '%s\n' "${WHATS_NEW_EN:-$(cat fastlane/whats_new/en.txt)}" > fastlane/metadata/android/en-US/changelogs/default.txt
+        printf '%s\n' "${WHATS_NEW_NO:-$(cat fastlane/whats_new/no.txt)}" > fastlane/metadata/android/no-NO/changelogs/default.txt
 
     - name: Upload to Play Store
       env:

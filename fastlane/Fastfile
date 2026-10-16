@@ -115,8 +115,12 @@ platform :ios do
       issuer_id: ENV["ASC_ISSUER_ID"],
       key_filepath: ENV["ASC_KEY_PATH"]
     )
-    whats_new_en = ENV["WHATS_NEW_EN"] || "Bug fixes and improvements."
-    whats_new_no = ENV["WHATS_NEW_NO"] || "Feilrettinger og forbedringer."
+    whats_new = lambda do |lang|
+      text = ENV["WHATS_NEW_#{lang.upcase}"].to_s.strip
+      text.empty? ? File.read(File.join(FastlaneCore::FastlaneFolder.path, "whats_new", "#{lang}.txt")).strip : text
+    end
+    whats_new_en = whats_new.call("en")
+    whats_new_no = whats_new.call("no")
 
     options = {
       api_key: api_key,
