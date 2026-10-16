@@ -32,6 +32,13 @@ class TileUtilsTest {
     }
 
     @Test
+    fun countsMercatorStretchedRowsAtHighLatitudes() {
+        // One degree square: at 60N a degree of latitude spans about 2x the tile rows of one of longitude.
+        val bounds = LatLngBounds(south = 60.0, west = 10.0, north = 61.0, east = 11.0)
+        assertEquals(312, TileUtils.estimateTileCount(bounds, 12, 12))
+    }
+
+    @Test
     fun latLngToTileCoordKnownValues() {
         // At zoom 0, the entire world is one tile
         val coord = TileUtils.latLngToTileCoord(0.0, 0.0, 0)

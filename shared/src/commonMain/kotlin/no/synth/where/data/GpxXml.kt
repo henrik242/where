@@ -116,12 +116,6 @@ internal fun gpxDocumentName(content: String, lower: String): String? {
     return null
 }
 
-/** [data] decoded as GPX text, or null when it is empty or holds no `<gpx` element. */
-internal fun gpxTextOrNull(data: ByteArray): String? {
-    if (data.isEmpty()) return null
-    val text = data.decodeToString()
-    return if (text.contains("<gpx", ignoreCase = true)) text else null
-}
 
 internal fun String.escapeXml(): String = this
     .replace("&", "&amp;")

@@ -97,7 +97,7 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
         val waypoints = mutableListOf<ParsedWaypoint>()
         var failed = 0
         for (payload in expandArchives(files, ::isPointFileName)) {
-            val parsed = GpxWaypoints.parse(payload)
+            val parsed = parseWaypoints(payload)
             if (parsed.isEmpty()) failed++ else waypoints.addAll(parsed)
         }
         PointImportCandidates(waypoints, failed)

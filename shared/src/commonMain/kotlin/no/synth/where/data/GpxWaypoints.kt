@@ -47,7 +47,4 @@ object GpxWaypoints {
         emptyList()
     }
 
-    /** Waypoints in [data] when it is GPX; empty for anything else (FIT carries no waypoints). */
-    fun parse(data: ByteArray): List<ParsedWaypoint> =
-        gpxTextOrNull(data)?.let { parse(it) } ?: emptyList()
 }

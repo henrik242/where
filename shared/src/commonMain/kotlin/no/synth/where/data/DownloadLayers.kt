@@ -1,7 +1,9 @@
 package no.synth.where.data
 
+import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.NveOverlay
+import kotlin.math.ceil
 
 /**
  * A layer offered for offline download. Vector layers carry a TileJSON URL in [tileUrl] rather than
@@ -12,10 +14,12 @@ data class DownloadLayer(
     val displayName: String,
     val tileUrl: String,
     val minZoom: Int = 0,
-    val maxZoom: Int = 18,
+    val maxZoom: Int = DEFAULT_MAX_ZOOM,
     val isOverlay: Boolean = false,
     val isVector: Boolean = false
 )
+
+private const val DEFAULT_MAX_ZOOM = 18
 
 object DownloadLayers {
     const val OSM_PATHS_ID = "osmpaths"
@@ -53,8 +57,32 @@ object DownloadLayers {
      * doesn't have (e.g. satellite tops out at 14, MapAnt at 16).
      */
     fun effectiveMaxZoom(layerId: String, requestedMaxZoom: Int): Int {
-        val layerMax = all.find { it.id == layerId }?.maxZoom ?: 18
+        val layerMax = all.find { it.id == layerId }?.maxZoom ?: DEFAULT_MAX_ZOOM
         return minOf(requestedMaxZoom, layerMax)
+    }
+
+    // MapLibre fetches 20 tiles at a time and Kartverket answers in ~0.4 s each.
+    private const val TYPICAL_TILES_PER_SECOND = 40
+
+    /** Expected minutes to download [tiles], rounded up. */
+    fun estimatedDownloadMinutes(tiles: Int): Int =
+        ceil(tiles / (TYPICAL_TILES_PER_SECOND * 60.0)).toInt().coerceAtLeast(1)
+
+    /**
+     * Tiles a pack of [layerId] over [bounds] fetches. MapLibre counts zoom in 512px tiles, so 256px
+     * raster sources come one zoom deeper than requested; overlays also fetch the OSM raster base.
+     */
+    fun packTileCount(layerId: String, bounds: LatLngBounds, minZoom: Int, maxZoom: Int): Int {
+        val layer = all.find { it.id == layerId }
+        fun count(sourceMinZoom: Int, sourceMaxZoom: Int, zoomOffset: Int): Int {
+            val from = maxOf(minZoom + zoomOffset, sourceMinZoom)
+            val to = minOf(maxZoom + zoomOffset, sourceMaxZoom)
+            return if (from > to) 0 else TileUtils.estimateTileCount(bounds, from, to)
+        }
+        val layerZoomOffset = if (layer?.isVector == true) 0 else 1
+        val layerTiles = count(layer?.minZoom ?: 0, layer?.maxZoom ?: DEFAULT_MAX_ZOOM, layerZoomOffset)
+        val baseTiles = if (layer?.isOverlay == true) count(0, DEFAULT_MAX_ZOOM, zoomOffset = 1) else 0
+        return layerTiles + baseTiles
     }
 
     private const val OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -69,9 +97,10 @@ object DownloadLayers {
             return MapStyle.getStyle(selectedLayer = MapLayer.OSM, showOsmPaths = true)
         }
 
+        // packTileCount assumes these 256px tile sizes; change both together.
         val tileUrl = layer?.tileUrl ?: OSM_TILE_URL
         val minZoom = layer?.minZoom ?: 0
-        val maxZoom = layer?.maxZoom ?: 18
+        val maxZoom = layer?.maxZoom ?: DEFAULT_MAX_ZOOM
         val isOverlay = layer?.isOverlay == true
 
         val osmSource = if (isOverlay) """

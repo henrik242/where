@@ -24,7 +24,7 @@ class MapDownloadManager(private val queueManager: DownloadQueueManager) {
         OfflineCoverage.regionTileInfo(
             region.name,
             layerName,
-            TileUtils.estimateTileCount(region.boundingBox, minZoom, maxZoom),
+            DownloadLayers.packTileCount(layerName, region.boundingBox, minZoom, maxZoom),
         )
 
     suspend fun hasOtherLayersForRegion(regionHexId: String, excludeLayer: String): Boolean =

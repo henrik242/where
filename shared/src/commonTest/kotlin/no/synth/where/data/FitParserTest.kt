@@ -318,6 +318,19 @@ class FitParserTest {
     }
 
     @Test
+    fun fromGPX_fillsMissingTimesWithTheEarliestRealOne() {
+        val gpx = """<gpx><trk><trkseg>
+            <trkpt lat="60.0" lon="10.0"></trkpt>
+            <trkpt lat="60.1" lon="10.1"><time>2024-05-01T10:00:00Z</time></trkpt>
+            <trkpt lat="60.2" lon="10.2"><time>2024-05-01T11:00:00Z</time></trkpt>
+            </trkseg></trk></gpx>"""
+        val track = assertNotNull(Track.fromGPX(gpx))
+        assertEquals(1714557600000, track.startTime)
+        assertEquals(1714557600000, track.points[0].timestamp)
+        assertEquals(1714561200000, track.endTime)
+    }
+
+    @Test
     fun fromGPX_selfClosingWaypoints() {
         val gpx = """<?xml version="1.0"?>
             <gpx version="1.1">
