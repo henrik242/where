@@ -557,9 +557,9 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         }
 
     /**
-     * Import many [files] into [folder] (null = unfiled). Each file is a .gpx/.fit, or a .zip whose
-     * .gpx/.fit entries are each imported. Names are made unique across existing tracks and within
-     * the batch. Shares [importParsed]'s threading/persistence contract.
+     * Import many [files] into [folder] (null = unfiled). Each file is a .gpx/.fit/.geojson, or a
+     * .zip whose track entries are each imported. Names are made unique across existing tracks and
+     * within the batch. Shares [importParsed]'s threading/persistence contract.
      */
     suspend fun importTracks(files: List<ByteArray>, folder: String? = null): BulkImportResult =
         withContext(Dispatchers.Default) {

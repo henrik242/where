@@ -158,13 +158,13 @@ class GpxWaypointsTest {
 
     @Test
     fun bytesThatAreNotGpxYieldNothing() {
-        assertTrue(GpxWaypoints.parse(byteArrayOf(1, 2, 3)).isEmpty())
-        assertTrue(GpxWaypoints.parse(ByteArray(0)).isEmpty())
-        assertTrue(GpxWaypoints.parse("just text".encodeToByteArray()).isEmpty())
+        assertTrue(parseWaypoints(byteArrayOf(1, 2, 3)).isEmpty())
+        assertTrue(parseWaypoints(ByteArray(0)).isEmpty())
+        assertTrue(parseWaypoints("just text".encodeToByteArray()).isEmpty())
     }
 
     @Test
     fun parsesGpxBytes() {
-        assertEquals(1, GpxWaypoints.parse(outdooractive.encodeToByteArray()).size)
+        assertEquals(1, parseWaypoints(outdooractive.encodeToByteArray()).size)
     }
 }

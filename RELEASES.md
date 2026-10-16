@@ -13,6 +13,8 @@ tag dates.
   straight lines. Planning can be cancelled and says when it is slow.
 - Following your position pans and rotates the map smoothly instead of in steps.
 - The coverage overlay is off in offline mode.
+- Import GeoJSON files: lines become one track, points become waypoints.
+- The offline download panel shows a realistic tile count and an estimated download time.
 
 ## v619 (2026-10-14)
 

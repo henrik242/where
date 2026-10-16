@@ -16,8 +16,11 @@ class ImportBatchTest {
         assertTrue(isTrackFileName("route.gpx"))
         assertTrue(isTrackFileName("RIDE.FIT"))
         assertTrue(isTrackFileName("a.GpX"))
+        assertTrue(isTrackFileName("tur.geojson"))
         assertFalse(isTrackFileName("notes.txt"))
         assertFalse(isTrackFileName("archive.zip"))
+        assertTrue(isPointFileName("punkter.GeoJSON"))
+        assertFalse(isPointFileName("ride.fit"))
     }
 
     @Test

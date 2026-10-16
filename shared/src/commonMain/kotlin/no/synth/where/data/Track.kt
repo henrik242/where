@@ -110,7 +110,13 @@ $trackPointsXml
 
         fun fromBytes(data: ByteArray): Track? {
             if (data.isEmpty()) return null
-            return if (FitParser.isFitFile(data)) fromFIT(data) else gpxTextOrNull(data)?.let { fromGPX(it) }
+            if (FitParser.isFitFile(data)) return fromFIT(data)
+            val text = importText(data)
+            return when {
+                isGeoJsonText(text) -> GeoJsonImport.parseTrack(text)
+                isGpxText(text) -> fromGPX(text)
+                else -> null
+            }
         }
 
         // Ordered by priority: prefer tracks over routes over waypoints
@@ -146,43 +152,38 @@ $trackPointsXml
                 val lower = gpxContent.lowercase()
 
                 // Use first non-empty type by priority: trkpt > rtept > wpt
-                var trackPoints = mutableListOf<TrackPoint>()
+                val trackPoints = mutableListOf<TrackPoint>()
                 for (tagName in pointTagNames) {
                     parsePointsFromTag(gpxContent, lower, tagName, trackPoints)
                     if (trackPoints.isNotEmpty()) break
                 }
 
-                if (trackPoints.isEmpty()) return null
-
-                // Replace 0L fallback timestamps with the earliest real timestamp
-                val realTimestamps = trackPoints.filter { it.timestamp > 0L }
-                if (realTimestamps.isNotEmpty()) {
-                    val fallback = realTimestamps.minOf { it.timestamp }
-                    trackPoints = trackPoints.map {
-                        if (it.timestamp == 0L) it.copy(timestamp = fallback) else it
-                    }.toMutableList()
-                } else {
-                    val now = currentTimeMillis()
-                    trackPoints = trackPoints.map { it.copy(timestamp = now) }.toMutableList()
-                }
-
-                val startTime = trackPoints.minOf { it.timestamp }
-                val endTime = trackPoints.maxOf { it.timestamp }
-
                 // The <trk><type> element (which toGPX writes the folder into) is intentionally not
                 // read back: third-party exports use <type> for the activity kind (Strava writes
                 // numeric codes), so importing it would spawn junk folders. Imports start unfiled.
-                return Track(
-                    name = trackName,
-                    points = trackPoints,
-                    startTime = startTime,
-                    endTime = endTime,
-                    isRecording = false
-                )
+                return fromImportedPoints(trackName, trackPoints)
             } catch (e: Exception) {
                 Logger.e(e, "Error parsing GPX")
                 return null
             }
+        }
+
+        /**
+         * An imported track from [points], where a 0L timestamp means "unknown": those take the
+         * earliest real one, or now when the file has no times at all. Null when [points] is empty.
+         */
+        internal fun fromImportedPoints(name: String, points: List<TrackPoint>): Track? {
+            if (points.isEmpty()) return null
+            val realTimestamps = points.filter { it.timestamp > 0L }
+            val fallback = if (realTimestamps.isNotEmpty()) realTimestamps.minOf { it.timestamp } else currentTimeMillis()
+            val filled = points.map { if (it.timestamp == 0L) it.copy(timestamp = fallback) else it }
+            return Track(
+                name = name,
+                points = filled,
+                startTime = filled.minOf { it.timestamp },
+                endTime = filled.maxOf { it.timestamp },
+                isRecording = false
+            )
         }
     }
 }

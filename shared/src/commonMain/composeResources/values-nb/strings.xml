@@ -232,8 +232,8 @@
     <string name="download_detail_high">Høy</string>
     <string name="download_detail_maximum">Maksimum</string>
     <string name="download_detail_standard_hint">Minste nedlasting</string>
-    <string name="download_detail_high_hint">~16x større</string>
-    <string name="download_detail_maximum_hint">~256x større</string>
+    <string name="download_detail_high_hint">~16x større og tregere</string>
+    <string name="download_detail_maximum_hint">~256x større og tregere</string>
     <string name="queue_progress">%1$d av %2$d</string>
     <string name="low_storage_title">Lite lagringsplass</string>
     <string name="low_storage_message">Nedlasting av kart og automatisk bufring kan feile. Frigjør plass eller slett noen nedlastinger.</string>
@@ -347,6 +347,7 @@
     <string name="tiles_needed">%1$d fliser trengs</string>
     <string name="tiles_stats">%1$d fliser \u2022 %2$s</string>
     <string name="tiles_downloaded">\u2713 %1$d fliser \u2022 %2$s</string>
+    <string name="hex_not_downloaded_estimate">Ikke lastet ned \u2022 ~%1$s fliser \u2022 ca. %2$s</string>
     <string name="tiles_partial">%1$d/%2$d fliser \u2022 %3$s</string>
     <string name="layer_kartverket_desc">Topografiske kart fra Kartverket</string>
     <string name="layer_toporaster_desc">Topografiske rasterkart</string>
@@ -409,7 +410,7 @@
 
     <!-- Saved Points Screen -->
     <string name="import_points">Importer punkter</string>
-    <string name="import_points_hint">Leser veipunkter fra GPX-filer, flere filer eller en hel zip om gangen.</string>
+    <string name="import_points_hint">Leser veipunkter fra GPX- eller GeoJSON-filer, flere filer eller en hel zip om gangen.</string>
     <string name="import_no_points_found">Fant ingen punkter i de valgte filene.</string>
     <string name="import_points_failed">Kunne ikke lagre punktene. Prøv igjen.</string>
     <plurals name="points_imported">

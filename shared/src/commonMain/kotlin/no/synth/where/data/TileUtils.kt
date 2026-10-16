@@ -13,17 +13,15 @@ import kotlin.math.tan
 data class TileCoord(val z: Int, val x: Int, val y: Int, val pixelX: Int, val pixelY: Int)
 
 object TileUtils {
+    /** Web Mercator tiles covering [bounds] across [minZoom]..[maxZoom]. */
     fun estimateTileCount(bounds: LatLngBounds, minZoom: Int, maxZoom: Int): Int {
-        var totalTiles = 0
+        var totalTiles = 0L
         for (zoom in minZoom..maxZoom) {
-            val tilesPerSide = 1 shl zoom
-            val latSpan = bounds.latitudeSpan
-            val lonSpan = bounds.longitudeSpan
-            val tilesAtZoom =
-                ((latSpan / 180.0) * (lonSpan / 360.0) * tilesPerSide * tilesPerSide).toInt()
-            totalTiles += tilesAtZoom
+            val northWest = latLngToTileCoord(bounds.north, bounds.west, zoom)
+            val southEast = latLngToTileCoord(bounds.south, bounds.east, zoom)
+            totalTiles += (southEast.x - northWest.x + 1).toLong() * (southEast.y - northWest.y + 1)
         }
-        return totalTiles.coerceAtLeast(1)
+        return totalTiles.coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
     }
 
     const val TILE_SIZE = 256

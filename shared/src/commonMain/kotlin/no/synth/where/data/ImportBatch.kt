@@ -21,7 +21,7 @@ enum class BulkImportOutcome { IMPORTED, NONE_FOUND, ALL_FAILED }
 
 /**
  * IMPORTED when at least one track landed (the snackbar then reports the count, partial or not);
- * NONE_FOUND when the selection held nothing importable (e.g. a zip with no .gpx/.fit); ALL_FAILED
+ * NONE_FOUND when the selection held nothing importable (e.g. a zip with no .gpx/.fit/.geojson); ALL_FAILED
  * when every file present failed to parse.
  */
 fun BulkImportResult.outcome(): BulkImportOutcome = when {
@@ -32,10 +32,29 @@ fun BulkImportResult.outcome(): BulkImportOutcome = when {
 
 /** True for the file extensions the track parser understands. */
 fun isTrackFileName(name: String): Boolean =
-    name.endsWith(".gpx", ignoreCase = true) || name.endsWith(".fit", ignoreCase = true)
+    name.endsWith(".fit", ignoreCase = true) || isPointFileName(name)
 
 /** True for the file extensions the waypoint parser understands. */
-fun isPointFileName(name: String): Boolean = name.endsWith(".gpx", ignoreCase = true)
+fun isPointFileName(name: String): Boolean =
+    name.endsWith(".gpx", ignoreCase = true) || name.endsWith(".geojson", ignoreCase = true)
+
+/** [data] as text, without a leading byte order mark. */
+internal fun importText(data: ByteArray): String = data.decodeToString().removePrefix("\uFEFF")
+
+// Check before isGpxText: a GeoJSON property may well mention "<gpx".
+internal fun isGeoJsonText(text: String): Boolean = text.trimStart().startsWith('{')
+
+internal fun isGpxText(text: String): Boolean = text.contains("<gpx", ignoreCase = true)
+
+/** Waypoints in a GPX or GeoJSON file; empty for anything else (FIT carries no waypoints). */
+fun parseWaypoints(data: ByteArray): List<ParsedWaypoint> {
+    val text = importText(data)
+    return when {
+        isGeoJsonText(text) -> GeoJsonImport.parseWaypoints(text)
+        isGpxText(text) -> GpxWaypoints.parse(text)
+        else -> emptyList()
+    }
+}
 
 /** The payloads to try parsing: each file as-is, or, for a zip, its entries that [keep] accepts. */
 internal fun expandArchives(files: List<ByteArray>, keep: (String) -> Boolean): List<ByteArray> =

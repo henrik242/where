@@ -232,8 +232,8 @@
     <string name="download_detail_high">High</string>
     <string name="download_detail_maximum">Maximum</string>
     <string name="download_detail_standard_hint">Smallest download</string>
-    <string name="download_detail_high_hint">~16x larger</string>
-    <string name="download_detail_maximum_hint">~256x larger</string>
+    <string name="download_detail_high_hint">~16x larger and slower</string>
+    <string name="download_detail_maximum_hint">~256x larger and slower</string>
     <string name="queue_progress">%1$d of %2$d</string>
     <string name="low_storage_title">Low storage</string>
     <string name="low_storage_message">Map downloads and automatic caching may fail. Free up space or delete some downloads.</string>
@@ -347,6 +347,7 @@
     <string name="tiles_needed">%1$d tiles needed</string>
     <string name="tiles_stats">%1$d tiles \u2022 %2$s</string>
     <string name="tiles_downloaded">\u2713 %1$d tiles \u2022 %2$s</string>
+    <string name="hex_not_downloaded_estimate">Not downloaded \u2022 ~%1$s tiles \u2022 about %2$s</string>
     <string name="tiles_partial">%1$d/%2$d tiles \u2022 %3$s</string>
     <string name="layer_kartverket_desc">Topographic maps from Kartverket</string>
     <string name="layer_toporaster_desc">Topographic raster maps</string>
@@ -409,7 +410,7 @@
 
     <!-- Saved Points Screen -->
     <string name="import_points">Import points</string>
-    <string name="import_points_hint">Reads waypoints from GPX files, several files or a whole zip at once.</string>
+    <string name="import_points_hint">Reads waypoints from GPX or GeoJSON files, several files or a whole zip at once.</string>
     <string name="import_no_points_found">No points found in the selected files.</string>
     <string name="import_points_failed">Could not save the points. Try again.</string>
     <plurals name="points_imported">
