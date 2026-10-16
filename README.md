@@ -24,7 +24,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 
 ### Tracks
 
-- Save, revisit, import (GPX and FIT, several files or a whole zip at once, optionally straight into a folder), and export (GPX) tracks, compatible with other hiking and navigation apps
+- Save, revisit, import (GPX, FIT and GeoJSON, several files or a whole zip at once, optionally straight into a folder), and export (GPX) tracks, compatible with other hiking and navigation apps
 - Connect your Strava account (using your own Strava API app) to browse and import your planned routes
 - Import from a Garmin Connect, Komoot, or ut.no activity URL, or a direct GPX/FIT link
 - Organize saved tracks into folders, with move, rename, remove, per-folder select all/none, and undo
@@ -38,7 +38,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 - Place search
 - Distance measurement with the ruler or a two-finger gesture
 - Off-trail hiking routes between ruler points: avoids cliffs, lakes and glaciers, prefers paths, and marks river and stream crossings
-- Save and manage points of interest, each with an optional description and colour, and import GPX waypoints (several files or a whole zip at once, ticking off which ones to keep)
+- Save and manage points of interest, each with an optional description and colour, and import GPX or GeoJSON waypoints (several files or a whole zip at once, ticking off which ones to keep)
 - Coordinate readout in UTM, MGRS, latitude/longitude, or DMS
 - Compass rose that points the map north on tap, and locks it there on the next tap
 

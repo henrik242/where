@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import no.synth.where.data.DownloadLayers
 import no.synth.where.data.DownloadStatus
 import no.synth.where.data.QueueSummary
 import no.synth.where.data.QueuedDownload
@@ -44,6 +45,7 @@ import no.synth.where.data.RegionTileInfo
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.ui.map.ZoomControls
+import no.synth.where.util.formatApproxCount
 import no.synth.where.util.formatBytes
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -249,7 +251,11 @@ fun HexMapScreenContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             else -> Text(
-                                "Not downloaded · ~${selectedHexInfo.totalTiles} tiles",
+                                stringResource(
+                                    Res.string.hex_not_downloaded_estimate,
+                                    formatApproxCount(selectedHexInfo.totalTiles),
+                                    formatRemaining(DownloadLayers.estimatedDownloadMinutes(selectedHexInfo.totalTiles) * 60_000L)
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

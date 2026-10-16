@@ -6,6 +6,13 @@ import kotlin.test.assertEquals
 class FormatUtilsTest {
 
     @Test
+    fun formatApproxCountRoundsToTwoSignificantDigits() {
+        assertEquals("95", formatApproxCount(95))
+        assertEquals("1\u00A0200", formatApproxCount(1_249))
+        assertEquals("230\u00A0000", formatApproxCount(231_874))
+    }
+
+    @Test
     fun formatElapsedUnderMinute() {
         assertEquals("0:00", formatElapsed(0))
         assertEquals("0:05", formatElapsed(5_000))

@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.synth.where.data.geo.LatLngBounds
 import no.synth.where.ui.EMPTY_HEX_GEOJSON
 import no.synth.where.ui.buildHexMapStyle
 import no.synth.where.ui.map.MapLayer
@@ -145,5 +146,40 @@ class DownloadLayersTest {
     fun effectiveMaxZoomFallsBackForUnknownLayer() {
         // Unknown layer falls back to the generic z18 ceiling, so the request passes through.
         assertEquals(16, DownloadLayers.effectiveMaxZoom("nonexistent", 16))
+    }
+
+    @Test
+    fun rasterEstimateCountsTheExtraZoomMapLibreFetches() {
+        val bounds = LatLngBounds(south = 59.9, west = 10.7, north = 60.0, east = 10.8)
+        assertEquals(
+            TileUtils.estimateTileCount(bounds, 6, 13),
+            DownloadLayers.packTileCount("kartverket", bounds, 5, 12)
+        )
+    }
+
+    @Test
+    fun overlaysAlsoCountTheOsmBase() {
+        val bounds = LatLngBounds(south = 59.9, west = 10.7, north = 60.0, east = 10.8)
+        val raster = TileUtils.estimateTileCount(bounds, 6, 13)
+        assertEquals(2 * raster, DownloadLayers.packTileCount("waymarkedtrails", bounds, 5, 12))
+        assertEquals(
+            TileUtils.estimateTileCount(bounds, 5, 12) + raster,
+            DownloadLayers.packTileCount(DownloadLayers.OSM_PATHS_ID, bounds, 5, 12)
+        )
+    }
+
+    @Test
+    fun countStopsAtTheLayersMaxZoom() {
+        val bounds = LatLngBounds(south = 59.9, west = 10.7, north = 60.0, east = 10.8)
+        assertEquals(
+            TileUtils.estimateTileCount(bounds, 6, 14),
+            DownloadLayers.packTileCount("satellite", bounds, 5, 16)
+        )
+    }
+
+    @Test
+    fun estimatedMinutesRoundUp() {
+        assertEquals(1, DownloadLayers.estimatedDownloadMinutes(10))
+        assertEquals(2, DownloadLayers.estimatedDownloadMinutes(2_500))
     }
 }

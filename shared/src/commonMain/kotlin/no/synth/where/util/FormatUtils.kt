@@ -39,6 +39,14 @@ fun formatElapsed(millis: Long): String {
     return if (h > 0) "$h:${m.toString().padStart(2, '0')}:$ss" else "$m:$ss"
 }
 
+/** [count] rounded to 2 significant digits with non-breaking-space thousands, e.g. 231_874 -> "230 000". */
+fun formatApproxCount(count: Int): String {
+    var scale = 1
+    while (count / scale >= 100) scale *= 10
+    val rounded = (count + scale / 2) / scale * scale
+    return rounded.toString().reversed().chunked(3).joinToString("\u00A0").reversed()
+}
+
 fun formatBytes(bytes: Long): String = when {
     bytes < 1024 -> "$bytes B"
     bytes < 1024 * 1024 -> "${bytes / 1024} KB"
