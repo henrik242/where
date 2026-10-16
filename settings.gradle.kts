@@ -12,7 +12,7 @@ pluginManagement {
     }
 }
 plugins {
-    id("io.github.ben-manes.versions.settings") version "0.65.0"
+    id("io.github.ben-manes.versions.settings") version "0.66.0"
     // Resolves (and in CI downloads) the JDK 25 toolchain the desktop target compiles on.
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
