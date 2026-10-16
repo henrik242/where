@@ -1,1 +1,1 @@
-Raskere ruteplanlegging, jevnere kartfølging, import av GeoJSON.
+Feilrettinger og forbedringer.

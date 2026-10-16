@@ -1,1 +1,1 @@
-Faster route planning, smoother map following, GeoJSON import.
+Bug fixes and improvements.
