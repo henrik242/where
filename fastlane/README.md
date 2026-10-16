@@ -22,6 +22,8 @@ Trigger from GitHub Actions tab → select workflow → "Run workflow" on `main`
 
 Both can be triggered from the same commit. The second one adds its artifact to the existing GitHub Release.
 
+Leave the What's New inputs blank to use `fastlane/whats_new/en.txt` and `no.txt` (max ten words each).
+
 ## Version Scheme
 
 - Tag format: `v{commit_count}` (e.g., `v325`)

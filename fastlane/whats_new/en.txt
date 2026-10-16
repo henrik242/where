@@ -1,0 +1,1 @@
+Faster route planning, smoother map following, GeoJSON import.

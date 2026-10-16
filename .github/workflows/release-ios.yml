@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       whats_new_en:
-        description: "What's New (English)"
-        required: true
-        default: "Bug fixes and improvements."
+        description: "What's New (English); blank uses fastlane/whats_new/en.txt"
+        required: false
+        default: ""
       whats_new_no:
-        description: "Hva er nytt (norsk)"
-        required: true
-        default: "Feilrettinger og forbedringer."
+        description: "Hva er nytt (norsk); blank uses fastlane/whats_new/no.txt"
+        required: false
+        default: ""
       submit_for_review:
         description: "Submit for review (uncheck to upload without releasing)"
         type: boolean
