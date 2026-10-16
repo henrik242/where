@@ -215,7 +215,7 @@ fun HexMapScreenContent(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    "${selectedHexDownload.mapProgress}%",
+                                    downloadProgressCaption(selectedHexDownload),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
