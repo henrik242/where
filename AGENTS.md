@@ -53,3 +53,4 @@ map rendering and live-location polling are per-platform. Concretely:
   pre-release build could not be added" when a previous version is still Waiting for Review. The new
   release still goes through correctly: the new build is attached and released. Do not claim the old
   build is still attached or that the release is broken; the failure is a spurious error only.
+  The deploy lane now sets `reject_if_possible`, so a pending review is cancelled and replaced.
