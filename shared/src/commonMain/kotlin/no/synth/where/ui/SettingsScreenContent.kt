@@ -41,6 +41,8 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.resources.Res
 import no.synth.where.resources.attributions
 import no.synth.where.resources.back
+import no.synth.where.resources.large_compass
+import no.synth.where.resources.large_compass_description
 import no.synth.where.resources.coord_format_dms
 import no.synth.where.resources.coord_format_latlng
 import no.synth.where.resources.coord_format_mgrs
@@ -103,6 +105,8 @@ fun SettingsScreenContent(
     onThemeSelected: (String) -> Unit,
     currentCoordFormat: CoordFormat,
     onCoordFormatSelected: (CoordFormat) -> Unit,
+    largeCompass: Boolean = false,
+    onLargeCompassChange: (Boolean) -> Unit = {},
     onAttributionsClick: () -> Unit,
     onReleaseNotesClick: () -> Unit,
     onGuideClick: () -> Unit,
@@ -405,6 +409,34 @@ fun SettingsScreenContent(
 
                     HorizontalDivider()
                 }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onLargeCompassChange(!largeCompass) }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(Res.string.large_compass),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = stringResource(Res.string.large_compass_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        modifier = Modifier.padding(start = 16.dp),
+                        checked = largeCompass,
+                        onCheckedChange = onLargeCompassChange
+                    )
+                }
+
+                HorizontalDivider()
 
                 Row(
                     modifier = Modifier

@@ -1020,6 +1020,8 @@ fun BoxScope.MapOverlays(
     cameraFollowing: Boolean = false,
     onResetNorth: () -> Unit = {},
     onToggleNorthLock: () -> Unit = {},
+    largeCompass: Boolean = false,
+    onToggleLargeCompass: () -> Unit = {},
     navigation: NavigationUiState = NavigationUiState(),
     viewingPointName: String?,
     viewingPointColor: String,
@@ -1122,7 +1124,7 @@ fun BoxScope.MapOverlays(
         )
     }
     // The always-visible compass sits top-right; reserve space so the offline chip clears it.
-    val offlineChipEnd = 56.dp
+    val offlineChipEnd = compassSize(largeCompass) + 12.dp
 
     MapCompass(
         bearing = mapBearing,
@@ -1130,6 +1132,8 @@ fun BoxScope.MapOverlays(
         following = cameraFollowing,
         onResetNorth = onResetNorth,
         onToggleNorthLock = onToggleNorthLock,
+        large = largeCompass,
+        onToggleLarge = onToggleLargeCompass,
         modifier = Modifier
             .align(Alignment.TopEnd)
             .padding(top = compassTopOffset, end = 8.dp)

@@ -110,6 +110,7 @@ fun MapScreen(
     val showSavedPoints by userPreferences.showSavedPoints.collectAsState()
     val searchHistory by userPreferences.searchHistory.collectAsState()
     val northLocked by userPreferences.northLocked.collectAsState()
+    val largeCompass by userPreferences.largeCompass.collectAsState()
     val selectedLayer by userPreferences.selectedMapLayer.collectAsState()
     val showWaymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
     val showOsmPaths by userPreferences.showOsmPaths.collectAsState()
@@ -482,6 +483,8 @@ fun MapScreen(
             }
             userPreferences.updateNorthLocked(!northLocked)
         },
+        largeCompass = largeCompass,
+        onToggleLargeCompass = { userPreferences.updateLargeCompass(!largeCompass) },
         navigation = NavigationUiState(
             progress = navigationProgress,
             track = navChartTrack,
