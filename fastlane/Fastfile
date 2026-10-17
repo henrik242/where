@@ -130,6 +130,8 @@ platform :ios do
       skip_metadata: !submit,
       force: true,
       submit_for_review: submit,
+      # Cancel a pending review so this build replaces it.
+      reject_if_possible: submit,
       automatic_release: submit,
       precheck_include_in_app_purchases: false,
       release_notes: { "en-US" => whats_new_en, "no" => whats_new_no }
