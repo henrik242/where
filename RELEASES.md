@@ -11,6 +11,8 @@ tag dates.
 - App Store and Play Store release notes summarize the update instead of a generic text.
 - The download panel on the map shows map and elevation progress separately instead of
   reaching 100% while elevation data is still downloading.
+- Larger compass with degree marks, cardinal letters and heading in degrees. Turn it on in
+  Settings or by long pressing the compass.
 
 ## v630 (2026-10-16)
 

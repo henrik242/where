@@ -44,6 +44,7 @@ fun SettingsScreen(
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
     val themeMode by userPreferences.themeMode.collectAsState()
     val coordFormat by userPreferences.coordFormat.collectAsState()
+    val largeCompass by userPreferences.largeCompass.collectAsState()
     val currentThemeLabel = themeOptions.find { it.tag == themeMode }?.displayName
         ?: themeOptions.first().displayName
 
@@ -66,6 +67,8 @@ fun SettingsScreen(
         onThemeSelected = { userPreferences.updateThemeMode(it) },
         currentCoordFormat = coordFormat,
         onCoordFormatSelected = { userPreferences.updateCoordFormat(it) },
+        largeCompass = largeCompass,
+        onLargeCompassChange = { userPreferences.updateLargeCompass(it) },
         onAttributionsClick = onAttributionsClick,
         onReleaseNotesClick = onReleaseNotesClick,
         onGuideClick = onGuideClick,

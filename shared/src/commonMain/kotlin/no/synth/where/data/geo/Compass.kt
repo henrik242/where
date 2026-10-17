@@ -13,3 +13,9 @@ fun compassPoint8(bearing: Double, n: String, e: String, s: String, w: String): 
     val idx = (normalized / 45.0).roundToInt() % 8       // %8 wraps the 337.5..360 bucket back to N
     return points[idx]
 }
+
+/** Whole degrees 0..359 for a [bearing] in any range, for a heading readout like "45°". */
+fun wholeDegrees(bearing: Double): Int {
+    val normalized = ((bearing % 360.0) + 360.0) % 360.0
+    return normalized.roundToInt() % 360 // 359.6 rounds to 360, which reads as 0
+}

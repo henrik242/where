@@ -365,6 +365,10 @@
     <string name="compass_reset_north">Point map north</string>
     <string name="compass_locked_north">Map locked to north</string>
     <string name="lock_map_to_north">Lock map to north</string>
+    <string name="show_large_compass">Show large compass</string>
+    <string name="show_small_compass">Show small compass</string>
+    <string name="large_compass">Large compass</string>
+    <string name="large_compass_description">Bigger compass with degree marks and heading. Long press the compass to switch</string>
 
     <!-- Crosshair -->
     <string name="crosshair">Crosshair</string>
