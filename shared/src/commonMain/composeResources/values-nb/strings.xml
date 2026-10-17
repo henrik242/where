@@ -381,6 +381,10 @@
     <string name="compass_reset_north">Vend kartet mot nord</string>
     <string name="compass_locked_north">Kartet er låst mot nord</string>
     <string name="lock_map_to_north">Lås kartet mot nord</string>
+    <string name="show_large_compass">Vis stort kompass</string>
+    <string name="show_small_compass">Vis lite kompass</string>
+    <string name="large_compass">Stort kompass</string>
+    <string name="large_compass_description">Større kompass med gradskala og kurs. Hold inne på kompasset for å bytte</string>
 
     <!-- Crosshair -->
     <string name="crosshair">Kryssmarkør</string>

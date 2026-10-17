@@ -40,7 +40,7 @@ Free, lightweight offline hiking maps for Norway. A spiritual successor to the d
 - Off-trail hiking routes between ruler points: avoids cliffs, lakes and glaciers, prefers paths, and marks river and stream crossings
 - Save and manage points of interest, each with an optional description and colour, and import GPX or GeoJSON waypoints (several files or a whole zip at once, ticking off which ones to keep)
 - Coordinate readout in UTM, MGRS, latitude/longitude, or DMS
-- Compass rose that points the map north on tap, and locks it there on the next tap
+- Compass rose that points the map north on tap, and locks it there on the next tap; long press (or Settings) switches to a larger dial with degree marks and heading
 
 ## Built with
 

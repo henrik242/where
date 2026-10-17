@@ -34,6 +34,16 @@ class CompassTest {
     }
 
     @Test
+    fun wholeDegreesNormalizesAndRounds() {
+        assertEquals(0, wholeDegrees(0.0))
+        assertEquals(45, wholeDegrees(45.4))
+        assertEquals(46, wholeDegrees(45.5))
+        assertEquals(0, wholeDegrees(359.6)) // rounds up to 360, shown as 0
+        assertEquals(355, wholeDegrees(-5.0))
+        assertEquals(90, wholeDegrees(450.0))
+    }
+
+    @Test
     fun localizedLetters() {
         // Norwegian uses Ø for east and V for west.
         assertEquals("NØ", compassPoint8(45.0, "N", "Ø", "S", "V"))

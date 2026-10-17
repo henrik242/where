@@ -116,6 +116,9 @@ class UserPreferences(
     private val _northLocked = MutableStateFlow(false)
     val northLocked: StateFlow<Boolean> = _northLocked.asStateFlow()
 
+    private val _largeCompass = MutableStateFlow(false)
+    val largeCompass: StateFlow<Boolean> = _largeCompass.asStateFlow()
+
     private val _selectedMapLayer = MutableStateFlow(MapLayer.KARTVERKET)
     val selectedMapLayer: StateFlow<MapLayer> = _selectedMapLayer.asStateFlow()
 
@@ -172,6 +175,7 @@ class UserPreferences(
                 _showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
                 _northLocked.value = prefs[NORTH_LOCKED] ?: false
+                _largeCompass.value = prefs[LARGE_COMPASS] ?: false
                 _selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
                 _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
                 _hasSeenTrackingInfo.value = prefs[HAS_SEEN_TRACKING_INFO] ?: false
@@ -351,6 +355,11 @@ class UserPreferences(
     fun updateNorthLocked(value: Boolean) {
         _northLocked.value = value
         scope.launch { dataStore.edit { it[NORTH_LOCKED] = value } }
+    }
+
+    fun updateLargeCompass(value: Boolean) {
+        _largeCompass.value = value
+        scope.launch { dataStore.edit { it[LARGE_COMPASS] = value } }
     }
 
     fun updateSelectedMapLayer(value: MapLayer) {
@@ -589,6 +598,7 @@ class UserPreferences(
         private val SHOW_COORD_GRID = booleanPreferencesKey("show_coord_grid")
         private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")
         private val NORTH_LOCKED = booleanPreferencesKey("north_locked")
+        private val LARGE_COMPASS = booleanPreferencesKey("large_compass")
         private val SELECTED_MAP_LAYER = stringPreferencesKey("selected_map_layer")
         private val HAS_SEEN_TRACKING_INFO = booleanPreferencesKey("has_seen_tracking_info")
         private val OFFLINE_MIGRATION_NOTICE_SHOWN = booleanPreferencesKey("offline_migration_notice_shown")
