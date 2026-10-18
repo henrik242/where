@@ -1,5 +1,6 @@
 package no.synth.where.ui.map
 
+import kotlinx.serialization.json.JsonPrimitive
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
 import no.synth.where.data.routing.RiverCrossing
@@ -151,11 +152,24 @@ private fun markerPointGeoJson(point: TrackPoint, color: String): String =
     """{"type":"FeatureCollection","features":[""" +
         """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"color":"$color"}}]}"""
 
+private const val POINT_LABEL_MAX_LENGTH = 10
+
+/** Short map label for a point name, truncated with an ellipsis to [POINT_LABEL_MAX_LENGTH] chars. */
+fun pointLabel(name: String): String {
+    val clean = name.trim().replace('\n', ' ')
+    if (clean.length <= POINT_LABEL_MAX_LENGTH) return clean
+    // Don't split a surrogate pair (emoji etc.)
+    val end = POINT_LABEL_MAX_LENGTH - 1
+    val cut = if (clean[end - 1].isHighSurrogate()) end - 1 else end
+    return clean.take(cut).trimEnd() + "\u2026"
+}
+
 fun buildSavedPointsGeoJson(points: List<SavedPoint>): String {
     val features = points.joinToString(",") { point ->
-        val name = point.name.replace("\"", "\\\"")
+        val name = JsonPrimitive(point.name)
+        val label = JsonPrimitive(pointLabel(point.name))
         val color = point.color ?: PointColors.DEFAULT
-        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"name":"$name","color":"$color"}}"""
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${point.latLng.longitude},${point.latLng.latitude}]},"properties":{"name":$name,"label":$label,"color":"$color"}}"""
     }
     return """{"type":"FeatureCollection","features":[$features]}"""
 }
