@@ -529,13 +529,26 @@ private fun MeasurementLayers(lineGeoJson: String?, pointsGeoJson: String?) {
 
 @Composable
 private fun SavedPointsLayer(geoJson: String?) {
+    val source = src("saved-points-source", geoJson)
     CircleLayer(
         id = "saved-points-layer",
-        source = src("saved-points-source", geoJson),
+        source = source,
         radius = const(6.dp),
         color = featureColor(),
         strokeWidth = const(2.dp),
         strokeColor = const(Color.White),
+    )
+    SymbolLayer(
+        id = "saved-points-label-layer",
+        source = source,
+        textField = featureText("label"),
+        textFont = const(FONTS),
+        textSize = const(12.sp),
+        textColor = hexColorConst("#222222"),
+        textHaloColor = const(Color.White),
+        textHaloWidth = const(1.5.dp),
+        textOffset = textOffset(0.em, 1.em),
+        textAnchor = const(SymbolAnchor.Top),
     )
 }
 

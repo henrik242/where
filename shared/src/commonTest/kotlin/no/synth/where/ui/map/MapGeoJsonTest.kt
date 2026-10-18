@@ -119,6 +119,31 @@ class MapGeoJsonTest {
     }
 
     @Test
+    fun buildSavedPointsGeoJsonAddsShortLabel() {
+        val points = listOf(
+            SavedPoint(id = "1", name = "Home", latLng = LatLng(60.0, 10.0)),
+            SavedPoint(id = "2", name = "Galdhopiggen summit", latLng = LatLng(61.0, 11.0))
+        )
+        val json = buildSavedPointsGeoJson(points)
+        assertContains(json, "\"label\":\"Home\"")
+        assertContains(json, "\"label\":\"Galdhopig\u2026\"")
+        assertContains(json, "\"name\":\"Galdhopiggen summit\"")
+    }
+
+    @Test
+    fun pointLabelTruncatesToMaxLength() {
+        assertEquals("Exactly10!", pointLabel("Exactly10!"))
+        assertEquals("Eleven ch\u2026", pointLabel("Eleven chars"))
+        assertEquals("a b", pointLabel("  a\nb  "))
+    }
+
+    @Test
+    fun pointLabelDoesNotSplitSurrogatePair() {
+        assertEquals("Abcdefgh\u2026", pointLabel("Abcdefgh\uD83C\uDFD4 lake"))
+        assertEquals("Abcdefg\uD83C\uDFD4\u2026", pointLabel("Abcdefg\uD83C\uDFD4 lake"))
+    }
+
+    @Test
     fun buildRulerLineGeoJsonProducesLineString() {
         val points = listOf(
             RulerPoint(LatLng(60.0, 10.0)),
