@@ -103,10 +103,12 @@ fun AndroidMapScreen(nav: MapScreenNavigation) {
         state.showMessage(Res.string.recording_snackbar)
     }
 
+    // Android may deny this silently (e.g. foreground is "Only this time"). The location
+    // foreground service keeps tracking in the background anyway, so record regardless.
     val backgroundLocationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) startRecording()
+    ) {
+        if (context.isGranted(Manifest.permission.ACCESS_FINE_LOCATION)) startRecording()
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -161,10 +163,13 @@ fun AndroidMapScreen(nav: MapScreenNavigation) {
             },
             lastKnownLocation = { lastKnownLocation(context) },
             onStartRecording = {
-                if (context.isGranted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-                    startRecording()
-                } else {
-                    showBackgroundLocationDisclosure = true
+                when {
+                    // The tracking service needs precise location.
+                    !context.isGranted(Manifest.permission.ACCESS_FINE_LOCATION) -> permissionLauncher.launch(
+                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                    )
+                    context.isGranted(Manifest.permission.ACCESS_BACKGROUND_LOCATION) -> startRecording()
+                    else -> showBackgroundLocationDisclosure = true
                 }
             },
             // The foreground service owns the location stream and notification while navigating;
