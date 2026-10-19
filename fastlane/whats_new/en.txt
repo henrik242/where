@@ -1,1 +1,1 @@
-Bug fixes and improvements.
+Larger compass, point labels, coverage per operator, app links.

@@ -1,1 +1,1 @@
-Feilrettinger og forbedringer.
+Større kompass, punktnavn, dekning per operatør, applenker.
