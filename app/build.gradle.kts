@@ -1,5 +1,13 @@
+import com.android.build.api.instrumentation.AsmClassVisitorFactory
+import com.android.build.api.instrumentation.ClassContext
+import com.android.build.api.instrumentation.ClassData
+import com.android.build.api.instrumentation.InstrumentationParameters
+import com.android.build.api.instrumentation.InstrumentationScope
 import java.time.LocalDate
 import java.util.Properties
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
 
 plugins {
     alias(libs.plugins.android.application)
@@ -148,6 +156,32 @@ android {
             }
             test.exclude("no/synth/where/integration/**")
         }
+    }
+}
+
+// androidx.core 1.18+ calls WindowInsets.Type.systemOverlays() whenever insets are created, which
+// crashes on devices that report API 34 but lack the method. Route the call through a guard.
+abstract class SystemOverlaysGuard : AsmClassVisitorFactory<InstrumentationParameters.None> {
+    override fun isInstrumentable(classData: ClassData) =
+        classData.className == "androidx.core.view.WindowInsetsCompat\$TypeImpl34"
+
+    override fun createClassVisitor(classContext: ClassContext, nextClassVisitor: ClassVisitor) =
+        object : ClassVisitor(Opcodes.ASM9, nextClassVisitor) {
+            override fun visitMethod(
+                access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?,
+            ) = object : MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
+                override fun visitMethodInsn(opcode: Int, owner: String, name: String, desc: String, isItf: Boolean) {
+                    val guarded = owner == "android/view/WindowInsets\$Type" && name == "systemOverlays"
+                    val target = if (guarded) "no/synth/where/compat/WindowInsetsTypeCompat" else owner
+                    super.visitMethodInsn(opcode, target, name, desc, isItf)
+                }
+            }
+        }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.instrumentation.transformClassesWith(SystemOverlaysGuard::class.java, InstrumentationScope.ALL) {}
     }
 }
 

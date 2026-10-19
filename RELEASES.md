@@ -18,6 +18,7 @@ tag dates.
   switch operator.
 - Saved and shared points are easier to tap when zoomed out.
 - Saving a point turns on the saved points overlay so the new point shows.
+- Fixed an Android startup crash on devices with an incomplete Android 14 framework.
 
 ## v633 (2026-10-16)
 
