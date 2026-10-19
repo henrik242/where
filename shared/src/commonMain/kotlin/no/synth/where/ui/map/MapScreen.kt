@@ -456,6 +456,7 @@ fun MapScreen(
         userLocation = fix?.latLng,
         coordFormat = coordFormat,
         onToggleCoordFormat = { userPreferences.updateCoordFormat(coordFormat.next()) },
+        onToggleCoverageOperator = { userPreferences.updateCoverageOperator(coverageOperator.next()) },
         onCrosshairToggle = { userPreferences.updateCrosshairActive(!crosshairActive) },
         offlineModeEnabled = offlineModeEnabled,
         isLocating = isLocating,

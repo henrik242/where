@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
@@ -873,6 +874,7 @@ fun CrosshairInfoCard(
     crosshairInfo: CrosshairInfo,
     coordFormat: CoordFormat,
     onToggleCoordFormat: () -> Unit,
+    onToggleCoverageOperator: () -> Unit = {},
     userLocation: LatLng? = null
 ) {
     Card(
@@ -929,10 +931,6 @@ fun CrosshairInfoCard(
                     color = dataColor
                 )
             }
-            crosshairInfo.coverage?.let {
-                Spacer(modifier = Modifier.height(4.dp))
-                CoverageDetail(it, crosshairInfo.coverageOperator)
-            }
             if (userLocation != null && centerLatLng != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -951,13 +949,17 @@ fun CrosshairInfoCard(
                     )
                 }
             }
+            crosshairInfo.coverage?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                CoverageDetail(it, crosshairInfo.coverageOperator, onToggleCoverageOperator)
+            }
         }
     }
 }
 
-/** Whether 112 can likely be called under the crosshair, plus the chosen operator's call coverage. */
+/** Whether 112 can likely be called under the crosshair, plus the chosen operator's call coverage, as signal bars. */
 @Composable
-private fun CoverageDetail(lookup: CoverageLookup, operator: CoverageOperator) {
+private fun CoverageDetail(lookup: CoverageLookup, operator: CoverageOperator, onToggleOperator: () -> Unit) {
     val coverage = (lookup as? CoverageLookup.Found)?.coverage
     val emergency = when {
         lookup == CoverageLookup.Loading -> Res.string.coverage_112_loading
@@ -967,16 +969,60 @@ private fun CoverageDetail(lookup: CoverageLookup, operator: CoverageOperator) {
         coverage.bestLevel == 1 -> Res.string.coverage_112_weak
         else -> Res.string.coverage_112_likely
     }
+    val style = MaterialTheme.typography.titleSmall
+    if (coverage == null) {
+        Text(
+            text = stringResource(emergency),
+            style = style,
+            modifier = Modifier.clickable { onToggleOperator() }
+        )
+        return
+    }
     val operatorName = operator.displayName
-    val operatorText = if (coverage != null && operatorName != null) {
-        " \u00b7 $operatorName ${stringResource(coverageLevelText(coverage.levelFor(operator)))}"
+    val description = stringResource(emergency) + if (operatorName != null) {
+        ", $operatorName ${stringResource(coverageLevelText(coverage.levelFor(operator)))}"
     } else {
         ""
     }
-    Text(
-        text = stringResource(emergency) + operatorText,
-        style = MaterialTheme.typography.titleSmall,
-        color = if (coverage?.bestLevel == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val emergencyColor = if (coverage.bestLevel == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    Row(
+        modifier = Modifier
+            .clickable { onToggleOperator() }
+            .semantics(mergeDescendants = true) { contentDescription = description },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(text = "112", style = style, color = emergencyColor)
+        SignalBars(coverage.bestLevel, emergencyColor)
+        if (operatorName != null) {
+            Text(
+                text = "\u00b7 $operatorName",
+                style = style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            SignalBars(coverage.levelFor(operator), MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Three rising bars, [level] (0-3) of them filled. */
+@Composable
+private fun SignalBars(level: Int, color: Color) {
+    Box(
+        modifier = Modifier
+            .size(width = 16.dp, height = 12.dp)
+            .drawBehind {
+                val gap = 2.dp.toPx()
+                val barWidth = (size.width - 2 * gap) / 3
+                for (i in 0 until 3) {
+                    val barHeight = size.height * (i + 1) / 3
+                    drawRect(
+                        color = if (i < level) color else color.copy(alpha = 0.25f),
+                        topLeft = Offset(i * (barWidth + gap), size.height - barHeight),
+                        size = Size(barWidth, barHeight)
+                    )
+                }
+            }
     )
 }
 
@@ -997,6 +1043,7 @@ fun BoxScope.MapOverlays(
     userLocation: LatLng? = null,
     coordFormat: CoordFormat = CoordFormat.LATLNG,
     onToggleCoordFormat: () -> Unit = {},
+    onToggleCoverageOperator: () -> Unit = {},
     rulerState: RulerState,
     isRecording: Boolean,
     recordingTrack: Track?,
@@ -1221,6 +1268,7 @@ fun BoxScope.MapOverlays(
                     crosshairInfo = crosshairInfo,
                     coordFormat = coordFormat,
                     onToggleCoordFormat = onToggleCoordFormat,
+                    onToggleCoverageOperator = onToggleCoverageOperator,
                     userLocation = userLocation
                 )
             }

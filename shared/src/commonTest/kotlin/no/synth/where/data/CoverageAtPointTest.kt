@@ -22,6 +22,12 @@ class CoverageAtPointTest {
     }
 
     @Test
+    fun nextOperatorCyclesBackToAll() {
+        assertEquals(CoverageOperator.TELENOR, CoverageOperator.ALL.next())
+        assertEquals(CoverageOperator.ALL, CoverageOperator.ICE.next())
+    }
+
+    @Test
     fun bestLevelIsTheBestOperator() {
         assertEquals(0, CoverageAtPoint(0, 0, 0).bestLevel)
         assertEquals(2, CoverageAtPoint(1, 0, 2).bestLevel)

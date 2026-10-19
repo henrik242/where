@@ -14,7 +14,8 @@ tag dates.
 - Recording starts on Android even when background location is denied without a prompt.
 - Links to where.synth.no open in the app on Android and iOS.
 - Choose which operator the coverage map shows (Telenor, Telia, Ice or the best of all) in
-  Settings. The crosshair shows whether 112 is likely reachable, plus the chosen operator.
+  Settings. The crosshair shows signal bars for 112 and the chosen operator; tap them to
+  switch operator.
 
 ## v633 (2026-10-16)
 

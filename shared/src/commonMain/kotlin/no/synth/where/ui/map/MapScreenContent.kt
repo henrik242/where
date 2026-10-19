@@ -47,6 +47,7 @@ fun MapScreenContent(
     userLocation: LatLng? = null,
     coordFormat: CoordFormat = CoordFormat.LATLNG,
     onToggleCoordFormat: () -> Unit = {},
+    onToggleCoverageOperator: () -> Unit = {},
     onCrosshairToggle: () -> Unit = {},
     // Overlay state
     offlineModeEnabled: Boolean = false,
@@ -187,6 +188,7 @@ fun MapScreenContent(
                 userLocation = userLocation,
                 coordFormat = coordFormat,
                 onToggleCoordFormat = onToggleCoordFormat,
+                onToggleCoverageOperator = onToggleCoverageOperator,
                 rulerState = rulerState,
                 isRecording = isRecording,
                 recordingTrack = recordingTrack,

@@ -14,7 +14,9 @@ enum class CoverageOperator(val displayName: String?, val tileLayer: String) {
     ALL(null, "combined"),
     TELENOR("Telenor", "telenor"),
     TELIA("Telia", "telia"),
-    ICE("Ice", "ice"),
+    ICE("Ice", "ice");
+
+    fun next(): CoverageOperator = entries[(ordinal + 1) % entries.size]
 }
 
 /** Call coverage per operator on erdetdekning.no's scale: 0 none, 1 weak, 2 good, 3 very good. */
