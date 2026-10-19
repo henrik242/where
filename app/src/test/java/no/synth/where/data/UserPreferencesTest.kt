@@ -9,7 +9,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import no.synth.where.data.geo.CoordFormat
 import org.junit.After
 import org.junit.Assert.*
@@ -99,7 +101,11 @@ class UserPreferencesTest {
             delay(60)
             rapid.confirmTrackingInfoAndEnable()
             rapid.updateOnlineTrackingEnabled(false)
+            // Wait for the writes to land instead of a fixed delay, which was too short on slow CI.
+            val key = booleanPreferencesKey("online_tracking_enabled")
+            withTimeout(5_000) { store.data.first { it[key] == false } }
             delay(150)
+            assertEquals(false, store.data.first()[key])
             assertEquals(false, rapid.onlineTrackingEnabled.value)
             storeScope.cancel()
         }
