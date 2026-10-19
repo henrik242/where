@@ -39,3 +39,14 @@ fun stopFollowingAll(userPreferences: UserPreferences, follower: LiveTrackingFol
     userPreferences.clearFollowedClientIds()
     follower.stopFollowing()
 }
+
+/** A group link shows that group, so it replaces the followed set rather than appending to it. */
+fun followGroupLink(
+    userPreferences: UserPreferences,
+    follower: LiveTrackingFollower,
+    clientIds: List<String>,
+    selfClientId: String
+) {
+    userPreferences.setFollowedClientIds(clientIds.filter { it != selfClientId })
+    follower.follow(userPreferences.followedClientIds.value, userPreferences.clientNicknames.value)
+}

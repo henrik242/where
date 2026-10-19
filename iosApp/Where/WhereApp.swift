@@ -30,6 +30,8 @@ struct WhereApp: App {
         WindowGroup {
             ComposeView()
                 .ignoresSafeArea(.all)
+                // Universal Links (where.synth.no/<id>), see apple-app-site-association on the server
+                .onOpenURL { url in IosLinks.shared.handleUrl(url: url.absoluteString) }
         }
     }
 }

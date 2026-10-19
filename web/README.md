@@ -47,6 +47,7 @@ Toggle "Show historical (24h)" checkbox to include stopped tracks.
 ```bash
 TRACKING_HINT=your-secret  # Required for HMAC verification
 ADMIN_KEY=your-secret-key         # Optional - for admin access to view all tracks
+ANDROID_CERT_SHA256=AB:CD:...     # Optional - app signing cert SHA-256(s), comma-separated, for Android App Links
 PORT=3000                          # Default: 3000
 ```
 

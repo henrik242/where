@@ -103,6 +103,36 @@ body {
     box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 
+.open-in-app {
+    position: fixed;
+    left: 50%;
+    top: 12px;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: none;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 6px 6px 16px;
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    white-space: nowrap;
+}
+
+.open-in-app.visible {
+    display: flex;
+}
+
+.open-in-app a {
+    padding: 8px 16px;
+    background: #1976D2;
+    color: white;
+    border-radius: 18px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
 @media (max-width: 768px) {
     .info-panel {
         position: fixed;

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import no.synth.where.data.UserPreferences
+import no.synth.where.data.parseWhereGroupLink
 import no.synth.where.ui.theme.WhereTheme
 
 class MainActivity : AppCompatActivity() {
@@ -80,13 +81,9 @@ class MainActivity : AppCompatActivity() {
                 (application as WhereApplication).handleStravaRedirect(uri.toString())
                 return
             }
-            if ((uri.scheme == "https" || uri.scheme == "http") && uri.host == "where.synth.no") {
-                // where.synth.no/<id> or /<id>,<id>,..., the same group link the web viewer takes.
-                val path = uri.path?.removePrefix("/") ?: ""
-                if (path.matches(Regex("^[a-z0-9]{6}(,[a-z0-9]{6})*$"))) {
-                    pendingFollowClientIds = path.split(",")
-                    return
-                }
+            parseWhereGroupLink(uri.toString())?.let {
+                pendingFollowClientIds = it
+                return
             }
             if (uri.scheme == "https" || uri.scheme == "http") {
                 pendingImportUrl = uri.toString()

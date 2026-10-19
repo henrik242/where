@@ -2,6 +2,8 @@ export const CONFIG = {
   ADMIN_KEY: process.env.ADMIN_KEY,
   TRACKING_HINT: process.env.TRACKING_HINT,
   PORT: process.env.PORT || 3000,
+  // Comma-separated SHA-256 signing cert fingerprints for assetlinks.json.
+  ANDROID_CERT_SHA256: process.env.ANDROID_CERT_SHA256,
   STALE_TRACK_TIMEOUT: 60 * 60 * 1000,
   STALE_CHECK_INTERVAL: 60 * 1000,
   INITIAL_CHECK_DELAY: 10 * 1000,

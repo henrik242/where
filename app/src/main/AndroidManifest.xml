@@ -118,8 +118,9 @@
                 <data android:pathSuffix=".geojson" />
             </intent-filter>
 
-            <!-- Where? live tracking links -->
-            <intent-filter android:autoVerify="false">
+            <!-- Where? live tracking links. Verified against where.synth.no/.well-known/assetlinks.json,
+                 so Android 12+ opens them here instead of in the browser. -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
