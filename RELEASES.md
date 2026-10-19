@@ -16,6 +16,7 @@ tag dates.
 - Choose which operator the coverage map shows (Telenor, Telia, Ice or the best of all) in
   Settings. The crosshair shows signal bars for 112 and the chosen operator; tap them to
   switch operator.
+- Saved and shared points are easier to tap when zoomed out.
 
 ## v633 (2026-10-16)
 

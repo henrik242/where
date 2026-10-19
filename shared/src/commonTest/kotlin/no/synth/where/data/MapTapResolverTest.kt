@@ -34,6 +34,14 @@ class MapTapResolverTest {
     }
 
     @Test
+    fun zoomedOutTapNearAPointHitsIt() {
+        // About 3 km off: well outside 500 m, but a few pixels at zoom 8.
+        val nearby = LatLng(60.0, 10.05)
+        assertEquals(MapTapTarget.Point(point("")), resolveMapTap(nearby, 8.0, listOf(point("")), emptyList(), null))
+        assertEquals(MapTapTarget.Nothing, resolveMapTap(nearby, zoom, listOf(point("")), emptyList(), null))
+    }
+
+    @Test
     fun resolvesThePointAsItIsNow() {
         val target = resolveMapTap(tap, zoom, listOf(point("god teltplass")), emptyList(), null)
         assertEquals("god teltplass", (target as MapTapTarget.Point).point.description)
