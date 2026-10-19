@@ -158,6 +158,12 @@ jobs:
         mkdir -p fastlane/metadata/android/no-NO/changelogs
         printf '%s\n' "${WHATS_NEW_EN:-$(cat fastlane/whats_new/en.txt)}" > fastlane/metadata/android/en-US/changelogs/default.txt
         printf '%s\n' "${WHATS_NEW_NO:-$(cat fastlane/whats_new/no.txt)}" > fastlane/metadata/android/no-NO/changelogs/default.txt
+        {
+          echo
+          echo "**What's New**"
+          echo "- en: $(cat fastlane/metadata/android/en-US/changelogs/default.txt)"
+          echo "- no: $(cat fastlane/metadata/android/no-NO/changelogs/default.txt)"
+        } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Upload to Play Store
       env:

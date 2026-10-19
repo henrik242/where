@@ -129,6 +129,9 @@ jobs:
 
     - name: Compute version
       id: version
+      env:
+        WHATS_NEW_EN: ${{ github.event.inputs.whats_new_en }}
+        WHATS_NEW_NO: ${{ github.event.inputs.whats_new_no }}
       run: |
         COMMIT_COUNT=$(git rev-list --count HEAD)
         SHORT_SHA=$(git rev-parse --short HEAD)
@@ -139,6 +142,12 @@ jobs:
         echo "Version tag: $VERSION_TAG ($SHORT_SHA, $BUILD_DATE)"
         echo "### iOS release $VERSION_TAG" >> "$GITHUB_STEP_SUMMARY"
         echo "Commit \`$SHORT_SHA\`, built $BUILD_DATE" >> "$GITHUB_STEP_SUMMARY"
+        {
+          echo
+          echo "**What's New**"
+          echo "- en: ${WHATS_NEW_EN:-$(cat fastlane/whats_new/en.txt)}"
+          echo "- no: ${WHATS_NEW_NO:-$(cat fastlane/whats_new/no.txt)}"
+        } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Update iOS version
       run: |
