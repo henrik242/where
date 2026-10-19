@@ -31,5 +31,7 @@ if not rows:
     sys.exit()
 
 print(f"### {title}: {counts['passed']} passed, {counts['FAILED']} failed, {counts['skipped']} skipped\n")
+if counts["skipped"]:
+    print(f"> **Note:** {counts['skipped']} test(s) skipped, so not fully verified; see the reasons below.\n")
 print("| Test | Result | Reason |\n|---|---|---|")
 print("\n".join(rows))

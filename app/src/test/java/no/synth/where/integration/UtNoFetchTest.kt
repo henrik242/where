@@ -3,6 +3,7 @@ package no.synth.where.integration
 import no.synth.where.data.*
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -25,12 +26,20 @@ class UtNoFetchTest {
     @Test
     fun importRoute_getsTrackWithPoints() = runBlocking {
         val importer = UtNoImporter(IntegrationTestSupport.makeClient())
+        val rateLimited = mutableListOf<String>()
         for (url in utNoUrls) {
+            IntegrationTestSupport.clearLog()
             val track = importer.importFromUrl(url, addElevation = false)
             println("Track ($url): name=${track?.name}, points=${track?.points?.size}")
+            if (track == null && IntegrationTestSupport.logLines.any { "failed: 429" in it }) {
+                rateLimited += url
+                continue
+            }
             checkNotNull(track) { "Expected to import track from $url but got null" }
             assertTrue("Expected track from $url to have points", track.points.isNotEmpty())
             assertTrue("Expected track from $url to have a name", track.name.isNotBlank())
         }
+        // The rest still had to pass; only the rate-limited URLs go unverified.
+        assumeTrue("UT.no rate-limited (429): ${rateLimited.joinToString()}", rateLimited.isEmpty())
     }
 }
