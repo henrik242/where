@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { $ } from 'bun';
+import { readJson } from './helpers';
 
 let SERVER_URL: string;
 let serverProc: Bun.Subprocess<'ignore', 'pipe', 'inherit'>;
@@ -8,7 +9,7 @@ beforeAll(async () => {
   // Start the real server on a random port
   serverProc = Bun.spawn(['bun', 'run', 'src/server/index.ts'], {
     cwd: `${import.meta.dir}/..`,
-    env: { ...process.env, PORT: '0' },
+    env: { ...process.env, PORT: '0', ANDROID_CERT_SHA256: 'AA:BB, CC:DD' },
     stdout: 'pipe',
   });
 
@@ -102,6 +103,11 @@ describe('static routes', () => {
       const html = await res.text();
       expect(html).toContain(`property="og:url" content="https://where.synth.no${path}"`);
     }
+  });
+
+  test('Smart App Banner passes the client link to the app', async () => {
+    const html = await (await fetch(`${SERVER_URL}/abc123,def456`)).text();
+    expect(html).toContain('app-argument=https://where.synth.no/abc123,def456"');
   });
 
   test('/nonexistent returns 404', async () => {
@@ -209,5 +215,25 @@ describe('named routes take precedence', () => {
   test('/api routes are not treated as client IDs', async () => {
     const res = await fetch(`${SERVER_URL}/api/tracks`);
     expect(res.status).not.toBe(404);
+  });
+});
+
+describe('app link verification', () => {
+  test('assetlinks.json lists the Android app and configured fingerprints', async () => {
+    const res = await fetch(`${SERVER_URL}/.well-known/assetlinks.json`, { redirect: 'manual' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/json');
+    const [link] = await readJson(res);
+    expect(link.relation).toEqual(['delegate_permission/common.handle_all_urls']);
+    expect(link.target.package_name).toBe('no.synth.where');
+    expect(link.target.sha256_cert_fingerprints).toEqual(['AA:BB', 'CC:DD']);
+  });
+
+  test('apple-app-site-association claims client links', async () => {
+    const res = await fetch(`${SERVER_URL}/.well-known/apple-app-site-association`, { redirect: 'manual' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('application/json');
+    const aasa = await readJson(res);
+    expect(aasa.applinks.details[0].appIDs).toContain('358L7UXVJ4.no.synth.where');
   });
 });

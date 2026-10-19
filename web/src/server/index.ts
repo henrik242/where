@@ -1,5 +1,6 @@
 import type { Server } from 'bun';
 import { createApiHandler } from './api';
+import { APPLE_APP_SITE_ASSOCIATION, assetLinks } from './appLinks';
 import { CONFIG } from './config';
 import { CLIENT_IDS_RE } from '../shared/validation';
 import { trackStore } from './store';
@@ -27,7 +28,7 @@ function makeFetchHandler({ handleAPI, ogMeta }: FetchHandlerDeps) {
     const file = Bun.file(`${CLIENT_DIR}${path}`);
     if (!(await file.exists())) return null;
     const html = await file.text();
-    return new Response(html.replace('<!-- OG_META -->', ogMeta.replace('__OG_PATH__', canonicalPath)), {
+    return new Response(html.replace('<!-- OG_META -->', ogMeta).replaceAll('__OG_PATH__', canonicalPath), {
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
   }
@@ -45,6 +46,14 @@ function makeFetchHandler({ handleAPI, ogMeta }: FetchHandlerDeps) {
 
     if (url.pathname.startsWith('/api')) {
       return handleAPI(req);
+    }
+
+    if (pathname === '/.well-known/assetlinks.json') {
+      const links = assetLinks(CONFIG.ANDROID_CERT_SHA256);
+      return links ? Response.json(links) : new Response('Not Found', { status: 404 });
+    }
+    if (pathname === '/.well-known/apple-app-site-association') {
+      return Response.json(APPLE_APP_SITE_ASSOCIATION);
     }
 
     if (pathname === '/ios') {

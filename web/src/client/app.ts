@@ -118,6 +118,32 @@ function parseURLParameters(): void {
   }
 }
 
+// Android: offer to open a client link in the app. App Links should do this on their own, but
+// in-app browsers (Messenger, Facebook) and unverified installs land here instead. The intent://
+// link opens the app if installed, else the Play Store.
+function showOpenInAppBanner(): void {
+  if (clientFilters.length === 0 || !/Android/i.test(navigator.userAgent)) return;
+  const banner = document.getElementById('open-in-app');
+  const link = document.getElementById('open-in-app-link') as HTMLAnchorElement | null;
+  if (!banner || !link) return;
+  // Built on click so filters added or removed since load are what the app follows.
+  link.addEventListener('click', (e) => {
+    if (clientFilters.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const fallback = encodeURIComponent('https://play.google.com/store/apps/details?id=no.synth.where');
+    link.href = `intent://where.synth.no/${clientFilters.join(',')}` +
+      `#Intent;scheme=https;package=no.synth.where;S.browser_fallback_url=${fallback};end`;
+  });
+  banner.classList.add('visible');
+}
+
+function hideOpenInAppBanner(): void {
+  document.getElementById('open-in-app')?.classList.remove('visible');
+}
+(window as any).hideOpenInAppBanner = hideOpenInAppBanner;
+
 // Update admin indicator
 function updateAdminIndicator(isActive: boolean): void {
   const section = document.getElementById('admin-section');
@@ -839,6 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // When arriving via a clientId link, collapse the panel so it doesn't
   // cover the track point. The user can re-open it with the Live Tracks button.
   if (clientFilters.length > 0) hidePanel();
+  showOpenInAppBanner();
 
   document.getElementById('client-input')?.addEventListener('keypress', (e) => {
     if ((e as KeyboardEvent).key === 'Enter') addClientFilter();

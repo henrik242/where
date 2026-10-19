@@ -20,6 +20,7 @@ import androidx.navigation.toRoute
 import androidx.lifecycle.viewmodel.compose.viewModel
 import no.synth.where.util.CrashReporter
 import no.synth.where.data.SavedPoint
+import no.synth.where.data.followGroupLink
 import no.synth.where.data.geo.LatLng
 import no.synth.where.location.fusedLocationFlow
 import no.synth.where.navigation.*
@@ -63,12 +64,12 @@ fun WhereApp(
         }
     }
 
-    // A group link shows that group, so it replaces the followed set rather than appending to it.
     LaunchedEffect(pendingFollowClientIds) {
         if (pendingFollowClientIds.isNotEmpty()) {
-            val self = app.clientIdManager.getClientId()
-            app.userPreferences.setFollowedClientIds(pendingFollowClientIds.filter { it != self })
-            app.liveTrackingFollower.follow(app.userPreferences.followedClientIds.value, app.userPreferences.clientNicknames.value)
+            followGroupLink(
+                app.userPreferences, app.liveTrackingFollower, pendingFollowClientIds,
+                app.clientIdManager.getClientId()
+            )
             onFollowHandled()
         }
     }
