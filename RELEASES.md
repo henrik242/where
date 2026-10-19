@@ -6,20 +6,23 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v630...main)
+[diff](https://github.com/henrik242/where/compare/v633...main)
 
-- App Store and Play Store release notes summarize the update instead of a generic text.
-- The download panel on the map shows map and elevation progress separately instead of
-  reaching 100% while elevation data is still downloading.
 - Larger compass with degree marks, cardinal letters and heading in degrees. Turn it on in
   Settings or by long pressing the compass.
 - Saved points show their name on the map, shortened to 10 characters.
 - Recording starts on Android even when background location is denied without a prompt.
 - Links to where.synth.no open in the app on Android and iOS.
-- Choose which operator the coverage map shows (Telenor, Telia, Ice or all) in Settings. The
-  crosshair readout is one line: whether 112 is likely reachable, plus the chosen operator.
 - Choose which operator the coverage map shows (Telenor, Telia, Ice or the best of all) in
   Settings. The crosshair shows whether 112 is likely reachable, plus the chosen operator.
+
+## v633 (2026-10-16)
+
+[diff](https://github.com/henrik242/where/compare/v630...v633)
+
+- App Store and Play Store release notes summarize the update instead of a generic text.
+- The download panel on the map shows map and elevation progress separately instead of
+  reaching 100% while elevation data is still downloading.
 
 ## v630 (2026-10-16)
 
