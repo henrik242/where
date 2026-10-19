@@ -11,6 +11,7 @@ import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.geo.LatLng
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeFalse
 import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.TimeUnit
@@ -61,6 +62,7 @@ class GeocodingIntegrationTest {
     /**
      * For probes that need Overpass: public mirrors reject a large share of requests under load,
      * so one miss proves nothing. Retry until [expected] shows up, then report whatever came last.
+     * Skips instead of failing when the last attempt still hit an Overpass outage.
      */
     private fun geocodeExpecting(expected: String, lat: Double, lon: Double): String? {
         var result: String? = null
@@ -69,11 +71,19 @@ class GeocodingIntegrationTest {
                 GeocodingHelper.clearCaches()
                 delay(5000)
             }
+            IntegrationTestSupport.clearLog()
             result = geocode(lat, lon)
             if (result == expected) return result
         }
+        assumeFalse(
+            "Overpass unavailable, got \"$result\"",
+            IntegrationTestSupport.logLines.any { overpassOutage.containsMatchIn(it) }
+        )
         return result
     }
+
+    // Timeouts, 429 and 5xx; a 4xx means our query is wrong and must still fail the test.
+    private val overpassOutage = Regex("""^overpass .*(failed:|status=(429|5\d\d))""")
 
     // --- Diagnostic: prints results without asserting ---
 

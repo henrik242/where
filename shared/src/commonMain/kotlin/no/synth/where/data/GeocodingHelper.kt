@@ -25,10 +25,10 @@ private const val NOMINATIM = "https://nominatim.openstreetmap.org"
 private const val MAX_CACHE_ENTRIES = 1000
 
 // Public Overpass instances rate-limit and time out independently of each other, so a query
-// that one rejects usually succeeds on the next.
+// that one rejects usually succeeds on the next. overpass.kumi.systems is the same server as
+// private.coffee, so listing both adds no redundancy.
 private val OVERPASS_MIRRORS = listOf(
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter"
 )
 

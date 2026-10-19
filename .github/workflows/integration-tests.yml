@@ -48,6 +48,10 @@ jobs:
     - name: Run integration tests
       run: ./gradlew integrationTest --stacktrace
 
+    - name: Summarize test results
+      if: always()
+      run: python3 .github/test-summary.py "Integration tests" "app/build/test-results/integrationTest/*.xml" >> "$GITHUB_STEP_SUMMARY"
+
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v7
