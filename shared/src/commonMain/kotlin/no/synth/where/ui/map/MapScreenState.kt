@@ -195,6 +195,7 @@ class MapScreenState(
         val latLng = savePointLatLng ?: return
         if (save && savePointName.isNotBlank()) {
             savedPointsRepository.addPoint(name = savePointName, latLng = latLng, description = savePointDescription)
+            userPreferences.updateShowSavedPoints(true)
         }
         if (share) coordinator.addSharedPoint(savePointName, savePointDescription, latLng, PointColors.DEFAULT)
         dismissSavePointDialog()
@@ -242,6 +243,7 @@ class MapScreenState(
         savedPointsRepository.addPoint(
             name = point.name, latLng = point.latLng, description = point.description, color = point.color
         )
+        userPreferences.updateShowSavedPoints(true)
         friendPointDialog = null
         showMessage(Res.string.point_saved_locally)
     }

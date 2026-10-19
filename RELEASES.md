@@ -17,6 +17,7 @@ tag dates.
   Settings. The crosshair shows signal bars for 112 and the chosen operator; tap them to
   switch operator.
 - Saved and shared points are easier to tap when zoomed out.
+- Saving a point turns on the saved points overlay so the new point shows.
 
 ## v633 (2026-10-16)
 
