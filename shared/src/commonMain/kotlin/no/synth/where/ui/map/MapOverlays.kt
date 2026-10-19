@@ -57,8 +57,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import no.synth.where.data.CoverageAtPoint
 import no.synth.where.data.CoverageLookup
+import no.synth.where.data.CoverageOperator
 import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.elevationProfileOrNull
 import no.synth.where.data.hasElevationData
@@ -931,7 +931,7 @@ fun CrosshairInfoCard(
             }
             crosshairInfo.coverage?.let {
                 Spacer(modifier = Modifier.height(4.dp))
-                CoverageDetail(it)
+                CoverageDetail(it, crosshairInfo.coverageOperator)
             }
             if (userLocation != null && centerLatLng != null) {
                 Row(
@@ -955,9 +955,9 @@ fun CrosshairInfoCard(
     }
 }
 
-/** Whether 112 can likely be called under the crosshair, then each operator's call coverage. */
+/** Whether 112 can likely be called under the crosshair, plus the chosen operator's call coverage. */
 @Composable
-private fun CoverageDetail(lookup: CoverageLookup) {
+private fun CoverageDetail(lookup: CoverageLookup, operator: CoverageOperator) {
     val coverage = (lookup as? CoverageLookup.Found)?.coverage
     val emergency = when {
         lookup == CoverageLookup.Loading -> Res.string.coverage_112_loading
@@ -967,21 +967,17 @@ private fun CoverageDetail(lookup: CoverageLookup) {
         coverage.bestLevel == 1 -> Res.string.coverage_112_weak
         else -> Res.string.coverage_112_likely
     }
-    Column(modifier = Modifier.semantics(mergeDescendants = true) {}) {
-        Text(
-            text = stringResource(emergency),
-            style = MaterialTheme.typography.titleSmall,
-            color = if (coverage?.bestLevel == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-        )
-        if (coverage != null) {
-            val levels = coverage.operators.map { (name, level) -> "$name ${stringResource(coverageLevelText(level))}" }
-            Text(
-                text = levels.joinToString(" \u00b7 "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+    val operatorName = operator.displayName
+    val operatorText = if (coverage != null && operatorName != null) {
+        " \u00b7 $operatorName ${stringResource(coverageLevelText(coverage.levelFor(operator)))}"
+    } else {
+        ""
     }
+    Text(
+        text = stringResource(emergency) + operatorText,
+        style = MaterialTheme.typography.titleSmall,
+        color = if (coverage?.bestLevel == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    )
 }
 
 private fun coverageLevelText(level: Int) = when (level) {

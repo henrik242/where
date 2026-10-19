@@ -14,16 +14,16 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import no.synth.where.BuildInfo
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 
-/** Call coverage tiles from erdetdekning.no, which live under a dataset version. */
+/** Coverage from erdetdekning.no: vector tiles for the overlay, versioned levels tiles for lookups. */
 object CoverageTilesClient {
     var client: HttpClient = createDefaultHttpClient()
 
     const val BASE_URL = "https://erdetdekning.no/tiles"
     const val SOURCE_ID = "coverage"
-    const val MIN_ZOOM = 5
 
     /** The finest zoom served, about 20 m per pixel; MapLibre overzooms past it. */
     const val NATIVE_ZOOM = 12
@@ -39,8 +39,8 @@ object CoverageTilesClient {
     @Volatile
     private var lastTile: Pair<String, RgbImage?>? = null
 
-    /** Coloured tiles for the map overlay. */
-    fun tileUrl(version: String) = "$BASE_URL/$version/coverage/calls/{z}/{x}/{y}.png"
+    /** TileJSON for [operator]'s vector layer; each feature has a "call" level, 0 to 3. */
+    fun tileJsonUrl(operator: CoverageOperator) = "https://erdetdekning.no/maptiles/v1/${operator.tileLayer}.json?key=${BuildInfo.ERDETDEKNING_MAP_KEY}"
 
     suspend fun fetchVersion(): String? = try {
         val response = client.get("$BASE_URL/meta.json")

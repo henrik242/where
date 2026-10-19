@@ -84,6 +84,7 @@ jobs:
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
         echo "TRACKING_HINT=${{ github.actor != 'dependabot[bot]' && secrets.TRACKING_HINT || 'dependabot-dummy-tracking-hint' }}" >> local.properties
+        echo "ERDETDEKNING_MAP_KEY=${{ secrets.ERDETDEKNING_MAP_KEY }}" >> local.properties
 
     - name: Create google-services.json
       run: |

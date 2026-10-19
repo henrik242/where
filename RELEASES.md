@@ -13,6 +13,8 @@ tag dates.
   reaching 100% while elevation data is still downloading.
 - Larger compass with degree marks, cardinal letters and heading in degrees. Turn it on in
   Settings or by long pressing the compass.
+- Choose which operator the coverage map shows (Telenor, Telia, Ice or the best of all) in
+  Settings. The crosshair shows whether 112 is likely reachable, plus the chosen operator.
 
 ## v630 (2026-10-16)
 

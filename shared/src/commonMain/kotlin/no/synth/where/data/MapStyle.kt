@@ -43,8 +43,8 @@ object MapStyle {
         showWaymarkedTrails: Boolean = false,
         nveOverlay: NveOverlay? = null,
         showOsmPaths: Boolean = false,
-        /** Shows the coverage overlay from this dataset version; null hides it. */
-        coverageVersion: String? = null,
+        /** Shows this operator's coverage overlay; null hides it. */
+        coverageOperator: CoverageOperator? = null,
         glyphsUrl: String = DEFAULT_GLYPHS_URL,
     ): String {
         data class TileSource(val id: String, val tiles: String, val attribution: String, val maxZoom: Int? = null)
@@ -99,16 +99,12 @@ object MapStyle {
       "maxzoom": ${NveOverlay.MAX_ZOOM}
     }""")
             }
-            if (coverageVersion != null) {
+            if (coverageOperator != null) {
                 append(""",
     "${CoverageTilesClient.SOURCE_ID}": {
-      "type": "raster",
-      "scheme": "xyz",
-      "tiles": ["${CoverageTilesClient.tileUrl(coverageVersion)}"],
-      "tileSize": 256,
-      "attribution": "Dekning: <a href='https://erdetdekning.no'>erdetdekning.no</a>",
-      "minzoom": ${CoverageTilesClient.MIN_ZOOM},
-      "maxzoom": ${CoverageTilesClient.NATIVE_ZOOM}
+      "type": "vector",
+      "url": "${CoverageTilesClient.tileJsonUrl(coverageOperator)}",
+      "attribution": "Dekning: <a href='https://erdetdekning.no'>erdetdekning.no</a>"
     }""")
             }
             if (showOsmPaths) {
@@ -149,15 +145,19 @@ object MapStyle {
       }
     }""")
             }
-            if (coverageVersion != null) {
-                // The tiles carry their own alpha; this just keeps the base map readable through them.
+            if (coverageOperator != null) {
+                // erdetdekning.no's call colours, toned down so the base map stays readable.
                 append(""",
     {
       "id": "${CoverageTilesClient.SOURCE_ID}-layer",
-      "type": "raster",
+      "type": "fill",
       "source": "${CoverageTilesClient.SOURCE_ID}",
+      "source-layer": "${coverageOperator.tileLayer}",
+      "filter": [">", ["get", "call"], 0],
       "paint": {
-        "raster-opacity": 0.8
+        "fill-antialias": false,
+        "fill-color": ["match", ["get", "call"], 1, "rgba(150,220,150,0.6)", 2, "rgba(60,170,75,0.67)", "rgba(10,110,40,0.73)"],
+        "fill-opacity": 0.8
       }
     }""")
             }

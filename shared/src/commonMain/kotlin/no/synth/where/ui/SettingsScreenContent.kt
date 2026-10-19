@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import no.synth.where.data.CoverageOperator
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
@@ -44,6 +45,8 @@ import no.synth.where.resources.back
 import no.synth.where.resources.large_compass
 import no.synth.where.resources.large_compass_description
 import no.synth.where.resources.coord_format_dms
+import no.synth.where.resources.coverage_operator
+import no.synth.where.resources.coverage_operator_all
 import no.synth.where.resources.coord_format_latlng
 import no.synth.where.resources.coord_format_mgrs
 import no.synth.where.resources.coord_format_utm
@@ -107,6 +110,8 @@ fun SettingsScreenContent(
     onCoordFormatSelected: (CoordFormat) -> Unit,
     largeCompass: Boolean = false,
     onLargeCompassChange: (Boolean) -> Unit = {},
+    coverageOperator: CoverageOperator = CoverageOperator.ALL,
+    onCoverageOperatorSelected: (CoverageOperator) -> Unit = {},
     onAttributionsClick: () -> Unit,
     onReleaseNotesClick: () -> Unit,
     onGuideClick: () -> Unit,
@@ -401,6 +406,49 @@ fun SettingsScreenContent(
                                     onClick = {
                                         coordExpanded = false
                                         onCoordFormatSelected(option.format)
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider()
+                }
+
+                run {
+                    val allLabel = stringResource(Res.string.coverage_operator_all)
+                    fun label(operator: CoverageOperator) = operator.displayName ?: allLabel
+                    var operatorExpanded by remember { mutableStateOf(false) }
+
+                    Box {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { operatorExpanded = true }
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.coverage_operator),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = label(coverageOperator),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = operatorExpanded,
+                            onDismissRequest = { operatorExpanded = false }
+                        ) {
+                            CoverageOperator.entries.forEach { operator ->
+                                DropdownMenuItem(
+                                    text = { Text(label(operator)) },
+                                    onClick = {
+                                        operatorExpanded = false
+                                        onCoverageOperatorSelected(operator)
                                     }
                                 )
                             }

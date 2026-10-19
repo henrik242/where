@@ -6,4 +6,5 @@ data class CrosshairInfo(
     val isLoading: Boolean = false,
     /** Null while the coverage overlay is hidden; loads on its own so terrain isn't held up. */
     val coverage: CoverageLookup? = null,
+    val coverageOperator: CoverageOperator = CoverageOperator.ALL,
 )

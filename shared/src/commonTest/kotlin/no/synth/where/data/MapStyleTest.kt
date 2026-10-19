@@ -151,7 +151,7 @@ class MapStyleTest {
                 showWaymarkedTrails = true,
                 nveOverlay = NveOverlay.STEEPNESS_RUNOUT,
                 showOsmPaths = true,
-                coverageVersion = "v",
+                coverageOperator = CoverageOperator.ALL,
             )
         )
         assertEquals(
@@ -175,7 +175,7 @@ class MapStyleTest {
                             showWaymarkedTrails = overlays,
                             nveOverlay = nveOverlay,
                             showOsmPaths = overlays,
-                            coverageVersion = "v".takeIf { overlays },
+                            coverageOperator = CoverageOperator.TELIA.takeIf { overlays },
                         )
                     )
                     val declared = style.getValue("sources").jsonObject.keys
@@ -273,15 +273,18 @@ class MapStyleTest {
     }
 
     @Test
-    fun coverageOverlayUsesTheVersionedCallTiles() {
-        val source = parse(MapStyle.getStyle(coverageVersion = "2026-10-06"))
-            .source(CoverageTilesClient.SOURCE_ID)
-        assertEquals(
-            "https://erdetdekning.no/tiles/2026-10-06/coverage/calls/{z}/{x}/{y}.png",
-            source.getValue("tiles").jsonArray.single().jsonPrimitive.content
-        )
-        assertEquals(5, source.getValue("minzoom").jsonPrimitive.int)
-        assertEquals(12, source.getValue("maxzoom").jsonPrimitive.int)
+    fun coverageOverlayUsesTheOperatorsVectorLayer() {
+        val style = parse(MapStyle.getStyle(coverageOperator = CoverageOperator.TELENOR))
+        val source = style.source(CoverageTilesClient.SOURCE_ID)
+        assertTrue(source.getValue("url").jsonPrimitive.content.startsWith("https://erdetdekning.no/maptiles/v1/telenor.json?key="))
         assertTrue("Dekning: " in source.getValue("attribution").jsonPrimitive.content, "Needs the required credit")
+        val layer = style.layers().single { it.id() == "${CoverageTilesClient.SOURCE_ID}-layer" }
+        assertEquals("telenor", layer.getValue("source-layer").jsonPrimitive.content)
+    }
+
+    @Test
+    fun allOperatorsUseTheCombinedLayer() {
+        val style = parse(MapStyle.getStyle(coverageOperator = CoverageOperator.ALL))
+        assertTrue("/combined.json?" in style.source(CoverageTilesClient.SOURCE_ID).getValue("url").jsonPrimitive.content)
     }
 }
