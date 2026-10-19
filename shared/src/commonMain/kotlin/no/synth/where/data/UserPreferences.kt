@@ -104,6 +104,9 @@ class UserPreferences(
     val showCoverage: StateFlow<Boolean> = _showCoverage.asStateFlow()
 
     /** Last known erdetdekning.no dataset version, so the overlay works before (or without) a lookup. */
+    private val _coverageOperator = MutableStateFlow(CoverageOperator.ALL)
+    val coverageOperator: StateFlow<CoverageOperator> = _coverageOperator.asStateFlow()
+
     private val _coverageTilesVersion = MutableStateFlow(CoverageTilesClient.FALLBACK_VERSION)
     val coverageTilesVersion: StateFlow<String> = _coverageTilesVersion.asStateFlow()
 
@@ -171,6 +174,7 @@ class UserPreferences(
                     NveOverlay.entries.find { it.name == storedNveOverlay }
                 }
                 _showCoverage.value = prefs[SHOW_COVERAGE] ?: false
+                _coverageOperator.value = CoverageOperator.entries.firstOrNull { it.name == prefs[COVERAGE_OPERATOR] } ?: CoverageOperator.ALL
                 _coverageTilesVersion.value = prefs[COVERAGE_TILES_VERSION] ?: CoverageTilesClient.FALLBACK_VERSION
                 _showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
                 _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
@@ -334,6 +338,11 @@ class UserPreferences(
     fun updateShowCoverage(value: Boolean) {
         _showCoverage.value = value
         scope.launch { dataStore.edit { it[SHOW_COVERAGE] = value } }
+    }
+
+    fun updateCoverageOperator(value: CoverageOperator) {
+        _coverageOperator.value = value
+        scope.launch { dataStore.edit { it[COVERAGE_OPERATOR] = value.name } }
     }
 
     fun updateCoverageTilesVersion(value: String) {
@@ -591,6 +600,7 @@ class UserPreferences(
         private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
         private val NVE_OVERLAY = stringPreferencesKey("nve_overlay")
         private val SHOW_COVERAGE = booleanPreferencesKey("show_coverage")
+        private val COVERAGE_OPERATOR = stringPreferencesKey("coverage_operator")
         private val COVERAGE_TILES_VERSION = stringPreferencesKey("coverage_tiles_version")
 
         // Read-only legacy key: superseded by NVE_OVERLAY, still read to migrate old installs.

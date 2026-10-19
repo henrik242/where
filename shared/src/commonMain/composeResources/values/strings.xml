@@ -65,6 +65,8 @@
     <string name="steepness_nve">Steepness (NVE)</string>
     <string name="steepness_runout_nve">Steepness + Runout (NVE)</string>
     <string name="mobile_coverage">Mobile coverage</string>
+    <string name="coverage_operator">Coverage map provider</string>
+    <string name="coverage_operator_all">All (best coverage)</string>
     <string name="coverage_112_likely">112: likely possible</string>
     <string name="coverage_112_weak">112: weak signal</string>
     <string name="coverage_112_unlikely">112: likely not possible</string>

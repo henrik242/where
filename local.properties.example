@@ -10,6 +10,10 @@
 # Must match TRACKING_HINT on the server
 TRACKING_HINT=your-secret-key-here
 
+# erdetdekning.no map layer key for the mobile coverage overlay (optional;
+# without it the overlay has no tiles). Request one at https://erdetdekning.no/om.html#api
+# ERDETDEKNING_MAP_KEY=your-map-key
+
 SIGNING_STORE_FILE=/Users/example/keystores/example.jks
 SIGNING_STORE_PASSWORD=example password
 SIGNING_KEY_ALIAS=where

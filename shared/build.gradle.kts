@@ -17,6 +17,10 @@ abstract class GenerateBuildInfoTask : DefaultTask() {
     @get:Input
     abstract val trackingHint: Property<String>
 
+    /** erdetdekning.no map layer key; empty leaves the coverage overlay without tiles. */
+    @get:Input
+    abstract val erdetdekningMapKey: Property<String>
+
     /**
      * Commit to stamp into the build. CI checks out a pull request as GitHub's own merge commit,
      * which exists on no branch, so the workflow passes the pushed commit instead; locally this is
@@ -58,6 +62,7 @@ abstract class GenerateBuildInfoTask : DefaultTask() {
             |    const val BUILD_DATE = "$buildDate"
             |    const val VERSION_INFO = "$gitCommitCount.$gitShortSha $buildDate"
             |    const val TRACKING_HINT = "${trackingHint.get()}"
+            |    const val ERDETDEKNING_MAP_KEY = "${erdetdekningMapKey.get()}"
             |}
             """.trimMargin()
         )
@@ -80,9 +85,19 @@ val trackingSecret = providers.environmentVariable("TRACKING_HINT").orElse(
     }
 )
 
+// Optional, unlike TRACKING_HINT, so forks, Dependabot and CodeQL build without it.
+val erdetdekningMapKeySource = providers.environmentVariable("ERDETDEKNING_MAP_KEY").orElse(
+    providers.provider {
+        val props = Properties()
+        if (localPropertiesFile.exists()) props.load(localPropertiesFile.inputStream())
+        props.getProperty("ERDETDEKNING_MAP_KEY").orEmpty()
+    }
+)
+
 val generateBuildInfo = tasks.register<GenerateBuildInfoTask>("generateBuildInfo") {
     outputDir.set(layout.buildDirectory.dir("generated/buildinfo"))
     trackingHint.set(trackingSecret)
+    erdetdekningMapKey.set(erdetdekningMapKeySource)
     describedRef.set(
         providers.environmentVariable("BUILD_GIT_SHA")
             .orNull?.trim()?.takeIf { it.isNotEmpty() } ?: "HEAD"

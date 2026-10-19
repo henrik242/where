@@ -117,6 +117,7 @@ fun MapScreen(
     val nveOverlay by userPreferences.nveOverlay.collectAsState()
     val showCoverage by userPreferences.showCoverage.collectAsState()
     val coverageTilesVersion by userPreferences.coverageTilesVersion.collectAsState()
+    val coverageOperator by userPreferences.coverageOperator.collectAsState()
     val showCoordGrid by userPreferences.showCoordGrid.collectAsState()
     val crosshairActive by userPreferences.crosshairActive.collectAsState()
     val coordFormat by userPreferences.coordFormat.collectAsState()
@@ -321,20 +322,20 @@ fun MapScreen(
         }
     }
 
-    // The coverage tile URLs contain the dataset version, so look it up whenever the overlay is shown.
+    // The crosshair lookup tiles live under the dataset version, so look it up whenever the overlay is shown.
     LaunchedEffect(withCoverage) {
         if (withCoverage) {
             CoverageTilesClient.fetchVersion()?.let { userPreferences.updateCoverageTilesVersion(it) }
         }
     }
 
-    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay, withCoverage, coverageTilesVersion) {
+    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay, withCoverage, coverageOperator) {
         MapStyle.getStyle(
             selectedLayer = selectedLayer,
             showWaymarkedTrails = showWaymarkedTrails,
             nveOverlay = nveOverlay,
             showOsmPaths = showOsmPaths,
-            coverageVersion = coverageTilesVersion.takeIf { withCoverage },
+            coverageOperator = coverageOperator.takeIf { withCoverage },
             glyphsUrl = platform.glyphsUrl ?: MapStyle.DEFAULT_GLYPHS_URL,
         )
     }
@@ -450,7 +451,7 @@ fun MapScreen(
         showCoverage = showCoverage,
         showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
-        crosshairInfo = crosshairInfo,
+        crosshairInfo = crosshairInfo.copy(coverageOperator = coverageOperator),
         centerLatLng = centerLatLng,
         userLocation = fix?.latLng,
         coordFormat = coordFormat,

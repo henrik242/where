@@ -37,6 +37,7 @@ Leave the What's New inputs blank to use `fastlane/whats_new/en.txt` and `no.txt
 | Secret | Description | How to create |
 |--------|-------------|---------------|
 | `TRACKING_HINT` | HMAC secret for tracking requests | |
+| `ERDETDEKNING_MAP_KEY` | erdetdekning.no map layer key for the coverage overlay | Request one at https://erdetdekning.no/om.html#api |
 | `GOOGLE_SERVICES_JSON` | Firebase Android config (base64) | Download from Firebase Console, base64 encode |
 | `GOOGLE_SERVICE_INFO_PLIST` | Firebase iOS config (base64) | Download from Firebase Console, base64 encode |
 | `GOOGLE_SERVICE_INFO_DEBUG_PLIST` | Firebase iOS debug config (base64) | Download from Firebase Console, base64 encode |

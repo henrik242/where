@@ -16,6 +16,12 @@ class CoverageAtPointTest {
     }
 
     @Test
+    fun levelForOperator() {
+        assertEquals(2, CoverageAtPoint(1, 2, 3).levelFor(CoverageOperator.TELIA))
+        assertEquals(3, CoverageAtPoint(1, 2, 3).levelFor(CoverageOperator.ALL))
+    }
+
+    @Test
     fun bestLevelIsTheBestOperator() {
         assertEquals(0, CoverageAtPoint(0, 0, 0).bestLevel)
         assertEquals(2, CoverageAtPoint(1, 0, 2).bestLevel)

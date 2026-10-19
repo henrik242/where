@@ -47,6 +47,7 @@ jobs:
     - name: Validate secrets
       env:
         TRACKING_HINT: ${{ secrets.TRACKING_HINT }}
+        ERDETDEKNING_MAP_KEY: ${{ secrets.ERDETDEKNING_MAP_KEY }}
         GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
         GOOGLE_SERVICE_INFO_DEBUG_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_DEBUG_PLIST }}
         GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
@@ -63,6 +64,7 @@ jobs:
       run: |
         v=".github/verify-secret.sh"
         $v nonempty TRACKING_HINT
+        $v nonempty ERDETDEKNING_MAP_KEY
         $v base64 GOOGLE_SERVICE_INFO_PLIST
         $v base64 GOOGLE_SERVICE_INFO_DEBUG_PLIST
         $v json GOOGLE_SERVICES_JSON
@@ -106,9 +108,11 @@ jobs:
     - name: Create local.properties
       env:
         TRACKING_HINT: ${{ secrets.TRACKING_HINT }}
+        ERDETDEKNING_MAP_KEY: ${{ secrets.ERDETDEKNING_MAP_KEY }}
       run: |
         echo "sdk.dir=$ANDROID_HOME" > local.properties
         echo "TRACKING_HINT=$TRACKING_HINT" >> local.properties
+        echo "ERDETDEKNING_MAP_KEY=$ERDETDEKNING_MAP_KEY" >> local.properties
 
     - name: Create GoogleService-Info.plist
       env:

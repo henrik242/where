@@ -33,7 +33,7 @@ a Developer ID Application certificate, which the App Store distribution certifi
   the Developer ID Application cert + private key, and its export password.
 - `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT`: App Store Connect API key for `notarytool`
   (shared with the iOS workflow; `ASC_KEY_CONTENT` is base64 of the `.p8`).
-- `TRACKING_HINT`, `GOOGLE_SERVICES_JSON`: as for the other builds (the Android `:app` module is
+- `TRACKING_HINT`, `ERDETDEKNING_MAP_KEY`, `GOOGLE_SERVICES_JSON`: as for the other builds (the Android `:app` module is
   configured as part of the build graph).
 
 Entitlements for the hardened runtime are in `desktop/packaging/entitlements.plist` (JIT, unsigned

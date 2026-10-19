@@ -9,12 +9,25 @@ sealed interface CoverageLookup {
     data class Found(val coverage: CoverageAtPoint?) : CoverageLookup
 }
 
+/** Which operator the coverage overlay shows; [ALL] shows the best of them. */
+enum class CoverageOperator(val displayName: String?, val tileLayer: String) {
+    ALL(null, "combined"),
+    TELENOR("Telenor", "telenor"),
+    TELIA("Telia", "telia"),
+    ICE("Ice", "ice"),
+}
+
 /** Call coverage per operator on erdetdekning.no's scale: 0 none, 1 weak, 2 good, 3 very good. */
 data class CoverageAtPoint(val telenor: Int, val telia: Int, val ice: Int) {
-    val operators: List<Pair<String, Int>> get() = listOf("Telenor" to telenor, "Telia" to telia, "Ice" to ice)
-
     /** Emergency calls use any available network, so the best operator decides. */
     val bestLevel: Int get() = maxOf(telenor, telia, ice)
+
+    fun levelFor(operator: CoverageOperator): Int = when (operator) {
+        CoverageOperator.ALL -> bestLevel
+        CoverageOperator.TELENOR -> telenor
+        CoverageOperator.TELIA -> telia
+        CoverageOperator.ICE -> ice
+    }
 
     companion object {
         private const val OUTSIDE_NORWAY = 0x80

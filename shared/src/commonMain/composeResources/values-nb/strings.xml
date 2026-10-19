@@ -65,6 +65,8 @@
     <string name="steepness_nve">Bratthet (NVE)</string>
     <string name="steepness_runout_nve">Bratthet + skredutløp (NVE)</string>
     <string name="mobile_coverage">Mobildekning</string>
+    <string name="coverage_operator">Operatør i dekningskartet</string>
+    <string name="coverage_operator_all">Alle (beste dekning)</string>
     <string name="coverage_112_likely">112: trolig mulig</string>
     <string name="coverage_112_weak">112: svak dekning</string>
     <string name="coverage_112_unlikely">112: trolig ikke mulig</string>
