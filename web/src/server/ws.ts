@@ -10,6 +10,9 @@ export interface WsData {
 }
 
 export const websocketHandlers: WebSocketHandler<WsData> = {
+  // Only negotiates; a send must opt in with compress=true. The app doesn't negotiate, browsers do.
+  perMessageDeflate: true,
+
   open() {
     console.log('WebSocket client connected');
   },
@@ -63,5 +66,6 @@ function handleSubscribe(
   if (isAdmin) {
     payload.sessionStats = trackStore.getSessionStats();
   }
-  ws.send(JSON.stringify(payload));
+  // Whole tracks: worth compressing, unlike the small per-point broadcasts.
+  ws.send(JSON.stringify(payload), true);
 }

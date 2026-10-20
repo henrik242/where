@@ -120,8 +120,10 @@ fun MapScreenContent(
     // Follow friend state
     followedFriends: List<FollowedFriend> = emptyList(),
     isFollowConnecting: Boolean = false,
-    onFollowBannerClick: (clientId: String?) -> Unit = {},
+    onFollowBannerClick: (clientId: String) -> Unit = {},
     onStopFollowing: () -> Unit = {},
+    onSetNickname: (clientId: String, nickname: String) -> Unit = { _, _ -> },
+    onUnfollow: (String) -> Unit = {},
     // Shared-point move mode
     isMovingSharedPoint: Boolean = false,
     onCancelMovePoint: () -> Unit = {},
@@ -245,6 +247,8 @@ fun MapScreenContent(
                 isFollowConnecting = isFollowConnecting,
                 onFollowBannerClick = onFollowBannerClick,
                 onStopFollowing = onStopFollowing,
+                onSetNickname = onSetNickname,
+                onUnfollow = onUnfollow,
                 isMovingSharedPoint = isMovingSharedPoint,
                 onCancelMovePoint = onCancelMovePoint
             )

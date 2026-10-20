@@ -18,7 +18,12 @@ tag dates.
   switch operator.
 - Saved and shared points are easier to tap when zoomed out.
 - Saving a point turns on the saved points overlay so the new point shows.
+- Tap a friend's name in the map's following banner to show them, set a nickname or stop
+  following them. Tapping the banner opens Online tracking.
+- Online tracking keeps followed and recent friends in one list with a follow button, and rename
+  or forget from the menu. Give a nickname while adding a friend.
 - Fixed an Android startup crash on devices with an incomplete Android 14 framework.
+- Live sharing uses much less mobile data.
 
 ## v633 (2026-10-16)
 

@@ -9,7 +9,6 @@ import { enrichTrack, getViewerCount } from './tracking';
 const STRAVA_APP_REDIRECT = 'where://strava/connected';
 
 const CORS_HEADERS = {
-  'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers':
@@ -25,7 +24,14 @@ export interface ApiDeps {
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), { status, headers: CORS_HEADERS });
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  });
+}
+
+function noContent(): Response {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
 /**
@@ -39,7 +45,7 @@ function stravaRedirect(url: URL): Response {
 
 function isAuthorized(
   req: Request,
-  track: Track,
+  track: Pick<Track, 'userId'>,
   configuredAdminKey: string | undefined
 ): boolean {
   const clientId = req.headers.get('X-Client-Id');
@@ -160,7 +166,7 @@ function addPoint(
     return jsonResponse({ error: 'Invalid point data' }, 400);
   }
 
-  const track = store.getTrack(trackId);
+  const track = store.getTrackInfo(trackId);
   if (!track) return jsonResponse({ error: 'Track not found' }, 404);
 
   if (!isAuthorized(req, track, getAdminKey())) {
@@ -174,7 +180,7 @@ function addPoint(
   };
   if (wasInactive) updates.endTime = undefined;
 
-  const updatedTrack = store.addPoint(trackId, point, updates);
+  store.addPoint(trackId, point, updates);
 
   // Broadcast reactivation before the point update so clients see the track as active
   if (wasInactive) {
@@ -183,7 +189,7 @@ function addPoint(
       trackId,
       userId: track.userId,
       name: track.name,
-      color: updatedTrack?.color ?? track.color,
+      color: track.color,
     }, track.userId);
   }
 
@@ -193,10 +199,11 @@ function addPoint(
     userId: track.userId,
     name: track.name,
     point,
-    color: updatedTrack?.color ?? track.color,
+    color: track.color,
   }, track.userId);
 
-  return jsonResponse(updatedTrack);
+  // No body: echoing the whole track on every fix made a trip's traffic grow quadratically.
+  return noContent();
 }
 
 /**
@@ -216,14 +223,14 @@ function stopTrack(
   req: Request
 ): Response {
   const { store, broadcast, getAdminKey } = deps;
-  const track = store.getTrack(trackId);
+  const track = store.getTrackInfo(trackId);
   if (!track) return jsonResponse({ error: 'Track not found' }, 404);
 
   if (!isAuthorized(req, track, getAdminKey())) {
     return jsonResponse({ error: 'Unauthorized' }, 401);
   }
 
-  const updatedTrack = store.updateTrack(trackId, {
+  store.updateTrack(trackId, {
     isActive: false,
     endTime: Date.now(),
   });
@@ -231,7 +238,7 @@ function stopTrack(
   broadcast({ type: 'track_stopped', trackId, userId: track.userId }, track.userId);
   removeSharedPointsIfIdle(deps, track.userId);
 
-  return jsonResponse(updatedTrack);
+  return noContent();
 }
 
 function deleteTrack(
@@ -240,7 +247,7 @@ function deleteTrack(
   req: Request
 ): Response {
   const { store, broadcast, getAdminKey } = deps;
-  const track = store.getTrack(trackId);
+  const track = store.getTrackInfo(trackId);
   if (!track) return jsonResponse({ error: 'Track not found' }, 404);
 
   if (!isAuthorized(req, track, getAdminKey())) {
@@ -252,7 +259,7 @@ function deleteTrack(
   broadcast({ type: 'track_deleted', trackId, userId: track.userId }, track.userId);
   removeSharedPointsIfIdle(deps, track.userId);
 
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
+  return noContent();
 }
 
 const DEFAULT_POINT_COLOR = '#FF5722';
@@ -318,7 +325,7 @@ function deleteSharedPoint(
 
   broadcast({ type: 'point_removed', id: pointId, userId: existing.userId }, existing.userId);
 
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
+  return noContent();
 }
 
 export function createApiHandler(deps: ApiDeps) {
@@ -327,7 +334,7 @@ export function createApiHandler(deps: ApiDeps) {
     const path = url.pathname;
 
     if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+      return noContent();
     }
 
     let parsedBody: unknown;

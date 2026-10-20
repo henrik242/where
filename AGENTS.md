@@ -44,7 +44,7 @@ map rendering and live-location polling are per-platform. Concretely:
 
 - Keep commit messages and code comments brief and to the point. No essays.
 - No Co-Authored-By trailers or other AI attribution in commits or PRs.
-- Commit as `henrik242 <henrik242@users.noreply.github.com>`, never as Claude or another AI identity.
+- Never commit as Claude or another AI identity.
 - No long dashes, no emojis.
 - Never reply to or resolve PR comments unless explicitly asked to.
 
