@@ -430,19 +430,32 @@ describe('TrackStore', () => {
       store.saveTrack(track);
 
       const point = { lat: 59.9, lon: 10.7, timestamp: Date.now() };
-      const updated = store.addPoint('addpoint-test', point, {
-        lastUpdateTime: Date.now(),
-      });
+      expect(store.addPoint('addpoint-test', point, { lastUpdateTime: Date.now() })).toBe(true);
 
-      expect(updated).toBeDefined();
+      const updated = store.getTrack('addpoint-test');
       expect(updated?.points).toHaveLength(1);
       expect(updated?.points[0]?.lat).toBe(59.9);
     });
 
-    test('should return undefined for non-existent track', () => {
+    test('should return false for non-existent track', () => {
       const point = { lat: 59.9, lon: 10.7, timestamp: Date.now() };
-      const result = store.addPoint('nonexistent', point);
-      expect(result).toBeUndefined();
+      expect(store.addPoint('nonexistent', point)).toBe(false);
+    });
+
+    test('getTrackInfo should return the track without points', () => {
+      store.saveTrack({
+        id: 'info-test',
+        userId: 'user1',
+        name: 'Info',
+        points: [{ lat: 59.9, lon: 10.7, timestamp: Date.now() }],
+        startTime: Date.now(),
+        isActive: true,
+      });
+
+      const info = store.getTrackInfo('info-test');
+      expect(info?.userId).toBe('user1');
+      expect(info).not.toHaveProperty('points');
+      expect(store.getTrackInfo('nonexistent')).toBeUndefined();
     });
   });
 

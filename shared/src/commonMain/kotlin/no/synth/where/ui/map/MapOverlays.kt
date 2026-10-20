@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -75,6 +77,8 @@ import no.synth.where.data.navigation.NavigationProgress
 import no.synth.where.data.routing.PlannedRoute
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import no.synth.where.ui.NicknameDialog
+import no.synth.where.ui.nicknameActionLabel
 import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.formatDistance
 import no.synth.where.util.formatElapsed
@@ -696,17 +700,21 @@ fun FollowingFriendBanner(
     isConnecting: Boolean,
     onClick: () -> Unit,
     onFriendClick: (String) -> Unit,
+    onEditNickname: (String) -> Unit,
+    onUnfollow: (String) -> Unit,
     onClose: () -> Unit
 ) {
     if (friends.isEmpty()) return
+    val dimmed = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+    val clickLabel = stringResource(Res.string.go_to_online_tracking)
     Card(
-        modifier = modifier.clickable { onClick() },
+        modifier = modifier.clickable(onClickLabel = clickLabel) { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f)
         )
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -715,73 +723,43 @@ fun FollowingFriendBanner(
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (friends.size == 1) {
-                        stringResource(Res.string.following_friend, friends.first().displayName)
+                        stringResource(Res.string.following)
                     } else {
                         stringResource(Res.string.following_friends, friends.size)
                     },
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                if (isConnecting) {
-                    Text(
-                        text = stringResource(Res.string.following_connecting),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                } else if (friends.size == 1) {
-                    Text(
-                        text = if (friends.first().isActive) {
-                            stringResource(Res.string.following_live)
-                        } else {
-                            stringResource(Res.string.following_no_tracks)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
-                } else {
-                    // One chip per friend in their map color, dimmed while they aren't sending, so
-                    // the banner doubles as the legend for the lines on the map. Tapping one zooms
-                    // to that friend; the banner itself fits them all, which is no help when they
-                    // are in different parts of the country.
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        for (friend in friends) {
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .clickable { onFriendClick(friend.clientId) }
-                                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Box(
-                                    Modifier
-                                        .size(8.dp)
-                                        .background(
-                                            parseHexColor(friend.color)
-                                                .copy(alpha = if (friend.isActive) 1f else 0.4f),
-                                            CircleShape
-                                        )
-                                )
-                                Text(
-                                    text = friend.displayName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
+                // One chip per friend in their map color, doubling as the legend for the map lines.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (friend in friends) {
+                        key(friend.clientId) {
+                            FriendChip(
+                                friend = friend,
+                                onShowOnMap = { onFriendClick(friend.clientId) },
+                                onEditNickname = { onEditNickname(friend.clientId) },
+                                onUnfollow = { onUnfollow(friend.clientId) }
+                            )
                         }
+                    }
+                    val status = when {
+                        isConnecting -> stringResource(Res.string.following_connecting)
+                        friends.size > 1 -> null
+                        friends.first().isActive -> stringResource(Res.string.following_live)
+                        else -> stringResource(Res.string.following_no_tracks)
+                    }
+                    if (status != null) {
+                        Text(text = status, style = MaterialTheme.typography.bodySmall, color = dimmed)
                     }
                 }
             }
-            IconButton(onClick = onClose) {
+            IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
                 Icon(
                     painterResource(Res.drawable.ic_close),
                     contentDescription = if (friends.size > 1) {
@@ -792,6 +770,76 @@ fun FollowingFriendBanner(
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
+        }
+    }
+}
+
+/** A friend's name, dimmed while they aren't sending; tapping it opens their actions. */
+@Composable
+private fun FriendChip(
+    friend: FollowedFriend,
+    onShowOnMap: () -> Unit,
+    onEditNickname: () -> Unit,
+    onUnfollow: () -> Unit
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .clickable(role = Role.Button) { menuOpen = true }
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .background(
+                        parseHexColor(friend.color).copy(alpha = if (friend.isActive) 1f else 0.4f),
+                        CircleShape
+                    )
+            )
+            Text(
+                text = friend.displayName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.show_on_map)) },
+                leadingIcon = { Icon(painterResource(Res.drawable.ic_map), contentDescription = null) },
+                onClick = {
+                    menuOpen = false
+                    onShowOnMap()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(nicknameActionLabel(friend.nickname))) },
+                leadingIcon = { Icon(painterResource(Res.drawable.ic_edit), contentDescription = null) },
+                onClick = {
+                    menuOpen = false
+                    onEditNickname()
+                }
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        stringResource(Res.string.unfollow_friend, friend.displayName),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                leadingIcon = { Icon(painterResource(Res.drawable.ic_close), contentDescription = null) },
+                onClick = {
+                    menuOpen = false
+                    onUnfollow()
+                }
+            )
         }
     }
 }
@@ -1096,14 +1144,17 @@ fun BoxScope.MapOverlays(
     onSearchClose: () -> Unit,
     followedFriends: List<FollowedFriend> = emptyList(),
     isFollowConnecting: Boolean = false,
-    onFollowBannerClick: (clientId: String?) -> Unit = {},
+    onFollowBannerClick: (clientId: String) -> Unit = {},
     onStopFollowing: () -> Unit = {},
+    onSetNickname: (clientId: String, nickname: String) -> Unit = { _, _ -> },
+    onUnfollow: (String) -> Unit = {},
     liveShareUntilMillis: Long = 0L,
     isLiveSharing: Boolean = false,
     isMovingSharedPoint: Boolean = false,
     onCancelMovePoint: () -> Unit = {}
 ) {
     var confirmStopFollowing by remember { mutableStateOf(false) }
+    var nicknameEditId by remember { mutableStateOf<String?>(null) }
     // The track whose name banner + altitude chart are shown, or null when nothing is focused.
     val focusedTrack = viewingTracks.firstOrNull { it.id == focusedTrackId }
     // Non-null only while the focused track is being cropped; the header + crop chart then replace
@@ -1355,12 +1406,28 @@ fun BoxScope.MapOverlays(
                 .onSizeChanged { friendBannerHeight = with(density) { it.height.toDp() } },
             friends = followedFriends,
             isConnecting = isFollowConnecting,
-            onClick = { onFollowBannerClick(null) },
-            onFriendClick = { onFollowBannerClick(it) },
+            onClick = onOnlineTrackingClick,
+            onFriendClick = onFollowBannerClick,
+            onEditNickname = { nicknameEditId = it },
+            onUnfollow = onUnfollow,
             // Confirm before clearing 2+ friends, so an accidental tap doesn't wipe the whole
             // list. A single friend is unambiguous, so drop it directly.
             onClose = { if (followedFriends.size >= 2) confirmStopFollowing = true else onStopFollowing() }
         )
+    }
+    // Lives here rather than in the banner, so hiding the banner (e.g. for search) keeps the edit.
+    nicknameEditId?.let { id ->
+        val friend = followedFriends.find { it.clientId == id }
+        if (friend == null) {
+            LaunchedEffect(id) { nicknameEditId = null }
+        } else {
+            NicknameDialog(
+                clientId = id,
+                nickname = friend.nickname,
+                onSetNickname = onSetNickname,
+                onDismiss = { nicknameEditId = null }
+            )
+        }
     }
     if (confirmStopFollowing) {
         MapDialogs.ConfirmStopFollowingAllDialog(

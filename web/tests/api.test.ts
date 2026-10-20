@@ -1,5 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 import { createTestServer } from '../test-server';
+import { createApiHandler } from '../src/server/api';
+import { TrackStore } from '../src/server/store';
 import { readJson } from './helpers';
 
 let SERVER_URL: string;
@@ -248,10 +250,14 @@ describe('API Integration Tests', () => {
         })
       });
 
-      expect(response.status).toBe(200);
-      const data = await readJson(response);
-      expect(data.points).toHaveLength(1);
-      expect(data.points[0].lat).toBe(59.9139);
+      // Empty on purpose: apps post every fix, so echoing the track made a trip's traffic quadratic.
+      expect(response.status).toBe(204);
+      expect(await response.text()).toBe('');
+
+      const stored = await fetch(`${SERVER_URL}/api/tracks/${track.id}`).then(readJson);
+      expect(stored.isActive).toBe(true);
+      expect(stored.points).toHaveLength(1);
+      expect(stored.points[0].lat).toBe(59.9139);
     });
 
     test('should return 404 for non-existent track', async () => {
@@ -340,10 +346,11 @@ describe('API Integration Tests', () => {
         headers: { 'X-Client-Id': 'stoptest' }
       });
 
-      expect(response.status).toBe(200);
-      const data = await readJson(response);
-      expect(data.isActive).toBe(false);
-      expect(data.endTime).toBeDefined();
+      expect(response.status).toBe(204);
+
+      const stored = await fetch(`${SERVER_URL}/api/tracks/${track.id}`).then(readJson);
+      expect(stored.isActive).toBe(false);
+      expect(stored.endTime).toBeDefined();
     });
 
     test('should return 401 when stopping another users track', async () => {
@@ -640,3 +647,35 @@ describe('API Integration Tests', () => {
   });
 });
 
+describe('Adding a point to a stopped track', () => {
+  test('reactivates it and broadcasts track_started before track_update', async () => {
+    const store = new TrackStore(':memory:');
+    const messages: { type: string }[] = [];
+    const handleAPI = createApiHandler({
+      store,
+      verifySignature: async () => true,
+      broadcast: message => messages.push(message as { type: string }),
+      getAdminKey: () => undefined,
+    });
+    const send = (method: string, path: string, body: unknown = {}) =>
+      handleAPI(new Request(`http://x${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'reactivate' },
+        body: JSON.stringify(body),
+      }));
+
+    const track = await send('POST', '/api/tracks', { userId: 'reactivate', name: 'Paused' }).then(readJson);
+    await send('PUT', `/api/tracks/${track.id}/stop`);
+    messages.length = 0;
+
+    const response = await send('POST', `/api/tracks/${track.id}/points`, {
+      lat: 59.9, lon: 10.7, timestamp: Date.now(),
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Content-Type')).toBeNull();
+    expect(messages.map(m => m.type)).toEqual(['track_started', 'track_update']);
+    expect(store.getTrackInfo(track.id)?.isActive).toBe(true);
+    expect(store.getTrackInfo(track.id)?.endTime).toBeUndefined();
+  });
+});

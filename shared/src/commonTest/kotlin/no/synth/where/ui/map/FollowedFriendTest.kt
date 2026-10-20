@@ -27,6 +27,26 @@ class FollowedFriendTest {
     }
 
     @Test
+    fun recentListsHistoryFirstThenNicknamedIdsOnce() {
+        val recent = recentFollowIds(
+            history = listOf("bbb222", "aaa111"),
+            nicknames = mapOf("aaa111" to "Per", "ccc333" to "Kari"),
+            followed = emptyList()
+        )
+        assertEquals(listOf("bbb222", "aaa111", "ccc333"), recent)
+    }
+
+    @Test
+    fun recentLeavesOutFollowedIds() {
+        val recent = recentFollowIds(
+            history = listOf("aaa111", "bbb222"),
+            nicknames = mapOf("ccc333" to "Kari"),
+            followed = listOf("aaa111", "ccc333")
+        )
+        assertEquals(listOf("bbb222"), recent)
+    }
+
+    @Test
     fun marksWhoIsSending() {
         val ids = listOf("aaa111", "bbb222")
         val tracks = listOf(
