@@ -227,6 +227,14 @@ export class TrackStore {
     return rowToTrack(row, points);
   }
 
+  /** The track without its points, for per-fix lookups where loading them all would be O(points). */
+  getTrackInfo(trackId: string): Omit<Track, 'points'> | undefined {
+    const row = this.stmts.getTrack.get(trackId);
+    if (!row) return undefined;
+    const { points: _, ...info } = rowToTrack(row, []);
+    return info;
+  }
+
   private buildTracksWithPoints(rows: TrackRow[]): Track[] {
     if (rows.length === 0) return [];
     const trackIds = rows.map(r => r.id);
@@ -327,9 +335,10 @@ export class TrackStore {
     return this.getTrack(trackId);
   }
 
-  addPoint(trackId: string, point: TrackPoint, updates: Partial<Track> = {}): Track | undefined {
+  /** Returns false when the track doesn't exist. Doesn't reload the track: that is O(points) per fix. */
+  addPoint(trackId: string, point: TrackPoint, updates: Partial<Track> = {}): boolean {
     const existing = this.stmts.getTrack.get(trackId);
-    if (!existing) return undefined;
+    if (!existing) return false;
 
     this.db.transaction(() => {
       this.stmts.insertPoint.run(
@@ -361,7 +370,7 @@ export class TrackStore {
       }
     })();
 
-    return this.getTrack(trackId);
+    return true;
   }
 
   deleteTrack(trackId: string): boolean {
