@@ -1,11 +1,10 @@
 package no.synth.where.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,10 +19,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +38,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,12 +47,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
 import no.synth.where.data.LiveTrackingFollower.Companion.MAX_FOLLOWED
 import no.synth.where.ui.map.FollowedFriend
+import no.synth.where.ui.map.recentFollowIds
 import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.parseHexColor
 import org.jetbrains.compose.resources.painterResource
@@ -59,7 +62,7 @@ import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnlineTrackingScreenContent(
     isTrackingEnabled: Boolean,
@@ -85,16 +88,20 @@ fun OnlineTrackingScreenContent(
     onOpenLocationSettings: () -> Unit = {},
     followedFriends: List<FollowedFriend> = emptyList(),
     followClientIdInput: String = "",
+    followNicknameInput: String = "",
     followHistory: List<String> = emptyList(),
+    clientNicknames: Map<String, String> = emptyMap(),
     onFollowClientIdChange: (String) -> Unit = {},
+    onFollowNicknameChange: (String) -> Unit = {},
     onStartFollowing: () -> Unit = {},
+    onFollow: (String) -> Unit = {},
     onUnfollow: (String) -> Unit = {},
     onSetNickname: (clientId: String, nickname: String) -> Unit = { _, _ -> },
-    onStopFollowing: () -> Unit = {}
+    onForget: (String) -> Unit = {}
 ) {
     var showDurationDialog by remember { mutableStateOf(false) }
-    // The friend whose nickname is being edited, or null when the rename dialog is closed.
-    var nicknameEditFriend by remember { mutableStateOf<FollowedFriend?>(null) }
+    // The client id whose nickname is being edited, or null when the rename dialog is closed.
+    var nicknameEditId by remember { mutableStateOf<String?>(null) }
     var nowMillis by remember { mutableStateOf(currentTimeMillis()) }
     LaunchedEffect(liveShareUntilMillis) {
         while (liveShareUntilMillis > nowMillis) {
@@ -358,57 +365,6 @@ fun OnlineTrackingScreenContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    for (friend in followedFriends) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                Modifier
-                                    .size(12.dp)
-                                    .background(parseHexColor(friend.color), CircleShape)
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = friend.displayName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                // Keep the id visible when a nickname hides it, so the user can still
-                                // read off the code to share or compare.
-                                if (friend.nickname != null) {
-                                    Text(
-                                        text = friend.clientId,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            Text(
-                                text = if (friend.isActive) {
-                                    stringResource(Res.string.following_live)
-                                } else {
-                                    stringResource(Res.string.following_no_tracks)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            IconButton(onClick = { nicknameEditFriend = friend }) {
-                                Icon(
-                                    painterResource(Res.drawable.ic_edit),
-                                    contentDescription = stringResource(Res.string.edit_nickname, friend.clientId)
-                                )
-                            }
-                            IconButton(onClick = { onUnfollow(friend.clientId) }) {
-                                Icon(
-                                    painterResource(Res.drawable.ic_close),
-                                    contentDescription = stringResource(Res.string.unfollow_friend, friend.clientId)
-                                )
-                            }
-                        }
-                    }
-
                     if (followedFriends.size >= MAX_FOLLOWED) {
                         Text(
                             text = stringResource(Res.string.follow_max_reached, MAX_FOLLOWED),
@@ -441,34 +397,45 @@ fun OnlineTrackingScreenContent(
                                 Text(stringResource(Res.string.follow))
                             }
                         }
-                        val suggestions = followHistory.filter { id -> followedFriends.none { it.clientId == id } }
-                        if (suggestions.isNotEmpty()) {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                for (historyId in suggestions) {
-                                    Text(
-                                        text = historyId,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier
-                                            .clickable { onFollowClientIdChange(historyId) }
-                                            .padding(vertical = 12.dp, horizontal = 8.dp)
-                                    )
-                                }
-                            }
+                        // Naming while adding saves a trip to the menu; shown once the id is complete.
+                        if (followClientIdInput.length == 6) {
+                            OutlinedTextField(
+                                value = followNicknameInput,
+                                onValueChange = { onFollowNicknameChange(it.take(MAX_NICKNAME_LENGTH)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(Res.string.nickname_optional)) },
+                                singleLine = true
+                            )
                         }
                     }
 
-                    if (followedFriends.size > 1) {
-                        Button(
-                            onClick = onStopFollowing,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
+                    // Followed friends first, then recent and nicknamed ones, which can be renamed or
+                    // followed again without typing the id.
+                    val canFollowMore = followedFriends.size < MAX_FOLLOWED
+                    for (friend in followedFriends) {
+                        key(friend.clientId) {
+                            FriendRow(
+                                clientId = friend.clientId,
+                                nickname = friend.nickname,
+                                followed = friend,
+                                canFollow = true,
+                                onFollowButton = { onUnfollow(friend.clientId) },
+                                onEditNickname = { nicknameEditId = friend.clientId },
+                                onForget = { onForget(friend.clientId) }
                             )
-                        ) {
-                            Text(stringResource(Res.string.stop_following_all))
+                        }
+                    }
+                    for (id in recentFollowIds(followHistory, clientNicknames, followedFriends.map { it.clientId })) {
+                        key(id) {
+                            FriendRow(
+                                clientId = id,
+                                nickname = clientNicknames[id],
+                                followed = null,
+                                canFollow = canFollowMore,
+                                onFollowButton = { onFollow(id) },
+                                onEditNickname = { nicknameEditId = id },
+                                onForget = { onForget(id) }
+                            )
                         }
                     }
                 }
@@ -547,50 +514,12 @@ fun OnlineTrackingScreenContent(
         )
     }
 
-    nicknameEditFriend?.let { friend ->
-        var nameInput by remember(friend.clientId) { mutableStateOf(friend.nickname ?: "") }
-        AlertDialog(
-            onDismissRequest = { nicknameEditFriend = null },
-            title = { Text(stringResource(Res.string.set_nickname)) },
-            text = {
-                Column {
-                    Text(
-                        text = friend.clientId,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = nameInput,
-                        onValueChange = { nameInput = it },
-                        label = { Text(stringResource(Res.string.nickname)) },
-                        singleLine = true
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onSetNickname(friend.clientId, nameInput)
-                    nicknameEditFriend = null
-                }) {
-                    Text(stringResource(Res.string.save))
-                }
-            },
-            dismissButton = {
-                // Clearing is the dismiss slot only when there is a name to clear; otherwise Cancel.
-                if (friend.nickname != null) {
-                    TextButton(onClick = {
-                        onSetNickname(friend.clientId, "")
-                        nicknameEditFriend = null
-                    }) {
-                        Text(stringResource(Res.string.remove_nickname))
-                    }
-                } else {
-                    TextButton(onClick = { nicknameEditFriend = null }) {
-                        Text(stringResource(Res.string.cancel))
-                    }
-                }
-            }
+    nicknameEditId?.let { id ->
+        NicknameDialog(
+            clientId = id,
+            nickname = clientNicknames[id],
+            onSetNickname = onSetNickname,
+            onDismiss = { nicknameEditId = null }
         )
     }
 
@@ -663,3 +592,97 @@ private fun DurationOption(label: String, onClick: () -> Unit) {
     )
 }
 
+/** A known friend: [followed] when following them, else a recent or nicknamed id. */
+@Composable
+private fun FriendRow(
+    clientId: String,
+    nickname: String?,
+    followed: FollowedFriend?,
+    canFollow: Boolean,
+    onFollowButton: () -> Unit,
+    onEditNickname: () -> Unit,
+    onForget: () -> Unit
+) {
+    val name = nickname ?: clientId
+    val status = when {
+        followed == null -> null
+        followed.isActive -> stringResource(Res.string.following_live)
+        else -> stringResource(Res.string.following_no_tracks)
+    }
+    // The id stays visible under a nickname, so it can still be read off to share or compare.
+    val subtitle = listOfNotNull(clientId.takeIf { nickname != null }, status).joinToString(" \u00b7 ")
+    var menuOpen by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                Modifier
+                    .size(12.dp)
+                    .then(
+                        if (followed != null) {
+                            Modifier.background(parseHexColor(followed.color), CircleShape)
+                        } else {
+                            Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                        }
+                    )
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (followed != null) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (subtitle.isNotEmpty()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        if (followed != null) {
+            OutlinedButton(onClick = onFollowButton) {
+                Text(stringResource(Res.string.unfollow))
+            }
+        } else {
+            Button(onClick = onFollowButton, enabled = canFollow) {
+                Text(stringResource(Res.string.follow))
+            }
+        }
+        Box {
+            IconButton(onClick = { menuOpen = true }) {
+                Icon(
+                    painterResource(Res.drawable.ic_more_vert),
+                    contentDescription = stringResource(Res.string.friend_actions, name)
+                )
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(nicknameActionLabel(nickname))) },
+                    leadingIcon = { Icon(painterResource(Res.drawable.ic_edit), contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        onEditNickname()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.forget)) },
+                    leadingIcon = { Icon(painterResource(Res.drawable.ic_delete), contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        onForget()
+                    }
+                )
+            }
+        }
+    }
+}

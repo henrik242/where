@@ -33,6 +33,16 @@ fun followedFriends(
         )
     }
 
+/** Recently followed and nicknamed ids that aren't [followed] now, history first. */
+fun recentFollowIds(
+    history: List<String>,
+    nicknames: Map<String, String>,
+    followed: Collection<String>
+): List<String> {
+    val followedSet = followed.toSet()
+    return (history + nicknames.keys).distinct().filter { it !in followedSet }
+}
+
 /** Bounds of everything [clientId] has sent, or of every followed friend when it is null. */
 fun List<FriendTrack>.friendBounds(clientId: String? = null): LatLngBounds? =
     filter { clientId == null || it.clientId == clientId }.flatMap { it.points }.bounds()
