@@ -21,8 +21,8 @@ Backend component for the Where? Android navigation app. Provides live tracking 
     - `X-Admin-Key` - Secret key to view all tracks
 - `GET /api/tracks/:trackId` - Get specific track
 - `POST /api/tracks` - Create new track
-- `POST /api/tracks/:trackId/points` - Add point to track
-- `PUT /api/tracks/:trackId/stop` - Stop a track
+- `POST /api/tracks/:trackId/points` - Add point to track (204)
+- `PUT /api/tracks/:trackId/stop` - Stop a track (204)
 - `DELETE /api/tracks/:trackId` - Delete a track
 
 ### WebSocket
