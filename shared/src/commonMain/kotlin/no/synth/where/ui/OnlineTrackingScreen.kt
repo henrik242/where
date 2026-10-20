@@ -11,9 +11,9 @@ import kotlinx.coroutines.launch
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.UserPreferences
+import no.synth.where.data.forgetClient
 import no.synth.where.data.setNickname
 import no.synth.where.data.startFollowing
-import no.synth.where.data.stopFollowingAll
 import no.synth.where.data.unfollow
 import no.synth.where.resources.Res
 import no.synth.where.resources.share_tracking_message
@@ -30,6 +30,7 @@ class OnlineTrackingState(
     var clientId by mutableStateOf("")
         private set
     var followClientIdInput by mutableStateOf("")
+    var followNicknameInput by mutableStateOf("")
     var showRegenerateDialog by mutableStateOf(false)
     var showTrackingInfoDialog by mutableStateOf(false)
 
@@ -58,8 +59,13 @@ class OnlineTrackingState(
 
     /** Returns true when the id was added, so the caller can jump to the map. */
     fun startFollowing(): Boolean {
-        val added = startFollowing(userPreferences, follower, followClientIdInput, clientId)
-        if (added) followClientIdInput = ""
+        val id = followClientIdInput
+        val added = startFollowing(userPreferences, follower, id, clientId)
+        if (added) {
+            if (followNicknameInput.isNotBlank()) setNickname(userPreferences, follower, id, followNicknameInput)
+            followClientIdInput = ""
+            followNicknameInput = ""
+        }
         return added
     }
 }
@@ -126,11 +132,15 @@ fun OnlineTrackingScreen(
         onOpenLocationSettings = onOpenLocationSettings,
         followedFriends = followedFriends,
         followClientIdInput = state.followClientIdInput,
+        followNicknameInput = state.followNicknameInput,
         followHistory = followHistory,
+        clientNicknames = clientNicknames,
         onFollowClientIdChange = { state.followClientIdInput = it },
+        onFollowNicknameChange = { state.followNicknameInput = it },
+        onFollow = { startFollowing(prefs, state.follower, it, state.clientId) },
         onStartFollowing = { if (state.startFollowing()) onNavigateToMap() },
         onUnfollow = { unfollow(prefs, state.follower, it) },
         onSetNickname = { id, nickname -> setNickname(prefs, state.follower, id, nickname) },
-        onStopFollowing = { stopFollowingAll(prefs, state.follower) },
+        onForget = { forgetClient(prefs, state.follower, it) },
     )
 }

@@ -21,10 +21,12 @@ fun startFollowing(
 
 fun unfollow(userPreferences: UserPreferences, follower: LiveTrackingFollower, clientId: String) {
     userPreferences.removeFollowedClientId(clientId)
+    // Keeps the id in the friends list, so it can be switched back on.
+    userPreferences.addFollowHistoryEntry(clientId)
     follower.follow(userPreferences.followedClientIds.value, userPreferences.clientNicknames.value)
 }
 
-/** Sets (or clears, when [nickname] is blank) a followed client's local nickname and relabels the map. */
+/** Sets (or clears, when [nickname] is blank) a client's local nickname; relabels the map if followed. */
 fun setNickname(
     userPreferences: UserPreferences,
     follower: LiveTrackingFollower,
@@ -32,7 +34,18 @@ fun setNickname(
     nickname: String
 ) {
     userPreferences.setClientNickname(clientId, nickname)
-    follower.follow(userPreferences.followedClientIds.value, userPreferences.clientNicknames.value)
+    val followed = userPreferences.followedClientIds.value
+    if (clientId in followed) follower.follow(followed, userPreferences.clientNicknames.value)
+}
+
+/** Drops a client from the friends list: unfollows it and clears its history entry and nickname. */
+fun forgetClient(userPreferences: UserPreferences, follower: LiveTrackingFollower, clientId: String) {
+    if (clientId in userPreferences.followedClientIds.value) {
+        userPreferences.removeFollowedClientId(clientId)
+        follower.follow(userPreferences.followedClientIds.value, userPreferences.clientNicknames.value)
+    }
+    userPreferences.removeFollowHistoryEntry(clientId)
+    userPreferences.setClientNickname(clientId, "")
 }
 
 fun stopFollowingAll(userPreferences: UserPreferences, follower: LiveTrackingFollower) {

@@ -36,7 +36,9 @@ import no.synth.where.data.Track
 import no.synth.where.data.geo.LatLng
 import no.synth.where.data.geo.bounds
 import no.synth.where.data.resolveMapTap
+import no.synth.where.data.setNickname
 import no.synth.where.data.stopFollowingAll
+import no.synth.where.data.unfollow
 import no.synth.where.resources.Res
 import no.synth.where.resources.track_cropped
 import no.synth.where.resources.undo
@@ -568,6 +570,8 @@ fun MapScreen(
             controller.animateToBounds(bounds, maxZoom = MapZoomLevels.FRIEND_MAX)
         },
         onStopFollowing = { stopFollowingAll(userPreferences, follower) },
+        onSetNickname = { id, nickname -> setNickname(userPreferences, follower, id, nickname) },
+        onUnfollow = { unfollow(userPreferences, follower, it) },
         isMovingSharedPoint = state.movingSharedPointId != null,
         onCancelMovePoint = { state.movingSharedPointId = null },
         mapContent = {

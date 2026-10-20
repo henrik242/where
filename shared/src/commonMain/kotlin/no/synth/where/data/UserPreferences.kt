@@ -535,6 +535,15 @@ class UserPreferences(
         }
     }
 
+    fun removeFollowHistoryEntry(clientId: String) {
+        val updated = _followHistory.value - clientId
+        if (updated.size == _followHistory.value.size) return
+        _followHistory.value = updated
+        scope.launch {
+            dataStore.edit { it[FOLLOW_HISTORY] = updated.joinToString(",") }
+        }
+    }
+
     fun addFollowHistoryEntry(clientId: String) {
         val current = _followHistory.value.toMutableList()
         current.remove(clientId)
