@@ -1,1 +1,1 @@
-Større kompass, punktnavn, operatørdekning, kallenavn på venner, mindre databruk.
+Mer detaljerte krasjrapporter for å rette sjeldne krasj.

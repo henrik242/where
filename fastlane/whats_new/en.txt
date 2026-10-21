@@ -1,1 +1,1 @@
-Bigger compass, point labels, operator coverage, friend nicknames, less data use.
+More detailed crash reports to help fix rare crashes.

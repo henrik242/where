@@ -6,24 +6,42 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v633...main)
+[diff](https://github.com/henrik242/where/compare/v655...main)
+
+- More detailed crash reports on Android and iOS, to track down rare crashes.
+
+## v655 (2026-10-20)
+
+[diff](https://github.com/henrik242/where/compare/v650...v655)
+
+- Friend nicknames. Tap a name in the following banner to show, rename or stop following that
+  friend. Online tracking lists followed and recent friends together, with a follow button.
+- Live sharing uses much less mobile data.
+
+## v650 (2026-10-20)
+
+[diff](https://github.com/henrik242/where/compare/v646...v650)
+
+- Fixed an Android startup crash on devices with an incomplete Android 14 framework.
+
+## v646 (2026-10-19)
+
+[diff](https://github.com/henrik242/where/compare/v645...v646)
+
+- Internal: release runs show the What's New texts; no user-facing changes
+
+## v645 (2026-10-19)
+
+[diff](https://github.com/henrik242/where/compare/v633...v645)
 
 - Larger compass with degree marks, cardinal letters and heading in degrees. Turn it on in
   Settings or by long pressing the compass.
-- Saved points show their name on the map, shortened to 10 characters.
-- Recording starts on Android even when background location is denied without a prompt.
-- Links to where.synth.no open in the app on Android and iOS.
-- Choose which operator the coverage map shows (Telenor, Telia, Ice or the best of all) in
-  Settings. The crosshair shows signal bars for 112 and the chosen operator; tap them to
-  switch operator.
-- Saved and shared points are easier to tap when zoomed out.
-- Saving a point turns on the saved points overlay so the new point shows.
-- Tap a friend's name in the map's following banner to show them, set a nickname or stop
-  following them. Tapping the banner opens Online tracking.
-- Online tracking keeps followed and recent friends in one list with a follow button, and rename
-  or forget from the menu. Give a nickname while adding a friend.
-- Fixed an Android startup crash on devices with an incomplete Android 14 framework.
-- Live sharing uses much less mobile data.
+- Saved points show their name on the map (up to 10 characters) and are easier to tap when
+  zoomed out. Saving a point turns on the saved points overlay.
+- Choose the coverage map operator (Telenor, Telia, Ice or the best of all) in Settings. The
+  crosshair shows signal bars for 112 and that operator; tap them to switch.
+- Links to where.synth.no open in the app.
+- Android: recording starts even when background location is denied without a prompt.
 
 ## v633 (2026-10-16)
 
