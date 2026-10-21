@@ -1,8 +1,10 @@
 package no.synth.where.ui.map
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -141,14 +143,21 @@ fun MapCompass(
         }
 
         if (northLocked) {
-            Icon(
-                painterResource(Res.drawable.ic_lock),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+            // Filled badge so the lock stands out against both the dial and the map.
+            // A Box, not a Surface, so taps on the badge still reach the compass.
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .size(if (large) 20.dp else 14.dp),
-            )
+                    .size(if (large) 26.dp else 20.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+            ) {
+                Icon(
+                    painterResource(Res.drawable.ic_lock),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.padding(if (large) 5.dp else 3.dp),
+                )
+            }
         }
     }
 }

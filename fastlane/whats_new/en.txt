@@ -1,1 +1,1 @@
-More detailed crash reports to help fix rare crashes.
+Clearer compass north lock and more detailed crash reports.

@@ -9,6 +9,7 @@ tag dates.
 [diff](https://github.com/henrik242/where/compare/v655...main)
 
 - More detailed crash reports on Android and iOS, to track down rare crashes.
+- Clearer north-lock indicator on the compass.
 
 ## v655 (2026-10-20)
 
