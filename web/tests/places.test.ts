@@ -278,7 +278,7 @@ describe('GET /api/places', () => {
     const index = indexOf([building('Rådhuset', TOWN_HALL), water('Storvannet', box(10.6, 59.8, 10.8, 60.0))]);
     const b = await get(index, 'lat=59.9002&lon=10.7002&kind=building');
     expect(b.status).toBe(200);
-    expect(b.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(b.headers.get('Access-Control-Allow-Origin')).toBeNull();
     expect(await readJson(b)).toEqual({ name: 'Rådhuset' });
     expect(await readJson(await get(index, 'lat=59.85&lon=10.65&kind=water'))).toEqual({ name: 'Storvannet' });
   });
@@ -302,7 +302,7 @@ describe('GET /api/places', () => {
   ])('rejects %s with 400', async query => {
     const res = await get(stub({ name: 'x' }), query);
     expect(res.status).toBe(400);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 
   test.each(['lat=90&lon=180&kind=water', 'lat=-90&lon=-180&kind=building'])('accepts boundary %s', async query => {
@@ -316,7 +316,7 @@ describe('GET /api/places', () => {
   ])('answers 503 when %s, so the app falls back', async (_label, places) => {
     const res = await get(places, 'lat=59.9&lon=10.7&kind=water');
     expect(res.status).toBe(503);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 });
 

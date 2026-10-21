@@ -8,6 +8,7 @@ import { broadcastToAll, startStaleTrackChecker } from './tracking';
 import { verifyHmacSignature } from './auth';
 import { websocketHandlers, type WsData } from './ws';
 import { ReloadingPlaceIndex } from './places/lookup';
+import { RateLimiter } from './rateLimit';
 
 const CLIENT_DIR = `${import.meta.dir}/../client`;
 const OG_META_PATH = `${import.meta.dir}/og-meta.html`;
@@ -20,7 +21,7 @@ const HTML_ALIASES = new Map([
 ]);
 
 interface FetchHandlerDeps {
-  handleAPI: (req: Request) => Promise<Response>;
+  handleAPI: (req: Request, peerAddress?: string) => Promise<Response>;
   ogMeta: string;
 }
 
@@ -46,7 +47,7 @@ function makeFetchHandler({ handleAPI, ogMeta }: FetchHandlerDeps) {
     }
 
     if (url.pathname.startsWith('/api')) {
-      return handleAPI(req);
+      return handleAPI(req, server.requestIP(req)?.address);
     }
 
     if (pathname === '/.well-known/assetlinks.json') {
@@ -108,6 +109,7 @@ async function main() {
     broadcast: broadcastToAll,
     getAdminKey: () => CONFIG.ADMIN_KEY,
     places,
+    placesRateLimit: new RateLimiter(CONFIG.PLACES_RATE_LIMIT, 60_000),
   });
 
   const server = Bun.serve({

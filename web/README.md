@@ -31,6 +31,9 @@ Backend component for the Where? Android navigation app. Provides live tracking 
   of the point, or of the smallest named water body containing it: `{"name": "..."}`, or
   `{"name": null}` when there is none. Answers 503 when the index is missing or the point is
   outside its coverage (Norway); the app then falls back to public Overpass.
+- Limited to `PLACES_RATE_LIMIT` requests per client IP per minute (default 120), answering 429
+  with `Retry-After` beyond that. Behind the local Apache proxy the client IP is the last
+  `X-Forwarded-For` entry. No CORS headers, since only the apps call it.
 
 Data © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/). The index
 is a derivative database; `scripts/update-places.sh` and `scripts/build-places.ts` are how it is made.
@@ -89,6 +92,7 @@ ADMIN_KEY=your-secret-key         # Optional - for admin access to view all trac
 ANDROID_CERT_SHA256=AB:CD:...     # Optional - app signing cert SHA-256(s), comma-separated, for Android App Links
 PORT=3000                          # Default: 3000
 PLACES_DB=./places/places.sqlite   # Default; built by scripts/update-places.sh
+PLACES_RATE_LIMIT=120              # Default; /api/places requests per client IP per minute
 ```
 
 **Important:** `TRACKING_HINT` must be set or all tracking requests will be rejected.
