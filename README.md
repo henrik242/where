@@ -55,6 +55,7 @@ Requires Android 13 (API 33) or newer.
 1. Copy `local.properties.example` to `local.properties` and fill in your values
 2. Place your `google-services.json` in `app/` (from the Firebase console)
 3. `./gradlew assembleDebug`
+4. Install and launch on a connected device: `./gradlew :app:runDebug` (set `ANDROID_SERIAL` to pick one)
 
 ### iOS app
 

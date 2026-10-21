@@ -202,6 +202,24 @@ afterEvaluate {
     }
 }
 
+// Installs and launches on one device: ANDROID_SERIAL, else the first USB device, else any device.
+tasks.register("runDebug") {
+    group = "install"
+    dependsOn("assembleDebug")
+    val adbPath = androidComponents.sdkComponents.adb.map { it.asFile.path }
+    val apk = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk")
+    val serialEnv = providers.environmentVariable("ANDROID_SERIAL")
+    doLast {
+        fun adb(vararg args: String) = ProcessBuilder(adbPath.get(), *args).redirectErrorStream(true).start()
+            .run { inputStream.bufferedReader().readText().also { check(waitFor() == 0) { it } } }
+        val devices = adb("devices", "-l").lines().filter { " device " in it }
+        val serial = serialEnv.orNull
+            ?: (devices.find { "usb:" in it } ?: devices.firstOrNull() ?: error("No device")).substringBefore(" ")
+        adb("-s", serial, "install", "-r", "-d", apk.get().asFile.path)
+        adb("-s", serial, "shell", "am", "start", "-n", "no.synth.where.debug/no.synth.where.MainActivity")
+    }
+}
+
 dependencies {
     implementation(project(":shared"))
     runtimeOnly(libs.maplibre.compose.runtime.vulkan.android)

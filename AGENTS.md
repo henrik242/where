@@ -3,6 +3,7 @@
 ## Build & Test
 
 - Build: `cd app && ../gradlew assembleDebug`
+- Install + launch on one device: `./gradlew :app:runDebug` (`ANDROID_SERIAL` picks the device)
 - Test: `cd app && ../gradlew testDebugUnitTest`
 - Lint: `cd app && ../gradlew lint`
 - Single test: `cd app && ../gradlew testDebugUnitTest --tests "no.synth.where.ClassName"`
