@@ -49,6 +49,8 @@ object AppDependencies {
 
 @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
 fun startApp() {
+    CrashReporter.installUnhandledExceptionHook()
+
     val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
     val documentsDir = requireNotNull((paths.first() as NSURL).path) { "Documents directory not found" }
 
