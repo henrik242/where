@@ -5,6 +5,8 @@ export const CONFIG = {
   // Uploaded by the Update Places Index workflow; /api/places answers 503 until it exists.
   // Kept out of data/ so the upload key can't touch the tracking database.
   PLACES_DB: process.env.PLACES_DB || './places/places.sqlite',
+  // Requests per client IP per minute; over it the app gets 429 and falls back to Overpass.
+  PLACES_RATE_LIMIT: Number(process.env.PLACES_RATE_LIMIT) || 120,
   // Comma-separated SHA-256 signing cert fingerprints for assetlinks.json.
   ANDROID_CERT_SHA256: process.env.ANDROID_CERT_SHA256,
   STALE_TRACK_TIMEOUT: 60 * 60 * 1000,

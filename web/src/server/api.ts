@@ -3,6 +3,7 @@ import { validatePoint, validateSharedPointFields } from '../shared/validation';
 import { detectPlatform } from './platform';
 import { isPlaceKind } from './places/db';
 import type { PlaceLookup } from './places/lookup';
+import { clientAddress, type RateLimiter } from './rateLimit';
 import type { TrackStore } from './store';
 import { enrichTrack, getViewerCount } from './tracking';
 
@@ -25,13 +26,20 @@ export interface ApiDeps {
   getAdminKey: () => string | undefined;
   /** Offline building/water name lookup; without it /api/places answers 503. */
   places?: PlaceLookup;
+  /** Per-client limit on /api/places; unlimited when absent. */
+  placesRateLimit?: RateLimiter;
 }
 
-function jsonResponse(data: unknown, status = 200): Response {
+function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, string> = CORS_HEADERS): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...extraHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+/** Only the apps use /api/places, so no CORS: other sites can't read it from their visitors' browsers. */
+function placesResponse(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
+  return jsonResponse(data, status, headers);
 }
 
 function noContent(): Response {
@@ -343,26 +351,31 @@ function parseCoordinate(param: string | null, limit: number): number | null {
  * Name of the building within 50 m of, or the water body containing, lat/lon.
  * Replaces the app's Overpass queries; any 503 tells the app to fall back to Overpass.
  */
-function lookupPlace({ places }: ApiDeps, url: URL): Response {
+function lookupPlace({ places, placesRateLimit }: ApiDeps, url: URL, client: string): Response {
+  const retryAfter = placesRateLimit?.hit(client) ?? null;
+  if (retryAfter !== null) {
+    return placesResponse({ error: 'Too many requests' }, 429, { 'Retry-After': String(retryAfter) });
+  }
   const lat = parseCoordinate(url.searchParams.get('lat'), 90);
   const lon = parseCoordinate(url.searchParams.get('lon'), 180);
   const kind = url.searchParams.get('kind');
   if (lat === null || lon === null || !isPlaceKind(kind)) {
-    return jsonResponse({ error: 'lat, lon and kind=building|water required' }, 400);
+    return placesResponse({ error: 'lat, lon and kind=building|water required' }, 400);
   }
   const result = places?.lookup(kind, lat, lon) ?? 'unavailable';
-  if (result === 'unavailable') return jsonResponse({ error: 'Places index unavailable' }, 503);
-  if (result === 'outside') return jsonResponse({ error: 'Outside places coverage' }, 503);
-  return jsonResponse(result);
+  if (result === 'unavailable') return placesResponse({ error: 'Places index unavailable' }, 503);
+  if (result === 'outside') return placesResponse({ error: 'Outside places coverage' }, 503);
+  return placesResponse(result);
 }
 
 export function createApiHandler(deps: ApiDeps) {
-  return async function handleAPI(req: Request): Promise<Response> {
+  /** peerAddress is the TCP peer (server.requestIP), used for rate limiting. */
+  return async function handleAPI(req: Request, peerAddress?: string): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
 
     if (req.method === 'OPTIONS') {
-      return noContent();
+      return path === '/api/places' ? new Response(null, { status: 204 }) : noContent();
     }
 
     let parsedBody: unknown;
@@ -388,7 +401,7 @@ export function createApiHandler(deps: ApiDeps) {
       }
 
       if (path === '/api/places' && req.method === 'GET') {
-        return lookupPlace(deps, url);
+        return lookupPlace(deps, url, clientAddress(req, peerAddress));
       }
 
       // Must precede the generic /api/tracks/:trackId route.
