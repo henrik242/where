@@ -25,6 +25,45 @@ Backend component for the Where? Android navigation app. Provides live tracking 
 - `PUT /api/tracks/:trackId/stop` - Stop a track (204)
 - `DELETE /api/tracks/:trackId` - Delete a track
 
+### Places
+
+- `GET /api/places?lat=..&lon=..&kind=building|water` - Name of the named building within 50 m
+  of the point, or of the smallest named water body containing it: `{"name": "..."}`, or
+  `{"name": null}` when there is none. Answers 503 when the index is missing or the point is
+  outside its coverage (Norway); the app then falls back to public Overpass.
+
+Data © OpenStreetMap contributors, [ODbL](https://opendatacommons.org/licenses/odbl/). The index
+is a derivative database; `scripts/update-places.sh` and `scripts/build-places.ts` are how it is made.
+
+#### How the index is built
+
+`scripts/update-places.sh` downloads the Geofabrik Norway extract and its coverage polygon, keeps
+named buildings and `natural=water` with `osmium`, and writes `places/places.sqlite`. The
+`Update Places Index` workflow runs it every Monday, checks a few known answers
+(`scripts/check-places.ts`), and rsyncs the file to `$REMOTE_TARGET/places/` on the server. The
+server notices the new file on the next request; its log shows when the index was built and
+warns when it is more than 14 days old. The data lags OSM by up to about a week.
+
+One-time server setup: the upload goes to its own folder, so the deploy key never needs write
+access to `data/` (which holds the tracking database):
+
+```bash
+sudo install -d -o <deploy-user> -m 755 /opt/where-web/places
+```
+
+Optionally add an `SSH_KNOWN_HOSTS` secret (output of `ssh-keyscan -H <host>`) to pin the host key.
+
+#### Locally
+
+```bash
+bun run places:dev     # tiny Oslo fixture, no osmium needed
+bun run places:check   # known-answer checks against places/places.sqlite
+curl 'localhost:3000/api/places?lat=59.9829&lon=10.78&kind=water'
+
+# Real data (needs osmium-tool: brew/apt install osmium-tool); PLACES_BBOX cuts a small area
+PLACES_BBOX=10.6,59.85,10.9,60.0 bun run places:build
+```
+
 ### WebSocket
 
 - `WS /ws` - WebSocket connection for live updates
@@ -49,6 +88,7 @@ TRACKING_HINT=your-secret  # Required for HMAC verification
 ADMIN_KEY=your-secret-key         # Optional - for admin access to view all tracks
 ANDROID_CERT_SHA256=AB:CD:...     # Optional - app signing cert SHA-256(s), comma-separated, for Android App Links
 PORT=3000                          # Default: 3000
+PLACES_DB=./places/places.sqlite   # Default; built by scripts/update-places.sh
 ```
 
 **Important:** `TRACKING_HINT` must be set or all tracking requests will be rejected.

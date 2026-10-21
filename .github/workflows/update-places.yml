@@ -1,0 +1,68 @@
+name: Update Places Index
+
+permissions:
+  contents: read
+
+# Scheduled runs only start from the default branch, and GitHub pauses them after
+# 60 days without commits in a public repo (re-enable from the Actions tab).
+on:
+  schedule:
+    - cron: '17 3 * * 1' # Mondays 03:17 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: update-places
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # Only for the deploy secrets. Keep this environment free of required reviewers,
+    # or the scheduled runs will wait for an approval nobody gives.
+    environment: production
+    timeout-minutes: 60
+    env:
+      PLACES_DB: ${{ github.workspace }}/places-build/places.sqlite
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install osmium
+      run: sudo apt-get update -q && sudo apt-get install -y -q osmium-tool
+
+    - name: Build places index
+      env:
+        PLACES_MIN_COUNT: '1000'
+      run: web/scripts/update-places.sh
+
+    - name: Known-answer checks
+      run: cd web && bun scripts/check-places.ts "$PLACES_DB"
+
+    # rsync writes to a temp file and renames, so the server never sees a partial file.
+    # The target is the deploy user's own places/ dir, not the service's data/ dir.
+    - name: Upload to server
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
+        REMOTE_USER: ${{ secrets.REMOTE_USER }}
+        REMOTE_TARGET: ${{ secrets.REMOTE_TARGET }}
+      run: |
+        install -m 700 -d ~/.ssh
+        printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_deploy
+        chmod 600 ~/.ssh/id_deploy
+        if [ -n "$SSH_KNOWN_HOSTS" ]; then
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+        else
+          echo "::warning::SSH_KNOWN_HOSTS not set, trusting the host key on first use"
+          ssh-keyscan -H "$REMOTE_HOST" >> ~/.ssh/known_hosts
+        fi
+        rsync -z --chmod=F644 -e "ssh -i ~/.ssh/id_deploy" \
+          "$PLACES_DB" \
+          "$REMOTE_USER@$REMOTE_HOST:${REMOTE_TARGET%/}/places/places.sqlite"

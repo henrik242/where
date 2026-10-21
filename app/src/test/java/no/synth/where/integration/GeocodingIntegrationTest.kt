@@ -17,7 +17,7 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 /**
- * Integration tests against real Nominatim + Overpass APIs.
+ * Integration tests against real Nominatim, the Where? places index and Overpass.
  * Run with: ../gradlew integrationTest --tests "no.synth.where.integration.GeocodingIntegrationTest"
  *
  * Each probe below is grouped by the lookup path it exercises. Every probe asserts its exact
@@ -122,7 +122,7 @@ class GeocodingIntegrationTest {
         assertEquals("Kråketjernfjellet, Sør-Aurdal", geocode(60.6471842, 9.4447617))
     }
 
-    // --- Overpass supplies the answer: the enclosing building around a POI node ---
+    // --- Places index (or the Overpass fallback) supplies the answer: the building around a POI node ---
 
     // Nominatim resolves this point to a defibrillator node; the museum is the building it hangs on.
     @Test
@@ -131,9 +131,9 @@ class GeocodingIntegrationTest {
         assertEquals(expected, geocodeExpecting(expected, 59.9056239, 10.7551554))
     }
 
-    // --- Overpass supplies the answer: the enclosing water body around a cape ---
+    // --- Places index (or the Overpass fallback) supplies the answer: the water body around a cape ---
 
-    // Nominatim resolves this point to the cape "Nestangen"; only Overpass knows the lake.
+    // Nominatim resolves this point to the cape "Nestangen"; only the lake polygon knows the lake.
     @Test
     fun maridalsvannet_lake() {
         val expected = "Maridalsvannet, Oslo"

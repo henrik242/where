@@ -1,0 +1,5 @@
+{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[10.7545, 59.9052], [10.756, 59.9052], [10.756, 59.906], [10.7545, 59.906], [10.7545, 59.9052]]]}, "properties": {"name": "Munchmuseet", "building": "museum"}}
+{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[10.733, 59.9115], [10.7345, 59.9115], [10.7345, 59.9123], [10.733, 59.9123], [10.733, 59.9115]]]}, "properties": {"name": "Oslo rådhus", "building": "yes"}}
+{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[10.76, 59.97], [10.8, 59.97], [10.8, 60.02], [10.76, 60.02], [10.76, 59.97]]]}, "properties": {"name": "Maridalsvannet", "natural": "water"}}
+{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[10.725, 59.97], [10.735, 59.97], [10.735, 59.98], [10.725, 59.98], [10.725, 59.97]]]}, "properties": {"name": "Sognsvann", "natural": "water", "water": "lake"}}
+{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[10.75, 59.91], [10.751, 59.91], [10.751, 59.911], [10.75, 59.911], [10.75, 59.91]]]}, "properties": {"building": "yes"}}

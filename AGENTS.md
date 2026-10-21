@@ -11,6 +11,8 @@
 - Shared unit tests (commonTest + jvmTest, on the JVM): `./gradlew :shared:jvmTest`
 - Web server: `cd web && bun run dev`
 - Web tests: `cd web && bun test`
+- Places index for `/api/places`: `cd web && bun run places:dev` (fixture, no osmium) or
+  `bun run places:build` (real Geofabrik data, needs osmium-tool)
 
 Note: `cd app && ../gradlew testDebugUnitTest` only covers the `app` module. The shared
 suite runs via `:shared:jvmTest` or `:shared:allTests` (adds the iOS simulator, needs a Mac).
