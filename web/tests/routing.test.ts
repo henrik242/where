@@ -110,6 +110,23 @@ describe('static routes', () => {
     expect(html).toContain('app-argument=https://where.synth.no/abc123,def456"');
   });
 
+  test('/robots.txt points to the sitemap', async () => {
+    const res = await fetch(`${SERVER_URL}/robots.txt`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/plain');
+    expect(await res.text()).toContain('Sitemap: https://where.synth.no/sitemap.xml');
+  });
+
+  test('/sitemap.xml lists the public pages', async () => {
+    const res = await fetch(`${SERVER_URL}/sitemap.xml`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('xml');
+    const xml = await res.text();
+    for (const path of ['/', '/about', '/guide', '/privacy']) {
+      expect(xml).toContain(`<loc>https://where.synth.no${path}</loc>`);
+    }
+  });
+
   test('/nonexistent returns 404', async () => {
     const res = await fetch(`${SERVER_URL}/nonexistent-page`);
     expect(res.status).toBe(404);
