@@ -16,6 +16,12 @@ class IosCrashReporterBridge: CrashReporterBridge {
         let error = NSError(domain: "no.synth.where", code: 0, userInfo: [NSLocalizedDescriptionKey: message])
         Crashlytics.crashlytics().record(error: error)
     }
+
+    func recordFatal(name: String, reason: String, stackTrace: [String]) {
+        let model = ExceptionModel(name: name, reason: reason)
+        model.stackTrace = stackTrace.map { StackFrame(symbol: $0, file: "", line: 0) }
+        Crashlytics.crashlytics().record(exceptionModel: model)
+    }
 }
 
 @main
