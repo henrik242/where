@@ -11,6 +11,7 @@ import androidx.compose.ui.UiComposable
 import androidx.compose.ui.unit.dp
 import no.synth.where.data.DownloadLayers
 import no.synth.where.data.geo.LatLng
+import no.synth.where.util.CrashReporter
 import org.maplibre.compose.camera.CameraPosition
 import org.maplibre.compose.expressions.ast.Expression
 import org.maplibre.compose.expressions.dsl.Feature
@@ -106,6 +107,11 @@ fun HexComposeMap(
                 CircleLayer(id = "hex-user-dot", source = puck, radius = const(7.dp), color = hexColorConst("#1E88E5"), strokeWidth = const(2.dp), strokeColor = const(androidx.compose.ui.graphics.Color.White))
             }
         }
+
+    DisposableEffect(Unit) {
+        CrashReporter.log("HexComposeMap shown")
+        onDispose { CrashReporter.log("HexComposeMap disposed") }
+    }
 
     if (controller != null) {
         DisposableEffect(state) {

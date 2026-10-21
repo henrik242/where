@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import no.synth.where.data.geo.LatLng
+import no.synth.where.util.CrashReporter
 import no.synth.where.ui.map.NavColors
 import no.synth.where.ui.map.NavStyle
 import org.maplibre.compose.camera.CameraPosition
@@ -187,6 +188,11 @@ fun WhereComposeMap(
             ElevationMarkerLayer(data.elevationMarkerGeoJson)
             UserLocationLayer(data.userLocation)
         }
+
+    DisposableEffect(Unit) {
+        CrashReporter.log("WhereComposeMap shown")
+        onDispose { CrashReporter.log("WhereComposeMap disposed") }
+    }
 
     if (controller != null) {
         DisposableEffect(state) {

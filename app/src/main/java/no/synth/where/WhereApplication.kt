@@ -106,6 +106,11 @@ class WhereApplication : Application() {
         )
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        CrashReporter.log("onTrimMemory($level)")
+    }
+
     override fun onCreate() {
         super.onCreate()
 
@@ -114,6 +119,7 @@ class WhereApplication : Application() {
         }
 
         CrashReporter.setEnabled(userPreferences.crashReportingEnabled.value)
+        registerActivityLifecycleCallbacks(LifecycleBreadcrumbs)
 
         OfflineTileReader.init(PlatformFile(cacheDir))
         // Keep the map cache (ambient tiles + downloaded packs) in filesDir, not the OS-purgeable
