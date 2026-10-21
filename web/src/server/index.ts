@@ -7,6 +7,7 @@ import { trackStore } from './store';
 import { broadcastToAll, startStaleTrackChecker } from './tracking';
 import { verifyHmacSignature } from './auth';
 import { websocketHandlers, type WsData } from './ws';
+import { ReloadingPlaceIndex } from './places/lookup';
 
 const CLIENT_DIR = `${import.meta.dir}/../client`;
 const OG_META_PATH = `${import.meta.dir}/og-meta.html`;
@@ -99,11 +100,14 @@ async function main() {
 
   const ogMeta = await Bun.file(OG_META_PATH).text();
 
+  const places = new ReloadingPlaceIndex(CONFIG.PLACES_DB);
+
   const handleAPI = createApiHandler({
     store: trackStore,
     verifySignature: verifyHmacSignature,
     broadcast: broadcastToAll,
     getAdminKey: () => CONFIG.ADMIN_KEY,
+    places,
   });
 
   const server = Bun.serve({
@@ -119,6 +123,7 @@ async function main() {
   console.log(`Web interface at http://localhost:${server.port}`);
   console.log(`Admin: ${CONFIG.ADMIN_KEY ? 'ENABLED' : 'DISABLED'}`);
   console.log(`HMAC verification: ${CONFIG.TRACKING_HINT ? 'ENABLED' : 'DISABLED'}`);
+  console.log(`Places index: ${places.describe()}`);
   console.log(`Auto-stop inactive tracks after 10 minutes`);
 }
 

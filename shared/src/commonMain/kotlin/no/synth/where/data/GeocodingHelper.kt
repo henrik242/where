@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.parameters
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -23,6 +25,11 @@ import kotlin.concurrent.Volatile
 
 private const val NOMINATIM = "https://nominatim.openstreetmap.org"
 private const val MAX_CACHE_ENTRIES = 1000
+
+// Offline index of named buildings and water on the Where? server (web/src/server/places).
+// It answers 503 outside its coverage or without an index, and the lookup falls back to Overpass.
+private const val PLACES_API = "https://where.synth.no/api/places"
+private const val PLACES_TIMEOUT_MS = 2_000L
 
 // Public Overpass instances rate-limit and time out independently of each other, so a query
 // that one rejects usually succeeds on the next. overpass.kumi.systems is the same server as
@@ -110,7 +117,37 @@ object GeocodingHelper {
         return results[0].jsonObject["name"]?.jsonPrimitive?.content
     }
 
+    /** A places index answer; [name] is null when the index knows there is nothing there. */
+    private data class PlacesAnswer(val name: String?)
+
+    /** Null when the places index cannot answer for this point, so the caller falls back to Overpass. */
+    private suspend fun placesLookup(kind: String, latLng: LatLng): PlacesAnswer? {
+        val response = try {
+            client.get(PLACES_API) {
+                parameter("lat", latLng.latitude)
+                parameter("lon", latLng.longitude)
+                parameter("kind", kind)
+                timeout { requestTimeoutMillis = PLACES_TIMEOUT_MS }
+            }
+        } catch (e: Exception) {
+            Logger.d("places call failed: ${e.message}")
+            return null
+        }
+        if (response.status.value !in 200..299) {
+            Logger.d("places status=${response.status.value}")
+            return null
+        }
+        // Only a body with a "name" key is an answer; anything else is treated as unavailable.
+        val name = try {
+            Json.parseToJsonElement(response.bodyAsText()).jsonObject["name"]
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        return PlacesAnswer(if (name is JsonNull) null else name.jsonPrimitive.content)
+    }
+
     private suspend fun searchEnclosingBuilding(latLng: LatLng): String? {
+        placesLookup("building", latLng)?.let { return it.name }
         val elements = overpassQuery(
             "[out:json][timeout:10];(" +
                 "way(around:50,${latLng.latitude},${latLng.longitude})[\"name\"][\"building\"];" +
@@ -122,6 +159,7 @@ object GeocodingHelper {
     }
 
     private suspend fun searchEnclosingWater(latLng: LatLng): String? {
+        placesLookup("water", latLng)?.let { return it.name }
         // Plain is_in carries the source tags on the areas it returns, so filtering here is
         // cheaper for the server than resolving each area back to its way/relation with pivot.
         val elements = overpassQuery(

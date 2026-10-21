@@ -26,7 +26,7 @@ private data class Attribution(val name: String, val description: String, val li
 
 private val dataSources = listOf(
     Attribution("Kartverket", "Topographic maps, elevation data, and place names", "CC BY 4.0"),
-    Attribution("OpenStreetMap", "Map data and tiles", "ODbL"),
+    Attribution("OpenStreetMap", "Map data, tiles and place names", "ODbL"),
     Attribution("OpenTopoMap", "Topographic map style", "CC-BY-SA"),
     Attribution("MapAnt.no", "Orienteering maps for Norway", ""),
     Attribution("EOxCloudless", "Satellite imagery (modified Copernicus Sentinel data)", "CC BY-NC-SA 4.0"),

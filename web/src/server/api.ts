@@ -1,6 +1,8 @@
 import type { SharedPoint, Track } from '../shared/types';
 import { validatePoint, validateSharedPointFields } from '../shared/validation';
 import { detectPlatform } from './platform';
+import { isPlaceKind } from './places/db';
+import type { PlaceLookup } from './places/lookup';
 import type { TrackStore } from './store';
 import { enrichTrack, getViewerCount } from './tracking';
 
@@ -21,6 +23,8 @@ export interface ApiDeps {
   broadcast: (message: unknown, userId?: string) => void;
   /** Returns the configured admin key, or undefined if admin mode is disabled. */
   getAdminKey: () => string | undefined;
+  /** Offline building/water name lookup; without it /api/places answers 503. */
+  places?: PlaceLookup;
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -328,6 +332,30 @@ function deleteSharedPoint(
   return noContent();
 }
 
+/** Number in [-limit, limit], or null. Blank is rejected since Number('') is 0. */
+function parseCoordinate(param: string | null, limit: number): number | null {
+  if (!param?.trim()) return null;
+  const value = Number(param);
+  return Number.isFinite(value) && Math.abs(value) <= limit ? value : null;
+}
+
+/**
+ * Name of the building within 50 m of, or the water body containing, lat/lon.
+ * Replaces the app's Overpass queries; any 503 tells the app to fall back to Overpass.
+ */
+function lookupPlace({ places }: ApiDeps, url: URL): Response {
+  const lat = parseCoordinate(url.searchParams.get('lat'), 90);
+  const lon = parseCoordinate(url.searchParams.get('lon'), 180);
+  const kind = url.searchParams.get('kind');
+  if (lat === null || lon === null || !isPlaceKind(kind)) {
+    return jsonResponse({ error: 'lat, lon and kind=building|water required' }, 400);
+  }
+  const result = places?.lookup(kind, lat, lon) ?? 'unavailable';
+  if (result === 'unavailable') return jsonResponse({ error: 'Places index unavailable' }, 503);
+  if (result === 'outside') return jsonResponse({ error: 'Outside places coverage' }, 503);
+  return jsonResponse(result);
+}
+
 export function createApiHandler(deps: ApiDeps) {
   return async function handleAPI(req: Request): Promise<Response> {
     const url = new URL(req.url);
@@ -357,6 +385,10 @@ export function createApiHandler(deps: ApiDeps) {
       // token exchange happens on-device, so the server only forwards the code to the app.
       if (path === '/api/strava/redirect' && req.method === 'GET') {
         return stravaRedirect(url);
+      }
+
+      if (path === '/api/places' && req.method === 'GET') {
+        return lookupPlace(deps, url);
       }
 
       // Must precede the generic /api/tracks/:trackId route.

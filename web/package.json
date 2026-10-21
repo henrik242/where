@@ -14,7 +14,10 @@
     "test:api": "bun test tests/api.test.ts",
     "test:watch": "bun test --watch",
     "test:coverage": "bun test --coverage",
-    "typecheck": "bunx tsc --noEmit -p tsconfig.server.json && bunx tsc --noEmit -p tsconfig.client.json"
+    "typecheck": "bunx tsc --noEmit -p tsconfig.server.json && bunx tsc --noEmit -p tsconfig.client.json",
+    "places:dev": "bun scripts/build-places.ts tests/fixtures/places.geojsonl places/places.sqlite --poly tests/fixtures/oslo.poly --source fixture",
+    "places:build": "scripts/update-places.sh",
+    "places:check": "bun scripts/check-places.ts places/places.sqlite"
   },
   "keywords": [
     "gps",

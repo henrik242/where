@@ -37,6 +37,7 @@ class GeocodingHelperTest {
     }
 
     private fun isOverpass(url: io.ktor.http.Url) = url.host == "overpass-api.de"
+    private fun isPlaces(url: io.ktor.http.Url) = url.host == "where.synth.no" && url.encodedPath == "/api/places"
     private fun isPoi(url: io.ktor.http.Url) = url.parameters.contains("layer", "poi,natural")
     private fun isPeakSearch(url: io.ktor.http.Url) = url.encodedPath.contains("search")
 
@@ -188,6 +189,94 @@ class GeocodingHelperTest {
             else respond("""{"address":{"road":"Maridalsveien","city":"Oslo","municipality":"Oslo"}}""", HttpStatusCode.OK, JSON_HEADERS)
         }
         assertEquals("Maridalsvannet, Oslo", GeocodingHelper.reverseGeocode(LatLng(59.99, 10.77)))
+    }
+
+    // --- Places index on the Where? server, with Overpass as fallback ---
+
+    private val amenityPoi = """{"class":"amenity","name":"Kranen","address":{"city":"Oslo","municipality":"Oslo"}}"""
+    private val capePoi = """{"class":"natural","type":"cape","name":"Nestangen","address":{"city":"Oslo","municipality":"Oslo"}}"""
+    private val address = """{"address":{"road":"Storgata","city":"Oslo","municipality":"Oslo"}}"""
+
+    @Test
+    fun reverseGeocode_usesPlacesBuilding_withoutOverpass() = runBlocking {
+        val overpassCalls = mutableListOf<String>()
+        mockClient { url ->
+            when {
+                isPoi(url) -> respond(amenityPoi, HttpStatusCode.OK, JSON_HEADERS)
+                isPlaces(url) -> {
+                    assertEquals("building", url.parameters["kind"])
+                    respond("""{"name":"Munchmuseet"}""", HttpStatusCode.OK, JSON_HEADERS)
+                }
+                isOverpass(url) -> { overpassCalls += url.toString(); respond(EMPTY_OVERPASS, HttpStatusCode.OK, JSON_HEADERS) }
+                else -> respond(address, HttpStatusCode.OK, JSON_HEADERS)
+            }
+        }
+        assertEquals("Munchmuseet, Oslo", GeocodingHelper.reverseGeocode(LatLng(59.9056, 10.7551)))
+        assertTrue(overpassCalls.isEmpty())
+    }
+
+    @Test
+    fun reverseGeocode_usesPlacesWater_forNaturalPoi() = runBlocking {
+        mockClient { url ->
+            when {
+                isPoi(url) -> respond(capePoi, HttpStatusCode.OK, JSON_HEADERS)
+                isPlaces(url) -> {
+                    assertEquals("water", url.parameters["kind"])
+                    respond("""{"name":"Maridalsvannet"}""", HttpStatusCode.OK, JSON_HEADERS)
+                }
+                else -> respond(address, HttpStatusCode.OK, JSON_HEADERS)
+            }
+        }
+        assertEquals("Maridalsvannet, Oslo", GeocodingHelper.reverseGeocode(LatLng(59.9829, 10.78)))
+    }
+
+    @Test
+    fun reverseGeocode_trustsPlacesNullName_withoutOverpass() = runBlocking {
+        val overpassCalls = mutableListOf<String>()
+        mockClient { url ->
+            when {
+                isPoi(url) -> respond(amenityPoi, HttpStatusCode.OK, JSON_HEADERS)
+                isPlaces(url) -> respond("""{"name":null}""", HttpStatusCode.OK, JSON_HEADERS)
+                isOverpass(url) -> { overpassCalls += url.toString(); respond(EMPTY_OVERPASS, HttpStatusCode.OK, JSON_HEADERS) }
+                isPeakSearch(url) -> respond("[]", HttpStatusCode.OK, JSON_HEADERS)
+                else -> respond(address, HttpStatusCode.OK, JSON_HEADERS)
+            }
+        }
+        assertEquals("Storgata, Oslo", GeocodingHelper.reverseGeocode(LatLng(59.914, 10.752)))
+        assertTrue(overpassCalls.isEmpty())
+    }
+
+    @Test
+    fun reverseGeocode_fallsBackToOverpass_whenPlacesUnavailable() = runBlocking {
+        mockClient { url ->
+            when {
+                isPoi(url) -> respond(amenityPoi, HttpStatusCode.OK, JSON_HEADERS)
+                isPlaces(url) -> respond("""{"error":"Outside places coverage"}""", HttpStatusCode.ServiceUnavailable, JSON_HEADERS)
+                isOverpass(url) -> respond(
+                    """{"elements":[{"type":"way","tags":{"name":"Munchmuseet"}}]}""",
+                    HttpStatusCode.OK, JSON_HEADERS
+                )
+                else -> respond(address, HttpStatusCode.OK, JSON_HEADERS)
+            }
+        }
+        assertEquals("Munchmuseet, Oslo", GeocodingHelper.reverseGeocode(LatLng(59.9056, 10.7551)))
+    }
+
+    @Test
+    fun reverseGeocode_fallsBackToOverpass_whenPlacesReplyHasNoName() = runBlocking {
+        mockClient { url ->
+            when {
+                isPoi(url) -> respond(amenityPoi, HttpStatusCode.OK, JSON_HEADERS)
+                // A server without the places endpoint, or a proxy page, is not an answer
+                isPlaces(url) -> respond("""{"error":"Not found"}""", HttpStatusCode.OK, JSON_HEADERS)
+                isOverpass(url) -> respond(
+                    """{"elements":[{"type":"way","tags":{"name":"Munchmuseet"}}]}""",
+                    HttpStatusCode.OK, JSON_HEADERS
+                )
+                else -> respond(address, HttpStatusCode.OK, JSON_HEADERS)
+            }
+        }
+        assertEquals("Munchmuseet, Oslo", GeocodingHelper.reverseGeocode(LatLng(59.9056, 10.7551)))
     }
 
     @Test
