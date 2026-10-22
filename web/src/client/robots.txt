@@ -1,5 +1,7 @@
 User-agent: *
 Disallow: /api/
 Disallow: /ws
+# Shared tracking pages (/<client id>) are deliberately not disallowed: they send
+# X-Robots-Tag: noindex, which a crawler only sees if it may fetch the page.
 
 Sitemap: https://where.synth.no/sitemap.xml
