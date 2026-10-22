@@ -1,4 +1,4 @@
-import { describe, test, expect, afterAll } from 'bun:test';
+import { describe, test, expect, afterAll, spyOn } from 'bun:test';
 import { createApiHandler } from '../src/server/api';
 import { RateLimiter, clientAddress } from '../src/server/rateLimit';
 import { TrackStore } from '../src/server/store';
@@ -61,13 +61,17 @@ describe('clientAddress', () => {
     expect(clientAddress(req(), '127.0.0.1')).toBe('127.0.0.1');
     expect(clientAddress(req(), undefined)).toBe('unknown');
   });
+
+  test('ignores X-Forwarded-For when the peer is unknown', () => {
+    expect(clientAddress(req('203.0.113.7'), undefined)).toBe('unknown');
+  });
 });
 
 describe('/api/places limits', () => {
   const store = new TrackStore(':memory:');
   afterAll(() => store.close());
   const places: PlaceLookup = { lookup: () => ({ name: 'Maridalsvannet' }) };
-  const handler = (limit = 2) =>
+  const handler = (limit = 2, overrides: Partial<Parameters<typeof createApiHandler>[0]> = {}) =>
     createApiHandler({
       store,
       verifySignature: async () => true,
@@ -75,6 +79,7 @@ describe('/api/places limits', () => {
       getAdminKey: () => undefined,
       places,
       placesRateLimit: new RateLimiter(limit, 60_000),
+      ...overrides,
     });
   const get = (h: ReturnType<typeof handler>, forwarded: string, query = 'lat=59.98&lon=10.78&kind=water') =>
     h(new Request(`http://localhost/api/places?${query}`, { headers: { 'X-Forwarded-For': forwarded } }), '127.0.0.1');
@@ -109,6 +114,35 @@ describe('/api/places limits', () => {
     expect(places.headers.get('Access-Control-Allow-Origin')).toBeNull();
     const tracks = await h(new Request('http://localhost/api/tracks', { method: 'OPTIONS' }));
     expect(tracks.headers.get('Access-Control-Allow-Origin')).toBe('*');
+  });
+
+  test('rotating X-Forwarded-For without a known peer shares one bucket', async () => {
+    const h = handler(1);
+    const req = (ip: string) =>
+      new Request('http://localhost/api/places?lat=59.98&lon=10.78&kind=water', { headers: { 'X-Forwarded-For': ip } });
+    expect((await h(req('203.0.113.1'))).status).toBe(200);
+    expect((await h(req('203.0.113.2'))).status).toBe(429);
+  });
+
+  test.each([
+    ['signature failure', { verifySignature: async () => false }, 'POST', 401],
+    ['unsupported method', {}, 'DELETE', 404],
+    ['lookup exception', { places: { lookup: () => { throw new Error('boom'); } } }, 'GET', 500],
+  ] as const)('no CORS on /api/places %s', async (_label, overrides, method, status) => {
+    const spy = spyOn(console, 'error').mockImplementation(() => {});
+    const warn = spyOn(console, 'warn').mockImplementation(() => {});
+    const res = await handler(10, overrides)(
+      new Request('http://localhost/api/places?lat=59.98&lon=10.78&kind=water', {
+        method,
+        ...(method === 'POST' ? { body: '{}' } : {}),
+      }),
+      '127.0.0.1'
+    );
+    spy.mockRestore();
+    warn.mockRestore();
+    expect(res.status).toBe(status);
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
+    expect(res.headers.get('Access-Control-Allow-Methods')).toBeNull();
   });
 
   test('tracks API responses keep CORS', async () => {

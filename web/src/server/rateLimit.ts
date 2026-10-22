@@ -41,10 +41,12 @@ const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 /**
  * The client's address. Behind the local Apache proxy the peer is loopback, and the real
  * client is the last X-Forwarded-For entry (the one Apache appended; earlier ones are
- * whatever the client sent). The header is ignored from any other peer, since it is spoofable.
+ * whatever the client sent). The header is ignored unless the peer is positively loopback,
+ * since it is spoofable; an unknown peer shares one bucket.
  */
 export function clientAddress(req: Request, peerAddress: string | undefined): string {
-  if (peerAddress && !LOOPBACK.has(peerAddress)) return peerAddress;
+  if (!peerAddress) return 'unknown';
+  if (!LOOPBACK.has(peerAddress)) return peerAddress;
   const forwarded = req.headers.get('X-Forwarded-For')?.split(',').pop()?.trim();
-  return forwarded || peerAddress || 'unknown';
+  return forwarded || peerAddress;
 }
