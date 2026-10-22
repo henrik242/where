@@ -72,7 +72,7 @@ jobs:
         TARGET: ${{ secrets.REMOTE_TARGET }}
         EXCLUDE: "/node_modules/, /bun.lockb, /.env, /data/, /places/, *.log, *.pid"
         SCRIPT_AFTER: |
-          touch /home/henrik/where/.deploy.stamp
+          touch "${{ secrets.REMOTE_TARGET }}/.deploy.stamp"
 
     - name: Deployment status
       if: always()
