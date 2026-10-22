@@ -83,10 +83,14 @@ function makeFetchHandler({ handleAPI, ogMeta }: FetchHandlerDeps) {
       return new Response(file);
     }
 
-    // SPA fallback for path-based client IDs (e.g. /abc123 or /abc123,def456)
+    // SPA fallback for path-based client IDs (e.g. /abc123 or /abc123,def456). These show
+    // someone's live location, so keep them out of search results even when a link leaks.
     if (CLIENT_IDS_RE.test(pathname.slice(1))) {
       const html = await serveHtml('/index.html', pathname);
-      if (html) return html;
+      if (html) {
+        html.headers.set('X-Robots-Tag', 'noindex, nofollow');
+        return html;
+      }
     }
 
     return new Response('Not Found', { status: 404 });

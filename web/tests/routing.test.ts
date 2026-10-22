@@ -143,6 +143,24 @@ describe('client ID path routing', () => {
     expect(html).toContain('og:title');
   });
 
+  test('shared tracking pages are noindex, public pages are not', async () => {
+    for (const path of ['/abc123', '/abc123,def456']) {
+      const res = await fetch(`${SERVER_URL}${path}`);
+      expect(res.headers.get('x-robots-tag')).toBe('noindex, nofollow');
+    }
+    for (const path of ['/', '/about', '/guide', '/privacy']) {
+      const res = await fetch(`${SERVER_URL}${path}`);
+      expect(res.headers.get('x-robots-tag')).toBeNull();
+    }
+  });
+
+  test('robots.txt keeps the API out but lets crawlers see the noindex on tracking pages', async () => {
+    const robots = await (await fetch(`${SERVER_URL}/robots.txt`)).text();
+    const disallowed = robots.split('\n').filter(line => line.startsWith('Disallow:')).map(line => line.slice(9).trim());
+    expect(disallowed).toContain('/api/');
+    expect(disallowed.some(rule => '/abc123'.startsWith(rule) && rule !== '')).toBe(false);
+  });
+
   test('/abc123,def456 serves index.html for multiple clients', async () => {
     const res = await fetch(`${SERVER_URL}/abc123,def456`);
     expect(res.status).toBe(200);
