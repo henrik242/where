@@ -9,7 +9,7 @@ Type=simple
 User=www-data
 WorkingDirectory=/opt/where-web
 EnvironmentFile=-/opt/where-web/.env
-ExecStart=/usr/local/bin/bun --watch src/server/index.ts
+ExecStart=/usr/local/bin/bun run src/server/index.ts
 Restart=always
 RestartSec=10
 

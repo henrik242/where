@@ -1,0 +1,9 @@
+[Unit]
+Description=Reload Where server after deploy
+
+[Service]
+Type=oneshot
+# A .path unit can only start its target; restarting a running service must go
+# through a oneshot like this. Runs in the system manager, so the deploy needs
+# no sudo.
+ExecStart=/usr/bin/systemctl restart where-server.service

@@ -156,14 +156,30 @@ bun run typecheck
 Deployment is automated via GitHub Actions. On push to `main`:
 1. GHA type-checks server and client, and fails the deploy on any error
 2. GHA builds `app.ts` → `app.js` (minified)
-3. GHA deploys files to server via SSH
-4. Server auto-restarts when files change
+3. GHA deploys files to server via SSH (rsync)
+4. After rsync completes, GHA touches `.deploy.stamp` in the deploy target
+5. A systemd `.path` unit sees the stamp change and restarts `where-server.service`,
+   giving one clean restart on a fully-synced tree (no `bun --watch`, which would
+   restart mid-rsync on a partial tree)
 
-Manual deployment on server:
+The restart is wired with three units (templates in this directory; adapt paths to
+your install location):
+- `where-server.service`: runs the server (`bun run src/server/index.ts`)
+- `where-server.path`: watches `<target>/.deploy.stamp`, triggers the reload unit
+- `where-server-reload.service`: oneshot that runs `systemctl restart where-server.service`
+
+One-time server setup:
 ```bash
-# Server will auto-restart when new files arrive
-# Just ensure .env is configured
+sudo cp where-server.service where-server.path where-server-reload.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now where-server.path
+sudo systemctl enable where-server.service
+sudo systemctl restart where-server.service   # apply the new ExecStart now; enable --now does not restart a running instance
 ```
+
+The `PathModified=` path in `where-server.path` must match the stamp path touched by
+the workflow's `SCRIPT_AFTER` (`$REMOTE_TARGET/.deploy.stamp`). No sudo is needed at
+deploy time; the restart runs inside the system manager, triggered by the stamp.
 
 ## Build Artifacts
 

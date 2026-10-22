@@ -1,0 +1,14 @@
+[Unit]
+Description=Restart Where server when deploy stamp changes
+
+[Path]
+# Must match the stamp path touched by the deploy workflow's SCRIPT_AFTER.
+# Adapt to your install path (this template uses /opt/where-web).
+PathModified=/opt/where-web/.deploy.stamp
+# Required: without this, the path unit would try to *start* where-server.service
+# (same basename), a no-op when it is already running. Route through the
+# oneshot below so it actually restarts.
+Unit=where-server-reload.service
+
+[Install]
+WantedBy=paths.target
