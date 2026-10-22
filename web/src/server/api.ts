@@ -30,16 +30,20 @@ export interface ApiDeps {
   placesRateLimit?: RateLimiter;
 }
 
-function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, string> = CORS_HEADERS): Response {
+function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...extraHeaders, 'Content-Type': 'application/json' },
+    headers: { ...CORS_HEADERS, ...extraHeaders, 'Content-Type': 'application/json' },
   });
 }
 
-/** Only the apps use /api/places, so no CORS: other sites can't read it from their visitors' browsers. */
-function placesResponse(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
-  return jsonResponse(data, status, headers);
+// Only the apps call these, so they get no CORS: other sites can't read them from their
+// visitors' browsers. Applied to every response on the path, errors and preflight included.
+const NO_CORS_PATHS = new Set(['/api/places']);
+
+function withoutCors(response: Response): Response {
+  for (const header of Object.keys(CORS_HEADERS)) response.headers.delete(header);
+  return response;
 }
 
 function noContent(): Response {
@@ -354,28 +358,26 @@ function parseCoordinate(param: string | null, limit: number): number | null {
 function lookupPlace({ places, placesRateLimit }: ApiDeps, url: URL, client: string): Response {
   const retryAfter = placesRateLimit?.hit(client) ?? null;
   if (retryAfter !== null) {
-    return placesResponse({ error: 'Too many requests' }, 429, { 'Retry-After': String(retryAfter) });
+    return jsonResponse({ error: 'Too many requests' }, 429, { 'Retry-After': String(retryAfter) });
   }
   const lat = parseCoordinate(url.searchParams.get('lat'), 90);
   const lon = parseCoordinate(url.searchParams.get('lon'), 180);
   const kind = url.searchParams.get('kind');
   if (lat === null || lon === null || !isPlaceKind(kind)) {
-    return placesResponse({ error: 'lat, lon and kind=building|water required' }, 400);
+    return jsonResponse({ error: 'lat, lon and kind=building|water required' }, 400);
   }
   const result = places?.lookup(kind, lat, lon) ?? 'unavailable';
-  if (result === 'unavailable') return placesResponse({ error: 'Places index unavailable' }, 503);
-  if (result === 'outside') return placesResponse({ error: 'Outside places coverage' }, 503);
-  return placesResponse(result);
+  if (result === 'unavailable') return jsonResponse({ error: 'Places index unavailable' }, 503);
+  if (result === 'outside') return jsonResponse({ error: 'Outside places coverage' }, 503);
+  return jsonResponse(result);
 }
 
 export function createApiHandler(deps: ApiDeps) {
-  /** peerAddress is the TCP peer (server.requestIP), used for rate limiting. */
-  return async function handleAPI(req: Request, peerAddress?: string): Promise<Response> {
-    const url = new URL(req.url);
+  async function route(req: Request, url: URL, peerAddress: string | undefined): Promise<Response> {
     const path = url.pathname;
 
     if (req.method === 'OPTIONS') {
-      return path === '/api/places' ? new Response(null, { status: 204 }) : noContent();
+      return noContent();
     }
 
     let parsedBody: unknown;
@@ -438,5 +440,12 @@ export function createApiHandler(deps: ApiDeps) {
       console.error('API Error:', error);
       return jsonResponse({ error: 'Internal server error' }, 500);
     }
+  }
+
+  /** peerAddress is the TCP peer (server.requestIP), used for rate limiting. */
+  return async function handleAPI(req: Request, peerAddress?: string): Promise<Response> {
+    const url = new URL(req.url);
+    const response = await route(req, url, peerAddress);
+    return NO_CORS_PATHS.has(url.pathname) ? withoutCors(response) : response;
   };
 }
