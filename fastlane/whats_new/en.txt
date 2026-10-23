@@ -1,1 +1,1 @@
-Clearer compass north lock and more detailed crash reports.
+Faster, more reliable place names for buildings and lakes.

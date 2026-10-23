@@ -6,7 +6,15 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v655...main)
+[diff](https://github.com/henrik242/where/compare/v660...main)
+
+- Faster, more reliable place names for buildings and lakes in Norway, looked up on the Where
+  server first with OpenStreetMap servers as fallback.
+- Shared live-tracking pages are kept out of search engine results.
+
+## v660 (2026-10-21)
+
+[diff](https://github.com/henrik242/where/compare/v655...v660)
 
 - More detailed crash reports on Android and iOS, to track down rare crashes.
 - Clearer north-lock indicator on the compass.
