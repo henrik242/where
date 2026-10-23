@@ -79,7 +79,7 @@ jobs:
         $v email ASC_CONTACT_EMAIL
 
     - name: Set up Ruby and fastlane
-      uses: ruby/setup-ruby@v1.327.0
+      uses: ruby/setup-ruby@v1.332.0
       with:
         ruby-version: '3.4'
         bundler-cache: true
@@ -91,7 +91,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Set up Gradle
-      uses: gradle/actions/setup-gradle@v6.3.0
+      uses: gradle/actions/setup-gradle@v6
       with:
         cache-provider: basic
 
