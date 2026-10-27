@@ -37,6 +37,7 @@ let sharedPoints: Map<string, SharedPoint> = new Map();
 let selectedTrackId: string | null = null;
 const renderTypeFor = new Map<string, 'single' | 'line'>();
 let clientFilters: string[] = [];
+const CLIENT_ID_RE = /^[a-z0-9]{6}$/;
 let showHistorical = false;
 let admin = false;
 let adminKey: string | undefined;
@@ -105,8 +106,9 @@ function parseURLParameters(): void {
 
   // Parse client IDs from path (e.g. /abc123 or /abc123,def456)
   const path = window.location.pathname.slice(1);
-  if (path && /^[a-z0-9]{6}(,[a-z0-9]{6})*$/.test(path)) {
-    clientFilters = path.split(',');
+  const ids = path ? path.split(',') : [];
+  if (ids.length > 0 && ids.every(id => CLIENT_ID_RE.test(id))) {
+    clientFilters = ids;
   }
 
   const adminParam = urlParams.get('admin');
@@ -133,7 +135,8 @@ function showOpenInAppBanner(): void {
       return;
     }
     const fallback = encodeURIComponent('https://play.google.com/store/apps/details?id=no.synth.where');
-    link.href = `intent://where.synth.no/${clientFilters.join(',')}` +
+    const encodedFilters = clientFilters.map((id) => encodeURIComponent(id)).join(',');
+    link.href = `intent://where.synth.no/${encodedFilters}` +
       `#Intent;scheme=https;package=no.synth.where;S.browser_fallback_url=${fallback};end`;
   });
   banner.classList.add('visible');
@@ -206,17 +209,17 @@ function updateClientTags(): void {
   const tagsContainer = document.getElementById('client-tags');
   if (!tagsContainer) return;
 
-  if (clientFilters.length !== 0) {
-    tagsContainer.innerHTML = clientFilters.map(clientId => {
-      const safe = escapeHtml(clientId);
-      return `
-      <div class="client-tag" onclick="removeClientFilter('${safe}')">
-        ${safe}
-        <span class="remove">×</span>
-      </div>
-    `;
-    }).join('');
-  }
+  tagsContainer.replaceChildren(...clientFilters.map(clientId => {
+    const tag = document.createElement('div');
+    tag.className = 'client-tag';
+    tag.append(clientId);
+    const remove = document.createElement('span');
+    remove.className = 'remove';
+    remove.textContent = '×';
+    tag.append(remove);
+    tag.addEventListener('click', () => removeClientFilter(clientId));
+    return tag;
+  }));
   updateURL();
 }
 
@@ -226,7 +229,7 @@ function addClientFilter(): void {
   if (!input) return;
 
   const clientId = input.value.trim().toLowerCase();
-  if (clientId && clientId.length === 6 && !clientFilters.includes(clientId)) {
+  if (CLIENT_ID_RE.test(clientId) && !clientFilters.includes(clientId)) {
     clientFilters.push(clientId);
     updateClientTags();
     sendSubscribe();
@@ -834,7 +837,6 @@ function setupWebSocket(): void {
 
 // UI Functions (exposed globally for onclick handlers)
 (window as any).addClientFilter = addClientFilter;
-(window as any).removeClientFilter = removeClientFilter;
 (window as any).toggleHistorical = toggleHistorical;
 (window as any).disableAdmin = disableAdmin;
 (window as any).selectTrack = selectTrack;
