@@ -12,16 +12,13 @@ import androidx.compose.runtime.setValue
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.map
 import no.synth.where.data.geo.LatLng
 import no.synth.where.di.AppDependencies
+import no.synth.where.location.iosCompassReadings
 import no.synth.where.resources.Res
 import no.synth.where.resources.location_permission_required
 import no.synth.where.resources.recording_snackbar
 import no.synth.where.ui.MapScreenNavigation
-import org.maplibre.compose.location.IosHeadingProvider
-import org.maplibre.spatialk.units.Bearing
-import org.maplibre.spatialk.units.extensions.inDegrees
 import platform.CoreLocation.CLLocation
 import platform.Foundation.NSBundle
 import platform.Foundation.NSURL
@@ -58,11 +55,10 @@ fun IosMapScreen(nav: MapScreenNavigation) {
             scope,
         )
     }
-    val headingProvider = remember { IosHeadingProvider() }
     val platform = remember {
         MapPlatform(
             glyphsUrl = iosBundleGlyphsUrl(),
-            headingUpdates = { headingProvider.updates().map { (it.bearing - Bearing.North).inDegrees } },
+            headingUpdates = ::iosCompassReadings,
             onStartRecording = {
                 if (!locationTracker.hasPermission) {
                     locationTracker.requestAlwaysPermission()

@@ -1,1 +1,1 @@
-Faster, more reliable place names for buildings and lakes.
+Location dot shows which way you are facing.

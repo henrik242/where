@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.CrashReporter
+import no.synth.where.ui.map.CompassReading
 import no.synth.where.ui.map.NavColors
 import no.synth.where.ui.map.NavStyle
 import org.maplibre.compose.camera.CameraPosition
@@ -69,6 +70,7 @@ import org.maplibre.compose.expressions.value.IconRotationAlignment
 import org.maplibre.compose.interaction.ClickResult
 import org.maplibre.compose.interaction.MapInteractions
 import org.maplibre.compose.layers.CircleLayer
+import org.maplibre.compose.layers.LocationIndicatorLayer
 import org.maplibre.compose.layers.LineLayer
 import org.maplibre.compose.layers.SymbolLayer
 import org.maplibre.compose.map.MapUiOptions
@@ -81,9 +83,16 @@ import org.maplibre.compose.sources.GeoJsonData
 import org.maplibre.compose.sources.GeoJsonSource
 import org.maplibre.compose.sources.rememberGeoJsonSource
 import org.maplibre.compose.style.BaseStyle
+import org.maplibre.compose.style.TransitionOptions
 import org.maplibre.spatialk.geojson.Position
+import org.maplibre.spatialk.units.Bearing
+import org.maplibre.spatialk.units.extensions.degrees
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.compose.resources.painterResource
 import no.synth.where.resources.Res
+import no.synth.where.resources.heading_cone
+import no.synth.where.resources.heading_cone_wide
 import no.synth.where.resources.nav_arrow
 
 private const val EMPTY_FC = """{"type":"FeatureCollection","features":[]}"""
@@ -132,6 +141,8 @@ data class WhereMapRenderData(
     val navRemainingGeoJson: String? = null,
     val navOffCourseGeoJson: String? = null,
     val userLocation: LatLng? = null,
+    /** Compass reading for the cone on the location dot; null hides the cone. */
+    val userHeading: CompassReading? = null,
 )
 
 /** Map interaction callbacks the host screen reacts to. All take WGS84 lat/lng. */
@@ -148,8 +159,7 @@ data class WhereMapCallbacks(
 /**
  * The shared maplibre-compose map: a base style plus every app overlay, declared once in commonMain.
  * [controller] drives the camera; [callbacks] report taps, camera movement and a two-finger tap;
- * [rotateEnabled] gates the rotate gesture (north lock). The navigation direction-arrow icon and
- * heading-follow rotation are not wired yet.
+ * [rotateEnabled] gates the rotate gesture (north lock).
  */
 @Composable
 fun WhereComposeMap(
@@ -186,7 +196,7 @@ fun WhereComposeMap(
             SharedPointsLayers(data.friendSharedPointsGeoJson, "friend-shared-points")
             SearchResultLayers(data.searchResultsGeoJson, data.searchHighlightGeoJson)
             ElevationMarkerLayer(data.elevationMarkerGeoJson)
-            UserLocationLayer(data.userLocation)
+            UserLocationLayer(data.userLocation, data.userHeading)
         }
 
     DisposableEffect(Unit) {
@@ -708,12 +718,26 @@ private fun NavigationLayers(completedGeoJson: String?, remainingGeoJson: String
 }
 
 @Composable
-private fun UserLocationLayer(location: LatLng?) {
+private fun UserLocationLayer(location: LatLng?, heading: CompassReading?) {
     val geoJson =
         location?.let {
             """{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[${it.longitude},${it.latitude}]}}]}"""
         }
     val source = src("user-location-source", geoJson)
+    // Only the cone: MapLibre turns it the short way round between readings without a re-layout.
+    // The position jumps like the dot drawn above it.
+    val wide = (heading?.accuracy ?: 0.0) > WIDE_CONE_ACCURACY_DEGREES
+    LocationIndicatorLayer(
+        id = "user-location-heading",
+        location = location?.let { Position(longitude = it.longitude, latitude = it.latitude) },
+        bearing = heading?.let { Bearing.North + it.bearing.degrees },
+        topImage = null,
+        shadowImage = null,
+        bearingImage = image(painterResource(if (wide) Res.drawable.heading_cone_wide else Res.drawable.heading_cone)),
+        perspectiveCompensation = 1f,
+        locationTransition = TransitionOptions(Duration.ZERO),
+        bearingTransition = TransitionOptions(CONE_TURN_DURATION),
+    )
     CircleLayer(
         id = "user-location-accuracy",
         source = source,
@@ -730,6 +754,12 @@ private fun UserLocationLayer(location: LatLng?) {
         strokeColor = const(Color.White),
     )
 }
+
+/** Above this compass accuracy the cone widens, like Google and Apple maps do. */
+private const val WIDE_CONE_ACCURACY_DEGREES = 35.0
+
+/** Readings arrive about once a second; turning most of that time keeps the cone moving smoothly. */
+private val CONE_TURN_DURATION = 600.milliseconds
 
 private fun hexColorConst(s: String) = const(hexColor(s))
 

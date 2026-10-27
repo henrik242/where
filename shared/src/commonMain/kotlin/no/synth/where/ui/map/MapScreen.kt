@@ -16,6 +16,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.withContext
 import no.synth.where.data.CoverageLookup
@@ -48,10 +52,14 @@ import no.synth.where.ui.map.compose.WhereComposeMap
 import no.synth.where.ui.map.compose.WhereMapCallbacks
 import no.synth.where.ui.map.compose.WhereMapController
 import no.synth.where.ui.map.compose.WhereMapRenderData
+import no.synth.where.util.Logger
 import org.jetbrains.compose.resources.getString
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
+
+private val COMPASS_RETRY_DELAY = 5.seconds
 
 /** A location fix: position, plus speed (m/s) and course over ground (degrees) when known. */
 data class LocationFix(val latLng: LatLng, val speed: Double? = null, val course: Double? = null)
@@ -59,8 +67,8 @@ data class LocationFix(val latLng: LatLng, val speed: Double? = null, val course
 /** Platform side of the map screen. The defaults are a GPS-less viewer (desktop). */
 class MapPlatform(
     val glyphsUrl: String? = null,
-    /** Compass bearings in degrees, corrected for display rotation; null without a compass. */
-    val headingUpdates: (() -> Flow<Double>)? = null,
+    /** Compass readings relative to true north and the screen; null without a compass. */
+    val headingUpdates: (() -> Flow<CompassReading>)? = null,
     /** Last known position, to open the map there; null to keep the default camera. */
     val lastKnownLocation: (() -> LatLng?)? = null,
     /** Starts recording, prompting for permissions as needed; null when the platform cannot record. */
@@ -279,17 +287,36 @@ fun MapScreen(
         if (cameraFollowMode != CameraFollowMode.OFF) controller.zoomToAtLeast(MapZoomLevels.FOLLOW_MIN)
     }
 
+    // The compass feeds the heading cone as well as FOLLOW_HEADING, so collect whenever there is a fix.
+    // A sensor error retries rather than ending the effect; leaving STARTED clears the stale reading.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var compassReading by remember { mutableStateOf<CompassReading?>(null) }
+    val needsHeading = fix != null || cameraFollowMode == CameraFollowMode.FOLLOW_HEADING
+    LaunchedEffect(needsHeading) {
+        if (!needsHeading) return@LaunchedEffect
+        val updates = platform.headingUpdates ?: return@LaunchedEffect
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            try {
+                updates()
+                    .retryWhen { cause, _ ->
+                        Logger.w(cause, "Compass failed, retrying")
+                        compassReading = null
+                        delay(COMPASS_RETRY_DELAY)
+                        true
+                    }
+                    .collect { compassReading = it }
+            } finally {
+                compassReading = null
+            }
+        }
+    }
+
     // FOLLOW_HEADING: center on the puck and rotate. Compass when on foot or stationary, course over
     // ground while travelling (a vehicle's magnetization throws the compass off); a brief stop HELDs
     // the last course. See headingSourceFor / HeadingSource.
     val latestFix = rememberUpdatedState(fix)
-    var compassBearing by remember { mutableStateOf<Double?>(null) }
     var headingSource by remember { mutableStateOf(HeadingSource.COMPASS) }
     var followedCourseAt by remember { mutableStateOf<TimeMark?>(null) }
-    LaunchedEffect(cameraFollowMode) {
-        if (cameraFollowMode != CameraFollowMode.FOLLOW_HEADING) return@LaunchedEffect
-        platform.headingUpdates?.invoke()?.collect { compassBearing = it }
-    }
     LaunchedEffect(cameraFollowMode) {
         if (cameraFollowMode != CameraFollowMode.FOLLOW_HEADING) {
             headingSource = HeadingSource.COMPASS
@@ -315,12 +342,14 @@ fun MapScreen(
             // HELD (or a missing reading) keeps the current bearing.
             val bearing = if (cameraFollowMode == CameraFollowMode.FOLLOW) 0.0 else when (headingSource) {
                 HeadingSource.COURSE -> current?.course
-                HeadingSource.COMPASS -> compassBearing
+                HeadingSource.COMPASS -> compassReading?.bearing
                 HeadingSource.HELD -> null
             }
             val moving = current != null && controller.followStep { pose -> animator.step(frame, pose, current.latLng, bearing) }
             // Settled: stop asking for frames until there is something new to follow.
-            if (!moving) snapshotFlow { Triple(latestFix.value, compassBearing, headingSource) }.drop(1).first()
+            if (!moving) snapshotFlow {
+                Triple(latestFix.value, compassReading.takeIf { cameraFollowMode == CameraFollowMode.FOLLOW_HEADING }, headingSource)
+            }.drop(1).first()
         }
     }
 
@@ -397,6 +426,10 @@ fun MapScreen(
         navRemainingGeoJson = navigationLayers?.remaining,
         navOffCourseGeoJson = navigationLayers?.offCourse,
         userLocation = fix?.latLng,
+        // Off while FOLLOW_HEADING steers by course: in a vehicle the compass disagrees with the map.
+        userHeading = compassReading.takeUnless {
+            cameraFollowMode == CameraFollowMode.FOLLOW_HEADING && headingSource != HeadingSource.COMPASS
+        },
     )
 
     val mapCallbacks = WhereMapCallbacks(
