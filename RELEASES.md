@@ -10,6 +10,7 @@ tag dates.
 
 - A cone on your location dot shows which way you are facing, from the phone's compass; it widens when the compass is unsure.
 - Compass follow mode now uses true north, and turns the right way in landscape on iPhone.
+- On Android the compass follows where the back of the phone points when it is held upright.
 
 ## v670 (2026-10-23)
 
