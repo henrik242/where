@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="80dp"
+    android:height="80dp"
+    android:viewportWidth="80"
+    android:viewportHeight="80">
+    <!-- Apex at the center; brightest just outside the 16dp accuracy circle, fading out. -->
+    <path android:pathData="M40,40 L21,7.09 A38,38 0 0,1 59,7.09 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="40"
+                android:centerY="40"
+                android:gradientRadius="38">
+                <item android:offset="0" android:color="#CC1E88E5" />
+                <item android:offset="0.45" android:color="#B31E88E5" />
+                <item android:offset="1" android:color="#001E88E5" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

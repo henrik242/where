@@ -3,6 +3,7 @@ package no.synth.where.ui
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.GeomagneticField
 import android.location.LocationManager
 import android.view.Surface
 import android.view.WindowManager
@@ -32,7 +33,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import no.synth.where.WhereApplication
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
@@ -55,13 +56,12 @@ import no.synth.where.ui.map.PointColors
 import no.synth.where.ui.map.RecordingCard
 import no.synth.where.ui.map.RulerCard
 import no.synth.where.ui.map.SearchOverlay
+import no.synth.where.ui.map.toCompassReading
 import no.synth.where.ui.map.ViewingPointBanner
 import no.synth.where.ui.map.ViewingTrackBanner
 import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.formatDateTime
 import org.maplibre.compose.location.AndroidHeadingProvider
-import org.maplibre.spatialk.units.Bearing
-import org.maplibre.spatialk.units.extensions.inDegrees
 
 // MapLibre glyphs URL pointing at the PBF fonts bundled in app/src/main/assets/fonts/, so labels
 // render offline without a network round-trip.
@@ -154,11 +154,11 @@ fun AndroidMapScreen(nav: MapScreenNavigation) {
         MapPlatform(
             glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
             headingUpdates = {
-                // The library reports azimuth in the device's natural orientation; add the display
-                // rotation so the map turns the right way in landscape. Approximate: it does not
-                // correct for flat-vs-upright posture.
-                headingProvider.updates().map {
-                    ((it.bearing - Bearing.North).inDegrees + displayRotationDegrees(context)).mod(360.0)
+                // The library reports magnetic azimuth in the device's natural orientation; add the
+                // display rotation for landscape and the declination at the last fix for true north.
+                // Approximate: it does not correct for flat-vs-upright posture.
+                headingProvider.updates().mapNotNull {
+                    it.toCompassReading(displayRotationDegrees(context), fix?.latLng?.let(::declinationAt))
                 }
             },
             lastKnownLocation = { lastKnownLocation(context) },
@@ -203,6 +203,11 @@ private fun lastKnownLocation(context: Context): LatLng? {
     }
     return location?.let { LatLng(it.latitude, it.longitude) }
 }
+
+/** Magnetic declination in degrees east, from the World Magnetic Model bundled with Android. */
+private fun declinationAt(latLng: LatLng): Double =
+    GeomagneticField(latLng.latitude.toFloat(), latLng.longitude.toFloat(), 0f, System.currentTimeMillis())
+        .declination.toDouble()
 
 /** Current display rotation as degrees (Surface.ROTATION_* -> 0/90/180/270). */
 @Suppress("DEPRECATION")

@@ -6,7 +6,14 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v660...main)
+[diff](https://github.com/henrik242/where/compare/v670...main)
+
+- A cone on your location dot shows which way you are facing, from the phone's compass; it widens when the compass is unsure.
+- Compass follow mode now uses true north, and turns the right way in landscape on iPhone.
+
+## v670 (2026-10-23)
+
+[diff](https://github.com/henrik242/where/compare/v660...v670)
 
 - Faster, more reliable place names for buildings and lakes in Norway, looked up on the Where
   server first with OpenStreetMap servers as fallback.
