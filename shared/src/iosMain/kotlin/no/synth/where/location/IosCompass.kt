@@ -40,10 +40,11 @@ fun iosCompassReadings(): Flow<CompassReading> = callbackFlow {
     manager.desiredAccuracy = kCLLocationAccuracyKilometer
     manager.startUpdatingLocation()
     manager.startUpdatingHeading()
+    // The manager holds its delegate weakly; using it here keeps it alive until collection stops.
     awaitClose {
         manager.stopUpdatingHeading()
         manager.stopUpdatingLocation()
-        manager.delegate = null
+        if (manager.delegate === delegate) manager.delegate = null
     }
 }.flowOn(Dispatchers.Main).sample(1.seconds)
 
