@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.sample
 import no.synth.where.ui.map.CompassReading
+import no.synth.where.ui.map.compassReading
 import no.synth.where.util.Logger
 import no.synth.where.util.keyUIWindow
 import platform.CoreLocation.CLHeading
@@ -53,8 +54,8 @@ private class CompassDelegate(private val channel: SendChannel<CompassReading>) 
         if (didUpdateHeading.headingAccuracy < 0.0) return
         // Magnetic only until CoreLocation has a position to compute the declination from.
         val heading = didUpdateHeading.trueHeading.takeIf { it >= 0.0 } ?: didUpdateHeading.magneticHeading
-        val bearing = (heading + interfaceRotationDegrees()).mod(360.0)
-        if (bearing.isFinite()) channel.trySend(CompassReading(bearing, didUpdateHeading.headingAccuracy))
+        compassReading(heading, interfaceRotationDegrees().toDouble(), didUpdateHeading.headingAccuracy)
+            ?.let { channel.trySend(it) }
     }
 
     // Heading failures (e.g. magnetic interference) are transient; CoreLocation keeps trying.

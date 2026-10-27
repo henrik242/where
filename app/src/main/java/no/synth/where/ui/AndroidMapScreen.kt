@@ -3,10 +3,7 @@ package no.synth.where.ui
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.hardware.GeomagneticField
 import android.location.LocationManager
-import android.view.Surface
-import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,7 +30,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.flow.mapNotNull
 import no.synth.where.WhereApplication
 import no.synth.where.data.PlaceSearchClient
 import no.synth.where.data.RulerPoint
@@ -41,6 +37,7 @@ import no.synth.where.data.RulerState
 import no.synth.where.data.Track
 import no.synth.where.data.TrackPoint
 import no.synth.where.data.geo.LatLng
+import no.synth.where.location.androidCompassReadings
 import no.synth.where.location.fusedLocationFlow
 import no.synth.where.resources.Res
 import no.synth.where.resources.recording_snackbar
@@ -56,12 +53,10 @@ import no.synth.where.ui.map.PointColors
 import no.synth.where.ui.map.RecordingCard
 import no.synth.where.ui.map.RulerCard
 import no.synth.where.ui.map.SearchOverlay
-import no.synth.where.ui.map.toCompassReading
 import no.synth.where.ui.map.ViewingPointBanner
 import no.synth.where.ui.map.ViewingTrackBanner
 import no.synth.where.util.currentTimeMillis
 import no.synth.where.util.formatDateTime
-import org.maplibre.compose.location.AndroidHeadingProvider
 
 // MapLibre glyphs URL pointing at the PBF fonts bundled in app/src/main/assets/fonts/, so labels
 // render offline without a network round-trip.
@@ -150,17 +145,9 @@ fun AndroidMapScreen(nav: MapScreenNavigation) {
     }
 
     val platform = remember {
-        val headingProvider = AndroidHeadingProvider(context)
         MapPlatform(
             glyphsUrl = ANDROID_ASSET_GLYPHS_URL,
-            headingUpdates = {
-                // The library reports magnetic azimuth in the device's natural orientation; add the
-                // display rotation for landscape and the declination at the last fix for true north.
-                // Approximate: it does not correct for flat-vs-upright posture.
-                headingProvider.updates().mapNotNull {
-                    it.toCompassReading(displayRotationDegrees(context), fix?.latLng?.let(::declinationAt))
-                }
-            },
+            headingUpdates = { androidCompassReadings(context) { fix?.latLng } },
             lastKnownLocation = { lastKnownLocation(context) },
             onStartRecording = {
                 when {
@@ -203,21 +190,6 @@ private fun lastKnownLocation(context: Context): LatLng? {
     }
     return location?.let { LatLng(it.latitude, it.longitude) }
 }
-
-/** Magnetic declination in degrees east, from the World Magnetic Model bundled with Android. */
-private fun declinationAt(latLng: LatLng): Double =
-    GeomagneticField(latLng.latitude.toFloat(), latLng.longitude.toFloat(), 0f, System.currentTimeMillis())
-        .declination.toDouble()
-
-/** Current display rotation as degrees (Surface.ROTATION_* -> 0/90/180/270). */
-@Suppress("DEPRECATION")
-private fun displayRotationDegrees(context: Context): Int =
-    when ((context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
-        Surface.ROTATION_90 -> 90
-        Surface.ROTATION_180 -> 180
-        Surface.ROTATION_270 -> 270
-        else -> 0
-    }
 
 // --- Previews ---
 
