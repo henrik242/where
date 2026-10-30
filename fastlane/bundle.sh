@@ -21,8 +21,10 @@ done
 
 version="$(awk '/^BUNDLED WITH/ { getline; print $1 }' Gemfile.lock)"
 if ! gem list -i bundler -v "$version" >/dev/null; then
-  gem install bundler -v "$version" --no-document
+  gem install bundler -v "$version" --no-document --user-install 2>/dev/null || gem install bundler -v "$version" --no-document
 fi
+
+bundle config set --local path 'vendor/bundle'
 
 case "${1:-install}" in
   install) bundle install ;;
