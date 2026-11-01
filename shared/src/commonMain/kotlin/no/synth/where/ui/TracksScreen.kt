@@ -7,7 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import no.synth.where.data.BulkImportOutcome
 import no.synth.where.data.BulkImportResult
 import no.synth.where.data.ImportFailure
@@ -83,11 +85,12 @@ class TracksScreenState(
         }
     }
 
+    // Repository writes are NonCancellable: leaving the screen must not stop an import halfway.
     fun importBytes(bytes: ByteArray) {
         scope.launch {
             isImporting = true
             try {
-                val imported = trackRepository.importTrackFromBytes(bytes)
+                val imported = withContext(NonCancellable) { trackRepository.importTrackFromBytes(bytes) }
                 if (imported == null) fail(Res.string.import_gpx_corrupted) else newlyImportedTrackId = imported.id
             } catch (e: Exception) {
                 Logger.e(e, "Failed to import track from bytes")
@@ -104,7 +107,7 @@ class TracksScreenState(
         scope.launch {
             isImporting = true
             try {
-                val result = trackRepository.importTracks(items, folder)
+                val result = withContext(NonCancellable) { trackRepository.importTracks(items, folder) }
                 when (result.outcome()) {
                     BulkImportOutcome.IMPORTED -> bulkImportResult = result
                     BulkImportOutcome.NONE_FOUND -> fail(Res.string.import_no_tracks_found)
@@ -124,7 +127,7 @@ class TracksScreenState(
             isImportingUrl = true
             try {
                 val track = TrackUrlImporter().importFromUrl(input)
-                val imported = track?.toGPX()?.let { trackRepository.importTrack(it) }
+                val imported = track?.toGPX()?.let { withContext(NonCancellable) { trackRepository.importTrack(it) } }
                 if (imported == null) fail(Res.string.import_url_error) else newlyImportedTrackId = imported.id
             } catch (e: Exception) {
                 Logger.e(e, "Failed to import track from URL")
