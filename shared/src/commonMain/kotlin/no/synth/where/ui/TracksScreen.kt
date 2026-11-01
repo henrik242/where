@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 import no.synth.where.data.BulkImportOutcome
 import no.synth.where.data.BulkImportResult
 import no.synth.where.data.ImportFailure
@@ -92,6 +93,9 @@ class TracksScreenState(
             try {
                 val imported = withContext(NonCancellable) { trackRepository.importTrackFromBytes(bytes) }
                 if (imported == null) fail(Res.string.import_gpx_corrupted) else newlyImportedTrackId = imported.id
+            } catch (e: CancellationException) {
+                // Closing the screen cancels a read or download in progress; that is not a failure.
+                throw e
             } catch (e: Exception) {
                 Logger.e(e, "Failed to import track from bytes")
                 fail(Res.string.import_gpx_corrupted, e.message)
@@ -113,6 +117,8 @@ class TracksScreenState(
                     BulkImportOutcome.NONE_FOUND -> fail(Res.string.import_no_tracks_found)
                     BulkImportOutcome.ALL_FAILED -> fail(Res.string.import_gpx_corrupted)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.e(e, "Failed to import tracks")
                 fail(Res.string.import_gpx_corrupted, e.message)
@@ -129,6 +135,8 @@ class TracksScreenState(
                 val track = TrackUrlImporter().importFromUrl(input)
                 val imported = track?.toGPX()?.let { withContext(NonCancellable) { trackRepository.importTrack(it) } }
                 if (imported == null) fail(Res.string.import_url_error) else newlyImportedTrackId = imported.id
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.e(e, "Failed to import track from URL")
                 fail(Res.string.import_url_error)

@@ -113,8 +113,9 @@ fun WhereNavHost(
         onDispose { navController.removeOnDestinationChangedListener(listener) }
     }
 
+    // Guarded: a double tap during the transition must not pop the map itself.
     fun back() {
-        navController.popBackStack()
+        if (navController.previousBackStackEntry != null) navController.popBackStack()
     }
 
     fun toMap() {

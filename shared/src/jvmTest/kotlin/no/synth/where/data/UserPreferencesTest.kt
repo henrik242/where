@@ -7,19 +7,18 @@ import no.synth.where.ui.map.NveOverlay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import no.synth.where.data.geo.CoordFormat
-import org.junit.After
-import org.junit.Assert.*
-import org.junit.Before
-import org.junit.Rule
-import org.junit.Test
-import org.junit.rules.TemporaryFolder
+import java.io.File
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class UserPreferencesTest {
 
@@ -28,26 +27,31 @@ class UserPreferencesTest {
         const val TIMEOUT = 10_000L
     }
 
-    @get:Rule
-    val tempFolder = TemporaryFolder()
+    private val dir = File(System.getProperty("java.io.tmpdir"), "user-prefs-${System.nanoTime()}").apply { mkdirs() }
+
+    private fun newFile(name: String) = File(dir, name)
 
     private lateinit var scope: CoroutineScope
     private lateinit var prefs: UserPreferences
 
-    @Before
+    @BeforeTest
     fun setUp() = runBlocking {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val dataStore = PreferenceDataStoreFactory.create(
             scope = scope,
-            produceFile = { tempFolder.newFile("user_prefs_test.preferences_pb") }
+            produceFile = { newFile("user_prefs_test.preferences_pb") }
         )
         prefs = UserPreferences(dataStore)
         withTimeout(TIMEOUT) { prefs.awaitHydrated() }
     }
 
-    @After
-    fun tearDown() {
-        scope.cancel()
+    @AfterTest
+    fun tearDown() = runBlocking {
+        // Let pending writes land, then release the file before deleting it.
+        withTimeout(TIMEOUT) { prefs.awaitPersisted() }
+        scope.coroutineContext.job.cancelAndJoin()
+        dir.deleteRecursively()
+        Unit
     }
 
     @Test
@@ -100,7 +104,7 @@ class UserPreferencesTest {
             val storeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             val store = PreferenceDataStoreFactory.create(
                 scope = storeScope,
-                produceFile = { tempFolder.newFile("rapid_toggle_$i.preferences_pb") }
+                produceFile = { newFile("rapid_toggle_$i.preferences_pb") }
             )
             val rapid = UserPreferences(store)
             withTimeout(TIMEOUT) { rapid.awaitHydrated() }
@@ -109,7 +113,7 @@ class UserPreferencesTest {
             withTimeout(TIMEOUT) { rapid.awaitPersisted() }
             assertEquals(false, store.data.first()[booleanPreferencesKey("online_tracking_enabled")])
             assertEquals(false, rapid.onlineTrackingEnabled.value)
-            storeScope.cancel()
+            storeScope.coroutineContext.job.cancelAndJoin()
         }
     }
 
@@ -155,7 +159,7 @@ class UserPreferencesTest {
 
     @Test
     fun nveOverlay_persistsBothChoiceAndOff() = runBlocking {
-        val file = tempFolder.newFile("nve_overlay_persist.preferences_pb")
+        val file = newFile("nve_overlay_persist.preferences_pb")
         assertEquals(NveOverlay.STEEPNESS, reload(file) { it.updateNveOverlay(NveOverlay.STEEPNESS) }.nveOverlay.value)
         // Turning it off must survive a reload, not fall back to the legacy boolean.
         assertNull(reload(file) { it.updateNveOverlay(null) }.nveOverlay.value)
@@ -163,18 +167,18 @@ class UserPreferencesTest {
 
     @Test
     fun nveOverlay_migratesLegacyAvalancheZonesFlag() = runBlocking {
-        val file = tempFolder.newFile("nve_overlay_legacy.preferences_pb")
+        val file = newFile("nve_overlay_legacy.preferences_pb")
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val store = PreferenceDataStoreFactory.create(scope = scope, produceFile = { file })
         store.edit { it[booleanPreferencesKey("show_avalanche_zones")] = true }
         val migrated = UserPreferences(store)
         withTimeout(TIMEOUT) { migrated.awaitHydrated() }
         assertEquals(NveOverlay.STEEPNESS_RUNOUT, migrated.nveOverlay.value)
-        scope.cancel()
+        scope.coroutineContext.job.cancelAndJoin()
     }
 
     /** Applies [change], then reopens the same file in a fresh UserPreferences and returns it. */
-    private suspend fun reload(file: java.io.File, change: (UserPreferences) -> Unit): UserPreferences {
+    private suspend fun reload(file: File, change: (UserPreferences) -> Unit): UserPreferences {
         val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val writeStore = PreferenceDataStoreFactory.create(scope = writeScope, produceFile = { file })
         val writer = UserPreferences(writeStore)
@@ -196,27 +200,27 @@ class UserPreferencesTest {
     @Test
     fun showOsmPaths_defaultsOffAndPersistsAcrossReload() = runBlocking {
         assertEquals(false, prefs.showOsmPaths.value)
-        val file = tempFolder.newFile("osm_paths_persist.preferences_pb")
+        val file = newFile("osm_paths_persist.preferences_pb")
         assertEquals(true, reload(file) { it.updateShowOsmPaths(true) }.showOsmPaths.value)
     }
 
     @Test
     fun updateCoordFormat_persistsAcrossReload() = runBlocking {
-        val file = tempFolder.newFile("coord_format_persist.preferences_pb")
+        val file = newFile("coord_format_persist.preferences_pb")
         assertEquals(CoordFormat.MGRS, reload(file) { it.updateCoordFormat(CoordFormat.MGRS) }.coordFormat.value)
     }
 
     @Test
     fun showCoverage_defaultsOffAndPersistsAcrossReload() = runBlocking {
         assertEquals(false, prefs.showCoverage.value)
-        val file = tempFolder.newFile("coverage_persist.preferences_pb")
+        val file = newFile("coverage_persist.preferences_pb")
         assertEquals(true, reload(file) { it.updateShowCoverage(true) }.showCoverage.value)
     }
 
     @Test
     fun coverageTilesVersion_defaultsToFallbackAndPersistsAcrossReload() = runBlocking {
         assertEquals(CoverageTilesClient.FALLBACK_VERSION, prefs.coverageTilesVersion.value)
-        val file = tempFolder.newFile("coverage_version_persist.preferences_pb")
+        val file = newFile("coverage_version_persist.preferences_pb")
         assertEquals("2026-11-01", reload(file) { it.updateCoverageTilesVersion("2026-11-01") }.coverageTilesVersion.value)
     }
 }
