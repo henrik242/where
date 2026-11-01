@@ -75,14 +75,14 @@ class KomootImporter(
     private suspend fun fetchTourData(ref: KomootRef): TourData? {
         return try {
             val coordsText = client.get("https://api.komoot.de/v007/tours/${ref.id}/coordinates").bodyAsText()
-            val coordsJson = lenientJson.parseToJsonElement(coordsText).jsonObject
+            val coordsJson = LenientJson.parseToJsonElement(coordsText).jsonObject
             val items = coordsJson["items"]?.jsonArray ?: return null
             val points = parseCoordinateItems(items)
             if (points.isEmpty()) return null
 
             val name = try {
                 val tourText = client.get("https://api.komoot.de/v007/tours/${ref.id}").bodyAsText()
-                lenientJson.parseToJsonElement(tourText).jsonObject["name"]?.jsonPrimitive?.content
+                LenientJson.parseToJsonElement(tourText).jsonObject["name"]?.jsonPrimitive?.content
             } catch (e: Exception) {
                 null
             }
@@ -115,9 +115,6 @@ class KomootImporter(
     )
 
     companion object {
-
-        private val lenientJson = LenientJson
-
         fun parseKomootUrl(input: String): KomootRef? {
             val trimmed = input.trim()
 
