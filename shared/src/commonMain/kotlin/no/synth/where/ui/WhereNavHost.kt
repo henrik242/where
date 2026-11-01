@@ -68,6 +68,8 @@ class ShellPlatform(
     val currentLanguageTag: () -> String? = { null },
     val onLanguageSelected: (String?) -> Unit = {},
     val openLocationSettings: () -> Unit = {},
+    /** Called when a live share starts, e.g. to start a location service. */
+    val onLiveShareStarted: () -> Unit = {},
 )
 
 /** What the shell hands the platform map screen. */
@@ -80,14 +82,13 @@ class MapScreenNavigation(
 )
 
 /**
- * Platform screens that need more glue than [ShellPlatform] offers (activity result launchers,
- * services). A null slot uses the shared screen wired through [ShellPlatform].
+ * Platform screens that need more glue than [ShellPlatform] offers (activity result launchers).
+ * A null slot uses the shared screen wired through [ShellPlatform].
  */
 class ShellScreens(
-    val map: @Composable (MapScreenNavigation) -> Unit,
-    val tracks: (@Composable (route: TracksRoute, onBack: () -> Unit, onShowMap: () -> Unit) -> Unit)? = null,
-    val savedPoints: (@Composable (onBack: () -> Unit, onShowOnMap: (SavedPoint) -> Unit) -> Unit)? = null,
-    val onlineTracking: (@Composable (onBack: () -> Unit, onNavigateToMap: () -> Unit) -> Unit)? = null,
+    val mapScreen: @Composable (MapScreenNavigation) -> Unit,
+    val tracksScreen: (@Composable (route: TracksRoute, onBack: () -> Unit, onShowMap: () -> Unit) -> Unit)? = null,
+    val savedPointsScreen: (@Composable (onBack: () -> Unit, onShowOnMap: (SavedPoint) -> Unit) -> Unit)? = null,
 )
 
 /** The app's navigation graph, shared by all platforms. */
@@ -122,7 +123,7 @@ fun WhereNavHost(
 
     NavHost(navController = navController, startDestination = MapRoute) {
         composable<MapRoute> {
-            screens.map(
+            screens.mapScreen(
                 MapScreenNavigation(
                     viewingPoint = viewingPoint,
                     onClearViewingPoint = { viewingPoint = null },
@@ -157,7 +158,10 @@ fun WhereNavHost(
 
         composable<TracksRoute> { entry ->
             val route = entry.toRoute<TracksRoute>()
-            screens.tracks?.invoke(route, ::back, ::toMap) ?: run {
+            val platformScreen = screens.tracksScreen
+            if (platformScreen != null) {
+                platformScreen(route, ::back, ::toMap)
+            } else {
                 val state = rememberRetainedState { scope ->
                     TracksScreenState(
                         deps.trackRepository, userPreferences, deps.stravaTokenManager, deps.stravaRouteImporter, scope,
@@ -180,7 +184,10 @@ fun WhereNavHost(
                 viewingPoint = point
                 toMap()
             }
-            screens.savedPoints?.invoke(::back, showOnMap) ?: run {
+            val platformScreen = screens.savedPointsScreen
+            if (platformScreen != null) {
+                platformScreen(::back, showOnMap)
+            } else {
                 val pointImport = rememberRetainedState { scope -> PointImportState(deps.savedPointsRepository, scope) }
                 SavedPointsScreen(
                     repository = deps.savedPointsRepository,
@@ -228,20 +235,19 @@ fun WhereNavHost(
         }
 
         composable<OnlineTrackingRoute> {
-            screens.onlineTracking?.invoke(::back, ::toMap) ?: run {
-                val state = rememberRetainedState { scope ->
-                    OnlineTrackingState(userPreferences, deps.liveTrackingFollower, deps.clientIdManager, scope)
-                }
-                OnlineTrackingScreen(
-                    state = state,
-                    onBackClick = ::back,
-                    onNavigateToMap = ::toMap,
-                    openUrl = platform.openUrl,
-                    onShare = platform.shareText,
-                    backgroundLocationMissing = backgroundLocationMissing,
-                    onOpenLocationSettings = platform.openLocationSettings,
-                )
+            val state = rememberRetainedState { scope ->
+                OnlineTrackingState(userPreferences, deps.liveTrackingFollower, deps.clientIdManager, scope)
             }
+            OnlineTrackingScreen(
+                state = state,
+                onBackClick = ::back,
+                onNavigateToMap = ::toMap,
+                openUrl = platform.openUrl,
+                onShare = platform.shareText,
+                onLiveShareStarted = platform.onLiveShareStarted,
+                backgroundLocationMissing = backgroundLocationMissing,
+                onOpenLocationSettings = platform.openLocationSettings,
+            )
         }
     }
 

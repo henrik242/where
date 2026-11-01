@@ -116,7 +116,7 @@ fun IosApp() {
         WhereNavHost(
             deps = deps,
             platform = iosPlatform,
-            screens = ShellScreens(map = { nav -> IosMapScreen(nav) }),
+            screens = ShellScreens(mapScreen = { nav -> IosMapScreen(nav) }),
             backgroundLocationMissing = !alwaysPermissionGranted,
             userLocation = { rememberTrackerLocation() },
         )
