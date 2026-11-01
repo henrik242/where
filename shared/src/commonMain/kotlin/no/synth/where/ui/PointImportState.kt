@@ -4,7 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import no.synth.where.data.ParsedWaypoint
 import no.synth.where.data.PointImportCandidates
 import no.synth.where.data.SavedPointsRepository
@@ -44,7 +46,8 @@ class PointImportState(
     }
 
     fun importSelected(waypoints: List<ParsedWaypoint>) = launchImport(Res.string.import_points_failed) {
-        importedCount = repository.importPoints(waypoints).size
+        // NonCancellable: leaving the screen must not stop the save halfway.
+        importedCount = withContext(NonCancellable) { repository.importPoints(waypoints) }.size
         candidates = null
     }
 
