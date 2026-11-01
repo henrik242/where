@@ -5,7 +5,6 @@ import kotlinx.cinterop.ObjCSignatureOverride
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import no.synth.where.data.OnlineTrackingCoordinator
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.geo.LatLng
@@ -57,13 +56,12 @@ class IosLocationTracker(
     val hasAlwaysPermission: Boolean
         get() = CLLocationManager.authorizationStatus() == kCLAuthorizationStatusAuthorizedAlways
 
-    private val _alwaysPermissionGranted = MutableStateFlow(hasAlwaysPermission)
-
     /**
      * Observable mirror of [hasAlwaysPermission] — without it a live share keeps sending only
      * while the app is in the foreground, which the tracking screen warns about.
      */
-    val alwaysPermissionGranted: StateFlow<Boolean> = _alwaysPermissionGranted.asStateFlow()
+    val alwaysPermissionGranted: StateFlow<Boolean>
+        field = MutableStateFlow(hasAlwaysPermission)
 
     fun requestPermission() {
         locationManager.requestWhenInUseAuthorization()
@@ -132,7 +130,7 @@ class IosLocationTracker(
     }
 
     override fun locationManagerDidChangeAuthorization(manager: CLLocationManager) {
-        _alwaysPermissionGranted.value = hasAlwaysPermission
+        alwaysPermissionGranted.value = hasAlwaysPermission
         applyBackgroundUpdatesFlag()
         if (hasPermission && (keepAliveActive || trackingActive)) {
             locationManager.startUpdatingLocation()

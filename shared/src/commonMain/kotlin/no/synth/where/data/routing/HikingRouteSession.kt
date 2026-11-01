@@ -10,7 +10,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import no.synth.where.data.GeocodingHelper
@@ -49,14 +48,14 @@ class HikingRouteSession(
     private val scope: CoroutineScope,
 ) {
     // A percentage would mislead: the slow part is fetching tiles, which runs ahead of the search.
-    private val _isPlanning = MutableStateFlow(false)
-    val isPlanning: StateFlow<Boolean> = _isPlanning.asStateFlow()
+    val isPlanning: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _preview = MutableStateFlow<PlannedRoute?>(null)
-    val preview: StateFlow<PlannedRoute?> = _preview.asStateFlow()
+    val preview: StateFlow<PlannedRoute?>
+        field = MutableStateFlow<PlannedRoute?>(null)
 
-    private val _crossings = MutableStateFlow<PlannedCrossings?>(null)
-    val crossings: StateFlow<PlannedCrossings?> = _crossings.asStateFlow()
+    val crossings: StateFlow<PlannedCrossings?>
+        field = MutableStateFlow<PlannedCrossings?>(null)
 
     private val _events = Channel<RoutePlanEvent>(Channel.BUFFERED)
     val events: Flow<RoutePlanEvent> = _events.receiveAsFlow()
@@ -71,15 +70,15 @@ class HikingRouteSession(
     fun plan(waypoints: List<LatLng>) {
         if (waypoints.size < 2 || job?.isActive == true) return
         val previous = job
-        _preview.value = null
+        preview.value = null
         job = scope.launch {
             // A cancelled plan may still be unwinding; let it reset isPlanning before this one sets it.
             previous?.join()
             try {
-                _isPlanning.value = true
+                isPlanning.value = true
                 planLegs(waypoints)?.let { _events.send(it) }
             } finally {
-                _isPlanning.value = false
+                isPlanning.value = false
             }
         }
     }
@@ -87,14 +86,14 @@ class HikingRouteSession(
     /** Stops a plan in progress and drops the preview. */
     fun clear() {
         job?.cancel()
-        _preview.value = null
+        preview.value = null
     }
 
     /** Saves [route] as track [name] and shows it on the map, then calls [onSaved]. */
     fun save(route: PlannedRoute, name: String, onSaved: () -> Unit) {
         scope.launch {
             val track = trackRepository.savePlannedRoute(name, route.points)
-            _crossings.value = PlannedCrossings(track.id, route.crossings)
+            crossings.value = PlannedCrossings(track.id, route.crossings)
             onSaved()
         }
     }
@@ -132,7 +131,7 @@ class HikingRouteSession(
                 }
                 routes += route ?: return@coroutineScope RoutePlanEvent.NoRoute
             }
-            _preview.value = PlannedRoute(
+            preview.value = PlannedRoute(
                 // Each leg starts where the previous ended; drop the duplicated joint.
                 points = routes.flatMapIndexed { i, r -> if (i == 0) r.points else r.points.drop(1) },
                 crossings = routes.flatMap { it.crossings },
