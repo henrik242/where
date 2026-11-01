@@ -17,7 +17,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -104,7 +103,7 @@ class OnlineTrackingClient(
                 setBody(jsonBody)
             }
             if (response.status.value in 200..299) {
-                val responseJson = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+                val responseJson = AppJson.parseToJsonElement(response.bodyAsText()).jsonObject
                 val trackId = responseJson["id"]?.jsonPrimitive?.content ?: return
                 currentTrackId = trackId
                 pendingTrackName = null
@@ -160,7 +159,7 @@ class OnlineTrackingClient(
                     setBody(jsonBody)
                 }
                 if (response.status.value in 200..299) {
-                    val responseJson = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+                    val responseJson = AppJson.parseToJsonElement(response.bodyAsText()).jsonObject
                     val trackId = responseJson["id"]?.jsonPrimitive?.content ?: return@launch
                     currentTrackId = trackId
                     Logger.d("Track synced: %s", trackId)

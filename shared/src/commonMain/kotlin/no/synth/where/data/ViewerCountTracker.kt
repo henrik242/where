@@ -8,7 +8,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -49,7 +48,7 @@ class ViewerCountTracker(
                 header("X-Signature", signature)
             }
             if (response.status.value in 200..299) {
-                val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+                val json = AppJson.parseToJsonElement(response.bodyAsText()).jsonObject
                 onViewerCountChanged(json["viewers"]?.jsonPrimitive?.int ?: 0)
             }
         } catch (e: Exception) {

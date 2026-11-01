@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -211,7 +210,7 @@ class StravaTokenManager(
         private const val EXPIRY_BUFFER_SECONDS = 300L
         // `errors[].resource` values meaning the grant is gone. "Application" means bad credentials.
         private val REJECTED_RESOURCES = listOf("RefreshToken", "AuthorizationCode")
-        private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+        private val json = LenientJson
 
         fun authorizeUrl(clientId: String, state: String): String =
             "https://www.strava.com/oauth/authorize" +

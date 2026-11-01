@@ -4,7 +4,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -210,7 +209,7 @@ class GarminImporter(
     }
 
     companion object {
-        private val lenientJson = Json { ignoreUnknownKeys = true }
+        private val lenientJson = AppJson
 
         fun parseGarminUrl(input: String): GarminRef? {
             val trimmed = input.trim()

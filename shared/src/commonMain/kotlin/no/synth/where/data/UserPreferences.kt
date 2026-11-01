@@ -21,7 +21,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import no.synth.where.util.currentTimeMillis
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.double
@@ -528,7 +527,7 @@ class UserPreferences(
     private fun deserializeNicknames(json: String?): Map<String, String> {
         if (json.isNullOrBlank()) return emptyMap()
         return try {
-            Json.parseToJsonElement(json).jsonObject.mapValues { it.value.jsonPrimitive.content }
+            AppJson.parseToJsonElement(json).jsonObject.mapValues { it.value.jsonPrimitive.content }
         } catch (_: Exception) {
             emptyMap()
         }
@@ -581,7 +580,7 @@ class UserPreferences(
     private fun deserializeSearchHistory(json: String?): List<PlaceSearchClient.SearchResult> {
         if (json.isNullOrBlank()) return emptyList()
         return try {
-            Json.parseToJsonElement(json).jsonArray.map { element ->
+            AppJson.parseToJsonElement(json).jsonArray.map { element ->
                 val obj = element.jsonObject
                 PlaceSearchClient.SearchResult(
                     name = obj["name"]?.jsonPrimitive?.content ?: "",
