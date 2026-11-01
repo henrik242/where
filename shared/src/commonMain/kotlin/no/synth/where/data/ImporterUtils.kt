@@ -3,7 +3,6 @@ package no.synth.where.data
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
@@ -44,7 +43,7 @@ object ImporterUtils {
             val lngs = batch.joinToString(",") { it.longitude.toString() }
             val url = "https://api.open-meteo.com/v1/elevation?latitude=$lats&longitude=$lngs"
             val responseText = client.get(url).bodyAsText()
-            val json = Json.parseToJsonElement(responseText).jsonObject
+            val json = AppJson.parseToJsonElement(responseText).jsonObject
             val elevations = json["elevation"]?.jsonArray ?: JsonArray(emptyList())
             for (ele in elevations) {
                 result.add(ele.jsonPrimitive.double)

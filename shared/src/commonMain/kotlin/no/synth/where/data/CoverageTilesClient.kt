@@ -11,7 +11,6 @@ import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import no.synth.where.BuildInfo
@@ -54,7 +53,7 @@ object CoverageTilesClient {
 
     /** The version from meta.json, or null if missing or not safe to put in a URL. */
     fun parseVersion(json: String): String? = try {
-        Json.parseToJsonElement(json).jsonObject["version"]?.jsonPrimitive?.content
+        AppJson.parseToJsonElement(json).jsonObject["version"]?.jsonPrimitive?.content
             ?.takeIf { VERSION_REGEX.matches(it) }
     } catch (_: Exception) {
         null

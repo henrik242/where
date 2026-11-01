@@ -6,7 +6,6 @@ import io.ktor.client.statement.bodyAsText
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -104,7 +103,7 @@ object TerrainClient {
             val response = client.get(url)
             if (response.status.value !in 200..299) return null
 
-            val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val json = AppJson.parseToJsonElement(response.bodyAsText()).jsonObject
             val results = json["punkter"]?.jsonArray ?: return null
             if (results.size < 5) return null
 

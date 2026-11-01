@@ -1,12 +1,12 @@
 package no.synth.where.data.routing
 
+import no.synth.where.data.AppJson
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -81,7 +81,7 @@ object VectorFeatureLoader {
         tileUrlTemplate?.let { return it }
         if (OfflineTileReader.offlineOnly) return null
         return try {
-            val json = Json.parseToJsonElement(TerrainClient.client.get(MapStyle.OSM_PATHS_TILEJSON_URL).bodyAsText())
+            val json = AppJson.parseToJsonElement(TerrainClient.client.get(MapStyle.OSM_PATHS_TILEJSON_URL).bodyAsText())
             json.jsonObject["tiles"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content
                 ?.takeIf { it.isNotEmpty() }
                 ?.also { tileUrlTemplate = it }

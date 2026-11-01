@@ -13,7 +13,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -60,7 +59,7 @@ object GeocodingHelper {
     private suspend fun fetchJson(url: String): JsonObject? {
         val response = client.get(url)
         if (response.status.value !in 200..299) return null
-        return Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        return AppJson.parseToJsonElement(response.bodyAsText()).jsonObject
     }
 
     /** Mirror that answered last, so a struggling one is not picked first on every lookup. */
@@ -96,7 +95,7 @@ object GeocodingHelper {
         }
         val status = response.status.value
         if (status in 200..299) {
-            val elements = Json.parseToJsonElement(response.bodyAsText())
+            val elements = AppJson.parseToJsonElement(response.bodyAsText())
                 .jsonObject["elements"]?.jsonArray
                 ?.map { it.jsonObject }
                 ?: emptyList()
@@ -112,7 +111,7 @@ object GeocodingHelper {
         val viewbox = "${latLng.longitude - delta},${latLng.latitude + delta},${latLng.longitude + delta},${latLng.latitude - delta}"
         val response = client.get("$NOMINATIM/search?q=%5Bnatural%3Dpeak%5D&format=json&limit=1&viewbox=$viewbox&bounded=1")
         if (response.status.value !in 200..299) return null
-        val results = Json.parseToJsonElement(response.bodyAsText()).jsonArray
+        val results = AppJson.parseToJsonElement(response.bodyAsText()).jsonArray
         if (results.isEmpty()) return null
         return results[0].jsonObject["name"]?.jsonPrimitive?.content
     }
@@ -139,7 +138,7 @@ object GeocodingHelper {
         }
         // Only a body with a "name" key is an answer; anything else is treated as unavailable.
         val name = try {
-            Json.parseToJsonElement(response.bodyAsText()).jsonObject["name"]
+            AppJson.parseToJsonElement(response.bodyAsText()).jsonObject["name"]
         } catch (_: Exception) {
             null
         } ?: return null
