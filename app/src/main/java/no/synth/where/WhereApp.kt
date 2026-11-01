@@ -19,8 +19,13 @@ import no.synth.where.data.followGroupLink
 import no.synth.where.data.geo.LatLng
 import no.synth.where.location.fusedLocationFlow
 import no.synth.where.navigation.TracksRoute
+import no.synth.where.resources.Res
+import no.synth.where.resources.live_location_tracking
+import no.synth.where.resources.share_tracking_chooser
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
+import no.synth.where.util.Logger
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun WhereApp(
@@ -46,7 +51,11 @@ fun WhereApp(
             downloadManager = app.mapDownloadManager,
         )
     }
-    val platform = remember(context) { androidPlatform(context) }
+    val shareChooserTitle = stringResource(Res.string.share_tracking_chooser)
+    val shareSubject = stringResource(Res.string.live_location_tracking)
+    val platform = remember(context, shareChooserTitle, shareSubject) {
+        androidPlatform(context, shareChooserTitle, shareSubject)
+    }
 
     // A live share outlives the process — its deadline is in prefs — but the foreground service
     // that feeds the coordinator does not, so after a force-stop, a reboot or an OEM battery kill
@@ -96,8 +105,8 @@ fun WhereApp(
         navController = navController,
         userLocation = { rememberFusedLocation() },
         screens = ShellScreens(
-            map = { nav -> AndroidMapScreen(nav) },
-            tracks = { route, onBack, onShowMap ->
+            mapScreen = { nav -> AndroidMapScreen(nav) },
+            tracksScreen = { route, onBack, onShowMap ->
                 AndroidTracksScreen(
                     pendingImportUrl = route.importUrl,
                     pendingImportFileUri = route.importFileUri,
@@ -112,19 +121,29 @@ fun WhereApp(
                     },
                 )
             },
-            savedPoints = { onBack, onShowOnMap -> AndroidSavedPointsScreen(onBack, onShowOnMap) },
-            onlineTracking = { onBack, onNavigateToMap -> AndroidOnlineTrackingScreen(onBack, onNavigateToMap) },
+            savedPointsScreen = { onBack, onShowOnMap -> AndroidSavedPointsScreen(onBack, onShowOnMap) },
         ),
     )
 }
 
-// File picking, track export and sharing live in the Android screen slots above, which need
-// activity result launchers; the shared fallbacks that would use them are never shown here.
-private fun androidPlatform(context: Context) = ShellPlatform(
-    openUrl = { url -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) },
+// File picking and track export live in the Android screen slots above, which need activity
+// result launchers; the shared fallbacks that would use them are never shown here.
+private fun androidPlatform(context: Context, shareChooserTitle: String, shareSubject: String) = ShellPlatform(
+    openUrl = { url ->
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+            .onFailure { Logger.e(it, "No app to open %s", url) }
+    },
     pickFiles = {},
     exportTrack = {},
-    shareText = {},
+    shareText = { text ->
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+            putExtra(Intent.EXTRA_SUBJECT, shareSubject)
+        }
+        context.startActivity(Intent.createChooser(intent, shareChooserTitle))
+    },
+    onLiveShareStarted = { LocationTrackingService.start(context) },
     freeStorageBytes = {
         runCatching {
             val dir = context.getExternalFilesDir(null) ?: context.filesDir

@@ -52,6 +52,6 @@ fun DesktopApp() {
 
     val themeMode by deps.userPreferences.themeMode.collectAsState()
     WhereTheme(themeMode = themeMode) {
-        WhereNavHost(deps = deps, platform = desktopPlatform, screens = ShellScreens(map = { nav -> DesktopMapScreen(nav) }))
+        WhereNavHost(deps = deps, platform = desktopPlatform, screens = ShellScreens(mapScreen = { nav -> DesktopMapScreen(nav) }))
     }
 }
