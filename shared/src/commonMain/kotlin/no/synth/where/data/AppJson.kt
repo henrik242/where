@@ -8,10 +8,10 @@ import kotlinx.serialization.json.Json
  * in crash reports or logs.
  */
 @OptIn(ExperimentalSerializationApi::class)
-val AppJson = Json {
+internal val AppJson = Json {
     ignoreUnknownKeys = true
     exceptionsWithDebugInfo = false
 }
 
 /** [AppJson] that also accepts lenient input from third-party APIs. */
-val LenientJson = Json(AppJson) { isLenient = true }
+internal val LenientJson = Json(AppJson) { isLenient = true }

@@ -34,15 +34,28 @@ map rendering and live-location polling are per-platform. Concretely:
 - GeoJSON builders (shared layer content): `shared/.../ui/map/MapGeoJson.kt`
 - Platform map rendering: `MapRenderUtils.kt` (Android, `shared/src/androidMain`) and
   `iosApp/Where/MapViewFactory.swift` (iOS) — keep their styling constants in sync
-- Shared Compose UI: `shared/.../ui/`; platform screens: `app/.../ui/` and `shared/src/iosMain/.../ui/`
+- Shared Compose UI: `shared/.../ui/`; platform screens: `app/.../ui/` (Android) and
+  `shared/src/iosMain/.../ui/map/` (iOS map)
 - Navigation graph (all platforms): `shared/.../ui/WhereNavHost.kt`, routes in `shared/.../navigation/Routes.kt`;
-  platform screens plug in through `ShellScreens`
+  platform screens plug in through `ShellScreens`. Shells: `app/.../WhereApp.kt`,
+  `shared/src/iosMain/.../IosApp.kt`, `desktop/.../DesktopApp.kt`
+
+### Adding a screen
+
+1. Add a `@Serializable` route to `Routes.kt`.
+2. Add a `composable<YourRoute>` entry in `WhereNavHost`, using the shared screen.
+3. Keep screen state in `rememberRetainedState { scope -> YourState(..., scope) }` so it survives
+   rotation and is cancelled when the entry leaves the back stack. It is keyed by type: one holder
+   of each type per entry.
+4. Only if a platform needs glue `ShellPlatform` can't express, add a `ShellScreens` slot with the
+   shared screen as the fallback.
 
 ## Android App Code Guidelines
 
 - Manual constructor injection, no DI framework
 - Dependencies are wired in `WhereApplication` (lazy properties); access via `applicationContext as WhereApplication`
-- ViewModels are created with `viewModel { MyViewModel(app.dep1, app.dep2) }` in Composables
+- Shared screen state uses `rememberRetainedState` (see "Adding a screen"); Android-only ViewModels use
+  `viewModel { MyViewModel(app.dep1, app.dep2) }`
 - Use Timber for logging, never `println` or `Log.*`
 
 ## Writing Style (commits, comments, docs)
