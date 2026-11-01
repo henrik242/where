@@ -25,8 +25,8 @@ class IosLocationTracker(
 ) : NSObject(), CLLocationManagerDelegateProtocol {
 
     private val locationManager = CLLocationManager()
-    private var _lastLocation: CLLocation? = null
-    val lastLocation: CLLocation? get() = _lastLocation
+    var lastLocation: CLLocation? = null
+        private set
 
     private var keepAliveActive = false
     private var trackingActive = false
@@ -109,7 +109,7 @@ class IosLocationTracker(
             LatLng(latitude, longitude)
         }
         if (!trackRepository.acceptFix(coordinate)) return
-        _lastLocation = location
+        lastLocation = location
 
         val altitude = if (location.verticalAccuracy >= 0) location.altitude else null
         val accuracy = location.horizontalAccuracy.toFloat()

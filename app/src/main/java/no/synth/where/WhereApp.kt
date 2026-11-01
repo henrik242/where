@@ -104,7 +104,7 @@ fun WhereApp(
         platform = platform,
         navController = navController,
         userLocation = { rememberFusedLocation() },
-        screens = ShellScreens(
+        screens = remember(context) { ShellScreens(
             mapScreen = { nav -> AndroidMapScreen(nav) },
             tracksScreen = { route, onBack, onShowMap ->
                 AndroidTracksScreen(
@@ -122,26 +122,27 @@ fun WhereApp(
                 )
             },
             savedPointsScreen = { onBack, onShowOnMap -> AndroidSavedPointsScreen(onBack, onShowOnMap) },
-        ),
+        ) },
     )
 }
 
 // File picking and track export live in the Android screen slots above, which need activity
-// result launchers; the shared fallbacks that would use them are never shown here.
+// result launchers. The shared fallbacks are never shown here; log loudly if one ever is.
 private fun androidPlatform(context: Context, shareChooserTitle: String, shareSubject: String) = ShellPlatform(
     openUrl = { url ->
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
             .onFailure { Logger.e(it, "No app to open %s", url) }
     },
-    pickFiles = {},
-    exportTrack = {},
+    pickFiles = { Logger.e("pickFiles reached on Android: use the tracks/saved points slot") },
+    exportTrack = { Logger.e("exportTrack reached on Android: use the tracks slot") },
     shareText = { text ->
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, text)
             putExtra(Intent.EXTRA_SUBJECT, shareSubject)
         }
-        context.startActivity(Intent.createChooser(intent, shareChooserTitle))
+        runCatching { context.startActivity(Intent.createChooser(intent, shareChooserTitle)) }
+            .onFailure { Logger.e(it, "No app to share text") }
     },
     onLiveShareStarted = { LocationTrackingService.start(context) },
     freeStorageBytes = {

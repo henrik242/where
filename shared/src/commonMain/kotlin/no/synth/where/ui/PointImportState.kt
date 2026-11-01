@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
 import no.synth.where.data.ParsedWaypoint
 import no.synth.where.data.PointImportCandidates
 import no.synth.where.data.SavedPointsRepository
@@ -62,6 +63,9 @@ class PointImportState(
             isImporting = true
             try {
                 block()
+            } catch (e: CancellationException) {
+                // Closing the screen cancels a read or download in progress; that is not a failure.
+                throw e
             } catch (e: Exception) {
                 Logger.e(e, "Point import failed")
                 candidates = null
