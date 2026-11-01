@@ -210,7 +210,6 @@ class StravaTokenManager(
         private const val EXPIRY_BUFFER_SECONDS = 300L
         // `errors[].resource` values meaning the grant is gone. "Application" means bad credentials.
         private val REJECTED_RESOURCES = listOf("RefreshToken", "AuthorizationCode")
-        private val json = LenientJson
 
         fun authorizeUrl(clientId: String, state: String): String =
             "https://www.strava.com/oauth/authorize" +
@@ -237,7 +236,7 @@ class StravaTokenManager(
 
         fun parseTokenResponse(body: String): TokenResponse? {
             return try {
-                val obj = json.parseToJsonElement(body).jsonObject
+                val obj = LenientJson.parseToJsonElement(body).jsonObject
                 val access = obj["access_token"]?.jsonPrimitive?.contentOrNull ?: return null
                 val refresh = obj["refresh_token"]?.jsonPrimitive?.contentOrNull ?: return null
                 TokenResponse(
