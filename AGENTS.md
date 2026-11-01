@@ -35,6 +35,8 @@ map rendering and live-location polling are per-platform. Concretely:
 - Platform map rendering: `MapRenderUtils.kt` (Android, `shared/src/androidMain`) and
   `iosApp/Where/MapViewFactory.swift` (iOS) — keep their styling constants in sync
 - Shared Compose UI: `shared/.../ui/`; platform screens: `app/.../ui/` and `shared/src/iosMain/.../ui/`
+- Navigation graph (all platforms): `shared/.../ui/WhereNavHost.kt`, routes in `shared/.../navigation/Routes.kt`;
+  platform screens plug in through `ShellScreens`
 
 ## Android App Code Guidelines
 

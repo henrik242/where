@@ -1,6 +1,7 @@
 package no.synth.where
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -13,21 +14,13 @@ import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.NavController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
-import androidx.lifecycle.viewmodel.compose.viewModel
-import no.synth.where.util.CrashReporter
-import no.synth.where.data.SavedPoint
 import no.synth.where.data.followGroupLink
 import no.synth.where.data.geo.LatLng
 import no.synth.where.location.fusedLocationFlow
-import no.synth.where.navigation.*
+import no.synth.where.navigation.TracksRoute
 import no.synth.where.service.LocationTrackingService
 import no.synth.where.ui.*
-
 
 @Composable
 fun WhereApp(
@@ -39,20 +32,21 @@ fun WhereApp(
     onFollowHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
-    DisposableEffect(navController) {
-        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
-            CrashReporter.log("nav: ${destination.route}")
-        }
-        navController.addOnDestinationChangedListener(listener)
-        onDispose { navController.removeOnDestinationChangedListener(listener) }
-    }
     val context = LocalContext.current
     val app = context.applicationContext as WhereApplication
-    val viewModel: WhereAppViewModel = viewModel { WhereAppViewModel(app.trackRepository, app.userPreferences) }
-    val userPreferences = viewModel.userPreferences
-    val trackRepository = viewModel.trackRepository
-    val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
-    var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
+    val deps = remember(app) {
+        ShellDependencies(
+            userPreferences = app.userPreferences,
+            trackRepository = app.trackRepository,
+            savedPointsRepository = app.savedPointsRepository,
+            clientIdManager = app.clientIdManager,
+            liveTrackingFollower = app.liveTrackingFollower,
+            stravaTokenManager = app.stravaTokenManager,
+            stravaRouteImporter = app.stravaRouteImporter,
+            downloadManager = app.mapDownloadManager,
+        )
+    }
+    val platform = remember(context) { androidPlatform(context) }
 
     // A live share outlives the process — its deadline is in prefs — but the foreground service
     // that feeds the coordinator does not, so after a force-stop, a reboot or an OEM battery kill
@@ -96,127 +90,67 @@ fun WhereApp(
         }
     }
 
-    NavHost(navController = navController, startDestination = MapRoute) {
-        composable<MapRoute> {
-            AndroidMapScreen(
-                MapScreenNavigation(
-                    viewingPoint = viewingPoint,
-                    onClearViewingPoint = { viewingPoint = null },
-                    onSettingsClick = { navController.navigate(SettingsRoute()) },
-                    onOfflineIndicatorClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
-                    onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
+    WhereNavHost(
+        deps = deps,
+        platform = platform,
+        navController = navController,
+        userLocation = { rememberFusedLocation() },
+        screens = ShellScreens(
+            map = { nav -> AndroidMapScreen(nav) },
+            tracks = { route, onBack, onShowMap ->
+                AndroidTracksScreen(
+                    pendingImportUrl = route.importUrl,
+                    pendingImportFileUri = route.importFileUri,
+                    onBackClick = onBack,
+                    onShowMap = onShowMap,
+                    onNavigationStarted = {
+                        // The foreground service owns the location stream and the persistent
+                        // notification while navigating; it self-stops when navigation ends.
+                        if (app.trackRepository.navigation.value != null) {
+                            LocationTrackingService.start(context)
+                        }
+                    },
                 )
-            )
-        }
-        composable<SettingsRoute> { backStackEntry ->
-            val settingsRoute = backStackEntry.toRoute<SettingsRoute>()
-            val currentLocale = AppCompatDelegate.getApplicationLocales()
-            val currentLanguageTag = if (currentLocale.isEmpty) null else currentLocale.toLanguageTags()
-            SettingsScreen(
-                userPreferences = userPreferences,
-                currentLanguageTag = currentLanguageTag,
-                onLanguageSelected = { tag ->
-                    val locales = if (tag == null) LocaleListCompat.getEmptyLocaleList()
-                    else LocaleListCompat.forLanguageTags(tag)
-                    AppCompatDelegate.setApplicationLocales(locales)
-                },
-                onSponsorClick = { context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.SPONSOR.toUri())) },
-                onBackClick = { navController.popBackStack() },
-                onDownloadClick = { navController.navigate(DownloadRoute) },
-                onTracksClick = { navController.navigate(TracksRoute()) },
-                onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
-                onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
-                onAttributionsClick = { navController.navigate(AttributionsRoute) },
-                onReleaseNotesClick = { context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.RELEASE_NOTES.toUri())) },
-                onGuideClick = { context.startActivity(Intent(Intent.ACTION_VIEW, AppLinks.GUIDE.toUri())) },
-                onCrashReportingChange = { enabled ->
-                    userPreferences.updateCrashReportingEnabled(enabled)
-                    CrashReporter.setEnabled(enabled)
-                },
-                highlightOfflineMode = settingsRoute.highlightOfflineMode
-            )
-        }
-        composable<AttributionsRoute> {
-            AttributionsScreenContent(
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-        composable<OnlineTrackingRoute> {
-            AndroidOnlineTrackingScreen(
-                onBackClick = { navController.popBackStack() },
-                onNavigateToMap = { navController.popBackStack<MapRoute>(false) }
-            )
-        }
-        composable<SavedPointsRoute> {
-            AndroidSavedPointsScreen(
-                onBackClick = { navController.popBackStack() },
-                onShowOnMap = { point ->
-                    viewingPoint = point
-                    navController.popBackStack<MapRoute>(false)
-                }
-            )
-        }
-        composable<TracksRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<TracksRoute>()
-            AndroidTracksScreen(
-                pendingImportUrl = route.importUrl,
-                pendingImportFileUri = route.importFileUri,
-                onBackClick = { navController.popBackStack() },
-                onShowMap = { navController.popBackStack<MapRoute>(false) },
-                onNavigationStarted = {
-                    // The foreground service owns the location stream and the persistent
-                    // notification while navigating; it self-stops when navigation ends.
-                    if (trackRepository.navigation.value != null) {
-                        LocationTrackingService.start(context)
-                    }
-                },
-            )
-        }
-        composable<DownloadRoute> {
-            DownloadScreen(
-                downloadManager = app.mapDownloadManager,
-                userPreferences = userPreferences,
-                freeStorageBytes = {
-                    runCatching {
-                        val dir = context.getExternalFilesDir(null) ?: context.filesDir
-                        android.os.StatFs(dir.absolutePath).availableBytes
-                    }.getOrDefault(-1L)
-                },
-                onBackClick = { navController.popBackStack() },
-                onLayerClick = { layerId ->
-                    navController.navigate(LayerRegionsRoute(layerId))
-                },
-                onDownloadsClick = { navController.navigate(DownloadQueueRoute) }
-            )
-        }
-        composable<DownloadQueueRoute> {
-            DownloadQueueScreen(app.mapDownloadManager, onBackClick = { navController.popBackStack() })
-        }
-        composable<LayerRegionsRoute> { backStackEntry ->
-            val route = backStackEntry.toRoute<LayerRegionsRoute>()
-            val lifecycleOwner = LocalLifecycleOwner.current
-            val downloadElevationData by userPreferences.downloadElevationData.collectAsState()
-            val downloadMaxZoom by userPreferences.downloadMaxZoom.collectAsState()
-            var userLocation by remember { mutableStateOf<LatLng?>(null) }
-            // Live location so the picker dot tracks movement; works without location permission.
-            LaunchedEffect(Unit) {
-                lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    fusedLocationFlow(context).collect { userLocation = LatLng(it.latitude, it.longitude) }
-                }
-            }
-            LayerHexMapScreen(
-                layerId = route.layerId,
-                onBackClick = { navController.popBackStack() },
-                downloadManager = app.mapDownloadManager,
-                userLocation = userLocation,
-                downloadElevationData = downloadElevationData,
-                downloadMaxZoom = downloadMaxZoom,
-                onOfflineChipClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
-                onQueueChipClick = { navController.navigate(DownloadQueueRoute) },
-                offlineModeEnabled = offlineModeEnabled
-            )
+            },
+            savedPoints = { onBack, onShowOnMap -> AndroidSavedPointsScreen(onBack, onShowOnMap) },
+            onlineTracking = { onBack, onNavigateToMap -> AndroidOnlineTrackingScreen(onBack, onNavigateToMap) },
+        ),
+    )
+}
+
+// File picking, track export and sharing live in the Android screen slots above, which need
+// activity result launchers; the shared fallbacks that would use them are never shown here.
+private fun androidPlatform(context: Context) = ShellPlatform(
+    openUrl = { url -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) },
+    pickFiles = {},
+    exportTrack = {},
+    shareText = {},
+    freeStorageBytes = {
+        runCatching {
+            val dir = context.getExternalFilesDir(null) ?: context.filesDir
+            android.os.StatFs(dir.absolutePath).availableBytes
+        }.getOrDefault(-1L)
+    },
+    currentLanguageTag = {
+        val locales = AppCompatDelegate.getApplicationLocales()
+        if (locales.isEmpty) null else locales.toLanguageTags()
+    },
+    onLanguageSelected = { tag ->
+        val locales = if (tag == null) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(tag)
+        AppCompatDelegate.setApplicationLocales(locales)
+    },
+)
+
+/** Live location so the region picker dot tracks movement; works without location permission. */
+@Composable
+private fun rememberFusedLocation(): LatLng? {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var location by remember { mutableStateOf<LatLng?>(null) }
+    LaunchedEffect(Unit) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            fusedLocationFlow(context).collect { location = LatLng(it.latitude, it.longitude) }
         }
     }
-
-    OfflineMigrationNotice(userPreferences)
+    return location
 }

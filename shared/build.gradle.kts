@@ -166,11 +166,18 @@ kotlin {
             api(libs.compose.components.resources)
             implementation(libs.maplibre.compose)
             api(libs.maplibre.compose.location)
+            api(libs.jetbrains.navigation.compose)
+            api(libs.jetbrains.lifecycle.viewmodel.compose)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
+        }
+        jvmTest.dependencies {
+            // Compose UI tests on the desktop JVM (skiko for the host OS).
+            implementation(libs.compose.ui.test)
+            implementation(compose.desktop.currentOs)
         }
         jvmMain.dependencies {
             api(libs.ktor.client.okhttp)

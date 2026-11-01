@@ -22,7 +22,9 @@ import no.synth.where.data.geo.LatLng
 import no.synth.where.di.AppDependencies
 import no.synth.where.ui.ShellDependencies
 import no.synth.where.ui.ShellPlatform
+import no.synth.where.ui.ShellScreens
 import no.synth.where.ui.WhereNavHost
+import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.ui.gpxFileName
 import no.synth.where.ui.map.IosMapScreen
 import no.synth.where.util.IosPlatformActions
@@ -109,12 +111,16 @@ fun IosApp() {
         }
     }
 
-    WhereNavHost(
-        deps = deps,
-        platform = iosPlatform,
-        backgroundLocationMissing = !alwaysPermissionGranted,
-        userLocation = { rememberTrackerLocation() },
-    ) { nav -> IosMapScreen(nav) }
+    val themeMode by deps.userPreferences.themeMode.collectAsState()
+    WhereTheme(themeMode = themeMode) {
+        WhereNavHost(
+            deps = deps,
+            platform = iosPlatform,
+            screens = ShellScreens(map = { nav -> IosMapScreen(nav) }),
+            backgroundLocationMissing = !alwaysPermissionGranted,
+            userLocation = { rememberTrackerLocation() },
+        )
+    }
 }
 
 /**
