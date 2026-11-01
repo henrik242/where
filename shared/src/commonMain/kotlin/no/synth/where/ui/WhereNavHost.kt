@@ -1,14 +1,19 @@
 package no.synth.where.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import no.synth.where.data.ClientIdManager
 import no.synth.where.data.LegacyOfflineCache
 import no.synth.where.data.LiveTrackingFollower
@@ -22,18 +27,22 @@ import no.synth.where.data.Track
 import no.synth.where.data.TrackRepository
 import no.synth.where.data.UserPreferences
 import no.synth.where.data.geo.LatLng
+import no.synth.where.navigation.AttributionsRoute
+import no.synth.where.navigation.DownloadQueueRoute
+import no.synth.where.navigation.DownloadRoute
+import no.synth.where.navigation.LayerRegionsRoute
+import no.synth.where.navigation.MapRoute
+import no.synth.where.navigation.OnlineTrackingRoute
+import no.synth.where.navigation.SavedPointsRoute
+import no.synth.where.navigation.SettingsRoute
+import no.synth.where.navigation.TracksRoute
 import no.synth.where.ui.map.MapDialogs
-import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.util.CrashReporter
 
 object AppLinks {
     const val SPONSOR = "https://buymeacoffee.com/henrik242"
     const val RELEASE_NOTES = "https://github.com/henrik242/where/blob/main/RELEASES.md"
     const val GUIDE = "https://where.synth.no/guide"
-}
-
-enum class Screen {
-    MAP, SETTINGS, TRACKS, SAVED_POINTS, ONLINE_TRACKING, DOWNLOAD, DOWNLOAD_QUEUE, LAYER_REGIONS, ATTRIBUTIONS
 }
 
 class ShellDependencies(
@@ -70,156 +79,163 @@ class MapScreenNavigation(
     val onOnlineTrackingClick: () -> Unit,
 )
 
-/** App shell for iOS and desktop: a back stack over the shared screens, with the map screen as a slot. */
+/**
+ * Platform screens that need more glue than [ShellPlatform] offers (activity result launchers,
+ * services). A null slot uses the shared screen wired through [ShellPlatform].
+ */
+class ShellScreens(
+    val map: @Composable (MapScreenNavigation) -> Unit,
+    val tracks: (@Composable (route: TracksRoute, onBack: () -> Unit, onShowMap: () -> Unit) -> Unit)? = null,
+    val savedPoints: (@Composable (onBack: () -> Unit, onShowOnMap: (SavedPoint) -> Unit) -> Unit)? = null,
+    val onlineTracking: (@Composable (onBack: () -> Unit, onNavigateToMap: () -> Unit) -> Unit)? = null,
+)
+
+/** The app's navigation graph, shared by all platforms. */
 @Composable
 fun WhereNavHost(
     deps: ShellDependencies,
     platform: ShellPlatform,
+    screens: ShellScreens,
+    navController: NavHostController = rememberNavController(),
     backgroundLocationMissing: Boolean = false,
     userLocation: @Composable () -> LatLng? = { null },
-    mapScreen: @Composable (MapScreenNavigation) -> Unit,
 ) {
     val userPreferences = deps.userPreferences
-    val themeMode by userPreferences.themeMode.collectAsState()
     val offlineModeEnabled by userPreferences.offlineModeEnabled.collectAsState()
-    val downloadElevationData by userPreferences.downloadElevationData.collectAsState()
-    val downloadMaxZoom by userPreferences.downloadMaxZoom.collectAsState()
-
-    var currentScreen by remember { mutableStateOf(Screen.MAP) }
-    var backStack by remember { mutableStateOf(listOf<Screen>()) }
     var viewingPoint by remember { mutableStateOf<SavedPoint?>(null) }
-    var selectedLayerId by remember { mutableStateOf("") }
-    var highlightOfflineMode by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    // Keeps the map's rememberSaveable state (camera) while other screens are shown.
-    val saveableStateHolder = rememberSaveableStateHolder()
 
-    fun navigateTo(screen: Screen) {
-        backStack = backStack + currentScreen
-        currentScreen = screen
-    }
-
-    fun navigateBack() {
-        if (backStack.isNotEmpty()) {
-            currentScreen = backStack.last()
-            backStack = backStack.dropLast(1)
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            CrashReporter.log("nav: ${destination.route}")
         }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
     }
 
-    fun navigateToMap() {
-        currentScreen = Screen.MAP
-        backStack = emptyList()
+    fun back() {
+        navController.popBackStack()
     }
 
-    fun openOfflineSettings() {
-        highlightOfflineMode = true
-        navigateTo(Screen.SETTINGS)
+    fun toMap() {
+        navController.popBackStack<MapRoute>(inclusive = false)
     }
 
-    WhereTheme(themeMode = themeMode) {
-        when (currentScreen) {
-            Screen.MAP -> saveableStateHolder.SaveableStateProvider(Screen.MAP.name) {
-                mapScreen(
-                    MapScreenNavigation(
-                        viewingPoint = viewingPoint,
-                        onClearViewingPoint = { viewingPoint = null },
-                        onSettingsClick = { navigateTo(Screen.SETTINGS) },
-                        onOfflineIndicatorClick = ::openOfflineSettings,
-                        onOnlineTrackingClick = { navigateTo(Screen.ONLINE_TRACKING) },
-                    )
+    NavHost(navController = navController, startDestination = MapRoute) {
+        composable<MapRoute> {
+            screens.map(
+                MapScreenNavigation(
+                    viewingPoint = viewingPoint,
+                    onClearViewingPoint = { viewingPoint = null },
+                    onSettingsClick = { navController.navigate(SettingsRoute()) },
+                    onOfflineIndicatorClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
+                    onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
                 )
-            }
+            )
+        }
 
-            Screen.SETTINGS -> SettingsScreen(
+        composable<SettingsRoute> { entry ->
+            SettingsScreen(
                 userPreferences = userPreferences,
                 currentLanguageTag = platform.currentLanguageTag(),
                 onLanguageSelected = platform.onLanguageSelected,
                 onSponsorClick = { platform.openUrl(AppLinks.SPONSOR) },
-                onBackClick = {
-                    highlightOfflineMode = false
-                    navigateBack()
-                },
-                onDownloadClick = { navigateTo(Screen.DOWNLOAD) },
-                onTracksClick = { navigateTo(Screen.TRACKS) },
-                onSavedPointsClick = { navigateTo(Screen.SAVED_POINTS) },
-                onOnlineTrackingClick = { navigateTo(Screen.ONLINE_TRACKING) },
-                onAttributionsClick = { navigateTo(Screen.ATTRIBUTIONS) },
+                onBackClick = ::back,
+                onDownloadClick = { navController.navigate(DownloadRoute) },
+                onTracksClick = { navController.navigate(TracksRoute()) },
+                onSavedPointsClick = { navController.navigate(SavedPointsRoute) },
+                onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
+                onAttributionsClick = { navController.navigate(AttributionsRoute) },
                 onReleaseNotesClick = { platform.openUrl(AppLinks.RELEASE_NOTES) },
                 onGuideClick = { platform.openUrl(AppLinks.GUIDE) },
                 onCrashReportingChange = {
                     userPreferences.updateCrashReportingEnabled(it)
                     CrashReporter.setEnabled(it)
                 },
-                highlightOfflineMode = highlightOfflineMode,
+                highlightOfflineMode = entry.toRoute<SettingsRoute>().highlightOfflineMode,
             )
+        }
 
-            Screen.TRACKS -> {
-                val state = remember {
+        composable<TracksRoute> { entry ->
+            val route = entry.toRoute<TracksRoute>()
+            screens.tracks?.invoke(route, ::back, ::toMap) ?: run {
+                val state = rememberRetainedState { scope ->
                     TracksScreenState(
                         deps.trackRepository, userPreferences, deps.stravaTokenManager, deps.stravaRouteImporter, scope,
                     )
                 }
                 TracksScreen(
                     state = state,
-                    onBackClick = ::navigateBack,
-                    onShowMap = ::navigateToMap,
+                    onBackClick = ::back,
+                    onShowMap = ::toMap,
                     onImportClick = { platform.pickFiles { if (it.isNotEmpty()) state.importFiles(it) } },
                     onExport = platform.exportTrack,
                     openUrl = platform.openUrl,
                     stravaAuth = platform.stravaAuth,
                 )
             }
+        }
 
-            Screen.SAVED_POINTS -> {
-                val pointImport = remember { PointImportState(deps.savedPointsRepository, scope) }
+        composable<SavedPointsRoute> {
+            val showOnMap: (SavedPoint) -> Unit = { point ->
+                viewingPoint = point
+                toMap()
+            }
+            screens.savedPoints?.invoke(::back, showOnMap) ?: run {
+                val pointImport = rememberRetainedState { scope -> PointImportState(deps.savedPointsRepository, scope) }
                 SavedPointsScreen(
                     repository = deps.savedPointsRepository,
                     pointImport = pointImport,
                     onPickFiles = { platform.pickFiles { files -> if (files.isNotEmpty()) pointImport.read(files.map { it.bytes }) } },
-                    onBackClick = ::navigateBack,
-                    onShowOnMap = { point ->
-                        viewingPoint = point
-                        navigateToMap()
-                    },
+                    onBackClick = ::back,
+                    onShowOnMap = showOnMap,
                 )
             }
+        }
 
-            Screen.DOWNLOAD -> DownloadScreen(
+        composable<DownloadRoute> {
+            DownloadScreen(
                 downloadManager = deps.downloadManager,
                 userPreferences = userPreferences,
                 freeStorageBytes = platform.freeStorageBytes,
-                onBackClick = ::navigateBack,
-                onLayerClick = { layerId ->
-                    selectedLayerId = layerId
-                    navigateTo(Screen.LAYER_REGIONS)
-                },
-                onDownloadsClick = { navigateTo(Screen.DOWNLOAD_QUEUE) },
+                onBackClick = ::back,
+                onLayerClick = { layerId -> navController.navigate(LayerRegionsRoute(layerId)) },
+                onDownloadsClick = { navController.navigate(DownloadQueueRoute) },
             )
+        }
 
-            Screen.DOWNLOAD_QUEUE -> DownloadQueueScreen(deps.downloadManager, onBackClick = ::navigateBack)
+        composable<DownloadQueueRoute> {
+            DownloadQueueScreen(deps.downloadManager, onBackClick = ::back)
+        }
 
-            Screen.LAYER_REGIONS -> LayerHexMapScreen(
-                layerId = selectedLayerId,
-                onBackClick = ::navigateBack,
+        composable<LayerRegionsRoute> { entry ->
+            val downloadElevationData by userPreferences.downloadElevationData.collectAsState()
+            val downloadMaxZoom by userPreferences.downloadMaxZoom.collectAsState()
+            LayerHexMapScreen(
+                layerId = entry.toRoute<LayerRegionsRoute>().layerId,
+                onBackClick = ::back,
                 downloadManager = deps.downloadManager,
                 userLocation = userLocation(),
                 downloadElevationData = downloadElevationData,
                 downloadMaxZoom = downloadMaxZoom,
                 offlineModeEnabled = offlineModeEnabled,
-                onOfflineChipClick = ::openOfflineSettings,
-                onQueueChipClick = { navigateTo(Screen.DOWNLOAD_QUEUE) },
+                onOfflineChipClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
+                onQueueChipClick = { navController.navigate(DownloadQueueRoute) },
             )
+        }
 
-            Screen.ATTRIBUTIONS -> AttributionsScreenContent(onBackClick = ::navigateBack)
+        composable<AttributionsRoute> {
+            AttributionsScreenContent(onBackClick = ::back)
+        }
 
-            Screen.ONLINE_TRACKING -> {
-                val state = remember {
+        composable<OnlineTrackingRoute> {
+            screens.onlineTracking?.invoke(::back, ::toMap) ?: run {
+                val state = rememberRetainedState { scope ->
                     OnlineTrackingState(userPreferences, deps.liveTrackingFollower, deps.clientIdManager, scope)
                 }
                 OnlineTrackingScreen(
                     state = state,
-                    onBackClick = ::navigateBack,
-                    onNavigateToMap = ::navigateToMap,
+                    onBackClick = ::back,
+                    onNavigateToMap = ::toMap,
                     openUrl = platform.openUrl,
                     onShare = platform.shareText,
                     backgroundLocationMissing = backgroundLocationMissing,
@@ -227,14 +243,14 @@ fun WhereNavHost(
                 )
             }
         }
-
-        OfflineMigrationNotice(userPreferences)
     }
+
+    OfflineMigrationNotice(userPreferences)
 }
 
 /** One-time notice to upgraders: the engine switch orphaned any old offline downloads. */
 @Composable
-fun OfflineMigrationNotice(userPreferences: UserPreferences) {
+private fun OfflineMigrationNotice(userPreferences: UserPreferences) {
     val migrationNoticeShown by userPreferences.offlineMigrationNoticeShown.collectAsState()
     var showMigrationNotice by remember { mutableStateOf(false) }
     LaunchedEffect(migrationNoticeShown) {
