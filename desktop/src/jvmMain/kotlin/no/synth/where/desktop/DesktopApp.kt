@@ -1,6 +1,8 @@
 package no.synth.where.desktop
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,7 +14,9 @@ import no.synth.where.data.PlatformFile
 import no.synth.where.data.desktopDataDir
 import no.synth.where.ui.ShellDependencies
 import no.synth.where.ui.ShellPlatform
+import no.synth.where.ui.ShellScreens
 import no.synth.where.ui.WhereNavHost
+import no.synth.where.ui.theme.WhereTheme
 import no.synth.where.ui.gpxFileName
 
 // Strava OAuth needs a captured redirect, which the desktop has no scheme handler for, so Strava
@@ -46,5 +50,8 @@ fun DesktopApp() {
         )
     }
 
-    WhereNavHost(deps = deps, platform = desktopPlatform) { nav -> DesktopMapScreen(nav) }
+    val themeMode by deps.userPreferences.themeMode.collectAsState()
+    WhereTheme(themeMode = themeMode) {
+        WhereNavHost(deps = deps, platform = desktopPlatform, screens = ShellScreens(map = { nav -> DesktopMapScreen(nav) }))
+    }
 }
