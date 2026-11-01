@@ -14,7 +14,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -52,19 +51,19 @@ class LiveTrackingFollower(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val _state = MutableStateFlow<FollowState>(FollowState.Idle)
-    val state: StateFlow<FollowState> = _state.asStateFlow()
+    val state: StateFlow<FollowState>
+        field = MutableStateFlow<FollowState>(FollowState.Idle)
 
-    private val _friendTrackGeoJson = MutableStateFlow<String?>(null)
-    val friendTrackGeoJson: StateFlow<String?> = _friendTrackGeoJson.asStateFlow()
+    val friendTrackGeoJson: StateFlow<String?>
+        field = MutableStateFlow<String?>(null)
 
     // Shared points (markers) dropped by followed clients, as a GeoJSON FeatureCollection, plus the
     // parsed list so a tap can offer "save locally".
-    private val _friendPointsGeoJson = MutableStateFlow<String?>(null)
-    val friendPointsGeoJson: StateFlow<String?> = _friendPointsGeoJson.asStateFlow()
+    val friendPointsGeoJson: StateFlow<String?>
+        field = MutableStateFlow<String?>(null)
 
-    private val _friendPoints = MutableStateFlow<List<SharedPoint>>(emptyList())
-    val friendPoints: StateFlow<List<SharedPoint>> = _friendPoints.asStateFlow()
+    val friendPoints: StateFlow<List<SharedPoint>>
+        field = MutableStateFlow<List<SharedPoint>>(emptyList())
 
     private var currentClientIds: List<String> = emptyList()
     private var currentNicknames: Map<String, String> = emptyMap()
@@ -88,7 +87,7 @@ class LiveTrackingFollower(
         connectionJob?.cancel()
         currentClientIds = ids
         currentNicknames = relevant
-        _state.value = FollowState.Connecting
+        state.value = FollowState.Connecting
         // A store per connection generation: a cancelled connection cannot write into the new set.
         connectionJob = scope.launch { connectWithRetry(ids, FriendTrackStore(ids, relevant)) }
     }
@@ -98,10 +97,10 @@ class LiveTrackingFollower(
         connectionJob = null
         currentClientIds = emptyList()
         currentNicknames = emptyMap()
-        _friendTrackGeoJson.value = null
-        _friendPointsGeoJson.value = null
-        _friendPoints.value = emptyList()
-        _state.value = FollowState.Idle
+        friendTrackGeoJson.value = null
+        friendPointsGeoJson.value = null
+        friendPoints.value = emptyList()
+        state.value = FollowState.Idle
     }
 
     private suspend fun connectWithRetry(clientIds: List<String>, store: FriendTrackStore) {
@@ -117,7 +116,7 @@ class LiveTrackingFollower(
                 Logger.e(e, "WebSocket connection error")
             }
             if (currentClientIds != clientIds) break
-            _state.value = FollowState.Connecting
+            state.value = FollowState.Connecting
             Logger.d("WebSocket reconnecting in %dms", reconnectDelay)
             delay(reconnectDelay)
             reconnectDelay = min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS)
@@ -161,10 +160,10 @@ class LiveTrackingFollower(
             val msg = json.parseToJsonElement(text).jsonObject
             if (currentClientIds != clientIds) return
             if (store.accept(msg)) {
-                _state.value = FollowState.Following(store.tracks())
-                _friendTrackGeoJson.value = store.geoJson()
-                _friendPointsGeoJson.value = store.sharedPointsGeoJson()
-                _friendPoints.value = store.sharedPoints()
+                state.value = FollowState.Following(store.tracks())
+                friendTrackGeoJson.value = store.geoJson()
+                friendPointsGeoJson.value = store.sharedPointsGeoJson()
+                friendPoints.value = store.sharedPoints()
             }
         } catch (e: Exception) {
             Logger.e(e, "Error parsing WebSocket message")

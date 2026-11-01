@@ -5,7 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -27,8 +26,8 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
     private val pointsFile: PlatformFile = filesDir.resolve("saved_points.json")
     private val migratedFile: PlatformFile = filesDir.resolve("saved_points.json.migrated")
 
-    private val _savedPoints = MutableStateFlow<List<SavedPoint>>(emptyList())
-    val savedPoints: StateFlow<List<SavedPoint>> = _savedPoints.asStateFlow()
+    val savedPoints: StateFlow<List<SavedPoint>>
+        field = MutableStateFlow<List<SavedPoint>>(emptyList())
 
     init {
         scope.launch {
@@ -55,7 +54,7 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
 
     private suspend fun collectPoints() {
         savedPointDao.getAllPoints().collect { entities ->
-            _savedPoints.value = entities.map { entity ->
+            savedPoints.value = entities.map { entity ->
                 SavedPoint(
                     id = entity.id,
                     name = entity.name,
@@ -70,7 +69,7 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
 
     @OptIn(ExperimentalUuidApi::class)
     fun addPoint(name: String, latLng: LatLng, description: String = "", color: String = "#FF5722") {
-        val uniqueName = NamingUtils.makeUnique(name, _savedPoints.value.map { it.name })
+        val uniqueName = NamingUtils.makeUnique(name, savedPoints.value.map { it.name })
         val point = SavedPointEntity(
             id = Uuid.random().toString(),
             name = uniqueName,
@@ -109,7 +108,7 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
      */
     @OptIn(ExperimentalUuidApi::class)
     suspend fun importPoints(waypoints: List<ParsedWaypoint>): List<SavedPoint> = withContext(Dispatchers.Default) {
-        val existingNames = _savedPoints.value.mapTo(mutableListOf()) { it.name }
+        val existingNames = savedPoints.value.mapTo(mutableListOf()) { it.name }
         waypoints.map { waypoint ->
             val uniqueName = NamingUtils.makeUnique(waypoint.name, existingNames)
             existingNames.add(uniqueName)
@@ -134,7 +133,7 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
     }
 
     fun updatePoint(pointId: String, name: String, description: String, color: String) {
-        val otherNames = _savedPoints.value.filter { it.id != pointId }.map { it.name }
+        val otherNames = savedPoints.value.filter { it.id != pointId }.map { it.name }
         val uniqueName = NamingUtils.makeUnique(name, otherNames)
 
         scope.launch {

@@ -15,7 +15,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -46,171 +45,171 @@ class UserPreferences(
     // value back over the newer in-memory state.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
 
-    private val _crashReportingEnabled = MutableStateFlow(true)
-    val crashReportingEnabled: StateFlow<Boolean> = _crashReportingEnabled.asStateFlow()
+    val crashReportingEnabled: StateFlow<Boolean>
+        field = MutableStateFlow(true)
 
-    private val _hasSeenTrackingInfo = MutableStateFlow(false)
-    val hasSeenTrackingInfo: StateFlow<Boolean> = _hasSeenTrackingInfo.asStateFlow()
+    val hasSeenTrackingInfo: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _offlineMigrationNoticeShown = MutableStateFlow(false)
-    val offlineMigrationNoticeShown: StateFlow<Boolean> = _offlineMigrationNoticeShown.asStateFlow()
+    val offlineMigrationNoticeShown: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _onlineTrackingEnabled = MutableStateFlow(false)
-    val onlineTrackingEnabled: StateFlow<Boolean> = _onlineTrackingEnabled.asStateFlow()
+    val onlineTrackingEnabled: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _liveShareUntilMillis = MutableStateFlow(0L)
-    val liveShareUntilMillis: StateFlow<Long> = _liveShareUntilMillis.asStateFlow()
+    val liveShareUntilMillis: StateFlow<Long>
+        field = MutableStateFlow(0L)
     private var liveShareExpiryJob: Job? = null
     private val liveShareExpiryMutex = Mutex()
 
-    private val _trackingServerUrl = MutableStateFlow("https://where.synth.no")
-    val trackingServerUrl: StateFlow<String> = _trackingServerUrl.asStateFlow()
+    val trackingServerUrl: StateFlow<String>
+        field = MutableStateFlow("https://where.synth.no")
 
-    private val _viewerCount = MutableStateFlow(0)
-    val viewerCount: StateFlow<Int> = _viewerCount.asStateFlow()
+    val viewerCount: StateFlow<Int>
+        field = MutableStateFlow(0)
 
     fun updateViewerCount(count: Int) {
-        _viewerCount.value = count
+        viewerCount.value = count
     }
 
-    private val _offlineModeEnabled = MutableStateFlow(false)
-    val offlineModeEnabled: StateFlow<Boolean> = _offlineModeEnabled.asStateFlow()
+    val offlineModeEnabled: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _downloadElevationData = MutableStateFlow(true)
-    val downloadElevationData: StateFlow<Boolean> = _downloadElevationData.asStateFlow()
+    val downloadElevationData: StateFlow<Boolean>
+        field = MutableStateFlow(true)
 
-    private val _downloadMaxZoom = MutableStateFlow(DEFAULT_DOWNLOAD_MAX_ZOOM)
-    val downloadMaxZoom: StateFlow<Int> = _downloadMaxZoom.asStateFlow()
+    val downloadMaxZoom: StateFlow<Int>
+        field = MutableStateFlow(DEFAULT_DOWNLOAD_MAX_ZOOM)
 
-    private val _themeMode = MutableStateFlow("system")
-    val themeMode: StateFlow<String> = _themeMode.asStateFlow()
+    val themeMode: StateFlow<String>
+        field = MutableStateFlow("system")
 
-    private val _coordFormat = MutableStateFlow(CoordFormat.LATLNG)
-    val coordFormat: StateFlow<CoordFormat> = _coordFormat.asStateFlow()
+    val coordFormat: StateFlow<CoordFormat>
+        field = MutableStateFlow(CoordFormat.LATLNG)
 
-    private val _showWaymarkedTrails = MutableStateFlow(false)
-    val showWaymarkedTrails: StateFlow<Boolean> = _showWaymarkedTrails.asStateFlow()
+    val showWaymarkedTrails: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _showOsmPaths = MutableStateFlow(false)
-    val showOsmPaths: StateFlow<Boolean> = _showOsmPaths.asStateFlow()
+    val showOsmPaths: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _showSavedPoints = MutableStateFlow(true)
-    val showSavedPoints: StateFlow<Boolean> = _showSavedPoints.asStateFlow()
+    val showSavedPoints: StateFlow<Boolean>
+        field = MutableStateFlow(true)
 
-    private val _nveOverlay = MutableStateFlow<NveOverlay?>(null)
-    val nveOverlay: StateFlow<NveOverlay?> = _nveOverlay.asStateFlow()
+    val nveOverlay: StateFlow<NveOverlay?>
+        field = MutableStateFlow<NveOverlay?>(null)
 
-    private val _showCoverage = MutableStateFlow(false)
-    val showCoverage: StateFlow<Boolean> = _showCoverage.asStateFlow()
+    val showCoverage: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
     /** Last known erdetdekning.no dataset version, so the overlay works before (or without) a lookup. */
-    private val _coverageOperator = MutableStateFlow(CoverageOperator.ALL)
-    val coverageOperator: StateFlow<CoverageOperator> = _coverageOperator.asStateFlow()
+    val coverageOperator: StateFlow<CoverageOperator>
+        field = MutableStateFlow(CoverageOperator.ALL)
 
-    private val _coverageTilesVersion = MutableStateFlow(CoverageTilesClient.FALLBACK_VERSION)
-    val coverageTilesVersion: StateFlow<String> = _coverageTilesVersion.asStateFlow()
+    val coverageTilesVersion: StateFlow<String>
+        field = MutableStateFlow(CoverageTilesClient.FALLBACK_VERSION)
 
-    private val _showCoordGrid = MutableStateFlow(false)
-    val showCoordGrid: StateFlow<Boolean> = _showCoordGrid.asStateFlow()
+    val showCoordGrid: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _crosshairActive = MutableStateFlow(false)
-    val crosshairActive: StateFlow<Boolean> = _crosshairActive.asStateFlow()
+    val crosshairActive: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _northLocked = MutableStateFlow(false)
-    val northLocked: StateFlow<Boolean> = _northLocked.asStateFlow()
+    val northLocked: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _largeCompass = MutableStateFlow(false)
-    val largeCompass: StateFlow<Boolean> = _largeCompass.asStateFlow()
+    val largeCompass: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _selectedMapLayer = MutableStateFlow(MapLayer.KARTVERKET)
-    val selectedMapLayer: StateFlow<MapLayer> = _selectedMapLayer.asStateFlow()
+    val selectedMapLayer: StateFlow<MapLayer>
+        field = MutableStateFlow(MapLayer.KARTVERKET)
 
-    private val _searchHistory = MutableStateFlow<List<PlaceSearchClient.SearchResult>>(emptyList())
-    val searchHistory: StateFlow<List<PlaceSearchClient.SearchResult>> = _searchHistory.asStateFlow()
+    val searchHistory: StateFlow<List<PlaceSearchClient.SearchResult>>
+        field = MutableStateFlow<List<PlaceSearchClient.SearchResult>>(emptyList())
 
-    private val _followedClientIds = MutableStateFlow<List<String>>(emptyList())
-    val followedClientIds: StateFlow<List<String>> = _followedClientIds.asStateFlow()
+    val followedClientIds: StateFlow<List<String>>
+        field = MutableStateFlow<List<String>>(emptyList())
 
-    private val _followHistory = MutableStateFlow<List<String>>(emptyList())
-    val followHistory: StateFlow<List<String>> = _followHistory.asStateFlow()
+    val followHistory: StateFlow<List<String>>
+        field = MutableStateFlow<List<String>>(emptyList())
 
     // Local, per-device nicknames for followed client ids (clientId -> name). Never sent anywhere.
-    private val _clientNicknames = MutableStateFlow<Map<String, String>>(emptyMap())
-    val clientNicknames: StateFlow<Map<String, String>> = _clientNicknames.asStateFlow()
+    val clientNicknames: StateFlow<Map<String, String>>
+        field = MutableStateFlow<Map<String, String>>(emptyMap())
 
     // Strava (BYO credentials): the user creates their own Strava API app and enters its
     // client id + secret; OAuth token exchange happens on-device. clientId is exposed so the UI
     // can tell whether credentials are set; the secret and refresh token stay internal.
-    private val _stravaClientId = MutableStateFlow<String?>(null)
-    val stravaClientId: StateFlow<String?> = _stravaClientId.asStateFlow()
+    val stravaClientId: StateFlow<String?>
+        field = MutableStateFlow<String?>(null)
     private val _stravaClientSecret = MutableStateFlow<String?>(null)
     private val _stravaRefreshToken = MutableStateFlow<String?>(null)
     private val _stravaOAuthState = MutableStateFlow<String?>(null)
 
-    private val _stravaConnected = MutableStateFlow(false)
-    val stravaConnected: StateFlow<Boolean> = _stravaConnected.asStateFlow()
+    val stravaConnected: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _stravaAthleteId = MutableStateFlow(0L)
-    val stravaAthleteId: StateFlow<Long> = _stravaAthleteId.asStateFlow()
+    val stravaAthleteId: StateFlow<Long>
+        field = MutableStateFlow(0L)
 
-    private val _stravaAccessToken = MutableStateFlow<String?>(null)
-    val stravaAccessToken: StateFlow<String?> = _stravaAccessToken.asStateFlow()
+    val stravaAccessToken: StateFlow<String?>
+        field = MutableStateFlow<String?>(null)
 
     /** Access-token expiry, unix epoch seconds. */
-    private val _stravaTokenExpiry = MutableStateFlow(0L)
-    val stravaTokenExpiry: StateFlow<Long> = _stravaTokenExpiry.asStateFlow()
+    val stravaTokenExpiry: StateFlow<Long>
+        field = MutableStateFlow(0L)
 
     init {
         if (hydrateFromDisk) scope.launch {
             dataStore.data.collect { prefs ->
-                _showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
-                _showOsmPaths.value = prefs[SHOW_OSM_PATHS] ?: false
-                _showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
+                showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
+                showOsmPaths.value = prefs[SHOW_OSM_PATHS] ?: false
+                showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
                 val storedNveOverlay = prefs[NVE_OVERLAY]
-                _nveOverlay.value = if (storedNveOverlay == null) {
+                nveOverlay.value = if (storedNveOverlay == null) {
                     // Installs predating the steepness-only overlay only have the legacy boolean.
                     if (prefs[SHOW_AVALANCHE_ZONES] == true) NveOverlay.STEEPNESS_RUNOUT else null
                 } else {
                     NveOverlay.entries.find { it.name == storedNveOverlay }
                 }
-                _showCoverage.value = prefs[SHOW_COVERAGE] ?: false
-                _coverageOperator.value = CoverageOperator.entries.firstOrNull { it.name == prefs[COVERAGE_OPERATOR] } ?: CoverageOperator.ALL
-                _coverageTilesVersion.value = prefs[COVERAGE_TILES_VERSION] ?: CoverageTilesClient.FALLBACK_VERSION
-                _showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
-                _crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
-                _northLocked.value = prefs[NORTH_LOCKED] ?: false
-                _largeCompass.value = prefs[LARGE_COMPASS] ?: false
-                _selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
-                _crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
-                _hasSeenTrackingInfo.value = prefs[HAS_SEEN_TRACKING_INFO] ?: false
-                _offlineMigrationNoticeShown.value = prefs[OFFLINE_MIGRATION_NOTICE_SHOWN] ?: false
-                _onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
+                showCoverage.value = prefs[SHOW_COVERAGE] ?: false
+                coverageOperator.value = CoverageOperator.entries.firstOrNull { it.name == prefs[COVERAGE_OPERATOR] } ?: CoverageOperator.ALL
+                coverageTilesVersion.value = prefs[COVERAGE_TILES_VERSION] ?: CoverageTilesClient.FALLBACK_VERSION
+                showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
+                crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
+                northLocked.value = prefs[NORTH_LOCKED] ?: false
+                largeCompass.value = prefs[LARGE_COMPASS] ?: false
+                selectedMapLayer.value = try { MapLayer.valueOf(prefs[SELECTED_MAP_LAYER] ?: "KARTVERKET") } catch (_: Exception) { MapLayer.KARTVERKET }
+                crashReportingEnabled.value = prefs[CRASH_REPORTING_ENABLED] ?: true
+                hasSeenTrackingInfo.value = prefs[HAS_SEEN_TRACKING_INFO] ?: false
+                offlineMigrationNoticeShown.value = prefs[OFFLINE_MIGRATION_NOTICE_SHOWN] ?: false
+                onlineTrackingEnabled.value = prefs[ONLINE_TRACKING_ENABLED] ?: false
                 val rawUntil = prefs[LIVE_SHARE_UNTIL] ?: 0L
                 val effectiveUntil = if (rawUntil > currentTimeMillis()) rawUntil else 0L
-                if (_liveShareUntilMillis.value != effectiveUntil) {
-                    _liveShareUntilMillis.value = effectiveUntil
+                if (liveShareUntilMillis.value != effectiveUntil) {
+                    liveShareUntilMillis.value = effectiveUntil
                     scheduleLiveShareExpiry(effectiveUntil)
                 }
-                _trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
-                _offlineModeEnabled.value = prefs[OFFLINE_MODE_ENABLED] ?: false
-                _downloadElevationData.value = prefs[DOWNLOAD_ELEVATION_DATA] ?: true
-                _downloadMaxZoom.value = prefs[DOWNLOAD_MAX_ZOOM] ?: DEFAULT_DOWNLOAD_MAX_ZOOM
-                _themeMode.value = prefs[THEME_MODE] ?: "system"
-                _coordFormat.value = try { CoordFormat.valueOf(prefs[COORD_FORMAT] ?: "LATLNG") } catch (_: Exception) { CoordFormat.LATLNG }
-                _searchHistory.value = deserializeSearchHistory(prefs[SEARCH_HISTORY])
-                _followedClientIds.value = LiveTrackingFollower.sanitize(
+                trackingServerUrl.value = prefs[TRACKING_SERVER_URL] ?: "https://where.synth.no"
+                offlineModeEnabled.value = prefs[OFFLINE_MODE_ENABLED] ?: false
+                downloadElevationData.value = prefs[DOWNLOAD_ELEVATION_DATA] ?: true
+                downloadMaxZoom.value = prefs[DOWNLOAD_MAX_ZOOM] ?: DEFAULT_DOWNLOAD_MAX_ZOOM
+                themeMode.value = prefs[THEME_MODE] ?: "system"
+                coordFormat.value = try { CoordFormat.valueOf(prefs[COORD_FORMAT] ?: "LATLNG") } catch (_: Exception) { CoordFormat.LATLNG }
+                searchHistory.value = deserializeSearchHistory(prefs[SEARCH_HISTORY])
+                followedClientIds.value = LiveTrackingFollower.sanitize(
                     prefs[FOLLOWED_CLIENT_ID]?.split(",") ?: emptyList()
                 )
-                _followHistory.value = prefs[FOLLOW_HISTORY]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
-                _clientNicknames.value = deserializeNicknames(prefs[CLIENT_NICKNAMES])
-                _stravaClientId.value = prefs[STRAVA_CLIENT_ID]
+                followHistory.value = prefs[FOLLOW_HISTORY]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+                clientNicknames.value = deserializeNicknames(prefs[CLIENT_NICKNAMES])
+                stravaClientId.value = prefs[STRAVA_CLIENT_ID]
                 _stravaClientSecret.value = prefs[STRAVA_CLIENT_SECRET]
                 _stravaRefreshToken.value = prefs[STRAVA_REFRESH_TOKEN]
                 _stravaOAuthState.value = prefs[STRAVA_OAUTH_STATE]
-                _stravaConnected.value = prefs[STRAVA_CONNECTED] ?: false
-                _stravaAthleteId.value = prefs[STRAVA_ATHLETE_ID] ?: 0L
-                _stravaAccessToken.value = prefs[STRAVA_ACCESS_TOKEN]
-                _stravaTokenExpiry.value = prefs[STRAVA_TOKEN_EXPIRY] ?: 0L
+                stravaConnected.value = prefs[STRAVA_CONNECTED] ?: false
+                stravaAthleteId.value = prefs[STRAVA_ATHLETE_ID] ?: 0L
+                stravaAccessToken.value = prefs[STRAVA_ACCESS_TOKEN]
+                stravaTokenExpiry.value = prefs[STRAVA_TOKEN_EXPIRY] ?: 0L
             }
         }
     }
@@ -218,7 +217,7 @@ class UserPreferences(
     // Cached (synchronous) reads for StravaTokenManager. Not exposed as flows, to keep the secret
     // contained. Use the suspending read* variants when correctness across a cold start matters
     // (the OAuth redirect can re-launch the app before the init collector has hydrated these).
-    fun stravaClientIdValue(): String? = _stravaClientId.value
+    fun stravaClientIdValue(): String? = stravaClientId.value
 
     /** Reads the persisted deadline directly: [liveShareUntilMillis] is still 0 until the
      *  DataStore collector in `init` has run, which is too late for cold-start checks. */
@@ -234,7 +233,7 @@ class UserPreferences(
     suspend fun readStravaAthleteId(): Long = dataStore.data.map { it[STRAVA_ATHLETE_ID] ?: 0L }.first()
 
     fun setStravaCredentials(clientId: String, clientSecret: String) {
-        _stravaClientId.value = clientId
+        stravaClientId.value = clientId
         _stravaClientSecret.value = clientSecret
         scope.launch {
             dataStore.edit {
@@ -261,11 +260,11 @@ class UserPreferences(
      * write alive when the caller (a closed screen) is cancelled.
      */
     suspend fun cacheStravaTokens(accessToken: String, refreshToken: String, expirySeconds: Long, athleteId: Long) {
-        _stravaAccessToken.value = accessToken
+        stravaAccessToken.value = accessToken
         _stravaRefreshToken.value = refreshToken
-        _stravaTokenExpiry.value = expirySeconds
-        _stravaConnected.value = true
-        if (athleteId > 0L) _stravaAthleteId.value = athleteId
+        stravaTokenExpiry.value = expirySeconds
+        stravaConnected.value = true
+        if (athleteId > 0L) stravaAthleteId.value = athleteId
         scope.async {
             dataStore.edit {
                 it[STRAVA_ACCESS_TOKEN] = accessToken
@@ -279,7 +278,7 @@ class UserPreferences(
 
     /** Forget the user's stored Strava app credentials (client id + secret). */
     fun clearStravaCredentials() {
-        _stravaClientId.value = null
+        stravaClientId.value = null
         _stravaClientSecret.value = null
         scope.launch {
             dataStore.edit {
@@ -291,10 +290,10 @@ class UserPreferences(
 
     /** Forget the connected session but keep the entered credentials so reconnect is one tap. */
     fun clearStravaTokens() {
-        _stravaConnected.value = false
-        _stravaAthleteId.value = 0L
-        _stravaAccessToken.value = null
-        _stravaTokenExpiry.value = 0L
+        stravaConnected.value = false
+        stravaAthleteId.value = 0L
+        stravaAccessToken.value = null
+        stravaTokenExpiry.value = 0L
         _stravaRefreshToken.value = null
         _stravaOAuthState.value = null
         scope.launch {
@@ -310,22 +309,22 @@ class UserPreferences(
     }
 
     fun updateShowWaymarkedTrails(value: Boolean) {
-        _showWaymarkedTrails.value = value
+        showWaymarkedTrails.value = value
         scope.launch { dataStore.edit { it[SHOW_WAYMARKED_TRAILS] = value } }
     }
 
     fun updateShowOsmPaths(value: Boolean) {
-        _showOsmPaths.value = value
+        showOsmPaths.value = value
         scope.launch { dataStore.edit { it[SHOW_OSM_PATHS] = value } }
     }
 
     fun updateShowSavedPoints(value: Boolean) {
-        _showSavedPoints.value = value
+        showSavedPoints.value = value
         scope.launch { dataStore.edit { it[SHOW_SAVED_POINTS] = value } }
     }
 
     fun updateNveOverlay(value: NveOverlay?) {
-        _nveOverlay.value = value
+        nveOverlay.value = value
         // Stored as "" rather than a missing key, so turning the overlay off doesn't fall back to
         // the legacy boolean and resurrect the old choice.
         scope.launch { dataStore.edit { it[NVE_OVERLAY] = value?.name ?: "" } }
@@ -333,63 +332,63 @@ class UserPreferences(
 
     /** Tapping the active overlay turns it off. */
     fun toggleNveOverlay(value: NveOverlay) =
-        updateNveOverlay(if (_nveOverlay.value == value) null else value)
+        updateNveOverlay(if (nveOverlay.value == value) null else value)
 
     fun updateShowCoverage(value: Boolean) {
-        _showCoverage.value = value
+        showCoverage.value = value
         scope.launch { dataStore.edit { it[SHOW_COVERAGE] = value } }
     }
 
     fun updateCoverageOperator(value: CoverageOperator) {
-        _coverageOperator.value = value
+        coverageOperator.value = value
         scope.launch { dataStore.edit { it[COVERAGE_OPERATOR] = value.name } }
     }
 
     fun updateCoverageTilesVersion(value: String) {
-        if (_coverageTilesVersion.value == value) return
-        _coverageTilesVersion.value = value
+        if (coverageTilesVersion.value == value) return
+        coverageTilesVersion.value = value
         scope.launch { dataStore.edit { it[COVERAGE_TILES_VERSION] = value } }
     }
 
     fun updateShowCoordGrid(value: Boolean) {
-        _showCoordGrid.value = value
+        showCoordGrid.value = value
         scope.launch { dataStore.edit { it[SHOW_COORD_GRID] = value } }
     }
 
     fun updateCrosshairActive(value: Boolean) {
-        _crosshairActive.value = value
+        crosshairActive.value = value
         scope.launch { dataStore.edit { it[CROSSHAIR_ACTIVE] = value } }
     }
 
     fun updateNorthLocked(value: Boolean) {
-        _northLocked.value = value
+        northLocked.value = value
         scope.launch { dataStore.edit { it[NORTH_LOCKED] = value } }
     }
 
     fun updateLargeCompass(value: Boolean) {
-        _largeCompass.value = value
+        largeCompass.value = value
         scope.launch { dataStore.edit { it[LARGE_COMPASS] = value } }
     }
 
     fun updateSelectedMapLayer(value: MapLayer) {
-        _selectedMapLayer.value = value
+        selectedMapLayer.value = value
         scope.launch { dataStore.edit { it[SELECTED_MAP_LAYER] = value.name } }
     }
 
     fun updateCrashReportingEnabled(value: Boolean) {
-        _crashReportingEnabled.value = value
+        crashReportingEnabled.value = value
         scope.launch {
             dataStore.edit { it[CRASH_REPORTING_ENABLED] = value }
         }
     }
 
     fun markTrackingInfoSeen() {
-        _hasSeenTrackingInfo.value = true
+        hasSeenTrackingInfo.value = true
         scope.launch { dataStore.edit { it[HAS_SEEN_TRACKING_INFO] = true } }
     }
 
     fun markOfflineMigrationNoticeShown() {
-        _offlineMigrationNoticeShown.value = true
+        offlineMigrationNoticeShown.value = true
         scope.launch { dataStore.edit { it[OFFLINE_MIGRATION_NOTICE_SHOWN] = true } }
     }
 
@@ -399,7 +398,7 @@ class UserPreferences(
     }
 
     fun updateOnlineTrackingEnabled(value: Boolean) {
-        _onlineTrackingEnabled.value = value
+        onlineTrackingEnabled.value = value
         scope.launch {
             dataStore.edit { it[ONLINE_TRACKING_ENABLED] = value }
         }
@@ -416,7 +415,7 @@ class UserPreferences(
     }
 
     private fun updateLiveShareUntil(value: Long) {
-        _liveShareUntilMillis.value = value
+        liveShareUntilMillis.value = value
         scope.launch {
             dataStore.edit {
                 if (value > 0L) it[LIVE_SHARE_UNTIL] = value else it.remove(LIVE_SHARE_UNTIL)
@@ -438,7 +437,7 @@ class UserPreferences(
                 }
                 liveShareExpiryJob = scope.launch {
                     delay(delayMs)
-                    if (_liveShareUntilMillis.value == until) {
+                    if (liveShareUntilMillis.value == until) {
                         updateLiveShareUntil(0L)
                     }
                 }
@@ -447,31 +446,31 @@ class UserPreferences(
     }
 
     fun updateOfflineModeEnabled(value: Boolean) {
-        _offlineModeEnabled.value = value
+        offlineModeEnabled.value = value
         scope.launch {
             dataStore.edit { it[OFFLINE_MODE_ENABLED] = value }
         }
     }
 
     fun updateDownloadElevationData(value: Boolean) {
-        _downloadElevationData.value = value
+        downloadElevationData.value = value
         scope.launch { dataStore.edit { it[DOWNLOAD_ELEVATION_DATA] = value } }
     }
 
     fun updateDownloadMaxZoom(value: Int) {
-        _downloadMaxZoom.value = value
+        downloadMaxZoom.value = value
         scope.launch { dataStore.edit { it[DOWNLOAD_MAX_ZOOM] = value } }
     }
 
     fun updateThemeMode(value: String) {
-        _themeMode.value = value
+        themeMode.value = value
         scope.launch {
             dataStore.edit { it[THEME_MODE] = value }
         }
     }
 
     fun updateCoordFormat(value: CoordFormat) {
-        _coordFormat.value = value
+        coordFormat.value = value
         scope.launch {
             dataStore.edit { it[COORD_FORMAT] = value.name }
         }
@@ -479,14 +478,14 @@ class UserPreferences(
 
     /** False when [clientId] is already followed or the set is full. */
     fun addFollowedClientId(clientId: String): Boolean {
-        val current = _followedClientIds.value
+        val current = followedClientIds.value
         if (clientId in current || current.size >= LiveTrackingFollower.MAX_FOLLOWED) return false
         setFollowedClientIds(current + clientId)
         return true
     }
 
     fun removeFollowedClientId(clientId: String) {
-        setFollowedClientIds(_followedClientIds.value - clientId)
+        setFollowedClientIds(followedClientIds.value - clientId)
     }
 
     fun clearFollowedClientIds() {
@@ -496,7 +495,7 @@ class UserPreferences(
     /** Replaces the followed set; a group deep link carries a whole group at once. */
     fun setFollowedClientIds(value: List<String>) {
         val sanitized = LiveTrackingFollower.sanitize(value)
-        _followedClientIds.value = sanitized
+        followedClientIds.value = sanitized
         scope.launch {
             dataStore.edit {
                 if (sanitized.isNotEmpty()) {
@@ -511,10 +510,10 @@ class UserPreferences(
     /** Sets or (when [nickname] is blank) clears the local nickname for [clientId]. */
     fun setClientNickname(clientId: String, nickname: String) {
         val trimmed = nickname.trim()
-        val current = _clientNicknames.value
+        val current = clientNicknames.value
         val updated = if (trimmed.isEmpty()) current - clientId else current + (clientId to trimmed)
         if (updated == current) return
-        _clientNicknames.value = updated
+        clientNicknames.value = updated
         scope.launch {
             dataStore.edit {
                 if (updated.isEmpty()) it.remove(CLIENT_NICKNAMES)
@@ -536,31 +535,31 @@ class UserPreferences(
     }
 
     fun removeFollowHistoryEntry(clientId: String) {
-        val updated = _followHistory.value - clientId
-        if (updated.size == _followHistory.value.size) return
-        _followHistory.value = updated
+        val updated = followHistory.value - clientId
+        if (updated.size == followHistory.value.size) return
+        followHistory.value = updated
         scope.launch {
             dataStore.edit { it[FOLLOW_HISTORY] = updated.joinToString(",") }
         }
     }
 
     fun addFollowHistoryEntry(clientId: String) {
-        val current = _followHistory.value.toMutableList()
+        val current = followHistory.value.toMutableList()
         current.remove(clientId)
         current.add(0, clientId)
         val updated = current.take(MAX_FOLLOW_HISTORY)
-        _followHistory.value = updated
+        followHistory.value = updated
         scope.launch {
             dataStore.edit { it[FOLLOW_HISTORY] = updated.joinToString(",") }
         }
     }
 
     fun addSearchHistoryEntry(result: PlaceSearchClient.SearchResult) {
-        val current = _searchHistory.value.toMutableList()
+        val current = searchHistory.value.toMutableList()
         current.removeAll { it.name == result.name && it.municipality == result.municipality }
         current.add(0, result)
         val updated = current.take(MAX_SEARCH_HISTORY)
-        _searchHistory.value = updated
+        searchHistory.value = updated
         scope.launch {
             dataStore.edit { it[SEARCH_HISTORY] = serializeSearchHistory(updated) }
         }
