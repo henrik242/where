@@ -11,8 +11,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -52,12 +50,12 @@ class StravaTokenManager(
 
     // Emits the outcome of an OAuth round-trip (true = connected, false = failed/denied) so the UI
     // can confirm success or report failure — the redirect completes outside any screen's scope.
-    private val _authOutcome = MutableSharedFlow<Boolean>(replay = 0, extraBufferCapacity = 1)
-    val authOutcome: SharedFlow<Boolean> = _authOutcome.asSharedFlow()
+    val authOutcome: SharedFlow<Boolean>
+        field = MutableSharedFlow<Boolean>(replay = 0, extraBufferCapacity = 1)
 
     // True while the code->token exchange is running, so the UI can show a "Connecting…" state.
-    private val _exchanging = MutableStateFlow(false)
-    val exchanging: StateFlow<Boolean> = _exchanging.asStateFlow()
+    val exchanging: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
     fun saveCredentials(clientId: String, clientSecret: String) =
         prefs.setStravaCredentials(clientId.trim(), clientSecret.trim())
@@ -78,13 +76,13 @@ class StravaTokenManager(
 
     /** Verify CSRF state and exchange the code on-device. Reads credentials with a cold-start-safe read. */
     suspend fun handleCallback(code: String?, state: String?): Boolean {
-        _exchanging.value = true
+        exchanging.value = true
         val ok = try {
             exchangeAuthCode(code, state)
         } finally {
-            _exchanging.value = false
+            exchanging.value = false
         }
-        _authOutcome.tryEmit(ok)
+        authOutcome.tryEmit(ok)
         return ok
     }
 

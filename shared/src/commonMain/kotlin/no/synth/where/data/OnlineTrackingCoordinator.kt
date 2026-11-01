@@ -5,7 +5,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -78,24 +77,24 @@ class OnlineTrackingCoordinator(
 
     enum class Mode { NONE, RECORDING, LIVE }
 
-    private val _mode = MutableStateFlow(Mode.NONE)
-    val mode: StateFlow<Mode> = _mode.asStateFlow()
+    val mode: StateFlow<Mode>
+        field = MutableStateFlow(Mode.NONE)
 
-    private val _shouldTrackLocation = MutableStateFlow(false)
-    val shouldTrackLocation: StateFlow<Boolean> = _shouldTrackLocation.asStateFlow()
+    val shouldTrackLocation: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
-    private val _isLiveSharing = MutableStateFlow(false)
-    val isLiveSharing: StateFlow<Boolean> = _isLiveSharing.asStateFlow()
+    val isLiveSharing: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
     // True whenever there is an active online session (LIVE or online RECORDING) that can carry
     // shared points. The map's "Del punkt" actions are offered only while this is true.
-    private val _canShare = MutableStateFlow(false)
-    val canShare: StateFlow<Boolean> = _canShare.asStateFlow()
+    val canShare: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
     // The points this client has shared this session. The source of truth: re-sent to the server
     // whenever a fresh session starts (reconnect, mode switch) and cleared when sharing ends.
-    private val _mySharedPoints = MutableStateFlow<List<SharedPoint>>(emptyList())
-    val mySharedPoints: StateFlow<List<SharedPoint>> = _mySharedPoints.asStateFlow()
+    val mySharedPoints: StateFlow<List<SharedPoint>>
+        field = MutableStateFlow<List<SharedPoint>>(emptyList())
 
     @Volatile private var currentClient: TrackingSession? = null
     @Volatile private var currentClientId: String? = null
@@ -140,22 +139,22 @@ class OnlineTrackingCoordinator(
         }
         currentClient = null
         currentClientId = null
-        _mode.value = Mode.NONE
-        _shouldTrackLocation.value = false
-        _isLiveSharing.value = false
-        _canShare.value = false
-        _mySharedPoints.value = emptyList()
+        mode.value = Mode.NONE
+        shouldTrackLocation.value = false
+        isLiveSharing.value = false
+        canShare.value = false
+        mySharedPoints.value = emptyList()
     }
 
     private suspend fun applyDesired(desired: Desired) {
-        _shouldTrackLocation.value = desired.shouldTrackLocation
-        if (desired.mode == _mode.value) return
+        shouldTrackLocation.value = desired.shouldTrackLocation
+        if (desired.mode == mode.value) return
 
         tearDown()
         if (desired.mode == Mode.NONE) {
             // Sharing fully ended; drop the shared points (the server clears them when the
             // track stops, and followers keep any local copies they saved).
-            _mySharedPoints.value = emptyList()
+            mySharedPoints.value = emptyList()
             return
         }
 
@@ -178,9 +177,9 @@ class OnlineTrackingCoordinator(
                 currentClient = null
             }
             currentClientId = null
-            _mode.value = Mode.NONE
-            _isLiveSharing.value = false
-            _canShare.value = false
+            mode.value = Mode.NONE
+            isLiveSharing.value = false
+            canShare.value = false
         }
     }
 
@@ -215,12 +214,12 @@ class OnlineTrackingCoordinator(
                 Mode.NONE -> {}
             }
             currentClientId = cid
-            _mode.value = mode
-            _isLiveSharing.value = mode == Mode.LIVE
-            _canShare.value = true
+            this@OnlineTrackingCoordinator.mode.value = mode
+            isLiveSharing.value = mode == Mode.LIVE
+            canShare.value = true
             // Re-publish points from a previous session generation (reconnect / mode switch) so
             // followers get them back after the server dropped them when the old track stopped.
-            for (point in _mySharedPoints.value) {
+            for (point in mySharedPoints.value) {
                 session.shareSharedPoint(point.copy(ownerClientId = cid))
             }
         }
@@ -232,7 +231,7 @@ class OnlineTrackingCoordinator(
      * expiry but before the state machine has reacted is never sent.
      */
     fun sendPoint(latLng: LatLng, altitude: Double?, accuracy: Float?) {
-        if (_mode.value == Mode.NONE) return
+        if (mode.value == Mode.NONE) return
         if (!sources.isRecording.value && sources.liveShareUntilMillis.value <= clock()) return
         currentClient?.sendPoint(latLng, altitude, accuracy)
     }
@@ -258,7 +257,7 @@ class OnlineTrackingCoordinator(
             color = color,
             timestamp = clock(),
         )
-        _mySharedPoints.value = _mySharedPoints.value + point
+        mySharedPoints.value = mySharedPoints.value + point
         currentClient?.shareSharedPoint(point)
         return point
     }
@@ -274,14 +273,14 @@ class OnlineTrackingCoordinator(
     }
 
     private fun updateAndShare(pointId: String, transform: (SharedPoint) -> SharedPoint) {
-        val updated = _mySharedPoints.value.map { if (it.id == pointId) transform(it) else it }
-        _mySharedPoints.value = updated
+        val updated = mySharedPoints.value.map { if (it.id == pointId) transform(it) else it }
+        mySharedPoints.value = updated
         updated.firstOrNull { it.id == pointId }?.let { currentClient?.shareSharedPoint(it) }
     }
 
     /** Delete a shared point locally and on the server. */
     fun removeSharedPoint(pointId: String) {
-        _mySharedPoints.value = _mySharedPoints.value.filterNot { it.id == pointId }
+        mySharedPoints.value = mySharedPoints.value.filterNot { it.id == pointId }
         currentClient?.deleteSharedPoint(pointId)
     }
 }

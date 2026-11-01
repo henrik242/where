@@ -10,7 +10,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -66,37 +65,37 @@ class DownloadQueueManager(
      */
     private val stallTimeoutMs: Long = DEFAULT_STALL_TIMEOUT_MS,
 ) {
-    private val _queue = MutableStateFlow<List<QueuedDownload>>(emptyList())
-    val queue: StateFlow<List<QueuedDownload>> = _queue.asStateFlow()
+    val queue: StateFlow<List<QueuedDownload>>
+        field = MutableStateFlow<List<QueuedDownload>>(emptyList())
 
     private var worker: Job? = null
     private var activeDownload: Deferred<Boolean>? = null
 
     fun enqueue(item: QueuedDownload) {
-        val existing = _queue.value.firstOrNull { it.id == item.id }
+        val existing = queue.value.firstOrNull { it.id == item.id }
         if (existing?.status == DownloadStatus.QUEUED || existing?.status == DownloadStatus.DOWNLOADING) return
         val fresh = item.copy(
             status = DownloadStatus.QUEUED,
             mapProgress = 0,
             demProgress = if (item.downloadDem) 0 else -1,
         )
-        _queue.update { list -> list.filterNot { it.id == item.id } + fresh }
+        queue.update { list -> list.filterNot { it.id == item.id } + fresh }
         pump()
     }
 
     fun cancel(id: String) {
-        val item = _queue.value.firstOrNull { it.id == id } ?: return
+        val item = queue.value.firstOrNull { it.id == id } ?: return
         if (item.status == DownloadStatus.DOWNLOADING) {
             setStatus(id, DownloadStatus.CANCELLED)
             engine.cancelActive()
             activeDownload?.cancel()
         } else {
-            _queue.update { list -> list.filterNot { it.id == id } }
+            queue.update { list -> list.filterNot { it.id == id } }
         }
     }
 
     fun clearFinished() {
-        _queue.update { list -> list.filterNot { it.status.isTerminal } }
+        queue.update { list -> list.filterNot { it.status.isTerminal } }
     }
 
     /**
@@ -110,7 +109,7 @@ class DownloadQueueManager(
         worker?.cancel()
         worker = null
         activeDownload = null
-        _queue.update { list ->
+        queue.update { list ->
             list.map {
                 if (it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.QUEUED) {
                     it.copy(status = DownloadStatus.FAILED)
@@ -123,7 +122,7 @@ class DownloadQueueManager(
 
     private fun pump() {
         if (worker?.isActive == true) return
-        if (_queue.value.none { it.status == DownloadStatus.QUEUED }) return
+        if (queue.value.none { it.status == DownloadStatus.QUEUED }) return
         worker = scope.launch { drain() }
     }
 
@@ -131,7 +130,7 @@ class DownloadQueueManager(
         onActive()
         try {
             while (true) {
-                val next = _queue.value.firstOrNull { it.status == DownloadStatus.QUEUED } ?: break
+                val next = queue.value.firstOrNull { it.status == DownloadStatus.QUEUED } ?: break
                 setStatus(next.id, DownloadStatus.DOWNLOADING)
                 val deferred = async {
                     engine.download(next) { map, dem ->
@@ -144,7 +143,7 @@ class DownloadQueueManager(
                 // callback frequency, since some engines report progress on a fixed timer.
                 val watchdog = if (stallTimeoutMs > 0) {
                     launch {
-                        val progressOf = { _queue.value.firstOrNull { it.id == next.id }?.let { it.mapProgress + it.demProgress } ?: 0 }
+                        val progressOf = { queue.value.firstOrNull { it.id == next.id }?.let { it.mapProgress + it.demProgress } ?: 0 }
                         var last = progressOf()
                         while (true) {
                             delay(stallTimeoutMs)
@@ -186,7 +185,7 @@ class DownloadQueueManager(
     private fun setStatus(id: String, status: DownloadStatus) = updateItem(id) { it.copy(status = status) }
 
     private fun updateItem(id: String, transform: (QueuedDownload) -> QueuedDownload) {
-        _queue.update { list -> list.map { if (it.id == id) transform(it) else it } }
+        queue.update { list -> list.map { if (it.id == id) transform(it) else it } }
     }
 
     companion object {
