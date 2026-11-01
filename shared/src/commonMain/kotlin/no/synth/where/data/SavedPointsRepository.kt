@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import no.synth.where.data.db.SavedPointDao
 import no.synth.where.data.db.SavedPointEntity
 import no.synth.where.util.NamingUtils
@@ -22,7 +21,7 @@ data class PointImportCandidates(val waypoints: List<ParsedWaypoint>, val failed
 
 class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: SavedPointDao) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = AppJson
     private val pointsFile: PlatformFile = filesDir.resolve("saved_points.json")
     private val migratedFile: PlatformFile = filesDir.resolve("saved_points.json.migrated")
 

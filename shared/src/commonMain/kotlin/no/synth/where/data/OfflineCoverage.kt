@@ -3,7 +3,6 @@ package no.synth.where.data
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import no.synth.where.util.Logger
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.maplibre.compose.map.DefaultMapRuntime
@@ -50,7 +49,7 @@ object OfflineCoverage {
         // Legacy native packs stored JSON ({"name":"<region>-<layer>", ...}); new packs store the
         // raw id. Accept both so retained downloads still match.
         if (!raw.startsWith("{")) return raw
-        return runCatching { Json.parseToJsonElement(raw).jsonObject["name"]?.jsonPrimitive?.content }
+        return runCatching { AppJson.parseToJsonElement(raw).jsonObject["name"]?.jsonPrimitive?.content }
             .getOrNull() ?: raw
     }
 

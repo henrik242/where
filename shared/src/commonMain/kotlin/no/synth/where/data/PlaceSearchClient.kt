@@ -5,7 +5,6 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -33,7 +32,7 @@ object PlaceSearchClient {
             }
             if (response.status.value !in 200..299) return@withContext emptyList()
 
-            val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val json = AppJson.parseToJsonElement(response.bodyAsText()).jsonObject
             val navn = json["navn"]?.jsonArray ?: return@withContext emptyList()
 
             val results = mutableListOf<SearchResult>()

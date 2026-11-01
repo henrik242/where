@@ -7,7 +7,6 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -60,7 +59,7 @@ class StravaApiClient(
 
     companion object {
         private const val API_BASE = "https://www.strava.com/api/v3"
-        private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+        private val json = LenientJson
 
         /** Parse the JSON array returned by GET /athletes/{id}/routes into route summaries. */
         fun parseRoutes(body: String): List<StravaRoute> {

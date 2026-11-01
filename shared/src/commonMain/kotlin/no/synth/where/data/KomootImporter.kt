@@ -3,7 +3,6 @@ package no.synth.where.data
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
@@ -117,7 +116,7 @@ class KomootImporter(
 
     companion object {
 
-        private val lenientJson = Json { ignoreUnknownKeys = true; isLenient = true }
+        private val lenientJson = LenientJson
 
         fun parseKomootUrl(input: String): KomootRef? {
             val trimmed = input.trim()

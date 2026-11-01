@@ -1,6 +1,5 @@
 package no.synth.where.data
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -21,7 +20,7 @@ object GeoJsonImport {
     private class Feature(val geometry: JsonObject, val properties: JsonObject?)
 
     fun parseTrack(text: String): Track? = try {
-        val root = Json.parseToJsonElement(text).jsonObject
+        val root = AppJson.parseToJsonElement(text).jsonObject
         val features = features(root)
         val lineFeatures = features.filter { it.geometry.type in LINE_TYPES }
         val pointFeatures = features.filter { it.geometry.type in POINT_TYPES }
@@ -40,7 +39,7 @@ object GeoJsonImport {
     }
 
     fun parseWaypoints(text: String): List<ParsedWaypoint> = try {
-        val root = Json.parseToJsonElement(text).jsonObject
+        val root = AppJson.parseToJsonElement(text).jsonObject
         features(root).filter { it.geometry.type in POINT_TYPES }.flatMap { feature ->
             val props = feature.properties
             positions(feature.geometry).mapNotNull { position ->

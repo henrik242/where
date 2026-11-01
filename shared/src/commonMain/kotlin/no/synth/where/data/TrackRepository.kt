@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import no.synth.where.data.db.TrackDao
 import no.synth.where.data.routing.RoutePoint
 import no.synth.where.data.db.TrackEntity
@@ -45,7 +44,7 @@ internal fun onMapTrackIdsOf(viewingTracks: List<Track>, navigation: NavigationS
     }
 
 class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = AppJson
     private val tracksFile = filesDir.resolve("tracks.json")
     private val migratedFile = filesDir.resolve("tracks.json.migrated")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
