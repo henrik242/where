@@ -8,8 +8,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import no.synth.where.data.geo.CoordFormat
@@ -21,6 +22,11 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 class UserPreferencesTest {
+
+    private companion object {
+        // Only bounds a hang; the awaits return as soon as the work is done.
+        const val TIMEOUT = 10_000L
+    }
 
     @get:Rule
     val tempFolder = TemporaryFolder()
@@ -36,8 +42,7 @@ class UserPreferencesTest {
             produceFile = { tempFolder.newFile("user_prefs_test.preferences_pb") }
         )
         prefs = UserPreferences(dataStore)
-        // Allow init collector to complete initial read
-        delay(100)
+        withTimeout(TIMEOUT) { prefs.awaitHydrated() }
     }
 
     @After
@@ -98,14 +103,11 @@ class UserPreferencesTest {
                 produceFile = { tempFolder.newFile("rapid_toggle_$i.preferences_pb") }
             )
             val rapid = UserPreferences(store)
-            delay(60)
+            withTimeout(TIMEOUT) { rapid.awaitHydrated() }
             rapid.confirmTrackingInfoAndEnable()
             rapid.updateOnlineTrackingEnabled(false)
-            // Wait for the writes to land instead of a fixed delay, which was too short on slow CI.
-            val key = booleanPreferencesKey("online_tracking_enabled")
-            withTimeout(5_000) { store.data.first { it[key] == false } }
-            delay(150)
-            assertEquals(false, store.data.first()[key])
+            withTimeout(TIMEOUT) { rapid.awaitPersisted() }
+            assertEquals(false, store.data.first()[booleanPreferencesKey("online_tracking_enabled")])
             assertEquals(false, rapid.onlineTrackingEnabled.value)
             storeScope.cancel()
         }
@@ -166,7 +168,7 @@ class UserPreferencesTest {
         val store = PreferenceDataStoreFactory.create(scope = scope, produceFile = { file })
         store.edit { it[booleanPreferencesKey("show_avalanche_zones")] = true }
         val migrated = UserPreferences(store)
-        delay(200)
+        withTimeout(TIMEOUT) { migrated.awaitHydrated() }
         assertEquals(NveOverlay.STEEPNESS_RUNOUT, migrated.nveOverlay.value)
         scope.cancel()
     }
@@ -176,16 +178,18 @@ class UserPreferencesTest {
         val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val writeStore = PreferenceDataStoreFactory.create(scope = writeScope, produceFile = { file })
         val writer = UserPreferences(writeStore)
-        delay(100)
+        withTimeout(TIMEOUT) { writer.awaitHydrated() }
         change(writer)
-        delay(200)
-        writeScope.cancel()
+        // Cancelling the store scope drops a write still in flight, so wait for it first.
+        withTimeout(TIMEOUT) { writer.awaitPersisted() }
+        // DataStore releases the file only once its scope completes, not on cancel().
+        writeScope.coroutineContext.job.cancelAndJoin()
 
         val readScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val readStore = PreferenceDataStoreFactory.create(scope = readScope, produceFile = { file })
         val reader = UserPreferences(readStore)
-        delay(200)
-        readScope.cancel()
+        withTimeout(TIMEOUT) { reader.awaitHydrated() }
+        readScope.coroutineContext.job.cancelAndJoin()
         return reader
     }
 

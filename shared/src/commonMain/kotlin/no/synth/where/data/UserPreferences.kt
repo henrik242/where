@@ -15,8 +15,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -37,12 +39,18 @@ class UserPreferences(
     private val dataStore: DataStore<Preferences>,
     // Tests set this false to keep the in-memory cache empty, as it is on a cold start until the
     // collector below runs. Production always hydrates.
-    hydrateFromDisk: Boolean = true,
+    private val hydrateFromDisk: Boolean = true,
 ) {
     // Parallelism 1 so the persist coroutines run in call order. On a multi-threaded dispatcher a
     // rapid toggle can write the older value last, and the init collector then reads that stale
     // value back over the newer in-memory state.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
+
+    // Same dispatcher, own job: every persist runs here so awaitPersisted() can join them.
+    private val writeScope = CoroutineScope(scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job]))
+
+    // Last snapshot the init collector has applied to the in-memory state.
+    private val appliedPrefs = MutableStateFlow<Preferences?>(null)
 
     val crashReportingEnabled: StateFlow<Boolean>
         field = MutableStateFlow(true)
@@ -210,8 +218,24 @@ class UserPreferences(
                 stravaAthleteId.value = prefs[STRAVA_ATHLETE_ID] ?: 0L
                 stravaAccessToken.value = prefs[STRAVA_ACCESS_TOKEN]
                 stravaTokenExpiry.value = prefs[STRAVA_TOKEN_EXPIRY] ?: 0L
+                appliedPrefs.value = prefs
             }
         }
+    }
+
+    /** Suspends until the in-memory state has been loaded from disk. */
+    suspend fun awaitHydrated() {
+        if (hydrateFromDisk) appliedPrefs.first { it != null }
+    }
+
+    /**
+     * Suspends until every write issued so far is on disk and the in-memory state reflects the
+     * latest disk snapshot, so a stale snapshot can no longer land over it.
+     */
+    suspend fun awaitPersisted() {
+        writeScope.coroutineContext[Job]!!.children.toList().joinAll()
+        if (!hydrateFromDisk) return
+        combine(dataStore.data, appliedPrefs) { disk, applied -> disk == applied }.first { it }
     }
 
     // Cached (synchronous) reads for StravaTokenManager. Not exposed as flows, to keep the secret
@@ -235,7 +259,7 @@ class UserPreferences(
     fun setStravaCredentials(clientId: String, clientSecret: String) {
         stravaClientId.value = clientId
         stravaClientSecret.value = clientSecret
-        scope.launch {
+        writeScope.launch {
             dataStore.edit {
                 it[STRAVA_CLIENT_ID] = clientId
                 it[STRAVA_CLIENT_SECRET] = clientSecret
@@ -246,7 +270,7 @@ class UserPreferences(
     /** Pending OAuth CSRF state, persisted so it survives the browser round-trip / process death. */
     fun setStravaOAuthState(state: String?) {
         stravaOAuthState.value = state
-        scope.launch {
+        writeScope.launch {
             dataStore.edit {
                 if (state != null) it[STRAVA_OAUTH_STATE] = state else it.remove(STRAVA_OAUTH_STATE)
             }
@@ -254,9 +278,9 @@ class UserPreferences(
     }
 
     /**
-     * Cache freshly minted tokens and mark the account connected. Posted to [scope] like every
+     * Cache freshly minted tokens and mark the account connected. Posted to [writeScope] like every
      * other persist here so it stays ordered, and awaited so a failed write throws instead of
-     * handing back a token whose rotated refresh token never reached disk. [scope] also keeps the
+     * handing back a token whose rotated refresh token never reached disk. [writeScope] also keeps the
      * write alive when the caller (a closed screen) is cancelled.
      */
     suspend fun cacheStravaTokens(accessToken: String, refreshToken: String, expirySeconds: Long, athleteId: Long) {
@@ -265,7 +289,7 @@ class UserPreferences(
         stravaTokenExpiry.value = expirySeconds
         stravaConnected.value = true
         if (athleteId > 0L) stravaAthleteId.value = athleteId
-        scope.async {
+        writeScope.async {
             dataStore.edit {
                 it[STRAVA_ACCESS_TOKEN] = accessToken
                 it[STRAVA_REFRESH_TOKEN] = refreshToken
@@ -280,7 +304,7 @@ class UserPreferences(
     fun clearStravaCredentials() {
         stravaClientId.value = null
         stravaClientSecret.value = null
-        scope.launch {
+        writeScope.launch {
             dataStore.edit {
                 it.remove(STRAVA_CLIENT_ID)
                 it.remove(STRAVA_CLIENT_SECRET)
@@ -296,7 +320,7 @@ class UserPreferences(
         stravaTokenExpiry.value = 0L
         stravaRefreshToken.value = null
         stravaOAuthState.value = null
-        scope.launch {
+        writeScope.launch {
             dataStore.edit {
                 it.remove(STRAVA_CONNECTED)
                 it.remove(STRAVA_ATHLETE_ID)
@@ -310,24 +334,24 @@ class UserPreferences(
 
     fun updateShowWaymarkedTrails(value: Boolean) {
         showWaymarkedTrails.value = value
-        scope.launch { dataStore.edit { it[SHOW_WAYMARKED_TRAILS] = value } }
+        writeScope.launch { dataStore.edit { it[SHOW_WAYMARKED_TRAILS] = value } }
     }
 
     fun updateShowOsmPaths(value: Boolean) {
         showOsmPaths.value = value
-        scope.launch { dataStore.edit { it[SHOW_OSM_PATHS] = value } }
+        writeScope.launch { dataStore.edit { it[SHOW_OSM_PATHS] = value } }
     }
 
     fun updateShowSavedPoints(value: Boolean) {
         showSavedPoints.value = value
-        scope.launch { dataStore.edit { it[SHOW_SAVED_POINTS] = value } }
+        writeScope.launch { dataStore.edit { it[SHOW_SAVED_POINTS] = value } }
     }
 
     fun updateNveOverlay(value: NveOverlay?) {
         nveOverlay.value = value
         // Stored as "" rather than a missing key, so turning the overlay off doesn't fall back to
         // the legacy boolean and resurrect the old choice.
-        scope.launch { dataStore.edit { it[NVE_OVERLAY] = value?.name ?: "" } }
+        writeScope.launch { dataStore.edit { it[NVE_OVERLAY] = value?.name ?: "" } }
     }
 
     /** Tapping the active overlay turns it off. */
@@ -336,60 +360,60 @@ class UserPreferences(
 
     fun updateShowCoverage(value: Boolean) {
         showCoverage.value = value
-        scope.launch { dataStore.edit { it[SHOW_COVERAGE] = value } }
+        writeScope.launch { dataStore.edit { it[SHOW_COVERAGE] = value } }
     }
 
     fun updateCoverageOperator(value: CoverageOperator) {
         coverageOperator.value = value
-        scope.launch { dataStore.edit { it[COVERAGE_OPERATOR] = value.name } }
+        writeScope.launch { dataStore.edit { it[COVERAGE_OPERATOR] = value.name } }
     }
 
     fun updateCoverageTilesVersion(value: String) {
         if (coverageTilesVersion.value == value) return
         coverageTilesVersion.value = value
-        scope.launch { dataStore.edit { it[COVERAGE_TILES_VERSION] = value } }
+        writeScope.launch { dataStore.edit { it[COVERAGE_TILES_VERSION] = value } }
     }
 
     fun updateShowCoordGrid(value: Boolean) {
         showCoordGrid.value = value
-        scope.launch { dataStore.edit { it[SHOW_COORD_GRID] = value } }
+        writeScope.launch { dataStore.edit { it[SHOW_COORD_GRID] = value } }
     }
 
     fun updateCrosshairActive(value: Boolean) {
         crosshairActive.value = value
-        scope.launch { dataStore.edit { it[CROSSHAIR_ACTIVE] = value } }
+        writeScope.launch { dataStore.edit { it[CROSSHAIR_ACTIVE] = value } }
     }
 
     fun updateNorthLocked(value: Boolean) {
         northLocked.value = value
-        scope.launch { dataStore.edit { it[NORTH_LOCKED] = value } }
+        writeScope.launch { dataStore.edit { it[NORTH_LOCKED] = value } }
     }
 
     fun updateLargeCompass(value: Boolean) {
         largeCompass.value = value
-        scope.launch { dataStore.edit { it[LARGE_COMPASS] = value } }
+        writeScope.launch { dataStore.edit { it[LARGE_COMPASS] = value } }
     }
 
     fun updateSelectedMapLayer(value: MapLayer) {
         selectedMapLayer.value = value
-        scope.launch { dataStore.edit { it[SELECTED_MAP_LAYER] = value.name } }
+        writeScope.launch { dataStore.edit { it[SELECTED_MAP_LAYER] = value.name } }
     }
 
     fun updateCrashReportingEnabled(value: Boolean) {
         crashReportingEnabled.value = value
-        scope.launch {
+        writeScope.launch {
             dataStore.edit { it[CRASH_REPORTING_ENABLED] = value }
         }
     }
 
     fun markTrackingInfoSeen() {
         hasSeenTrackingInfo.value = true
-        scope.launch { dataStore.edit { it[HAS_SEEN_TRACKING_INFO] = true } }
+        writeScope.launch { dataStore.edit { it[HAS_SEEN_TRACKING_INFO] = true } }
     }
 
     fun markOfflineMigrationNoticeShown() {
         offlineMigrationNoticeShown.value = true
-        scope.launch { dataStore.edit { it[OFFLINE_MIGRATION_NOTICE_SHOWN] = true } }
+        writeScope.launch { dataStore.edit { it[OFFLINE_MIGRATION_NOTICE_SHOWN] = true } }
     }
 
     fun confirmTrackingInfoAndEnable() {
@@ -399,7 +423,7 @@ class UserPreferences(
 
     fun updateOnlineTrackingEnabled(value: Boolean) {
         onlineTrackingEnabled.value = value
-        scope.launch {
+        writeScope.launch {
             dataStore.edit { it[ONLINE_TRACKING_ENABLED] = value }
         }
         if (!value) updateLiveShareUntil(0L)
@@ -416,7 +440,7 @@ class UserPreferences(
 
     private fun updateLiveShareUntil(value: Long) {
         liveShareUntilMillis.value = value
-        scope.launch {
+        writeScope.launch {
             dataStore.edit {
                 if (value > 0L) it[LIVE_SHARE_UNTIL] = value else it.remove(LIVE_SHARE_UNTIL)
             }
@@ -447,31 +471,31 @@ class UserPreferences(
 
     fun updateOfflineModeEnabled(value: Boolean) {
         offlineModeEnabled.value = value
-        scope.launch {
+        writeScope.launch {
             dataStore.edit { it[OFFLINE_MODE_ENABLED] = value }
         }
     }
 
     fun updateDownloadElevationData(value: Boolean) {
         downloadElevationData.value = value
-        scope.launch { dataStore.edit { it[DOWNLOAD_ELEVATION_DATA] = value } }
+        writeScope.launch { dataStore.edit { it[DOWNLOAD_ELEVATION_DATA] = value } }
     }
 
     fun updateDownloadMaxZoom(value: Int) {
         downloadMaxZoom.value = value
-        scope.launch { dataStore.edit { it[DOWNLOAD_MAX_ZOOM] = value } }
+        writeScope.launch { dataStore.edit { it[DOWNLOAD_MAX_ZOOM] = value } }
     }
 
     fun updateThemeMode(value: String) {
         themeMode.value = value
-        scope.launch {
+        writeScope.launch {
             dataStore.edit { it[THEME_MODE] = value }
         }
     }
 
     fun updateCoordFormat(value: CoordFormat) {
         coordFormat.value = value
-        scope.launch {
+        writeScope.launch {
             dataStore.edit { it[COORD_FORMAT] = value.name }
         }
     }
@@ -496,7 +520,7 @@ class UserPreferences(
     fun setFollowedClientIds(value: List<String>) {
         val sanitized = LiveTrackingFollower.sanitize(value)
         followedClientIds.value = sanitized
-        scope.launch {
+        writeScope.launch {
             dataStore.edit {
                 if (sanitized.isNotEmpty()) {
                     it[FOLLOWED_CLIENT_ID] = sanitized.joinToString(",")
@@ -514,7 +538,7 @@ class UserPreferences(
         val updated = if (trimmed.isEmpty()) current - clientId else current + (clientId to trimmed)
         if (updated == current) return
         clientNicknames.value = updated
-        scope.launch {
+        writeScope.launch {
             dataStore.edit {
                 if (updated.isEmpty()) it.remove(CLIENT_NICKNAMES)
                 else it[CLIENT_NICKNAMES] = serializeNicknames(updated)
@@ -538,7 +562,7 @@ class UserPreferences(
         val updated = followHistory.value - clientId
         if (updated.size == followHistory.value.size) return
         followHistory.value = updated
-        scope.launch {
+        writeScope.launch {
             dataStore.edit { it[FOLLOW_HISTORY] = updated.joinToString(",") }
         }
     }
@@ -549,7 +573,7 @@ class UserPreferences(
         current.add(0, clientId)
         val updated = current.take(MAX_FOLLOW_HISTORY)
         followHistory.value = updated
-        scope.launch {
+        writeScope.launch {
             dataStore.edit { it[FOLLOW_HISTORY] = updated.joinToString(",") }
         }
     }
@@ -560,7 +584,7 @@ class UserPreferences(
         current.add(0, result)
         val updated = current.take(MAX_SEARCH_HISTORY)
         searchHistory.value = updated
-        scope.launch {
+        writeScope.launch {
             dataStore.edit { it[SEARCH_HISTORY] = serializeSearchHistory(updated) }
         }
     }
