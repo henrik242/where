@@ -38,15 +38,34 @@ import no.synth.where.navigation.SavedPointsRoute
 import no.synth.where.navigation.SettingsRoute
 import no.synth.where.navigation.TracksRoute
 import okio.Path.Companion.toOkioPath
+import kotlinx.coroutines.cancel
 import java.nio.file.Files
+import java.util.Locale
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 @OptIn(ExperimentalTestApi::class)
 class WhereNavHostTest {
 
+    private val dir = Files.createTempDirectory("navhost").toFile()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val defaultLocale = Locale.getDefault()
+
+    // The assertions match English strings; the app also ships Norwegian.
+    @BeforeTest
+    fun setUp() = Locale.setDefault(Locale.ENGLISH)
+
+    @AfterTest
+    fun tearDown() {
+        Locale.setDefault(defaultLocale)
+        scope.cancel()
+        dir.deleteRecursively()
+    }
+
     private fun deps(): ShellDependencies {
-        val dir = Files.createTempDirectory("navhost").toFile().apply { deleteOnExit() }
         val files = PlatformFile(dir)
         fun store(name: String) = PreferenceDataStoreFactory.createWithPath { dir.resolve("$name.preferences_pb").toOkioPath() }
         val http = HttpClient(MockEngine { respondError(HttpStatusCode.ServiceUnavailable) })
@@ -65,7 +84,7 @@ class WhereNavHostTest {
             liveTrackingFollower = LiveTrackingFollower("http://localhost:1"),
             stravaTokenManager = tokens,
             stravaRouteImporter = StravaRouteImporter(StravaApiClient(http), tokens, tracks),
-            downloadManager = MapDownloadManager(DownloadQueueManager(idle, CoroutineScope(SupervisorJob() + Dispatchers.Default))),
+            downloadManager = MapDownloadManager(DownloadQueueManager(idle, scope)),
         )
     }
 
@@ -82,7 +101,7 @@ class WhereNavHostTest {
             WhereNavHost(
                 deps = deps,
                 platform = platform,
-                screens = ShellScreens(map = { nav -> Button(onClick = nav.onSettingsClick) { Text("map") } }),
+                screens = ShellScreens(mapScreen = { nav -> Button(onClick = nav.onSettingsClick) { Text("map") } }),
             )
         }
         onNodeWithText("map").performClick()
@@ -103,11 +122,11 @@ class WhereNavHostTest {
                 platform = platform,
                 navController = navController,
                 screens = ShellScreens(
-                    map = { nav ->
+                    mapScreen = { nav ->
                         viewing = nav.viewingPoint
                         Text("map")
                     },
-                    savedPoints = { _, onShowOnMap -> Button(onClick = { onShowOnMap(point) }) { Text("points") } },
+                    savedPointsScreen = { _, onShowOnMap -> Button(onClick = { onShowOnMap(point) }) { Text("points") } },
                 ),
             )
         }
@@ -117,7 +136,7 @@ class WhereNavHostTest {
         onNodeWithText("map").assertExists()
         assertEquals(point, viewing)
         // Popped all the way to the map, not just one step back to settings.
-        runOnIdle { assertEquals(false, navController.popBackStack()) }
+        runOnIdle { assertFalse(navController.popBackStack()) }
     }
 
     @Test
@@ -132,8 +151,8 @@ class WhereNavHostTest {
                 platform = platform,
                 navController = navController,
                 screens = ShellScreens(
-                    map = { Text("map") },
-                    tracks = { route, _, onShowMap ->
+                    mapScreen = { Text("map") },
+                    tracksScreen = { route, _, onShowMap ->
                         importUrl = route.importUrl
                         Button(onClick = onShowMap) { Text("tracks") }
                     },
@@ -144,6 +163,25 @@ class WhereNavHostTest {
         onNodeWithText("tracks").assertExists()
         assertEquals("https://www.komoot.com/tour/1", importUrl)
         onNodeWithText("tracks").performClick()
+        onNodeWithText("map").assertExists()
+    }
+
+    @Test
+    fun withoutPlatformSlotsTheSharedScreensAreShown() = runComposeUiTest {
+        val deps = deps()
+        lateinit var navController: NavHostController
+        setContent {
+            navController = rememberNavController()
+            WhereNavHost(
+                deps = deps,
+                platform = platform,
+                navController = navController,
+                screens = ShellScreens(mapScreen = { Text("map") }),
+            )
+        }
+        runOnIdle { navController.navigate(SavedPointsRoute) }
+        onNodeWithText("Saved Points").assertExists()
+        onNodeWithContentDescription("Back").performClick()
         onNodeWithText("map").assertExists()
     }
 }
