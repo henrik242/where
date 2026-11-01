@@ -44,7 +44,6 @@ internal fun onMapTrackIdsOf(viewingTracks: List<Track>, navigation: NavigationS
     }
 
 class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
-    private val json = AppJson
     private val tracksFile = filesDir.resolve("tracks.json")
     private val migratedFile = filesDir.resolve("tracks.json.migrated")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -115,7 +114,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
         if (tracksFile.exists() && !migratedFile.exists()) {
             try {
                 val text = tracksFile.readText()
-                val loadedTracks: List<Track> = json.decodeFromString(text)
+                val loadedTracks: List<Track> = AppJson.decodeFromString(text)
                 val tracksToMigrate = loadedTracks.filter { !it.isRecording }
                 for (track in tracksToMigrate) {
                     val entity = TrackEntity(
@@ -148,7 +147,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
 
     private suspend fun collectTracks() {
         trackDao.getAllTracks().collect { entities ->
-            val tracks = entities.map { entity ->
+            val loaded = entities.map { entity ->
                 val points = trackDao.getPointsForTrack(entity.id).map { pointEntity ->
                     TrackPoint(
                         latLng = LatLng(pointEntity.latitude, pointEntity.longitude),
@@ -169,7 +168,7 @@ class TrackRepository(filesDir: PlatformFile, private val trackDao: TrackDao) {
                     color = entity.color
                 )
             }
-            this@TrackRepository.tracks.value = tracks
+            tracks.value = loaded
         }
     }
 

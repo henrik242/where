@@ -186,7 +186,7 @@ class OnlineTrackingCoordinator(
      * Builds a fresh client and registers it atomically (either fully set up
      * and stored in [currentClient], or never created at all).
      */
-    private suspend fun buildAndStart(mode: Mode, cid: String) {
+    private suspend fun buildAndStart(newMode: Mode, cid: String) {
         withContext(NonCancellable) {
             val session = sessionFactory(
                 SessionConfig(
@@ -198,7 +198,7 @@ class OnlineTrackingCoordinator(
                 )
             )
             currentClient = session
-            when (mode) {
+            when (newMode) {
                 Mode.RECORDING -> {
                     val track = sources.currentTrack.value
                     if (track != null && track.points.isNotEmpty()) {
@@ -213,8 +213,8 @@ class OnlineTrackingCoordinator(
                 Mode.NONE -> {}
             }
             currentClientId = cid
-            this@OnlineTrackingCoordinator.mode.value = mode
-            isLiveSharing.value = mode == Mode.LIVE
+            mode.value = newMode
+            isLiveSharing.value = newMode == Mode.LIVE
             canShare.value = true
             // Re-publish points from a previous session generation (reconnect / mode switch) so
             // followers get them back after the server dropped them when the old track stopped.

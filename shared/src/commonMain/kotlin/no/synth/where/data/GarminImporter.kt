@@ -104,7 +104,7 @@ class GarminImporter(
                 if (session.cookieHeader.isNotEmpty()) header("Cookie", session.cookieHeader)
             }.bodyAsText()
 
-            val json = lenientJson.parseToJsonElement(responseText).jsonObject
+            val json = AppJson.parseToJsonElement(responseText).jsonObject
             val name = json["courseName"]?.jsonPrimitive?.content
                 ?: json["activityName"]?.jsonPrimitive?.content
 
@@ -167,7 +167,7 @@ class GarminImporter(
                 if (session.cookieHeader.isNotEmpty()) header("Cookie", session.cookieHeader)
             }.bodyAsText()
 
-            val json = lenientJson.parseToJsonElement(responseText).jsonObject
+            val json = AppJson.parseToJsonElement(responseText).jsonObject
             val descriptors = json["metricDescriptors"]?.jsonArray ?: return null
             var latIdx = -1
             var lonIdx = -1
@@ -209,8 +209,6 @@ class GarminImporter(
     }
 
     companion object {
-        private val lenientJson = AppJson
-
         fun parseGarminUrl(input: String): GarminRef? {
             val trimmed = input.trim()
 
