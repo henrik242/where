@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.concurrent.Volatile
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.currentTimeMillis
@@ -240,7 +239,6 @@ class OnlineTrackingCoordinator(
      * Drop a shared point at [latLng] and push it to followers. No-op when no session is active
      * (nothing to attach it to). Returns the created point, or null when not sharing.
      */
-    @OptIn(ExperimentalUuidApi::class)
     fun addSharedPoint(
         name: String,
         description: String,

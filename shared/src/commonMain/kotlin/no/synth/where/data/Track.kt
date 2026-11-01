@@ -8,7 +8,6 @@ import no.synth.where.data.geo.bounds
 import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
 import kotlin.time.Instant
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 @Serializable
@@ -21,7 +20,7 @@ data class TrackPoint(
 )
 
 @Serializable
-data class Track @OptIn(ExperimentalUuidApi::class) constructor(
+data class Track(
     val id: String = Uuid.random().toString(),
     val name: String,
     val points: List<TrackPoint>,

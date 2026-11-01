@@ -13,7 +13,6 @@ import no.synth.where.util.NamingUtils
 import no.synth.where.data.geo.LatLng
 import no.synth.where.util.Logger
 import no.synth.where.util.currentTimeMillis
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /** Waypoints found in the picked files, offered to the user before any of them are stored. */
@@ -66,7 +65,6 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
         }
     }
 
-    @OptIn(ExperimentalUuidApi::class)
     fun addPoint(name: String, latLng: LatLng, description: String = "", color: String = "#FF5722") {
         val uniqueName = NamingUtils.makeUnique(name, savedPoints.value.map { it.name })
         val point = SavedPointEntity(
@@ -105,7 +103,6 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
      * Store the [waypoints] the user picked, making each name unique against the existing points and
      * within the batch. The DB writes are awaited, so the points are stored by the time this returns.
      */
-    @OptIn(ExperimentalUuidApi::class)
     suspend fun importPoints(waypoints: List<ParsedWaypoint>): List<SavedPoint> = withContext(Dispatchers.Default) {
         val existingNames = savedPoints.value.mapTo(mutableListOf()) { it.name }
         waypoints.map { waypoint ->
