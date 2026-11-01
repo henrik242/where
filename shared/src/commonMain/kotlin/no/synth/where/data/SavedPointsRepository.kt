@@ -20,7 +20,6 @@ data class PointImportCandidates(val waypoints: List<ParsedWaypoint>, val failed
 
 class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: SavedPointDao) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val json = AppJson
     private val pointsFile: PlatformFile = filesDir.resolve("saved_points.json")
     private val migratedFile: PlatformFile = filesDir.resolve("saved_points.json.migrated")
 
@@ -38,7 +37,7 @@ class SavedPointsRepository(filesDir: PlatformFile, private val savedPointDao: S
         if (pointsFile.exists() && !migratedFile.exists()) {
             try {
                 val text = pointsFile.readText()
-                val points: List<SavedPoint> = json.decodeFromString(text)
+                val points: List<SavedPoint> = AppJson.decodeFromString(text)
                 for (point in points) {
                     savedPointDao.insertPoint(point.toEntity())
                 }

@@ -59,12 +59,11 @@ class StravaApiClient(
 
     companion object {
         private const val API_BASE = "https://www.strava.com/api/v3"
-        private val json = LenientJson
 
         /** Parse the JSON array returned by GET /athletes/{id}/routes into route summaries. */
         fun parseRoutes(body: String): List<StravaRoute> {
             return try {
-                json.parseToJsonElement(body).jsonArray.mapNotNull { element ->
+                LenientJson.parseToJsonElement(body).jsonArray.mapNotNull { element ->
                     val obj = element.jsonObject
                     val id = obj["id"]?.jsonPrimitive?.longOrNull
                         ?: obj["id_str"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()

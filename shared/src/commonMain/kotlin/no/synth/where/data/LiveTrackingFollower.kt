@@ -48,7 +48,6 @@ class LiveTrackingFollower(
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val json = AppJson
 
     val state: StateFlow<FollowState>
         field = MutableStateFlow<FollowState>(FollowState.Idle)
@@ -156,7 +155,7 @@ class LiveTrackingFollower(
 
     private fun handleMessage(clientIds: List<String>, store: FriendTrackStore, text: String) {
         try {
-            val msg = json.parseToJsonElement(text).jsonObject
+            val msg = AppJson.parseToJsonElement(text).jsonObject
             if (currentClientIds != clientIds) return
             if (store.accept(msg)) {
                 state.value = FollowState.Following(store.tracks())

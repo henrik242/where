@@ -101,10 +101,10 @@ class UserPreferences(
     val showCoverage: StateFlow<Boolean>
         field = MutableStateFlow(false)
 
-    /** Last known erdetdekning.no dataset version, so the overlay works before (or without) a lookup. */
     val coverageOperator: StateFlow<CoverageOperator>
         field = MutableStateFlow(CoverageOperator.ALL)
 
+    /** Last known erdetdekning.no dataset version, so the overlay works before (or without) a lookup. */
     val coverageTilesVersion: StateFlow<String>
         field = MutableStateFlow(CoverageTilesClient.FALLBACK_VERSION)
 
@@ -141,9 +141,10 @@ class UserPreferences(
     // can tell whether credentials are set; the secret and refresh token stay internal.
     val stravaClientId: StateFlow<String?>
         field = MutableStateFlow<String?>(null)
-    private val _stravaClientSecret = MutableStateFlow<String?>(null)
-    private val _stravaRefreshToken = MutableStateFlow<String?>(null)
-    private val _stravaOAuthState = MutableStateFlow<String?>(null)
+
+    private val stravaClientSecret = MutableStateFlow<String?>(null)
+    private val stravaRefreshToken = MutableStateFlow<String?>(null)
+    private val stravaOAuthState = MutableStateFlow<String?>(null)
 
     val stravaConnected: StateFlow<Boolean>
         field = MutableStateFlow(false)
@@ -202,9 +203,9 @@ class UserPreferences(
                 followHistory.value = prefs[FOLLOW_HISTORY]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
                 clientNicknames.value = deserializeNicknames(prefs[CLIENT_NICKNAMES])
                 stravaClientId.value = prefs[STRAVA_CLIENT_ID]
-                _stravaClientSecret.value = prefs[STRAVA_CLIENT_SECRET]
-                _stravaRefreshToken.value = prefs[STRAVA_REFRESH_TOKEN]
-                _stravaOAuthState.value = prefs[STRAVA_OAUTH_STATE]
+                stravaClientSecret.value = prefs[STRAVA_CLIENT_SECRET]
+                stravaRefreshToken.value = prefs[STRAVA_REFRESH_TOKEN]
+                stravaOAuthState.value = prefs[STRAVA_OAUTH_STATE]
                 stravaConnected.value = prefs[STRAVA_CONNECTED] ?: false
                 stravaAthleteId.value = prefs[STRAVA_ATHLETE_ID] ?: 0L
                 stravaAccessToken.value = prefs[STRAVA_ACCESS_TOKEN]
@@ -233,7 +234,7 @@ class UserPreferences(
 
     fun setStravaCredentials(clientId: String, clientSecret: String) {
         stravaClientId.value = clientId
-        _stravaClientSecret.value = clientSecret
+        stravaClientSecret.value = clientSecret
         scope.launch {
             dataStore.edit {
                 it[STRAVA_CLIENT_ID] = clientId
@@ -244,7 +245,7 @@ class UserPreferences(
 
     /** Pending OAuth CSRF state, persisted so it survives the browser round-trip / process death. */
     fun setStravaOAuthState(state: String?) {
-        _stravaOAuthState.value = state
+        stravaOAuthState.value = state
         scope.launch {
             dataStore.edit {
                 if (state != null) it[STRAVA_OAUTH_STATE] = state else it.remove(STRAVA_OAUTH_STATE)
@@ -260,7 +261,7 @@ class UserPreferences(
      */
     suspend fun cacheStravaTokens(accessToken: String, refreshToken: String, expirySeconds: Long, athleteId: Long) {
         stravaAccessToken.value = accessToken
-        _stravaRefreshToken.value = refreshToken
+        stravaRefreshToken.value = refreshToken
         stravaTokenExpiry.value = expirySeconds
         stravaConnected.value = true
         if (athleteId > 0L) stravaAthleteId.value = athleteId
@@ -278,7 +279,7 @@ class UserPreferences(
     /** Forget the user's stored Strava app credentials (client id + secret). */
     fun clearStravaCredentials() {
         stravaClientId.value = null
-        _stravaClientSecret.value = null
+        stravaClientSecret.value = null
         scope.launch {
             dataStore.edit {
                 it.remove(STRAVA_CLIENT_ID)
@@ -293,8 +294,8 @@ class UserPreferences(
         stravaAthleteId.value = 0L
         stravaAccessToken.value = null
         stravaTokenExpiry.value = 0L
-        _stravaRefreshToken.value = null
-        _stravaOAuthState.value = null
+        stravaRefreshToken.value = null
+        stravaOAuthState.value = null
         scope.launch {
             dataStore.edit {
                 it.remove(STRAVA_CONNECTED)
