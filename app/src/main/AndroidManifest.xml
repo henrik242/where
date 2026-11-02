@@ -65,6 +65,19 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="content" />
                 <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
+                <data android:mimeType="application/x-gpx" />
+                <data android:mimeType="application/x-gpx+xml" />
+                <data android:mimeType="application/vnd.gpx+xml" />
+            </intent-filter>
+            <!-- Chat apps (e.g. Messenger) share attachments as octet-stream with opaque paths.
+                 Import sniffs the content, so accept any. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

@@ -1,1 +1,1 @@
-Routes avoid cliffs, offline maps along routes, iPhone swipe back.
+Cliff-free routes, offline route maps, iPhone swipe back, Messenger GPX.
