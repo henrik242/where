@@ -110,6 +110,22 @@ class CliffMapTest {
     }
 
     @Test
+    fun closesOneCellGapInCliffLineOnly() {
+        val g = TerrainGrid(6, 6, 13, 0, 0, 10.0, FloatArray(36))
+        g.addFlag(g.index(1, 1), CellFlags.CLIFF)
+        g.addFlag(g.index(3, 3), CellFlags.CLIFF)
+        g.addFlag(g.index(5, 0), CellFlags.CLIFF)
+        g.addFlag(g.index(3, 2), CellFlags.CLIFF)
+        val checked = BooleanArray(36) { it != g.index(4, 1) }
+        CliffMap.closeGaps(g, IntArray(36) { it }, checked)
+        // Diagonal gap between two cliffs closes; a cell next to just one cliff doesn't.
+        assertTrue(g.hasFlag(g.index(2, 2), CellFlags.CLIFF))
+        assertFalse(g.hasFlag(g.index(2, 1), CellFlags.CLIFF))
+        // A gap between (5,0) and (3,2), but unchecked: no data to close it with.
+        assertFalse(g.hasFlag(g.index(4, 1), CellFlags.CLIFF))
+    }
+
+    @Test
     fun knightMoveOverOneCellCliffIsNotWalkable() {
         val g = TerrainGrid(10, 10, 13, 0, 0, 10.0, FloatArray(100) { 100f })
         // (2,2) -> (4,3) passes through (3,2) and (3,3).

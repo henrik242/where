@@ -17,6 +17,12 @@ internal object HikingCost {
     private const val RIVER_CROSSING_SECONDS = 900.0
     /** Discourages walking along inside a stream or river. */
     private const val IN_WATERWAY_FACTOR = 3.0
+    /**
+     * Off-path descents steeper than this cost up to [STEEP_DESCENT_MAX_FACTOR] times more at
+     * [maxGradient]: Tobler rates them faster than the same climb, but they're where hikers get stuck.
+     */
+    private val steepDescent = tan(25.0 * PI / 180.0)
+    private const val STEEP_DESCENT_MAX_FACTOR = 3.0
     /** Per cliff cell, when no route avoids cliffs: picks the route over the fewest. */
     const val CLIFF_PENALTY_SECONDS = 1800.0
 
@@ -92,7 +98,12 @@ internal object HikingCost {
         if (!onPath && abs(gradient) > maxGradient) return null
         val cliffSeconds = if (isCliffStep(grid, from, to)) cliffPenalty ?: return null else 0.0
         var seconds = distance / toblerSpeedFast(gradient)
-        if (!onPath) seconds *= OFF_TRAIL_FACTOR
+        if (!onPath) {
+            seconds *= OFF_TRAIL_FACTOR
+            if (-gradient > steepDescent) {
+                seconds *= 1 + (STEEP_DESCENT_MAX_FACTOR - 1) * (-gradient - steepDescent) / (maxGradient - steepDescent)
+            }
+        }
         if (grid.hasFlag(to, CellFlags.WETLAND)) seconds *= WETLAND_FACTOR
         if (grid.isWaterwayCrossing(to)) {
             seconds *= IN_WATERWAY_FACTOR

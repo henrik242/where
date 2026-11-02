@@ -61,7 +61,10 @@ internal object CliffMap {
         var settled = false
         for (pass in 0 until MAX_PASSES) {
             val cells = uncheckedCorridor(grid, current.cells, checked)
-            if (cells.isNotEmpty()) markCliffs(grid, cells, chunks, unknown)
+            if (cells.isNotEmpty()) {
+                markCliffs(grid, cells, chunks, unknown)
+                closeGaps(grid, cells, checked)
+            }
             val blocked = HikingCost.blockedCells(grid, cliffsPassable = cliffPenalty != null)
             // Avoiding cliffs: done once the route is clear. Climbing one: once no new cliffs turn up.
             settled = if (cliffPenalty == null) TerrainRouter.walkable(grid, current.cells, blocked) else cells.isEmpty()
@@ -102,6 +105,32 @@ internal object CliffMap {
             }
         }
         return out.toIntArray()
+    }
+
+    private val OPPOSITE_PAIRS = arrayOf(intArrayOf(1, 0), intArrayOf(0, 1), intArrayOf(1, 1), intArrayOf(1, -1))
+
+    /**
+     * Marks a checked cell between two cliff cells on opposite sides as cliff, so a route can't
+     * slip through a one-cell gap the sampling left in a cliff line. Looks at [cells] and their
+     * neighbours, whose flanks [cells] may have just completed; gaps found are not chained.
+     */
+    internal fun closeGaps(grid: TerrainGrid, cells: IntArray, checked: BooleanArray) {
+        val w = grid.width
+        val h = grid.height
+        fun cliff(x: Int, y: Int) = x in 0 until w && y in 0 until h && grid.hasFlag(grid.index(x, y), CellFlags.CLIFF)
+        val gaps = HashSet<Int>()
+        for (cell in cells) {
+            val cx = cell % w
+            val cy = cell / w
+            for (y in maxOf(0, cy - 1)..minOf(h - 1, cy + 1)) {
+                for (x in maxOf(0, cx - 1)..minOf(w - 1, cx + 1)) {
+                    val i = grid.index(x, y)
+                    if (!checked[i] || grid.hasFlag(i, CellFlags.CLIFF)) continue
+                    if (OPPOSITE_PAIRS.any { (dx, dy) -> cliff(x + dx, y + dy) && cliff(x - dx, y - dy) }) gaps += i
+                }
+            }
+        }
+        gaps.forEach { grid.addFlag(it, CellFlags.CLIFF) }
     }
 
     /** Global 2 m sample indices whose centres lie in a cell's footprint; y counts northwards. */

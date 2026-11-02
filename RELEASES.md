@@ -14,6 +14,7 @@ tag dates.
 - Saving a found route downloads the map, and MapAnt in Norway, in a strip along it.
 - GPX files shared from chat apps like Messenger can be opened in Where.
 - Hiking routes no longer slip into a river where a stream joins it.
+- Hiking routes avoid steep off-trail descents and no longer slip through small gaps in a cliff line.
 
 ## v675 (2026-10-27)
 
