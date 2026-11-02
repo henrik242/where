@@ -64,6 +64,8 @@
     <string name="zoom_in_for_paths">Zoom in to see paths</string>
     <string name="steepness_nve">Steepness (NVE)</string>
     <string name="steepness_runout_nve">Steepness + Runout (NVE)</string>
+    <string name="paths_overlay_setting">Paths overlay</string>
+    <string name="steepness_overlay_setting">Steepness overlay</string>
     <string name="mobile_coverage">Mobile coverage</string>
     <string name="coverage_operator">Coverage map provider</string>
     <string name="coverage_operator_all">All (best coverage)</string>

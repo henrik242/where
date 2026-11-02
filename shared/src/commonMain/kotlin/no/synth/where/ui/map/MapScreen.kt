@@ -123,9 +123,13 @@ fun MapScreen(
     val northLocked by userPreferences.northLocked.collectAsState()
     val largeCompass by userPreferences.largeCompass.collectAsState()
     val selectedLayer by userPreferences.selectedMapLayer.collectAsState()
-    val showWaymarkedTrails by userPreferences.showWaymarkedTrails.collectAsState()
-    val showOsmPaths by userPreferences.showOsmPaths.collectAsState()
-    val nveOverlay by userPreferences.nveOverlay.collectAsState()
+    val showPaths by userPreferences.showPaths.collectAsState()
+    val pathsOverlay by userPreferences.pathsOverlay.collectAsState()
+    val showWaymarkedTrails = showPaths && pathsOverlay == PathsOverlay.WAYMARKED_TRAILS
+    val showOsmPaths = showPaths && pathsOverlay == PathsOverlay.OSM_PATHS
+    val showSteepness by userPreferences.showSteepness.collectAsState()
+    val steepnessOverlay by userPreferences.steepnessOverlay.collectAsState()
+    val nveOverlay = steepnessOverlay.takeIf { showSteepness }
     val showCoverage by userPreferences.showCoverage.collectAsState()
     val coverageTilesVersion by userPreferences.coverageTilesVersion.collectAsState()
     val coverageOperator by userPreferences.coverageOperator.collectAsState()
@@ -483,10 +487,11 @@ fun MapScreen(
         rulerState = rulerState,
         showLayerMenu = showLayerMenu,
         selectedLayer = selectedLayer,
-        showWaymarkedTrails = showWaymarkedTrails,
-        showOsmPaths = showOsmPaths,
+        showPaths = showPaths,
+        pathsOverlay = pathsOverlay,
         showSavedPoints = showSavedPoints,
-        nveOverlay = nveOverlay,
+        showSteepness = showSteepness,
+        steepnessOverlay = steepnessOverlay,
         showCoverage = showCoverage,
         showHillshade = showHillshade,
         showCoordGrid = showCoordGrid,
@@ -548,16 +553,16 @@ fun MapScreen(
             userPreferences.updateSelectedMapLayer(it)
             showLayerMenu = false
         },
-        // Overlay toggles leave the menu open so their effect on the other items (the two NVE
-        // overlays replace each other) stays visible.
-        onWaymarkedTrailsToggle = { userPreferences.updateShowWaymarkedTrails(!showWaymarkedTrails) },
-        onOsmPathsToggle = {
-            userPreferences.updateShowOsmPaths(!showOsmPaths)
-            // The source has no complete path data below OSM_PATHS_MIN_ZOOM, so say so rather than
+        // Overlay toggles leave the menu open, so several can be flipped at once.
+        onPathsToggle = {
+            userPreferences.updateShowPaths(!showPaths)
+            // OSM paths have no complete data below OSM_PATHS_MIN_ZOOM, so say so rather than
             // leave a checked menu item that draws nothing.
-            if (!showOsmPaths && cameraZoom < MapStyle.OSM_PATHS_MIN_ZOOM) state.showMessage(Res.string.zoom_in_for_paths)
+            if (!showPaths && pathsOverlay == PathsOverlay.OSM_PATHS && cameraZoom < MapStyle.OSM_PATHS_MIN_ZOOM) {
+                state.showMessage(Res.string.zoom_in_for_paths)
+            }
         },
-        onNveOverlayToggle = { userPreferences.toggleNveOverlay(it) },
+        onSteepnessToggle = { userPreferences.updateShowSteepness(!showSteepness) },
         onCoverageToggle = { userPreferences.updateShowCoverage(!showCoverage) },
         onHillshadeToggle = { userPreferences.updateShowHillshade(!showHillshade) },
         onCoordGridToggle = { userPreferences.updateShowCoordGrid(!showCoordGrid) },

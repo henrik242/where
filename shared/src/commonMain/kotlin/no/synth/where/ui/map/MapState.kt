@@ -14,9 +14,12 @@ enum class MapLayer(val downloadId: String) {
     SATELLITE("satellite"),
 }
 
+/** Which paths the Paths overlay draws, chosen in Settings. */
+enum class PathsOverlay { WAYMARKED_TRAILS, OSM_PATHS }
+
 /**
- * NVE slope-steepness overlays. Both paint the same steepness colours and [STEEPNESS_RUNOUT] adds
- * avalanche runout zones on top, so at most one is shown at a time; null means neither.
+ * NVE slope-steepness overlays, chosen in Settings. Both paint the same steepness colours and
+ * [STEEPNESS_RUNOUT] adds avalanche runout zones on top.
  */
 enum class NveOverlay(val sourceId: String, service: String) {
     STEEPNESS("steepness", "Bratthet_2024"),

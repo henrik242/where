@@ -35,6 +35,7 @@ import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.LatLng
 import no.synth.where.ui.map.MapLayer
 import no.synth.where.ui.map.NveOverlay
+import no.synth.where.ui.map.PathsOverlay
 
 class UserPreferences(
     private val dataStore: DataStore<Preferences>,
@@ -101,17 +102,20 @@ class UserPreferences(
     val coordFormat: StateFlow<CoordFormat>
         field = MutableStateFlow(CoordFormat.LATLNG)
 
-    val showWaymarkedTrails: StateFlow<Boolean>
+    val showPaths: StateFlow<Boolean>
         field = MutableStateFlow(false)
 
-    val showOsmPaths: StateFlow<Boolean>
-        field = MutableStateFlow(false)
+    val pathsOverlay: StateFlow<PathsOverlay>
+        field = MutableStateFlow(PathsOverlay.OSM_PATHS)
 
     val showSavedPoints: StateFlow<Boolean>
         field = MutableStateFlow(true)
 
-    val nveOverlay: StateFlow<NveOverlay?>
-        field = MutableStateFlow<NveOverlay?>(null)
+    val showSteepness: StateFlow<Boolean>
+        field = MutableStateFlow(false)
+
+    val steepnessOverlay: StateFlow<NveOverlay>
+        field = MutableStateFlow(NveOverlay.STEEPNESS)
 
     val showCoverage: StateFlow<Boolean>
         field = MutableStateFlow(false)
@@ -180,16 +184,23 @@ class UserPreferences(
     init {
         if (hydrateFromDisk) scope.launch {
             dataStore.data.collect { prefs ->
-                showWaymarkedTrails.value = prefs[SHOW_WAYMARKED_TRAILS] ?: false
-                showOsmPaths.value = prefs[SHOW_OSM_PATHS] ?: false
+                // Waymarked trails and OSM paths used to be separate toggles; OSM paths win if both were on.
+                val legacyWaymarked = prefs[LEGACY_SHOW_WAYMARKED_TRAILS] == true
+                val legacyOsmPaths = prefs[LEGACY_SHOW_OSM_PATHS] == true
+                showPaths.value = prefs[SHOW_PATHS] ?: (legacyWaymarked || legacyOsmPaths)
+                pathsOverlay.value = PathsOverlay.entries.find { it.name == prefs[PATHS_OVERLAY] }
+                    ?: if (legacyWaymarked && !legacyOsmPaths) PathsOverlay.WAYMARKED_TRAILS else PathsOverlay.OSM_PATHS
                 showSavedPoints.value = prefs[SHOW_SAVED_POINTS] ?: true
-                val storedNveOverlay = prefs[NVE_OVERLAY]
-                nveOverlay.value = if (storedNveOverlay == null) {
-                    // Installs predating the steepness-only overlay only have the legacy boolean.
-                    if (prefs[SHOW_AVALANCHE_ZONES] == true) NveOverlay.STEEPNESS_RUNOUT else null
+                // The two steepness overlays used to be one menu choice, null for off.
+                val storedNveOverlay = prefs[LEGACY_NVE_OVERLAY]
+                val legacyNveOverlay = if (storedNveOverlay == null) {
+                    if (prefs[LEGACY_SHOW_AVALANCHE_ZONES] == true) NveOverlay.STEEPNESS_RUNOUT else null
                 } else {
                     NveOverlay.entries.find { it.name == storedNveOverlay }
                 }
+                showSteepness.value = prefs[SHOW_STEEPNESS] ?: (legacyNveOverlay != null)
+                steepnessOverlay.value = NveOverlay.entries.find { it.name == prefs[STEEPNESS_OVERLAY] }
+                    ?: legacyNveOverlay ?: NveOverlay.STEEPNESS
                 showCoverage.value = prefs[SHOW_COVERAGE] ?: false
                 coverageOperator.value = CoverageOperator.entries.firstOrNull { it.name == prefs[COVERAGE_OPERATOR] } ?: CoverageOperator.ALL
                 coverageTilesVersion.value = prefs[COVERAGE_TILES_VERSION] ?: CoverageTilesClient.FALLBACK_VERSION
@@ -335,14 +346,14 @@ class UserPreferences(
         }
     }
 
-    fun updateShowWaymarkedTrails(value: Boolean) {
-        showWaymarkedTrails.value = value
-        persist { it[SHOW_WAYMARKED_TRAILS] = value }
+    fun updateShowPaths(value: Boolean) {
+        showPaths.value = value
+        persist { it[SHOW_PATHS] = value }
     }
 
-    fun updateShowOsmPaths(value: Boolean) {
-        showOsmPaths.value = value
-        persist { it[SHOW_OSM_PATHS] = value }
+    fun updatePathsOverlay(value: PathsOverlay) {
+        pathsOverlay.value = value
+        persist { it[PATHS_OVERLAY] = value.name }
     }
 
     fun updateShowSavedPoints(value: Boolean) {
@@ -350,16 +361,15 @@ class UserPreferences(
         persist { it[SHOW_SAVED_POINTS] = value }
     }
 
-    fun updateNveOverlay(value: NveOverlay?) {
-        nveOverlay.value = value
-        // Stored as "" rather than a missing key, so turning the overlay off doesn't fall back to
-        // the legacy boolean and resurrect the old choice.
-        persist { it[NVE_OVERLAY] = value?.name ?: "" }
+    fun updateShowSteepness(value: Boolean) {
+        showSteepness.value = value
+        persist { it[SHOW_STEEPNESS] = value }
     }
 
-    /** Tapping the active overlay turns it off. */
-    fun toggleNveOverlay(value: NveOverlay) =
-        updateNveOverlay(if (nveOverlay.value == value) null else value)
+    fun updateSteepnessOverlay(value: NveOverlay) {
+        steepnessOverlay.value = value
+        persist { it[STEEPNESS_OVERLAY] = value.name }
+    }
 
     fun updateShowCoverage(value: Boolean) {
         showCoverage.value = value
@@ -613,16 +623,20 @@ class UserPreferences(
         private const val MAX_FOLLOW_HISTORY = 5
         private const val MAX_SEARCH_HISTORY = 10
         private val CRASH_REPORTING_ENABLED = booleanPreferencesKey("crash_reporting_enabled")
-        private val SHOW_WAYMARKED_TRAILS = booleanPreferencesKey("show_waymarked_trails")
-        private val SHOW_OSM_PATHS = booleanPreferencesKey("show_osm_paths")
+        private val SHOW_PATHS = booleanPreferencesKey("show_paths")
+        private val PATHS_OVERLAY = stringPreferencesKey("paths_overlay")
         private val SHOW_SAVED_POINTS = booleanPreferencesKey("show_saved_points")
-        private val NVE_OVERLAY = stringPreferencesKey("nve_overlay")
+        private val SHOW_STEEPNESS = booleanPreferencesKey("show_steepness")
+        private val STEEPNESS_OVERLAY = stringPreferencesKey("steepness_overlay")
         private val SHOW_COVERAGE = booleanPreferencesKey("show_coverage")
         private val COVERAGE_OPERATOR = stringPreferencesKey("coverage_operator")
         private val COVERAGE_TILES_VERSION = stringPreferencesKey("coverage_tiles_version")
 
-        // Read-only legacy key: superseded by NVE_OVERLAY, still read to migrate old installs.
-        private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")
+        // Read-only legacy keys, still read to migrate old installs.
+        private val LEGACY_SHOW_WAYMARKED_TRAILS = booleanPreferencesKey("show_waymarked_trails")
+        private val LEGACY_SHOW_OSM_PATHS = booleanPreferencesKey("show_osm_paths")
+        private val LEGACY_NVE_OVERLAY = stringPreferencesKey("nve_overlay")
+        private val LEGACY_SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")
         private val SHOW_HILLSHADE = booleanPreferencesKey("show_hillshade")
         private val SHOW_COORD_GRID = booleanPreferencesKey("show_coord_grid")
         private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")

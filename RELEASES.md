@@ -14,6 +14,7 @@ tag dates.
 - Saving a found route downloads the map, and MapAnt in Norway, in a strip along it.
 - Hillshade overlay from Kartverket's detailed terrain model, so small cliffs and scarps show; downloadable, and saved routes include it while it's on.
 - GPX files shared from chat apps like Messenger can be opened in Where.
+- The layer menu has one Paths and one Steepness item; Settings picks Waymarked Trails or OSM paths, and steepness with or without runout zones.
 - Hiking routes no longer slip into a river where a stream joins it.
 - Hiking routes avoid steep off-trail descents and no longer slip through small gaps in a cliff line or cut corners over one.
 

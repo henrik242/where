@@ -1,9 +1,12 @@
 package no.synth.where.data
 
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import no.synth.where.ui.map.NveOverlay
+import no.synth.where.ui.map.PathsOverlay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,7 +21,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class UserPreferencesTest {
 
@@ -143,38 +145,59 @@ class UserPreferencesTest {
     }
 
     @Test
-    fun toggleNveOverlay_selectsThenClears() {
-        prefs.toggleNveOverlay(NveOverlay.STEEPNESS)
-        assertEquals(NveOverlay.STEEPNESS, prefs.nveOverlay.value)
-        prefs.toggleNveOverlay(NveOverlay.STEEPNESS)
-        assertNull(prefs.nveOverlay.value)
+    fun steepness_defaultsOffWithPlainVariantAndPersists() = runBlocking {
+        assertEquals(false, prefs.showSteepness.value)
+        assertEquals(NveOverlay.STEEPNESS, prefs.steepnessOverlay.value)
+        val file = newFile("steepness_persist.preferences_pb")
+        val reloaded = reload(file) {
+            it.updateShowSteepness(true)
+            it.updateSteepnessOverlay(NveOverlay.STEEPNESS_RUNOUT)
+        }
+        assertEquals(true, reloaded.showSteepness.value)
+        assertEquals(NveOverlay.STEEPNESS_RUNOUT, reloaded.steepnessOverlay.value)
+        // Turning it off keeps the chosen variant.
+        val off = reload(file) { it.updateShowSteepness(false) }
+        assertEquals(false, off.showSteepness.value)
+        assertEquals(NveOverlay.STEEPNESS_RUNOUT, off.steepnessOverlay.value)
     }
 
-    @Test
-    fun toggleNveOverlay_replacesTheOtherVariant() {
-        prefs.toggleNveOverlay(NveOverlay.STEEPNESS_RUNOUT)
-        prefs.toggleNveOverlay(NveOverlay.STEEPNESS)
-        assertEquals(NveOverlay.STEEPNESS, prefs.nveOverlay.value)
-    }
-
-    @Test
-    fun nveOverlay_persistsBothChoiceAndOff() = runBlocking {
-        val file = newFile("nve_overlay_persist.preferences_pb")
-        assertEquals(NveOverlay.STEEPNESS, reload(file) { it.updateNveOverlay(NveOverlay.STEEPNESS) }.nveOverlay.value)
-        // Turning it off must survive a reload, not fall back to the legacy boolean.
-        assertNull(reload(file) { it.updateNveOverlay(null) }.nveOverlay.value)
-    }
-
-    @Test
-    fun nveOverlay_migratesLegacyAvalancheZonesFlag() = runBlocking {
-        val file = newFile("nve_overlay_legacy.preferences_pb")
+    /** UserPreferences over a store holding only what [legacy] writes. */
+    private suspend fun migrated(name: String, legacy: (MutablePreferences) -> Unit): UserPreferences {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val store = PreferenceDataStoreFactory.create(scope = scope, produceFile = { file })
-        store.edit { it[booleanPreferencesKey("show_avalanche_zones")] = true }
+        val store = PreferenceDataStoreFactory.create(scope = scope, produceFile = { newFile(name) })
+        store.edit(legacy)
         val migrated = UserPreferences(store)
         withTimeout(TIMEOUT) { migrated.awaitHydrated() }
-        assertEquals(NveOverlay.STEEPNESS_RUNOUT, migrated.nveOverlay.value)
         scope.coroutineContext.job.cancelAndJoin()
+        return migrated
+    }
+
+    @Test
+    fun steepness_migratesLegacyChoices() = runBlocking {
+        val avalanche = migrated("nve_legacy_bool.preferences_pb") { it[booleanPreferencesKey("show_avalanche_zones")] = true }
+        assertEquals(true, avalanche.showSteepness.value)
+        assertEquals(NveOverlay.STEEPNESS_RUNOUT, avalanche.steepnessOverlay.value)
+        val plain = migrated("nve_legacy_plain.preferences_pb") { it[stringPreferencesKey("nve_overlay")] = "STEEPNESS" }
+        assertEquals(true, plain.showSteepness.value)
+        assertEquals(NveOverlay.STEEPNESS, plain.steepnessOverlay.value)
+        val off = migrated("nve_legacy_off.preferences_pb") {
+            it[stringPreferencesKey("nve_overlay")] = ""
+            it[booleanPreferencesKey("show_avalanche_zones")] = true
+        }
+        assertEquals(false, off.showSteepness.value)
+    }
+
+    @Test
+    fun paths_migrateLegacyToggles() = runBlocking {
+        val waymarked = migrated("paths_legacy_waymarked.preferences_pb") { it[booleanPreferencesKey("show_waymarked_trails")] = true }
+        assertEquals(true, waymarked.showPaths.value)
+        assertEquals(PathsOverlay.WAYMARKED_TRAILS, waymarked.pathsOverlay.value)
+        val both = migrated("paths_legacy_both.preferences_pb") {
+            it[booleanPreferencesKey("show_waymarked_trails")] = true
+            it[booleanPreferencesKey("show_osm_paths")] = true
+        }
+        assertEquals(true, both.showPaths.value)
+        assertEquals(PathsOverlay.OSM_PATHS, both.pathsOverlay.value)
     }
 
     /** Applies [change], then reopens the same file in a fresh UserPreferences and returns it. */
@@ -198,10 +221,16 @@ class UserPreferencesTest {
     }
 
     @Test
-    fun showOsmPaths_defaultsOffAndPersistsAcrossReload() = runBlocking {
-        assertEquals(false, prefs.showOsmPaths.value)
-        val file = newFile("osm_paths_persist.preferences_pb")
-        assertEquals(true, reload(file) { it.updateShowOsmPaths(true) }.showOsmPaths.value)
+    fun paths_defaultOffWithOsmPathsAndPersist() = runBlocking {
+        assertEquals(false, prefs.showPaths.value)
+        assertEquals(PathsOverlay.OSM_PATHS, prefs.pathsOverlay.value)
+        val file = newFile("paths_persist.preferences_pb")
+        val reloaded = reload(file) {
+            it.updateShowPaths(true)
+            it.updatePathsOverlay(PathsOverlay.WAYMARKED_TRAILS)
+        }
+        assertEquals(true, reloaded.showPaths.value)
+        assertEquals(PathsOverlay.WAYMARKED_TRAILS, reloaded.pathsOverlay.value)
     }
 
     @Test

@@ -6,9 +6,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -36,6 +39,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import no.synth.where.data.CoverageOperator
+import no.synth.where.ui.map.NveOverlay
+import no.synth.where.ui.map.PathsOverlay
+import no.synth.where.ui.map.label
+import org.jetbrains.compose.resources.StringResource
 import no.synth.where.data.geo.CoordFormat
 import no.synth.where.data.geo.CoordinateFormatter
 import no.synth.where.data.geo.LatLng
@@ -47,6 +54,8 @@ import no.synth.where.resources.large_compass_description
 import no.synth.where.resources.coord_format_dms
 import no.synth.where.resources.coverage_operator
 import no.synth.where.resources.coverage_operator_all
+import no.synth.where.resources.paths_overlay_setting
+import no.synth.where.resources.steepness_overlay_setting
 import no.synth.where.resources.coord_format_latlng
 import no.synth.where.resources.coord_format_mgrs
 import no.synth.where.resources.coord_format_utm
@@ -112,6 +121,10 @@ fun SettingsScreenContent(
     onLargeCompassChange: (Boolean) -> Unit = {},
     coverageOperator: CoverageOperator = CoverageOperator.ALL,
     onCoverageOperatorSelected: (CoverageOperator) -> Unit = {},
+    pathsOverlay: PathsOverlay = PathsOverlay.OSM_PATHS,
+    onPathsOverlaySelected: (PathsOverlay) -> Unit = {},
+    steepnessOverlay: NveOverlay = NveOverlay.STEEPNESS,
+    onSteepnessOverlaySelected: (NveOverlay) -> Unit = {},
     onAttributionsClick: () -> Unit,
     onReleaseNotesClick: () -> Unit,
     onGuideClick: () -> Unit,
@@ -292,7 +305,7 @@ fun SettingsScreenContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        DropdownMenu(
+                        TrailingDropdownMenu(
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
                         ) {
@@ -333,7 +346,7 @@ fun SettingsScreenContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        DropdownMenu(
+                        TrailingDropdownMenu(
                             expanded = themeExpanded,
                             onDismissRequest = { themeExpanded = false }
                         ) {
@@ -387,7 +400,7 @@ fun SettingsScreenContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        DropdownMenu(
+                        TrailingDropdownMenu(
                             expanded = coordExpanded,
                             onDismissRequest = { coordExpanded = false }
                         ) {
@@ -439,7 +452,7 @@ fun SettingsScreenContent(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        DropdownMenu(
+                        TrailingDropdownMenu(
                             expanded = operatorExpanded,
                             onDismissRequest = { operatorExpanded = false }
                         ) {
@@ -457,6 +470,11 @@ fun SettingsScreenContent(
 
                     HorizontalDivider()
                 }
+
+                ChoiceRow(stringResource(Res.string.paths_overlay_setting), pathsOverlay, PathsOverlay.entries, { it.label }, onPathsOverlaySelected)
+                HorizontalDivider()
+                ChoiceRow(stringResource(Res.string.steepness_overlay_setting), steepnessOverlay, NveOverlay.entries, { it.label }, onSteepnessOverlaySelected)
+                HorizontalDivider()
 
                 Row(
                     modifier = Modifier
@@ -615,6 +633,54 @@ fun SettingsScreenContent(
                     .align(Alignment.CenterHorizontally)
                     .padding(16.dp)
             )
+        }
+    }
+}
+
+/** A setting with a few named choices: [title] and the current choice, tapped for a menu of [options]. */
+@Composable
+private fun <T> ChoiceRow(title: String, selected: T, options: List<T>, label: (T) -> StringResource, onSelected: (T) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true }
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = stringResource(label(selected)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        TrailingDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(label(option))) },
+                    onClick = {
+                        expanded = false
+                        onSelected(option)
+                    }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A dropdown right-aligned under the row it's in, by the value it changes, rather than Compose's
+ * default of the row's start. The anchor is a zero-width strip the row's height at its right
+ * edge: no room to open rightwards, and a menu that must open upwards ends above the row.
+ */
+@Composable
+private fun BoxScope.TrailingDropdownMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
+        Box(Modifier.fillMaxHeight().padding(end = 16.dp)) {
+            DropdownMenu(expanded = expanded, onDismissRequest = onDismissRequest, content = content)
         }
     }
 }

@@ -49,6 +49,8 @@ import no.synth.where.ui.map.MapPlatform
 import no.synth.where.ui.map.MapScreen
 import no.synth.where.ui.map.MapScreenContent
 import no.synth.where.ui.map.MapScreenState
+import no.synth.where.ui.map.NveOverlay
+import no.synth.where.ui.map.PathsOverlay
 import no.synth.where.ui.map.PointColors
 import no.synth.where.ui.map.RecordingCard
 import no.synth.where.ui.map.RulerCard
@@ -310,10 +312,11 @@ private fun MapScreenFullPreview() {
             rulerState = sampleRulerState,
             showLayerMenu = false,
             selectedLayer = MapLayer.KARTVERKET,
-            showWaymarkedTrails = false,
-            showOsmPaths = false,
+            showPaths = false,
+            pathsOverlay = PathsOverlay.OSM_PATHS,
             showSavedPoints = true,
-            nveOverlay = null,
+            showSteepness = false,
+            steepnessOverlay = NveOverlay.STEEPNESS,
             onlineTrackingEnabled = false,
             recordingTrack = sampleTrack,
             viewingTracks = listOf(sampleTrack),
@@ -328,9 +331,8 @@ private fun MapScreenFullPreview() {
             onSearchClick = {},
             onLayerMenuToggle = {},
             onLayerSelected = {},
-            onWaymarkedTrailsToggle = {},
-            onOsmPathsToggle = {},
-            onNveOverlayToggle = {},
+            onPathsToggle = {},
+            onSteepnessToggle = {},
             onSavedPointsToggle = {},
             onRecordStopClick = {},
             onMyLocationClick = {},

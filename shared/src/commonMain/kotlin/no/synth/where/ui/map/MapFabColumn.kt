@@ -22,8 +22,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import no.synth.where.resources.Res
 import no.synth.where.resources.*
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+/** Menu and Settings name of the paths overlay variant. */
+val PathsOverlay.label: StringResource
+    get() = when (this) {
+        PathsOverlay.WAYMARKED_TRAILS -> Res.string.waymarked_trails_osm
+        PathsOverlay.OSM_PATHS -> Res.string.paths_osm
+    }
+
+/** Menu and Settings name of the steepness overlay variant. */
+val NveOverlay.label: StringResource
+    get() = when (this) {
+        NveOverlay.STEEPNESS -> Res.string.steepness_nve
+        NveOverlay.STEEPNESS_RUNOUT -> Res.string.steepness_runout_nve
+    }
 
 @Composable
 internal fun LayerMenuItem(
@@ -56,10 +71,11 @@ fun MapFabColumn(
     crosshairActive: Boolean = false,
     showLayerMenu: Boolean,
     selectedLayer: MapLayer,
-    showWaymarkedTrails: Boolean,
-    showOsmPaths: Boolean,
+    showPaths: Boolean,
+    pathsOverlay: PathsOverlay,
     showSavedPoints: Boolean,
-    nveOverlay: NveOverlay?,
+    showSteepness: Boolean,
+    steepnessOverlay: NveOverlay,
     showCoverage: Boolean = false,
     showHillshade: Boolean = false,
     showCoordGrid: Boolean = false,
@@ -68,10 +84,9 @@ fun MapFabColumn(
     onSearchClick: () -> Unit,
     onLayerMenuToggle: (Boolean) -> Unit,
     onLayerSelected: (MapLayer) -> Unit,
-    onWaymarkedTrailsToggle: () -> Unit,
-    onOsmPathsToggle: () -> Unit,
+    onPathsToggle: () -> Unit,
     onSavedPointsToggle: () -> Unit,
-    onNveOverlayToggle: (NveOverlay) -> Unit,
+    onSteepnessToggle: () -> Unit,
     onCoverageToggle: () -> Unit = {},
     onHillshadeToggle: () -> Unit = {},
     onCoordGridToggle: () -> Unit = {},
@@ -116,11 +131,9 @@ fun MapFabColumn(
             LayerMenuItem(stringResource(Res.string.satellite), selectedLayer == MapLayer.SATELLITE) { onLayerSelected(MapLayer.SATELLITE) }
             HorizontalDivider()
             MenuSection(stringResource(Res.string.overlays))
-            LayerMenuItem(stringResource(Res.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
-            LayerMenuItem(stringResource(Res.string.paths_osm), showOsmPaths) { onOsmPathsToggle() }
+            LayerMenuItem(stringResource(pathsOverlay.label), showPaths) { onPathsToggle() }
             LayerMenuItem(stringResource(Res.string.hillshade), showHillshade) { onHillshadeToggle() }
-            LayerMenuItem(stringResource(Res.string.steepness_nve), nveOverlay == NveOverlay.STEEPNESS) { onNveOverlayToggle(NveOverlay.STEEPNESS) }
-            LayerMenuItem(stringResource(Res.string.steepness_runout_nve), nveOverlay == NveOverlay.STEEPNESS_RUNOUT) { onNveOverlayToggle(NveOverlay.STEEPNESS_RUNOUT) }
+            LayerMenuItem(stringResource(steepnessOverlay.label), showSteepness) { onSteepnessToggle() }
             LayerMenuItem(stringResource(Res.string.mobile_coverage), showCoverage) { onCoverageToggle() }
             LayerMenuItem(stringResource(Res.string.saved_points), showSavedPoints) { onSavedPointsToggle() }
             LayerMenuItem(stringResource(Res.string.coordinate_grid), showCoordGrid) { onCoordGridToggle() }

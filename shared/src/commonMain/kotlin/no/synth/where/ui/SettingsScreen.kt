@@ -46,6 +46,8 @@ fun SettingsScreen(
     val coordFormat by userPreferences.coordFormat.collectAsState()
     val largeCompass by userPreferences.largeCompass.collectAsState()
     val coverageOperator by userPreferences.coverageOperator.collectAsState()
+    val pathsOverlay by userPreferences.pathsOverlay.collectAsState()
+    val steepnessOverlay by userPreferences.steepnessOverlay.collectAsState()
     val currentThemeLabel = themeOptions.find { it.tag == themeMode }?.displayName
         ?: themeOptions.first().displayName
 
@@ -72,6 +74,10 @@ fun SettingsScreen(
         onLargeCompassChange = { userPreferences.updateLargeCompass(it) },
         coverageOperator = coverageOperator,
         onCoverageOperatorSelected = { userPreferences.updateCoverageOperator(it) },
+        pathsOverlay = pathsOverlay,
+        onPathsOverlaySelected = { userPreferences.updatePathsOverlay(it) },
+        steepnessOverlay = steepnessOverlay,
+        onSteepnessOverlaySelected = { userPreferences.updateSteepnessOverlay(it) },
         onAttributionsClick = onAttributionsClick,
         onReleaseNotesClick = onReleaseNotesClick,
         onGuideClick = onGuideClick,
