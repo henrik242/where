@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import no.synth.where.data.geo.LatLng
 
 enum class DownloadStatus { QUEUED, DOWNLOADING, COMPLETED, FAILED, CANCELLED }
 
@@ -31,6 +32,8 @@ data class QueuedDownload(
     val status: DownloadStatus = DownloadStatus.QUEUED,
     val mapProgress: Int = 0,
     val demProgress: Int = -1,
+    /** Route line to download a strip along instead of the whole [region]; see [RouteCorridor]. */
+    val corridor: List<LatLng>? = null,
 ) {
     /** Stable id; also the native pack key used by the platform download engines. */
     val id: String get() = "${region.name}-$layerId"

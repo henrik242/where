@@ -42,8 +42,8 @@ fun hikingTimeText(seconds: Double): String {
     }
 }
 
-/** Crossing markers for the planned route, only while its track is on the map. */
+/** Crossing and cliff markers for the planned route, only while its track is on the map. */
 fun crossingsGeoJsonFor(planned: PlannedCrossings?, viewingTracks: List<Track>): String? {
-    if (planned == null || planned.crossings.isEmpty() || viewingTracks.none { it.id == planned.trackId }) return null
-    return buildCrossingsGeoJson(planned.crossings)
+    if (planned == null || (planned.crossings.isEmpty() && planned.cliffs.isEmpty()) || viewingTracks.none { it.id == planned.trackId }) return null
+    return buildCrossingsGeoJson(planned.crossings, planned.cliffs)
 }

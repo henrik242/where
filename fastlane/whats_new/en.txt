@@ -1,1 +1,1 @@
-Swipe back between screens on iPhone.
+Routes avoid cliffs, offline maps along routes, iPhone swipe back.

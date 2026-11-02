@@ -14,11 +14,13 @@ data class RoutePoint(val latLng: LatLng, val elevation: Double)
 
 data class RiverCrossing(val latLng: LatLng, val isRiver: Boolean)
 
-data class TerrainRoute(
+class TerrainRoute(
     val points: List<RoutePoint>,
     val distanceMeters: Double,
     val durationSeconds: Double,
     val crossings: List<RiverCrossing>,
+    /** Grid cells walked, start to end. */
+    val cells: IntArray,
 )
 
 object TerrainRouter {
@@ -30,20 +32,80 @@ object TerrainRouter {
     private val DX = intArrayOf(1, -1, 0, 0, 1, 1, -1, -1, 1, 2, 2, 1, -1, -2, -2, -1)
     private val DY = intArrayOf(0, 0, 1, -1, 1, -1, 1, -1, 2, 1, -1, -2, -2, -1, 1, 2)
 
-    /** Fastest walking route from [start] to [end], or null when none exists. */
-    suspend fun route(grid: TerrainGrid, start: LatLng, end: LatLng): TerrainRoute? = withContext(Dispatchers.Default) {
-        val blocked = HikingCost.blockedCells(grid)
+    /**
+     * Fastest walking route from [start] to [end], or null when none exists. Cliffs are impassable
+     * unless [cliffPenalty] is set; [blocked] must match that.
+     */
+    suspend fun route(
+        grid: TerrainGrid,
+        start: LatLng,
+        end: LatLng,
+        cliffPenalty: Double? = null,
+        blocked: BooleanArray = HikingCost.blockedCells(grid, cliffsPassable = cliffPenalty != null),
+    ): TerrainRoute? = withContext(Dispatchers.Default) {
         val s = snap(grid, blocked, grid.latLngToIndex(start)) ?: return@withContext null
         val t = snap(grid, blocked, grid.latLngToIndex(end)) ?: return@withContext null
-        val path = search(grid, blocked, s, t) ?: return@withContext null
+        val path = search(grid, blocked, s, t, cliffPenalty) ?: return@withContext null
         buildRoute(grid, path, blocked)
     }
+
+    /** Whether the search could still take [cells] with cliffs impassable; [blocked] from [HikingCost.blockedCells]. */
+    fun walkable(grid: TerrainGrid, cells: IntArray, blocked: BooleanArray): Boolean {
+        if (cells.isEmpty()) return true
+        if (blocked[cells[0]]) return false
+        val w = grid.width
+        for (k in 1 until cells.size) {
+            val a = cells[k - 1]
+            val b = cells[k]
+            val dx = b % w - a % w
+            val dy = b / w - a / w
+            if (!moveAllowed(grid, blocked, a % w, a / w, dx, dy)) return false
+            val distance = grid.cellSizeMeters * sqrt((dx * dx + dy * dy).toDouble())
+            if (HikingCost.stepSeconds(grid, a, b, distance) == null) return false
+        }
+        return true
+    }
+
+    /** The cliff at the start of each run of steps along [cells] that climb or skirt one. */
+    fun cliffSpots(grid: TerrainGrid, cells: IntArray): List<LatLng> {
+        val spots = mutableListOf<LatLng>()
+        var inRun = false
+        for (k in 1 until cells.size) {
+            val cliff = cliffOfStep(grid, cells[k - 1], cells[k])
+            if (cliff >= 0 && !inRun) spots += grid.cellToLatLng(cliff % grid.width, cliff / grid.width)
+            inRun = cliff >= 0
+        }
+        return spots
+    }
+
+    /**
+     * The cliff cell step [a] to [b] climbs, or slips past diagonally or by a knight move where
+     * the search wouldn't with cliffs impassable; -1 when none.
+     */
+    private fun cliffOfStep(grid: TerrainGrid, a: Int, b: Int): Int {
+        if (HikingCost.isCliffStep(grid, a, b)) return if (grid.hasFlag(b, CellFlags.CLIFF)) b else a
+        val w = grid.width
+        val x = a % w
+        val y = a / w
+        val dx = b % w - x
+        val dy = b / w - y
+        fun cliff(i: Int) = grid.hasFlag(i, CellFlags.CLIFF)
+        return when (abs(dx) + abs(dy)) {
+            2 -> grid.index(x + dx, y).takeIf { cliff(it) && cliff(grid.index(x, y + dy)) } ?: -1
+            3 -> straddled(grid, x, y, dx, dy).toList().firstOrNull(::cliff) ?: -1
+            else -> -1
+        }
+    }
+
+    /** [cells] as a route again, its smoothed points kept out of cells blocked now. */
+    fun rebuild(grid: TerrainGrid, cells: IntArray, blocked: BooleanArray): TerrainRoute = buildRoute(grid, cells, blocked)
 
     private suspend fun search(
         grid: TerrainGrid,
         blocked: BooleanArray,
         start: Int,
         target: Int,
+        cliffPenalty: Double?,
     ): IntArray? {
         val w = grid.width
         val n = w * grid.height
@@ -78,11 +140,9 @@ object TerrainRouter {
                 val ny = cy + DY[k]
                 if (nx !in 0 until w || ny !in 0 until grid.height) continue
                 val next = grid.index(nx, ny)
-                if (closed[next] || blocked[next]) continue
-                if (k >= 8 && !knightPassable(grid, blocked, cx, cy, DX[k], DY[k])) continue
-                if (k in 4..7 && blocked[grid.index(nx, cy)] && blocked[grid.index(cx, ny)]) continue
+                if (closed[next] || !moveAllowed(grid, blocked, cx, cy, DX[k], DY[k])) continue
                 val dist = c * sqrt((DX[k] * DX[k] + DY[k] * DY[k]).toDouble())
-                val step = HikingCost.stepSeconds(grid, cur, next, dist) ?: continue
+                val step = HikingCost.stepSeconds(grid, cur, next, dist, cliffPenalty) ?: continue
                 val tentative = g[cur] + step.toFloat()
                 if (tentative < g[next]) {
                     g[next] = tentative
@@ -94,19 +154,35 @@ object TerrainRouter {
         return null
     }
 
+    /** Whether the move by ([dx], [dy]) from ([x], [y]) may be taken, ignoring its cost. */
+    private fun moveAllowed(grid: TerrainGrid, blocked: BooleanArray, x: Int, y: Int, dx: Int, dy: Int): Boolean {
+        if (blocked[grid.index(x + dx, y + dy)]) return false
+        // Hopping past a cliff would skip its penalty when cliffs are passable.
+        fun solid(i: Int) = blocked[i] || grid.hasFlag(i, CellFlags.CLIFF)
+        return when (abs(dx) + abs(dy)) {
+            2 -> !(solid(grid.index(x + dx, y)) && solid(grid.index(x, y + dy)))
+            3 -> knightPassable(grid, x, y, dx, dy, ::solid)
+            else -> true
+        }
+    }
+
     /**
      * A knight move passes through the two cells straddling it; both must be open and dry,
-     * or the move would jump over a one-cell waterway without paying for the crossing.
+     * or the move would jump over a one-cell waterway or cliff without paying for it.
      */
-    private fun knightPassable(grid: TerrainGrid, blocked: BooleanArray, x: Int, y: Int, dx: Int, dy: Int): Boolean {
-        val (a, b) = if (abs(dx) == 2) {
+    private fun knightPassable(grid: TerrainGrid, x: Int, y: Int, dx: Int, dy: Int, solid: (Int) -> Boolean): Boolean {
+        val (a, b) = straddled(grid, x, y, dx, dy)
+        val waterway = CellFlags.RIVER or CellFlags.STREAM
+        return !solid(a) && !solid(b) && !grid.hasFlag(a, waterway) && !grid.hasFlag(b, waterway)
+    }
+
+    /** The two cells a knight move by ([dx], [dy]) from ([x], [y]) passes through. */
+    private fun straddled(grid: TerrainGrid, x: Int, y: Int, dx: Int, dy: Int): Pair<Int, Int> =
+        if (abs(dx) == 2) {
             grid.index(x + dx / 2, y) to grid.index(x + dx / 2, y + dy)
         } else {
             grid.index(x, y + dy / 2) to grid.index(x + dx, y + dy / 2)
         }
-        val waterway = CellFlags.RIVER or CellFlags.STREAM
-        return !blocked[a] && !blocked[b] && !grid.hasFlag(a, waterway) && !grid.hasFlag(b, waterway)
-    }
 
     private fun reconstruct(cameFrom: ByteArray, w: Int, target: Int): IntArray {
         val out = ArrayList<Int>()
@@ -156,12 +232,13 @@ object TerrainRouter {
             val dy = (b / w - a / w).toDouble()
             val d = sqrt(dx * dx + dy * dy) * grid.cellSizeMeters
             distance += d
-            seconds += HikingCost.stepSeconds(grid, a, b, d) ?: 0.0
+            // Walking time only: a cliff the route had to take adds no penalty to the estimate.
+            seconds += HikingCost.stepSeconds(grid, a, b, d, cliffPenalty = 0.0) ?: 0.0
             if (grid.isWaterwayCrossing(b) && !grid.isWaterwayCrossing(a)) {
                 crossings += RiverCrossing(grid.cellToLatLng(b % w, b / w), grid.hasFlag(b, CellFlags.RIVER))
             }
         }
-        return TerrainRoute(trackPoints(grid, path, blocked), distance, seconds, crossings)
+        return TerrainRoute(trackPoints(grid, path, blocked), distance, seconds, crossings, path)
     }
 
     /** One point per path cell, smoothed so the 16-direction staircase doesn't show. */

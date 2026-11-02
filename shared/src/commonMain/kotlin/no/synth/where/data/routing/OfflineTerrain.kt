@@ -35,10 +35,12 @@ object OfflineTerrain {
     }
 
     fun cacheSize(): Long =
-        OfflineTileReader.cacheSize(OfflineTileReader.DEM_SUBDIR) + OfflineTileReader.cacheSize(VectorFeatureLoader.CACHE_SUBDIR)
+        OfflineTileReader.cacheSize(OfflineTileReader.DEM_SUBDIR) + OfflineTileReader.cacheSize(VectorFeatureLoader.CACHE_SUBDIR) +
+            OfflineTileReader.cacheSize(CliffMap.CACHE_SUBDIR)
 
     fun clear() {
         OfflineTileReader.clearCache(OfflineTileReader.DEM_SUBDIR)
         OfflineTileReader.clearCache(VectorFeatureLoader.CACHE_SUBDIR)
+        OfflineTileReader.clearCache(CliffMap.CACHE_SUBDIR)
     }
 }

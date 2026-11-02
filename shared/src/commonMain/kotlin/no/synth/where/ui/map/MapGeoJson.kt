@@ -186,11 +186,13 @@ fun buildSharedPointsGeoJson(points: List<SharedPoint>): String {
     return """{"type":"FeatureCollection","features":[$features]}"""
 }
 
-fun buildCrossingsGeoJson(crossings: List<RiverCrossing>): String {
-    val features = crossings.joinToString(",") { c ->
-        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${c.latLng.longitude},${c.latLng.latitude}]},"properties":{"river":${c.isRiver}}}"""
-    }
-    return """{"type":"FeatureCollection","features":[$features]}"""
+/** River and stream crossings, plus [cliffs] the route climbs, as points. */
+fun buildCrossingsGeoJson(crossings: List<RiverCrossing>, cliffs: List<LatLng> = emptyList()): String {
+    fun point(p: LatLng, properties: String) =
+        """{"type":"Feature","geometry":{"type":"Point","coordinates":[${p.longitude},${p.latitude}]},"properties":{$properties}}"""
+    val features = crossings.map { point(it.latLng, "\"river\":${it.isRiver},\"cliff\":false") } +
+        cliffs.map { point(it, "\"river\":false,\"cliff\":true") }
+    return """{"type":"FeatureCollection","features":[${features.joinToString(",")}]}"""
 }
 
 fun buildRulerLineGeoJson(points: List<RulerPoint>): String = buildLineGeoJson(points.map { it.latLng })

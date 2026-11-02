@@ -447,6 +447,8 @@
         <item quantity="other">%1$d kryssinger av elv eller bekk</item>
     </plurals>
     <string name="route_features_incomplete">Mangler data om vann og elver for deler av området</string>
+    <string name="route_cliffs_incomplete">Mangler data om stup for deler av ruta</string>
+    <string name="route_crosses_cliff">Ruta går over et stup den ikke fant vei rundt</string>
     <string name="route_no_terrain">Ingen høydedata for området. Gå på nett eller last ned området først.</string>
     <string name="route_not_found">Fant ingen farbar rute</string>
 </resources>

@@ -14,6 +14,8 @@ import no.synth.where.data.GeocodingHelper
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.OnlineTrackingCoordinator
 import no.synth.where.data.PlaceSearchClient
+import no.synth.where.data.QueuedDownload
+import no.synth.where.data.RouteCorridor
 import no.synth.where.data.RulerState
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
@@ -297,11 +299,15 @@ class MapScreenState(
         rulerTrackName = ""
     }
 
-    fun saveRulerAsTrack() {
+    /** Saves the ruler or found route; unless offline, a found route also [enqueue]s maps along it for [layer]. */
+    fun saveRulerAsTrack(layer: MapLayer, enqueue: (QueuedDownload) -> Unit) {
         val name = rulerTrackName
         if (name.isNotBlank()) {
             val route = routeSession.preview.value
             if (route != null) {
+                if (!userPreferences.offlineModeEnabled.value) {
+                    RouteCorridor.downloads(route.points.map { it.latLng }, name, layer.downloadId).forEach(enqueue)
+                }
                 routeSession.save(route, name) { showMessage(Res.string.saved_as_track_name, name) }
             } else {
                 trackRepository.createTrackFromPoints(name, rulerState.points)
