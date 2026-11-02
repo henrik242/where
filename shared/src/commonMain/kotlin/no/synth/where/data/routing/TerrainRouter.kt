@@ -234,7 +234,7 @@ object TerrainRouter {
             distance += d
             // Walking time only: a cliff the route had to take adds no penalty to the estimate.
             seconds += HikingCost.stepSeconds(grid, a, b, d, cliffPenalty = 0.0) ?: 0.0
-            if (grid.isWaterwayCrossing(b) && !grid.isWaterwayCrossing(a)) {
+            if (grid.entersCrossing(a, b)) {
                 crossings += RiverCrossing(grid.cellToLatLng(b % w, b / w), grid.hasFlag(b, CellFlags.RIVER))
             }
         }

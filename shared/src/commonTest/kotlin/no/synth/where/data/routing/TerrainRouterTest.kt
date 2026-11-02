@@ -80,6 +80,18 @@ class TerrainRouterTest {
     }
 
     @Test
+    fun streamMouthIsNoFreeWayIntoRiver() {
+        val g = grid(3, 1)
+        g.addFlag(0, CellFlags.STREAM)
+        g.addFlag(1, CellFlags.RIVER)
+        g.addFlag(2, CellFlags.RIVER)
+        val fromStream = assertNotNull(HikingCost.stepSeconds(g, 0, 1, 10.0))
+        val alongRiver = assertNotNull(HikingCost.stepSeconds(g, 1, 2, 10.0))
+        assertTrue(fromStream - alongRiver > 800, "fromStream=$fromStream alongRiver=$alongRiver")
+        assertTrue(g.entersCrossing(0, 1))
+    }
+
+    @Test
     fun cannotDropOntoPathFromCliffAbove() {
         // A path along the foot of a 30 m wall: stepping down onto it is still a cliff.
         val g = grid(40, 40) { _, y -> if (y < 20) 30f else 0f }

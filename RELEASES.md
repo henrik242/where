@@ -13,6 +13,7 @@ tag dates.
 - Hiking routes in Norway avoid small cliffs, a few metres high, using Kartverket's terrain model; a cliff a route can't avoid is marked in red.
 - Saving a found route downloads the map, and MapAnt in Norway, in a strip along it.
 - GPX files shared from chat apps like Messenger can be opened in Where.
+- Hiking routes no longer slip into a river where a stream joins it.
 
 ## v675 (2026-10-27)
 

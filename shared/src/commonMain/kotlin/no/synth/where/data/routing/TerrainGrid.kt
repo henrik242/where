@@ -49,6 +49,16 @@ class TerrainGrid(
         return hasFlag(index, CellFlags.STREAM) && !hasFlag(index, CellFlags.PATH)
     }
 
+    /**
+     * Whether stepping from [from] into [to] starts a crossing: entering a waterway from dry land,
+     * or a river from a stream, so a stream mouth isn't a free way into the river.
+     */
+    fun entersCrossing(from: Int, to: Int): Boolean {
+        if (!isWaterwayCrossing(to)) return false
+        if (!isWaterwayCrossing(from)) return true
+        return hasFlag(to, CellFlags.RIVER) && !hasFlag(from, CellFlags.RIVER)
+    }
+
     fun addFlag(index: Int, flag: Int) {
         flags[index] = (flags[index].toInt() or flag).toByte()
     }

@@ -96,7 +96,7 @@ internal object HikingCost {
         if (grid.hasFlag(to, CellFlags.WETLAND)) seconds *= WETLAND_FACTOR
         if (grid.isWaterwayCrossing(to)) {
             seconds *= IN_WATERWAY_FACTOR
-            if (!grid.isWaterwayCrossing(from)) {
+            if (grid.entersCrossing(from, to)) {
                 seconds += if (grid.hasFlag(to, CellFlags.RIVER)) RIVER_CROSSING_SECONDS else STREAM_CROSSING_SECONDS
             }
         }
