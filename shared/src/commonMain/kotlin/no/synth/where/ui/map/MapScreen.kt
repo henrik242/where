@@ -35,6 +35,7 @@ import no.synth.where.data.CrosshairInfo
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.MapStyle
 import no.synth.where.data.MapTapTarget
+import no.synth.where.data.QueuedDownload
 import no.synth.where.data.TerrainClient
 import no.synth.where.data.Track
 import no.synth.where.data.geo.LatLng
@@ -414,7 +415,8 @@ fun MapScreen(
         },
         crossingsGeoJson = remember(routePreview, plannedCrossings, viewingTracks) {
             if (routePreview != null) {
-                routePreview.crossings.takeIf { it.isNotEmpty() }?.let(::buildCrossingsGeoJson)
+                if (routePreview.crossings.isEmpty() && routePreview.cliffs.isEmpty()) null
+                else buildCrossingsGeoJson(routePreview.crossings, routePreview.cliffs)
             } else {
                 crossingsGeoJsonFor(plannedCrossings, viewingTracks)
             }
@@ -619,13 +621,19 @@ fun MapScreen(
         },
     )
 
-    MapScreenDialogs(state, canShare, isNavigating = navigation != null)
+    MapScreenDialogs(state, canShare, isNavigating = navigation != null, selectedLayer = selectedLayer, enqueueDownload = nav.enqueueDownload)
 }
 
 private fun LatLng.coordinateText() = "${latitude.toString().take(10)}, ${longitude.toString().take(10)}"
 
 @Composable
-private fun MapScreenDialogs(state: MapScreenState, canShare: Boolean, isNavigating: Boolean) {
+private fun MapScreenDialogs(
+    state: MapScreenState,
+    canShare: Boolean,
+    isNavigating: Boolean,
+    selectedLayer: MapLayer,
+    enqueueDownload: (QueuedDownload) -> Unit,
+) {
     val routePreview = state.routeSession.preview.collectAsState().value
     if (state.showStopTrackDialog) {
         MapDialogs.StopTrackDialog(
@@ -719,7 +727,7 @@ private fun MapScreenDialogs(state: MapScreenState, canShare: Boolean, isNavigat
             distanceMeters = routePreview?.distanceMeters ?: state.rulerState.getTotalDistanceMeters(),
             onTrackNameChange = { state.rulerTrackName = it },
             isLoading = state.isResolvingRulerName,
-            onSave = state::saveRulerAsTrack,
+            onSave = { state.saveRulerAsTrack(selectedLayer, enqueueDownload) },
             onDismiss = state::dismissSaveRulerAsTrackDialog,
         )
     }

@@ -19,6 +19,7 @@ import no.synth.where.data.LegacyOfflineCache
 import no.synth.where.data.LiveTrackingFollower
 import no.synth.where.data.MapDownloadManager
 import no.synth.where.data.PickedFile
+import no.synth.where.data.QueuedDownload
 import no.synth.where.data.SavedPoint
 import no.synth.where.data.SavedPointsRepository
 import no.synth.where.data.StravaRouteImporter
@@ -79,6 +80,7 @@ class MapScreenNavigation(
     val onSettingsClick: () -> Unit,
     val onOfflineIndicatorClick: () -> Unit,
     val onOnlineTrackingClick: () -> Unit,
+    val enqueueDownload: (QueuedDownload) -> Unit,
 )
 
 /**
@@ -131,6 +133,7 @@ fun WhereNavHost(
                     onSettingsClick = { navController.navigate(SettingsRoute()) },
                     onOfflineIndicatorClick = { navController.navigate(SettingsRoute(highlightOfflineMode = true)) },
                     onOnlineTrackingClick = { navController.navigate(OnlineTrackingRoute) },
+                    enqueueDownload = deps.downloadManager::enqueue,
                 )
             )
         }

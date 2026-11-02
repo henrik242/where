@@ -482,15 +482,19 @@ private fun RulerLayers(lineGeoJson: String?, pointsGeoJson: String?) {
     )
 }
 
-/** River and stream crossings on a planned hiking route: rivers larger and darker. */
+/** River and stream crossings on a planned hiking route, rivers larger and darker; cliffs it climbs in red. */
 @Composable
 private fun CrossingsLayer(geoJson: String?) {
     val isRiver = Feature["river"].cast<BooleanValue>()
+    val isCliff = Feature["cliff"].cast<BooleanValue>()
     CircleLayer(
         id = "route-crossing-layer",
         source = src("route-crossing-source", geoJson),
-        radius = switch(listOf(condition(isRiver, const(8.dp))), const(6.dp)),
-        color = switch(listOf(condition(isRiver, const(hexColor("#0D47A1")))), const(hexColor("#29B6F6"))),
+        radius = switch(listOf(condition(isRiver, const(8.dp)), condition(isCliff, const(8.dp))), const(6.dp)),
+        color = switch(
+            listOf(condition(isRiver, const(hexColor("#0D47A1"))), condition(isCliff, const(hexColor("#D32F2F")))),
+            const(hexColor("#29B6F6")),
+        ),
         strokeWidth = const(2.dp),
         strokeColor = const(Color.White),
     )

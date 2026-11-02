@@ -102,20 +102,7 @@ class MaplibreComposeDownloadEngine(
         val styleJson = DownloadLayers.getDownloadStyleJson(item.layerId)
         val styleFile = cacheDir.resolve("offline-style-${item.layerId}.json")
         styleFile.writeBytes(styleJson.encodeToByteArray())
-        val bounds = item.region.boundingBox
-        val definition =
-            OfflinePackDefinition.TilePyramid(
-                styleUrl = "file://${styleFile.path}",
-                bounds = BoundingBox(
-                    west = bounds.west,
-                    south = bounds.south,
-                    east = bounds.east,
-                    north = bounds.north,
-                ),
-                pixelRatio = pixelRatio,
-                minZoom = item.minZoom.toDouble(),
-                maxZoom = DownloadLayers.effectiveMaxZoom(item.layerId, item.maxZoom).toDouble(),
-            )
+        val definition = packDefinition(item, "file://${styleFile.path}", pixelRatio)
         return offlineStorage.create(definition, metadata = item.id.encodeToByteArray())
     }
 
@@ -148,4 +135,21 @@ class MaplibreComposeDownloadEngine(
         if (required <= 0) return 0
         return ((p.completedResourceCount * 100) / required).toInt().coerceIn(0, 100)
     }
+}
+
+/** The region of [item]: a strip along its route when it has one, else its bounding box. */
+internal fun packDefinition(item: QueuedDownload, styleUrl: String, pixelRatio: Float): OfflinePackDefinition {
+    val minZoom = item.minZoom.toDouble()
+    val maxZoom = DownloadLayers.effectiveMaxZoom(item.layerId, item.maxZoom).toDouble()
+    item.corridor?.let { line ->
+        return OfflinePackDefinition.Shape(styleUrl, RouteCorridor.shape(line), pixelRatio, minZoom, maxZoom)
+    }
+    val b = item.region.boundingBox
+    return OfflinePackDefinition.TilePyramid(
+        styleUrl = styleUrl,
+        bounds = BoundingBox(west = b.west, south = b.south, east = b.east, north = b.north),
+        pixelRatio = pixelRatio,
+        minZoom = minZoom,
+        maxZoom = maxZoom,
+    )
 }

@@ -447,6 +447,8 @@
         <item quantity="other">%1$d river or stream crossings</item>
     </plurals>
     <string name="route_features_incomplete">Lake and river data is missing for parts of the area</string>
+    <string name="route_cliffs_incomplete">Cliff data is missing for parts of the route</string>
+    <string name="route_crosses_cliff">The route crosses a cliff it found no way around</string>
     <string name="route_no_terrain">No elevation data for this area. Go online or download the area first.</string>
     <string name="route_not_found">No walkable route found</string>
 </resources>

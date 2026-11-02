@@ -17,6 +17,8 @@ internal object HikingCost {
     private const val RIVER_CROSSING_SECONDS = 900.0
     /** Discourages walking along inside a stream or river. */
     private const val IN_WATERWAY_FACTOR = 3.0
+    /** Per cliff cell, when no route avoids cliffs: picks the route over the fewest. */
+    const val CLIFF_PENALTY_SECONDS = 1800.0
 
     /** Fastest possible speed in m/s, for an admissible A* heuristic. */
     val maxSpeed = toblerSpeed(-0.05)
@@ -43,8 +45,12 @@ internal object HikingCost {
 
     private fun TerrainGrid.isPath(i: Int) = hasFlag(i, CellFlags.PATH or CellFlags.BRIDGE)
 
-    /** Cells too steep to walk (central differences), plus open water and glaciers. */
-    fun blockedCells(grid: TerrainGrid): BooleanArray {
+    /** A step into or out of a cliff cell, other than along a path; see [stepSeconds]. */
+    fun isCliffStep(grid: TerrainGrid, from: Int, to: Int) =
+        (grid.hasFlag(from, CellFlags.CLIFF) || grid.hasFlag(to, CellFlags.CLIFF)) && !(grid.isPath(from) && grid.isPath(to))
+
+    /** Cells too steep to walk (central differences), plus open water, glaciers and, unless [cliffsPassable], cliffs. */
+    fun blockedCells(grid: TerrainGrid, cliffsPassable: Boolean = false): BooleanArray {
         val w = grid.width
         val h = grid.height
         val e = grid.elevations
@@ -59,6 +65,10 @@ internal object HikingCost {
                 }
                 // Mapped paths and bridges stay walkable even where the DEM is noisy.
                 if (grid.isPath(i)) continue
+                if (grid.hasFlag(i, CellFlags.CLIFF) && !cliffsPassable) {
+                    blocked[i] = true
+                    continue
+                }
                 val x0 = if (x > 0) x - 1 else x
                 val x1 = if (x < w - 1) x + 1 else x
                 val y0 = if (y > 0) y - 1 else y
@@ -71,12 +81,16 @@ internal object HikingCost {
         return blocked
     }
 
-    /** Seconds to walk [distance] meters from cell [from] to adjacent cell [to], or null if impassable. */
-    fun stepSeconds(grid: TerrainGrid, from: Int, to: Int, distance: Double): Double? {
+    /**
+     * Seconds to walk [distance] meters from cell [from] to adjacent cell [to], or null if impassable.
+     * A cliff step costs [cliffPenalty], or is impassable when that is null.
+     */
+    fun stepSeconds(grid: TerrainGrid, from: Int, to: Int, distance: Double, cliffPenalty: Double? = null): Double? {
         val gradient = (grid.elevations[to] - grid.elevations[from]) / distance
         // Only a step along the path is exempt, not one dropping onto it from a cut or cliff above.
         val onPath = grid.isPath(from) && grid.isPath(to)
         if (!onPath && abs(gradient) > maxGradient) return null
+        val cliffSeconds = if (isCliffStep(grid, from, to)) cliffPenalty ?: return null else 0.0
         var seconds = distance / toblerSpeedFast(gradient)
         if (!onPath) seconds *= OFF_TRAIL_FACTOR
         if (grid.hasFlag(to, CellFlags.WETLAND)) seconds *= WETLAND_FACTOR
@@ -86,6 +100,6 @@ internal object HikingCost {
                 seconds += if (grid.hasFlag(to, CellFlags.RIVER)) RIVER_CROSSING_SECONDS else STREAM_CROSSING_SECONDS
             }
         }
-        return seconds
+        return seconds + cliffSeconds
     }
 }

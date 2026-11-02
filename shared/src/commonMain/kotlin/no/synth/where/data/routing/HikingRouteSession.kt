@@ -26,8 +26,8 @@ sealed interface RoutePlanEvent {
     data object NoRoute : RoutePlanEvent
 }
 
-/** Crossings of the planned route saved as track [trackId]. Not persisted with the track. */
-data class PlannedCrossings(val trackId: String, val crossings: List<RiverCrossing>)
+/** Crossings and cliffs of the planned route saved as track [trackId]. Not persisted with the track. */
+data class PlannedCrossings(val trackId: String, val crossings: List<RiverCrossing>, val cliffs: List<LatLng> = emptyList())
 
 /** A planned route not saved yet. */
 data class PlannedRoute(
@@ -37,6 +37,10 @@ data class PlannedRoute(
     val distanceMeters: Double,
     val durationSeconds: Double,
     val featuresIncomplete: Boolean,
+    /** Kartverket terrain data couldn't be fetched for parts of the route, so cliffs there are unknown. */
+    val cliffsIncomplete: Boolean = false,
+    /** Where the route climbs a cliff there was no way around. */
+    val cliffs: List<LatLng> = emptyList(),
 )
 
 /**
@@ -61,10 +65,6 @@ class HikingRouteSession(
     val events: Flow<RoutePlanEvent> = _events.receiveAsFlow()
 
     private var job: Job? = null
-
-    private companion object {
-        val MARGIN_SCALES = listOf(1.0, 4.0)
-    }
 
     /** Routes each leg between consecutive [waypoints] into [preview]. */
     fun plan(waypoints: List<LatLng>) {
@@ -93,7 +93,7 @@ class HikingRouteSession(
     fun save(route: PlannedRoute, name: String, onSaved: () -> Unit) {
         scope.launch {
             val track = trackRepository.savePlannedRoute(name, route.points)
-            crossings.value = PlannedCrossings(track.id, route.crossings)
+            crossings.value = PlannedCrossings(track.id, route.crossings, route.cliffs)
             onSaved()
         }
     }
@@ -114,23 +114,27 @@ class HikingRouteSession(
         }
         val name = async { GeocodingHelper.routeName(waypoints.first(), waypoints.last()) ?: getString(Res.string.hiking_route) }
         try {
-            val routes = mutableListOf<TerrainRoute>()
-            var incomplete = false
+            val found = mutableListOf<Leg>()
             for ((i, leg) in legs.withIndex()) {
                 val (from, to) = leg
                 prefetched[i].await()
-                // The way around a long lake can lie outside the default area; retry once, wider.
-                var route: TerrainRoute? = null
-                for ((attempt, marginScale) in MARGIN_SCALES.withIndex()) {
-                    if (attempt > 0) TerrainGridLoader.prefetch(from, to, marginScale)
-                    val grid = TerrainGridLoader.load(from, to, marginScale)
-                        ?: if (attempt == 0) return@coroutineScope RoutePlanEvent.NoTerrainData else break
-                    incomplete = VectorFeatureLoader.burnInto(grid) > 0 || incomplete
-                    route = TerrainRouter.route(grid, from, to)
-                    if (route != null) break
+                val result = RouteLeg.route(
+                    from, to,
+                    load = { marginScale ->
+                        // The default area was prefetched above.
+                        if (marginScale != RouteLeg.MARGIN_SCALES.first()) TerrainGridLoader.prefetch(from, to, marginScale)
+                        TerrainGridLoader.load(from, to, marginScale)?.let { LegArea(it, VectorFeatureLoader.burnInto(it) > 0) }
+                    },
+                    refine = { grid, route ->
+                        if (CliffMap.covers(from) || CliffMap.covers(to)) CliffMap.refine(grid, from, to, route) else null
+                    },
+                )
+                when (result) {
+                    is LegResult.Found -> found += result.leg
+                    is LegResult.Failed -> return@coroutineScope result.event
                 }
-                routes += route ?: return@coroutineScope RoutePlanEvent.NoRoute
             }
+            val routes = found.map { it.route }
             preview.value = PlannedRoute(
                 // Each leg starts where the previous ended; drop the duplicated joint.
                 points = routes.flatMapIndexed { i, r -> if (i == 0) r.points else r.points.drop(1) },
@@ -138,7 +142,9 @@ class HikingRouteSession(
                 name = name.await(),
                 distanceMeters = routes.sumOf { it.distanceMeters },
                 durationSeconds = routes.sumOf { it.durationSeconds },
-                featuresIncomplete = incomplete,
+                featuresIncomplete = found.any { it.featuresIncomplete },
+                cliffsIncomplete = found.any { it.cliffsIncomplete },
+                cliffs = found.flatMap { it.cliffs },
             )
             null
         } finally {

@@ -168,13 +168,9 @@ fun RulerCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        if (routePreview.featuresIncomplete) {
-                            Text(
-                                text = stringResource(Res.string.route_features_incomplete),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
+                        if (routePreview.featuresIncomplete) RouteWarning(stringResource(Res.string.route_features_incomplete))
+                        if (routePreview.cliffs.isNotEmpty()) RouteWarning(stringResource(Res.string.route_crosses_cliff))
+                        if (routePreview.cliffsIncomplete) RouteWarning(stringResource(Res.string.route_cliffs_incomplete))
                     } else if (rulerState.points.size > 1) {
                         Text(
                             text = stringResource(Res.string.n_points, rulerState.points.size),
@@ -1522,4 +1518,9 @@ private fun LocatingPill(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+@Composable
+private fun RouteWarning(text: String) {
+    Text(text = text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
 }

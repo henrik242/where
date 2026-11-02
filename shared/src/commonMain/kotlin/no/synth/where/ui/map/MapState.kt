@@ -3,14 +3,15 @@ package no.synth.where.ui.map
 /**
  * Map layer options.
  */
-enum class MapLayer {
-    OSM,
-    OPENTOPOMAP,
-    KARTVERKET,
-    TOPORASTER,
-    SJOKARTRASTER,
-    MAPANT,
-    SATELLITE
+/** Base map layers; [downloadId] is the layer's id in [no.synth.where.data.DownloadLayers]. */
+enum class MapLayer(val downloadId: String) {
+    OSM("osm"),
+    OPENTOPOMAP("opentopomap"),
+    KARTVERKET("kartverket"),
+    TOPORASTER("toporaster"),
+    SJOKARTRASTER("sjokartraster"),
+    MAPANT("mapant"),
+    SATELLITE("satellite"),
 }
 
 /**

@@ -13,6 +13,7 @@ object CellFlags {
     const val BRIDGE = 16
     const val WETLAND = 32
     const val GLACIER = 64
+    const val CLIFF = 128
 }
 
 /**
