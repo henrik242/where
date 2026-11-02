@@ -186,6 +186,27 @@ class CliffMapTest {
     }
 
     @Test
+    fun smoothedLineDoesNotCutOverCliffBetweenPoints() {
+        val g = TerrainGrid(20, 20, 13, 1_100_000, 600_000, 10.0, FloatArray(400) { 100f })
+        // East along row 10, then a knight move and north up column 16: smoothing cuts the bend.
+        val cells = ((5..14).map { g.index(it, 10) } + listOf(g.index(16, 9)) + (8 downTo 3).map { g.index(16, it) }).toIntArray()
+        fun crossedCells(): Set<Int> {
+            val points = TerrainRouter.rebuild(g, cells, HikingCost.blockedCells(g)).points.map { it.latLng }
+            return points.zipWithNext().flatMap { (a, b) ->
+                (0..40).map { k ->
+                    val t = k / 40.0
+                    g.latLngToIndex(LatLng(a.latitude + (b.latitude - a.latitude) * t, a.longitude + (b.longitude - a.longitude) * t))
+                }
+            }.toSet()
+        }
+        val pointCells = TerrainRouter.rebuild(g, cells, HikingCost.blockedCells(g)).points.map { g.latLngToIndex(it.latLng) }.toSet()
+        // A cell the line passes through between two points, so the per-point check can't see it.
+        val between = crossedCells().first { it !in cells && it !in pointCells }
+        g.addFlag(between, CellFlags.CLIFF)
+        assertTrue(between !in crossedCells())
+    }
+
+    @Test
     fun cliffBandWithNoWayAroundIsClimbedOnceAndMarked() = runTest {
         // Every chunk has a 10 m step halfway down: an east-west cliff every 500 m of northing.
         serve(HttpStatusCode.OK, stepChunk(126))

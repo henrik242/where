@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import no.synth.where.data.TileUtils
 import no.synth.where.data.geo.LatLng
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.sqrt
 
@@ -248,12 +249,34 @@ object TerrainRouter {
         val ys = DoubleArray(path.size) { path[it] / w + 0.5 }
         val sx = smooth(xs)
         val sy = smooth(ys)
-        return path.indices.map { i ->
-            // Smoothing cuts corners; never let it pull a point into a lake or over a cliff edge.
-            val cell = grid.index(sx[i].toInt().coerceIn(0, w - 1), sy[i].toInt().coerceIn(0, grid.height - 1))
-            val (x, y) = if (blocked[cell]) xs[i] to ys[i] else sx[i] to sy[i]
-            RoutePoint(TileUtils.worldPixelToLatLng(grid.originPx + x, grid.originPy + y, grid.zoom), grid.elevations[path[i]].toDouble())
+        // Smoothing cuts corners; never let it pull the line into a lake or over a cliff edge.
+        // A point falls back to its cell centre when it, or the line to a neighbour, would.
+        val raw = BooleanArray(path.size) { blockedAt(grid, blocked, sx[it], sy[it]) }
+        fun x(i: Int) = if (raw[i]) xs[i] else sx[i]
+        fun y(i: Int) = if (raw[i]) ys[i] else sy[i]
+        var changed = true
+        while (changed) {
+            changed = false
+            for (i in 1 until path.size) {
+                if (raw[i - 1] && raw[i]) continue
+                if (!crossesBlocked(grid, blocked, x(i - 1), y(i - 1), x(i), y(i))) continue
+                raw[i - 1] = true
+                raw[i] = true
+                changed = true
+            }
         }
+        return path.indices.map { i ->
+            RoutePoint(TileUtils.worldPixelToLatLng(grid.originPx + x(i), grid.originPy + y(i), grid.zoom), grid.elevations[path[i]].toDouble())
+        }
+    }
+
+    private fun blockedAt(grid: TerrainGrid, blocked: BooleanArray, x: Double, y: Double): Boolean =
+        blocked[grid.index(x.toInt().coerceIn(0, grid.width - 1), y.toInt().coerceIn(0, grid.height - 1))]
+
+    /** Whether the straight line between two points, in cell units, passes through a blocked cell. */
+    private fun crossesBlocked(grid: TerrainGrid, blocked: BooleanArray, x0: Double, y0: Double, x1: Double, y1: Double): Boolean {
+        val steps = ceil(maxOf(abs(x1 - x0), abs(y1 - y0)) * 4).toInt().coerceAtLeast(1)
+        return (0..steps).any { k -> blockedAt(grid, blocked, x0 + (x1 - x0) * k / steps, y0 + (y1 - y0) * k / steps) }
     }
 
     /** Moving average over [SMOOTH_RADIUS] cells each way; endpoints stay put. */
