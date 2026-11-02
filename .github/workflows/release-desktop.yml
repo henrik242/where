@@ -56,11 +56,11 @@ jobs:
         $v nonempty ASC_ISSUER_ID
         $v p8 ASC_KEY_CONTENT
 
-    - name: Set up JDK 21
+    - name: Set up JDK 25
       uses: actions/setup-java@v6
       with:
         distribution: temurin
-        java-version: '21'
+        java-version: '25'
 
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@v6
