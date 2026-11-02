@@ -6,7 +6,14 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v670...main)
+[diff](https://github.com/henrik242/where/compare/v675...main)
+
+- Swipe back and screen transitions on iPhone.
+- Crash reports and logs no longer include track or position data from failed file reads.
+
+## v675 (2026-10-27)
+
+[diff](https://github.com/henrik242/where/compare/v670...v675)
 
 - A cone on your location dot shows which way you are facing, from the phone's compass; it widens when the compass is unsure.
 - Compass follow mode now uses true north, and turns the right way in landscape on iPhone.

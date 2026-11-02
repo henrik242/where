@@ -1,1 +1,1 @@
-Location dot shows which way you are facing.
+Swipe back between screens on iPhone.
