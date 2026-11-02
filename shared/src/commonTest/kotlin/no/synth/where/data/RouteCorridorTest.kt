@@ -81,6 +81,13 @@ class RouteCorridorTest {
     }
 
     @Test
+    fun downloadsAddHillshadeInNorwayWhenShown() {
+        assertEquals(listOf("kartverket", "mapant", "hillshade"), RouteCorridor.downloads(route, "Test", "kartverket", withHillshade = true).map { it.layerId })
+        val alps = route.map { LatLng(it.latitude - 20.5, it.longitude - 7) }
+        assertEquals(listOf("osm"), RouteCorridor.downloads(alps, "Test", "osm", withHillshade = true).map { it.layerId })
+    }
+
+    @Test
     fun everyMapLayerHasADownloadLayer() {
         for (layer in MapLayer.entries) assertNotNull(DownloadLayers.all.find { it.id == layer.downloadId }, layer.name)
     }

@@ -12,6 +12,7 @@ tag dates.
 - Crash reports and logs no longer include track or position data from failed file reads.
 - Hiking routes in Norway avoid small cliffs, a few metres high, using Kartverket's terrain model; a cliff a route can't avoid is marked in red.
 - Saving a found route downloads the map, and MapAnt in Norway, in a strip along it.
+- Hillshade overlay from Kartverket's detailed terrain model, so small cliffs and scarps show; downloadable, and saved routes include it while it's on.
 - GPX files shared from chat apps like Messenger can be opened in Where.
 - Hiking routes no longer slip into a river where a stream joins it.
 - Hiking routes avoid steep off-trail descents and no longer slip through small gaps in a cliff line or cut corners over one.

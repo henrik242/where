@@ -306,7 +306,7 @@ class MapScreenState(
             val route = routeSession.preview.value
             if (route != null) {
                 if (!userPreferences.offlineModeEnabled.value) {
-                    RouteCorridor.downloads(route.points.map { it.latLng }, name, layer.downloadId).forEach(enqueue)
+                    RouteCorridor.downloads(route.points.map { it.latLng }, name, layer.downloadId, userPreferences.showHillshade.value).forEach(enqueue)
                 }
                 routeSession.save(route, name) { showMessage(Res.string.saved_as_track_name, name) }
             } else {

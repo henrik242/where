@@ -61,6 +61,7 @@ fun MapFabColumn(
     showSavedPoints: Boolean,
     nveOverlay: NveOverlay?,
     showCoverage: Boolean = false,
+    showHillshade: Boolean = false,
     showCoordGrid: Boolean = false,
     showRecordFab: Boolean = true,
     cameraFollowMode: CameraFollowMode = CameraFollowMode.OFF,
@@ -72,6 +73,7 @@ fun MapFabColumn(
     onSavedPointsToggle: () -> Unit,
     onNveOverlayToggle: (NveOverlay) -> Unit,
     onCoverageToggle: () -> Unit = {},
+    onHillshadeToggle: () -> Unit = {},
     onCoordGridToggle: () -> Unit = {},
     onRecordStopClick: () -> Unit,
     onMyLocationClick: () -> Unit,
@@ -116,6 +118,7 @@ fun MapFabColumn(
             MenuSection(stringResource(Res.string.overlays))
             LayerMenuItem(stringResource(Res.string.waymarked_trails_osm), showWaymarkedTrails) { onWaymarkedTrailsToggle() }
             LayerMenuItem(stringResource(Res.string.paths_osm), showOsmPaths) { onOsmPathsToggle() }
+            LayerMenuItem(stringResource(Res.string.hillshade), showHillshade) { onHillshadeToggle() }
             LayerMenuItem(stringResource(Res.string.steepness_nve), nveOverlay == NveOverlay.STEEPNESS) { onNveOverlayToggle(NveOverlay.STEEPNESS) }
             LayerMenuItem(stringResource(Res.string.steepness_runout_nve), nveOverlay == NveOverlay.STEEPNESS_RUNOUT) { onNveOverlayToggle(NveOverlay.STEEPNESS_RUNOUT) }
             LayerMenuItem(stringResource(Res.string.mobile_coverage), showCoverage) { onCoverageToggle() }

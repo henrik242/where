@@ -365,6 +365,7 @@
     <string name="layer_waymarkedtrails_desc">Kartlag med merkede stier</string>
     <string name="layer_osmpaths_desc">Kartlag med stier, last ned på nytt etter en stund</string>
     <string name="layer_steepness_runout_desc">Bratthet med utløpsområder for snøskred, fra NVE</string>
+    <string name="layer_hillshade_desc">Terrengskygge fra Kartverkets detaljerte terrengmodell</string>
     <string name="layer_steepness_desc">Bratthet fra NVE</string>
 
     <!-- Map Screen snackbars -->
@@ -394,6 +395,7 @@
 
     <!-- Crosshair -->
     <string name="crosshair">Kryssmarkør</string>
+    <string name="hillshade">Terrengskygge</string>
     <string name="coordinate_grid">Koordinatrutenett</string>
     <string name="elevation_format">%1$s m</string>
     <string name="chart_gain">↑ %1$s m</string>

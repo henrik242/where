@@ -23,6 +23,7 @@ private const val DEFAULT_MAX_ZOOM = 18
 
 object DownloadLayers {
     const val OSM_PATHS_ID = "osmpaths"
+    const val HILLSHADE_ID = "hillshade"
 
     private fun nveLayer(overlay: NveOverlay, displayName: String) = DownloadLayer(
         overlay.sourceId,
@@ -42,6 +43,7 @@ object DownloadLayers {
         DownloadLayer("osm", "OpenStreetMap", "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
         DownloadLayer("opentopomap", "OpenTopoMap", "https://tile.opentopomap.org/{z}/{x}/{y}.png", maxZoom = 17),
         DownloadLayer("waymarkedtrails", "Waymarked Trails", "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", isOverlay = true),
+        DownloadLayer(HILLSHADE_ID, "Hillshade (Kartverket)", MapStyle.HILLSHADE_TILE_URL, maxZoom = MapStyle.HILLSHADE_MAX_ZOOM, isOverlay = true),
         DownloadLayer(OSM_PATHS_ID, "Paths (OSM)", MapStyle.OSM_PATHS_TILEJSON_URL, maxZoom = 14, isOverlay = true, isVector = true),
         nveLayer(NveOverlay.STEEPNESS_RUNOUT, "Steepness + Runout (NVE)"),
         nveLayer(NveOverlay.STEEPNESS, "Steepness (NVE)"),

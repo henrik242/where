@@ -24,11 +24,13 @@ object RouteCorridor {
 
     /**
      * Downloads along [points] for a route shown on [layerId]: that layer, plus MapAnt in Norway,
-     * which is the one map that marks small cliffs.
+     * which is the one map that marks small cliffs, and the hillshade there when [withHillshade].
      */
-    fun downloads(points: List<LatLng>, routeName: String, layerId: String): List<QueuedDownload> {
-        val mapAnt = MapLayer.MAPANT.downloadId.takeIf { layerId != it && points.any(CliffMap::covers) }
-        return listOfNotNull(layerId, mapAnt).mapNotNull { download(points, routeName, it) }
+    fun downloads(points: List<LatLng>, routeName: String, layerId: String, withHillshade: Boolean = false): List<QueuedDownload> {
+        val inNorway = points.any(CliffMap::covers)
+        val mapAnt = MapLayer.MAPANT.downloadId.takeIf { layerId != it && inNorway }
+        val hillshade = DownloadLayers.HILLSHADE_ID.takeIf { withHillshade && inNorway }
+        return listOfNotNull(layerId, mapAnt, hillshade).mapNotNull { download(points, routeName, it) }
     }
 
     /** A download of [layerId] along [points], or null for an unknown layer or a route that never moves. */

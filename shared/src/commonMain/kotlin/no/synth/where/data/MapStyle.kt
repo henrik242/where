@@ -11,6 +11,13 @@ object MapStyle {
     /** OpenMapTiles-schema vector tiles, no API key. TileJSON, so the weekly planet build stays current. */
     const val OSM_PATHS_TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 
+    /** Kartverket's relief shading from the 1 m terrain model; Norway only, transparent elsewhere. */
+    const val HILLSHADE_TILE_URL = "https://wms.geonorge.no/skwms1/wms.hoyde-dtm-nhm-25833?service=WMS&version=1.3.0" +
+        "&request=GetMap&layers=NHM_DTM_25833&styles=NHM_DTM_25833:skyggerelieff&crs=EPSG:3857&bbox={bbox-epsg-3857}" +
+        "&width=256&height=256&format=image/png&transparent=true"
+    /** At 66N, z16 pixels are about the terrain model's 1 m; beyond that MapLibre overzooms. */
+    const val HILLSHADE_MAX_ZOOM = 16
+
     /**
      * Lowest zoom with any paths at all; z11 and below carry none. OpenMapTiles thins them on the
      * way down -- z12 keeps rank-1 routes, z13 adds named and sac_scale ones, z14 has everything --
@@ -43,6 +50,7 @@ object MapStyle {
         showWaymarkedTrails: Boolean = false,
         nveOverlay: NveOverlay? = null,
         showOsmPaths: Boolean = false,
+        showHillshade: Boolean = false,
         /** Shows this operator's coverage overlay; null hides it. */
         coverageOperator: CoverageOperator? = null,
         glyphsUrl: String = DEFAULT_GLYPHS_URL,
@@ -77,6 +85,17 @@ object MapStyle {
       "tileSize": 256,$maxZoomLine
       "attribution": "${baseSource.attribution}"
     }""")
+            if (showHillshade) {
+                append(""",
+    "hillshade": {
+      "type": "raster",
+      "scheme": "xyz",
+      "tiles": ["$HILLSHADE_TILE_URL"],
+      "tileSize": 256,
+      "maxzoom": $HILLSHADE_MAX_ZOOM,
+      "attribution": "© <a href='https://www.kartverket.no'>Kartverket</a>"
+    }""")
+            }
             if (showWaymarkedTrails) {
                 append(""",
     "waymarkedtrails": {
@@ -134,6 +153,20 @@ object MapStyle {
         "raster-opacity": 1.0
       }
     }""")
+            if (showHillshade) {
+                // No multiply blend for rasters: a contrasty grey at low opacity shades without
+                // washing out the map much.
+                append(""",
+    {
+      "id": "hillshade-layer",
+      "type": "raster",
+      "source": "hillshade",
+      "paint": {
+        "raster-opacity": 0.4,
+        "raster-contrast": 0.3
+      }
+    }""")
+            }
             if (nveOverlay != null) {
                 append(""",
     {

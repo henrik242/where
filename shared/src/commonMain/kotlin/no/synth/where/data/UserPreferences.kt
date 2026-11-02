@@ -123,6 +123,9 @@ class UserPreferences(
     val coverageTilesVersion: StateFlow<String>
         field = MutableStateFlow(CoverageTilesClient.FALLBACK_VERSION)
 
+    val showHillshade: StateFlow<Boolean>
+        field = MutableStateFlow(false)
+
     val showCoordGrid: StateFlow<Boolean>
         field = MutableStateFlow(false)
 
@@ -190,6 +193,7 @@ class UserPreferences(
                 showCoverage.value = prefs[SHOW_COVERAGE] ?: false
                 coverageOperator.value = CoverageOperator.entries.firstOrNull { it.name == prefs[COVERAGE_OPERATOR] } ?: CoverageOperator.ALL
                 coverageTilesVersion.value = prefs[COVERAGE_TILES_VERSION] ?: CoverageTilesClient.FALLBACK_VERSION
+                showHillshade.value = prefs[SHOW_HILLSHADE] ?: false
                 showCoordGrid.value = prefs[SHOW_COORD_GRID] ?: false
                 crosshairActive.value = prefs[CROSSHAIR_ACTIVE] ?: false
                 northLocked.value = prefs[NORTH_LOCKED] ?: false
@@ -371,6 +375,11 @@ class UserPreferences(
         if (coverageTilesVersion.value == value) return
         coverageTilesVersion.value = value
         persist { it[COVERAGE_TILES_VERSION] = value }
+    }
+
+    fun updateShowHillshade(value: Boolean) {
+        showHillshade.value = value
+        persist { it[SHOW_HILLSHADE] = value }
     }
 
     fun updateShowCoordGrid(value: Boolean) {
@@ -614,6 +623,7 @@ class UserPreferences(
 
         // Read-only legacy key: superseded by NVE_OVERLAY, still read to migrate old installs.
         private val SHOW_AVALANCHE_ZONES = booleanPreferencesKey("show_avalanche_zones")
+        private val SHOW_HILLSHADE = booleanPreferencesKey("show_hillshade")
         private val SHOW_COORD_GRID = booleanPreferencesKey("show_coord_grid")
         private val CROSSHAIR_ACTIVE = booleanPreferencesKey("crosshair_active")
         private val NORTH_LOCKED = booleanPreferencesKey("north_locked")

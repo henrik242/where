@@ -70,6 +70,7 @@ fun rememberLayerInfos(): List<LayerInfo> {
         "opentopomap" to stringResource(Res.string.layer_opentopomap_desc),
         "waymarkedtrails" to stringResource(Res.string.layer_waymarkedtrails_desc),
         DownloadLayers.OSM_PATHS_ID to stringResource(Res.string.layer_osmpaths_desc),
+        DownloadLayers.HILLSHADE_ID to stringResource(Res.string.layer_hillshade_desc),
         "avalanchezones" to stringResource(Res.string.layer_steepness_runout_desc),
         "steepness" to stringResource(Res.string.layer_steepness_desc),
     )

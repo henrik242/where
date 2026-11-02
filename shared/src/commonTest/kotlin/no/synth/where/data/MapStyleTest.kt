@@ -138,6 +138,17 @@ class MapStyleTest {
     }
 
     @Test
+    fun hillshadeIsOffByDefaultAndDrawsRightAboveTheBaseMap() {
+        assertFalse(parse(MapStyle.getStyle()).getValue("sources").jsonObject.containsKey("hillshade"))
+        val style = parse(MapStyle.getStyle(showHillshade = true, nveOverlay = NveOverlay.STEEPNESS, showWaymarkedTrails = true))
+        val source = style.getValue("sources").jsonObject.getValue("hillshade").jsonObject
+        assertEquals(MapStyle.HILLSHADE_TILE_URL, source.getValue("tiles").jsonArray.single().jsonPrimitive.content)
+        assertTrue(MapStyle.HILLSHADE_TILE_URL.contains("{bbox-epsg-3857}"))
+        val ids = style.layers().map { it.id() }
+        assertEquals(ids.indexOf("base-layer") + 1, ids.indexOf("hillshade-layer"))
+    }
+
+    @Test
     fun osmPathsOverlayIsOffByDefault() {
         val style = parse(MapStyle.getStyle())
         assertFalse(style.getValue("sources").jsonObject.containsKey("osmpaths"))

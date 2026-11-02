@@ -129,6 +129,7 @@ fun MapScreen(
     val showCoverage by userPreferences.showCoverage.collectAsState()
     val coverageTilesVersion by userPreferences.coverageTilesVersion.collectAsState()
     val coverageOperator by userPreferences.coverageOperator.collectAsState()
+    val showHillshade by userPreferences.showHillshade.collectAsState()
     val showCoordGrid by userPreferences.showCoordGrid.collectAsState()
     val crosshairActive by userPreferences.crosshairActive.collectAsState()
     val coordFormat by userPreferences.coordFormat.collectAsState()
@@ -361,12 +362,13 @@ fun MapScreen(
         }
     }
 
-    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, nveOverlay, withCoverage, coverageOperator) {
+    val styleJson = remember(selectedLayer, showWaymarkedTrails, showOsmPaths, showHillshade, nveOverlay, withCoverage, coverageOperator) {
         MapStyle.getStyle(
             selectedLayer = selectedLayer,
             showWaymarkedTrails = showWaymarkedTrails,
             nveOverlay = nveOverlay,
             showOsmPaths = showOsmPaths,
+            showHillshade = showHillshade,
             coverageOperator = coverageOperator.takeIf { withCoverage },
             glyphsUrl = platform.glyphsUrl ?: MapStyle.DEFAULT_GLYPHS_URL,
         )
@@ -486,6 +488,7 @@ fun MapScreen(
         showSavedPoints = showSavedPoints,
         nveOverlay = nveOverlay,
         showCoverage = showCoverage,
+        showHillshade = showHillshade,
         showCoordGrid = showCoordGrid,
         crosshairActive = crosshairActive,
         crosshairInfo = crosshairInfo.copy(coverageOperator = coverageOperator),
@@ -556,6 +559,7 @@ fun MapScreen(
         },
         onNveOverlayToggle = { userPreferences.toggleNveOverlay(it) },
         onCoverageToggle = { userPreferences.updateShowCoverage(!showCoverage) },
+        onHillshadeToggle = { userPreferences.updateShowHillshade(!showHillshade) },
         onCoordGridToggle = { userPreferences.updateShowCoordGrid(!showCoordGrid) },
         onSavedPointsToggle = { userPreferences.updateShowSavedPoints(!showSavedPoints) },
         onRecordStopClick = {

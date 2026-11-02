@@ -22,7 +22,7 @@ class DownloadLayersTest {
         assertEquals(
             listOf(
                 "kartverket", "toporaster", "sjokartraster", "mapant", "satellite",
-                "osm", "opentopomap", "waymarkedtrails", DownloadLayers.OSM_PATHS_ID,
+                "osm", "opentopomap", "waymarkedtrails", DownloadLayers.HILLSHADE_ID, DownloadLayers.OSM_PATHS_ID,
                 "avalanchezones", "steepness",
             ),
             DownloadLayers.all.map { it.id },

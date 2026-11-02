@@ -365,6 +365,7 @@
     <string name="layer_waymarkedtrails_desc">Hiking trail overlay</string>
     <string name="layer_osmpaths_desc">Path overlay, re-download after a while to refresh</string>
     <string name="layer_steepness_runout_desc">Slope steepness with avalanche runout, from NVE</string>
+    <string name="layer_hillshade_desc">Terrain shading from Kartverket\'s detailed terrain model</string>
     <string name="layer_steepness_desc">Slope steepness from NVE</string>
 
     <!-- Compass -->
@@ -378,6 +379,7 @@
 
     <!-- Crosshair -->
     <string name="crosshair">Crosshair</string>
+    <string name="hillshade">Hillshade</string>
     <string name="coordinate_grid">Coordinate Grid</string>
     <string name="elevation_format">%1$s m</string>
     <string name="chart_gain">↑ %1$s m</string>
