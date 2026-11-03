@@ -1,1 +1,1 @@
-Hillshade, cliff-free routes, offline maps along routes, Messenger GPX.
+Behind-the-scenes improvements to how updates are built.

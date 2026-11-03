@@ -1,1 +1,1 @@
-Terrengskygge, ruter unngår stup, kart langs ruta, GPX fra Messenger.
+Forbedringer bak kulissene i hvordan oppdateringer bygges.

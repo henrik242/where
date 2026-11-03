@@ -6,7 +6,20 @@ tag dates.
 
 ## Unreleased
 
-[diff](https://github.com/henrik242/where/compare/v675...main)
+[diff](https://github.com/henrik242/where/compare/v697...main)
+
+- Internal: release tests run in parallel and the iOS build fits the runner's memory; no
+  user-facing changes.
+
+## v697 (2026-11-02)
+
+[diff](https://github.com/henrik242/where/compare/v696...v697)
+
+- Android release of v696; CI runs on JDK 25. No user-facing changes.
+
+## v696 (2026-11-02)
+
+[diff](https://github.com/henrik242/where/compare/v675...v696)
 
 - Swipe back and screen transitions on iPhone.
 - Crash reports and logs no longer include track or position data from failed file reads.
