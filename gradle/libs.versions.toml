@@ -22,7 +22,7 @@ junitVersion = "1.3.0"
 # Multiplatform navigation and lifecycle, matching composeMultiplatform (see its release notes).
 jetbrainsLifecycle = "2.11.0"
 jetbrainsNavigation = "2.10.0"
-kmpZip = "2.0.0"
+kmpZip = "2.1.0"
 kotlin = "2.4.21"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerializationJson = "1.12.0"
