@@ -13,7 +13,6 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
 import no.synth.where.util.Logger
 
 /** Non-2xx response from the Strava API. [isAuthError]/[isRateLimited] let callers react specifically. */
@@ -65,9 +64,7 @@ class StravaApiClient(
             return try {
                 LenientJson.parseToJsonElement(body).jsonArray.mapNotNull { element ->
                     val obj = element.jsonObject
-                    val id = obj["id"]?.jsonPrimitive?.longOrNull
-                        ?: obj["id_str"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
-                        ?: return@mapNotNull null
+                    val id = obj.stravaId() ?: return@mapNotNull null
                     StravaRoute(
                         id = id,
                         name = obj["name"]?.jsonPrimitive?.contentOrNull ?: "Strava route $id",

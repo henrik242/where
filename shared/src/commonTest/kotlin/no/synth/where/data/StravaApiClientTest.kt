@@ -74,6 +74,18 @@ class StravaApiClientTest {
     }
 
     @Test
+    fun parseRoutes_prefersIdStrOverId() {
+        val json = """[ { "id": 1, "id_str": "2", "name": "R" } ]"""
+        assertEquals(2L, StravaApiClient.parseRoutes(json)[0].id)
+    }
+
+    @Test
+    fun parseRoutes_largeIdStrKeepsFullPrecision() {
+        val json = """[ { "id": 9223372036854775807, "id_str": "9223372036854775807", "name": "R" } ]"""
+        assertEquals(Long.MAX_VALUE, StravaApiClient.parseRoutes(json)[0].id)
+    }
+
+    @Test
     fun parseRoutes_skipsEntriesWithoutId() {
         val json = """[ { "name": "no id here" }, { "id": 5, "name": "ok" } ]"""
         val routes = StravaApiClient.parseRoutes(json)

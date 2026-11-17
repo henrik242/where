@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
@@ -243,7 +244,7 @@ class StravaTokenManager(
                     accessToken = access,
                     refreshToken = refresh,
                     expiresAt = obj["expires_at"]?.jsonPrimitive?.longOrNull ?: 0L,
-                    athleteId = obj["athlete"]?.jsonObject?.get("id")?.jsonPrimitive?.longOrNull ?: 0L,
+                    athleteId = (obj["athlete"] as? JsonObject)?.stravaId() ?: 0L,
                 )
             } catch (e: Exception) {
                 null
