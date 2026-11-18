@@ -35,7 +35,7 @@ mockkAndroid = "1.14.11"
 # androidx patch of jetbrainsNavigation for the app module; bump the two together.
 navigationCompose = "2.10.2"
 playServicesLocation = "21.4.0"
-robolectric = "4.17"
+robolectric = "4.18"
 sqldelight = "2.4.1"
 timber = "5.0.1"
 
