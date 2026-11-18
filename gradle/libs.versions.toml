@@ -30,7 +30,7 @@ ktor = "3.6.1"
 lifecycleRuntimeCompose = "2.11.0"
 maplibreCompose = "0.20.0"
 material = "1.14.0"
-mockk = "1.14.11"
+mockk = "1.14.12"
 mockkAndroid = "1.14.11"
 # androidx patch of jetbrainsNavigation for the app module; bump the two together.
 navigationCompose = "2.10.2"
