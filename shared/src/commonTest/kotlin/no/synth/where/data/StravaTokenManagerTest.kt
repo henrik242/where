@@ -24,6 +24,12 @@ class StravaTokenManagerTest {
     }
 
     @Test
+    fun parseTokenResponse_prefersAthleteIdStr() {
+        val body = """{"access_token":"a","refresh_token":"r","athlete":{"id":1,"id_str":"1234567890987654321"}}"""
+        assertEquals(1234567890987654321L, StravaTokenManager.parseTokenResponse(body)!!.athleteId)
+    }
+
+    @Test
     fun parseTokenResponse_refreshWithoutAthlete() {
         val body = """{"access_token":"a2","refresh_token":"r2","expires_at":123}"""
         val t = StravaTokenManager.parseTokenResponse(body)!!
