@@ -15,8 +15,8 @@ coreKtx = "1.19.1"
 crashlyticsPlugin = "3.0.8"
 datastorePreferences = "1.3.0"
 espressoCore = "3.7.0"
-firebaseBom = "35.1.0"
-googleServicesPlugin = "4.5.0"
+firebaseBom = "35.2.0"
+googleServicesPlugin = "4.6.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 # Multiplatform navigation and lifecycle, matching composeMultiplatform (see its release notes).
@@ -25,17 +25,16 @@ jetbrainsNavigation = "2.10.0"
 kmpZip = "2.1.0"
 kotlin = "2.4.21"
 kotlinxCoroutines = "1.11.0"
-kotlinxSerializationJson = "1.12.0"
+kotlinxSerializationJson = "1.13.0"
 ktor = "3.6.1"
 lifecycleRuntimeCompose = "2.11.0"
 maplibreCompose = "0.20.0"
 material = "1.14.0"
-mockk = "1.14.11"
-mockkAndroid = "1.14.11"
+mockk = "1.14.12"
 # androidx patch of jetbrainsNavigation for the app module; bump the two together.
 navigationCompose = "2.10.2"
 playServicesLocation = "21.4.0"
-robolectric = "4.17"
+robolectric = "4.18.1"
 sqldelight = "2.4.1"
 timber = "5.0.1"
 
@@ -83,7 +82,7 @@ maplibre-compose-runtime-vulkan-android = { module = "org.maplibre.compose:mapli
 maplibre-compose-runtime-metal-macos-arm64 = { module = "org.maplibre.compose:maplibre-compose-runtime-metal-macos-arm64", version.ref = "maplibreCompose" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
-mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockkAndroid" }
+mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockk" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 sqldelight-android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = "sqldelight" }
