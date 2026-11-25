@@ -81,7 +81,7 @@ jobs:
         ls -la "shared/build/xcode-frameworks/Debug/${SDK_NAME}/"
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4
+      uses: github/codeql-action/init@v4.39.4
       with:
         languages: swift
         build-mode: manual
@@ -109,6 +109,6 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v4
+      uses: github/codeql-action/analyze@v4.39.4
       with:
         category: /language:swift
