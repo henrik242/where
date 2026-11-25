@@ -81,7 +81,7 @@ jobs:
       run: rm -f app/google-services.json local.properties
 
   build:
-    runs-on: macos-26
+    runs-on: xcode-27
     environment: production
     env:
       LANG: en_US.UTF-8
@@ -146,7 +146,7 @@ jobs:
       with:
         cache-provider: basic
 
-    # The macos-26 runner has 7 GB RAM; with the repo's 8 GB heap plus LLVM's native memory the
+    # The xcode-27 runner has 7 GB RAM; with the repo's 8 GB heap plus LLVM's native memory the
     # Kotlin/Native link swaps. 5 GB is the smallest heap that links without GC thrashing (4 GB
     # thrashes). ~/.gradle/gradle.properties overrides the repo's.
     - name: Fit Gradle heap to runner
@@ -274,7 +274,7 @@ jobs:
 
   deploy:
     needs: [test, build]
-    runs-on: macos-26
+    runs-on: xcode-27
     environment: production
     env:
       LANG: en_US.UTF-8

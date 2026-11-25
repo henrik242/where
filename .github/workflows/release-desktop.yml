@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-26
+    runs-on: xcode-27
     environment: production
     env:
       LANG: en_US.UTF-8
